@@ -1,0 +1,95 @@
+"use client";
+
+import Link from "next/link";
+import Image from "next/image";
+import { useState } from "react";
+import { signOut, useSession } from "next-auth/react";
+
+export default function Header() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { data: session, status } = useSession();
+
+  const user = session?.user;
+
+  return (
+    <header className="border-b border-white/10 bg-slate-950 text-white">
+      <div className="mx-auto flex max-w-[1600px] items-center justify-between px-6 py-4">
+        <Link href="/" className="block w-[340px]">
+          <Image
+            src="/logo-realstock.jpg"
+            alt="RealStock"
+            width={500}
+            height={120}
+            className="w-full h-[90px] object-fill"
+            priority
+          />
+        </Link>
+
+        <div className="flex items-center gap-4">
+          {status === "loading" ? null : user ? (
+            <div className="flex items-center gap-2 z-[9999]">
+              <div className="relative">
+                <button
+                  onClick={() => setMenuOpen((prev) => !prev)}
+                  className="flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm hover:bg-white/10"
+                >
+                  <span>Olá, {user.name || user.email}</span>
+                </button>
+
+                {menuOpen && (
+                  <div className="absolute left-0 top-full z-[9999] mt-2 w-56 rounded-2xl border border-white/10 bg-slate-900 p-2 shadow-2xl">
+                    <Link
+                      href="/anunciar"
+                      className="block rounded-xl px-4 py-3 text-sm hover:bg-white/10"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Anunciar imóvel
+                    </Link>
+
+                    <Link
+                      href="/minha-conta/anuncios"
+                      className="block rounded-xl px-4 py-3 text-sm hover:bg-white/10"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Meus anúncios
+                    </Link>
+
+                    <Link
+                      href="/minha-conta/ofertas"
+                      className="block rounded-xl px-4 py-3 text-sm hover:bg-white/10"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Minhas ofertas
+                    </Link>
+
+                    <Link
+                      href="/admin"
+                      className="block rounded-xl px-4 py-3 text-sm hover:bg-white/10"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Administração
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={() => signOut({ callbackUrl: "/" })}
+                className="rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-2 text-sm text-red-300 hover:bg-red-400/15"
+              >
+                Sair
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="rounded-xl border border-white/10 px-4 py-2 text-sm hover:bg-white/10"
+            >
+              Entrar
+            </Link>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
