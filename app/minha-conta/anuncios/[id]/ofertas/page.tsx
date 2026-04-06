@@ -1,60 +1,56 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import SellerPayPalCheckout from "@/components/SellerPayPalCheckout";
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 
-function getInitials(name?: string) {
-  if (!name) return "Comprador";
-
-  const parts = name.split(" ").filter(Boolean);
-
-  if (parts.length === 1) {
-    return parts[0][0].toUpperCase() + ".";
-  }
-
-  return parts.map((p) => p[0].toUpperCase() + ".").join(" ");
-}
+type Offer = {
+  id: number;
+  offerPrice: number;
+  status: string;
+  createdAt: string;
+  contactReleased: boolean;
+  buyer?: {
+    name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    instagram?: string | null;
+  };
+};
 
 export default function GerenciarOfertasPage() {
+  const { status } = useSession();
+  const router = useRouter();
   const params = useParams();
-  const propertyId = Number(params.id);
 
-  const [user, setUser] = useState<any>(null);
+  const propertyId = Number(params?.id);
+
+  const [offers, setOffers] = useState<Offer[]>([]);
   const [property, setProperty] = useState<any>(null);
-  const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
+  const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
+  const [paypalOfferId, setPaypalOfferId] = useState<number | null>(null);
+  const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
+  const [paypalError, setPaypalError] = useState("");
   const [error, setError] = useState("");
-  const [buyerContacts, setBuyerContacts] = useState<Record<number, any>>({});
-  const [openCheckoutForOfferId, setOpenCheckoutForOfferId] = useState<number | null>(null);
 
-  async function loadData(userId: number) {
-    setLoading(true);
-    setMessage("");
-    setError("");
-
+  async function loadData() {
     try {
-      const res = await fetch(`/api/minha-conta/anuncios?owner_id=${userId}`);
+      setLoading(true);
+      setError("");
+
+      const res = await fetch(`/api/minha-conta/anuncios/${propertyId}/ofertas`);
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Não foi possível carregar os anúncios.");
+        throw new Error(data.error || "Erro ao carregar ofertas.");
       }
 
-      const foundProperty = (data.properties || []).find(
-        (item: any) => item.id === propertyId
-      );
-
-      if (!foundProperty) {
-        throw new Error("Anúncio não encontrado.");
-      }
-
-      setProperty(foundProperty);
-      setPayments(data.payments || []);
+      setOffers(data.offers || []);
+      setProperty(data.property || null);
     } catch (err: any) {
-      console.error("LOAD DATA ERROR:", err);
       setError(err.message || "Erro ao carregar ofertas.");
     } finally {
       setLoading(false);
@@ -62,348 +58,297 @@ export default function GerenciarOfertasPage() {
   }
 
   useEffect(() => {
-    const stored = localStorage.getItem("realstock_user");
-
-    if (!stored) {
-      window.location.href = "/login";
+    if (status === "unauthenticated") {
+      router.push("/login");
       return;
     }
 
-    const parsed = JSON.parse(stored);
-    setUser(parsed);
-    loadData(Number(parsed.id));
-  }, [propertyId]);
-
-  const paymentMap = useMemo(() => {
-    const map: Record<number, any> = {};
-    for (const payment of payments) {
-      map[payment.offerId] = payment;
+    if (status === "authenticated") {
+      loadData();
     }
-    return map;
-  }, [payments]);
+  }, [status, propertyId, router]);
 
-  async function handleAcceptOffer(offerId: number) {
-    setMessage("");
-    setError("");
-    setOpenCheckoutForOfferId(null);
-
+  async function aceitarOferta(id: number) {
     try {
-      const res = await fetch("/api/minha-conta/ofertas/aceitar", {
+      setActionLoadingId(id);
+
+      const res = await fetch("/api/minha-conta/ofertas", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          offer_id: Number(offerId),
+          action: "accept",
+          offer_id: id,
         }),
       });
 
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Erro ao aceitar proposta.");
+        throw new Error(data.error || "Erro ao aceitar oferta.");
       }
 
-      setMessage("Proposta aceita com sucesso.");
-      await loadData(Number(user.id));
+      await loadData();
     } catch (err: any) {
-      console.error("ACCEPT OFFER ERROR:", err);
-      setError(err.message || "Erro ao aceitar proposta.");
+      alert(err.message || "Erro ao aceitar oferta.");
+    } finally {
+      setActionLoadingId(null);
     }
   }
 
-  async function handleLoadBuyerContact(paymentId: number) {
-    setMessage("");
-    setError("");
+  async function prepararPaypal(offerId: number) {
+  try {
+    setPaypalError("");
+    setPaypalOfferId(offerId);
+    setPaypalOrderId(null);
 
+    const res = await fetch("/api/paypal/create-order", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        offer_id: offerId,
+      }),
+    });
+
+    const raw = await res.text();
+
+    let data: any = null;
     try {
-      const res = await fetch(
-        `/api/minha-conta/comprador-liberado?payment_id=${paymentId}&seller_id=${Number(
-          user.id
-        )}`
-      );
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Erro ao carregar contato do comprador.");
-      }
-
-      setBuyerContacts((prev) => ({
-        ...prev,
-        [paymentId]: data.buyer,
-      }));
-    } catch (err: any) {
-      console.error("LOAD BUYER CONTACT ERROR:", err);
-      setError(err.message || "Erro ao carregar contato do comprador.");
+      data = JSON.parse(raw);
+    } catch {
+      data = {
+        success: false,
+        error: raw || "Resposta inválida da API do PayPal.",
+      };
     }
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || "Erro ao preparar pagamento PayPal.");
+    }
+
+    if (!data.paypal_order_id) {
+      throw new Error("A ordem PayPal não foi retornada.");
+    }
+
+    setPaypalOrderId(data.paypal_order_id);
+  } catch (err: any) {
+    setPaypalOfferId(null);
+    setPaypalOrderId(null);
+    setPaypalError(err.message || "Erro ao preparar pagamento PayPal.");
+  }
+}
+
+  function closePaypalModal() {
+    setPaypalOfferId(null);
+    setPaypalOrderId(null);
+    setPaypalError("");
   }
 
-  function renderOfferAction(offer: any, payment: any) {
-    const status = String(offer.status || "").toLowerCase();
-    const isPaid = payment?.paymentStatus === "paid";
-
-    if (status === "open") {
-      return (
-        <button
-          onClick={() => handleAcceptOffer(Number(offer.id))}
-          className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-900"
-        >
-          Aceitar proposta
-        </button>
-      );
-    }
-
-    if (status === "cancelled") {
-      return (
-        <div className="rounded-2xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm text-slate-400">
-          Proposta cancelada
-        </div>
-      );
-    }
-
-    if (status === "accepted" && isPaid && payment) {
-      return (
-        <button
-          onClick={() => handleLoadBuyerContact(payment.id)}
-          className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white"
-        >
-          Ver contato do comprador
-        </button>
-      );
-    }
-
-    if (status === "accepted") {
-      return (
-        <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-300">
-          Proposta aceita
-        </div>
-      );
-    }
-
-    return null;
-  }
-
-  if (loading) {
+  if (status === "loading" || loading) {
     return (
-      <main className="min-h-screen bg-slate-950 text-white">
-        <section className="mx-auto max-w-6xl px-6 py-8">
-          <div className="text-slate-400">Carregando ofertas...</div>
-        </section>
+      <main className="min-h-screen bg-slate-950 text-white p-6">
+        <div className="text-slate-400">Carregando...</div>
       </main>
     );
   }
 
-  if (!property) {
-    return (
-      <main className="min-h-screen bg-slate-950 text-white">
-        <section className="mx-auto max-w-6xl px-6 py-8">
-          <div className="rounded-2xl border border-red-400/20 bg-red-400/10 p-6 text-red-300">
-            {error || "Anúncio não encontrado."}
-          </div>
-        </section>
-      </main>
-    );
-  }
+  const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <section className="mx-auto max-w-6xl px-6 py-8">
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <div className="text-sm text-slate-400">Minha conta</div>
-            <h1 className="mt-2 text-4xl font-bold">Gerenciar ofertas</h1>
-            <p className="mt-2 text-slate-400">{property.title}</p>
-          </div>
+    <main className="min-h-screen bg-slate-950 text-white p-6">
+      <div className="max-w-5xl mx-auto">
+        <div className="mb-8">
+          <Link
+            href="/minha-conta/anuncios"
+            className="text-sm text-slate-400 hover:text-white"
+          >
+            ← Voltar
+          </Link>
 
-          <div className="flex gap-3">
-            <Link
-              href="/minha-conta/anuncios"
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white"
-            >
-              Voltar
-            </Link>
+          <h1 className="text-3xl font-bold mt-3">Ofertas do imóvel</h1>
 
-            <Link
-              href={`/imovel/${property.id}`}
-              className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-900"
-            >
-              Ver anúncio
-            </Link>
-          </div>
+          {property && <div className="text-slate-400 mt-1">{property.title}</div>}
         </div>
 
-        {message && (
-          <div className="mb-6 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-300">
-            {message}
-          </div>
-        )}
-
         {error && (
-          <div className="mb-6 rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-300">
+          <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl mb-6 text-red-300">
             {error}
           </div>
         )}
 
-        <div className="mb-6 rounded-[28px] border border-white/10 bg-white/5 p-6">
-          <div className="grid gap-6 lg:grid-cols-[220px_1fr_auto]">
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
-              {property.images?.[0]?.imageUrl ? (
-                <img
-                  src={property.images[0].imageUrl}
-                  alt={property.title}
-                  className="h-40 w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-40 items-center justify-center text-slate-500">
-                  Sem foto
-                </div>
-              )}
-            </div>
-
-            <div>
-              <h2 className="text-2xl font-bold">{property.title}</h2>
-              <p className="mt-2 text-slate-400">
-                {[property.neighborhood, property.city, property.state]
-                  .filter(Boolean)
-                  .join(" • ")}
-              </p>
-            </div>
-
-            <div className="text-right">
-              <div className="text-sm text-slate-400">Valor anunciado</div>
-              <div className="text-2xl font-bold text-emerald-400">
-                R$ {Number(property.price).toLocaleString("pt-BR")}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {property.offers?.length === 0 ? (
-          <div className="rounded-[28px] border border-white/10 bg-white/5 p-6 text-slate-400">
-            Ainda não há ofertas para este anúncio.
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {property.offers.map((offer: any) => {
-              const payment = paymentMap[offer.id];
-              const buyerContact = payment ? buyerContacts[payment.id] : null;
-
-              const checkoutAmount =
-                payment?.paymentAmount != null
-                  ? Number(payment.paymentAmount).toFixed(2)
-                  : (Number(offer.offerPrice) / 5000).toFixed(2);
-
-              const isPaid = payment?.paymentStatus === "paid";
-              const status = String(offer.status || "").toLowerCase();
-
-              return (
-                <div
-                  key={offer.id}
-                  className="rounded-[28px] border border-white/10 bg-white/5 p-6"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                      <div className="text-lg font-semibold">
-                        {getInitials(offer.buyer?.name)}
-                      </div>
-                      <div className="mt-1 text-sm text-slate-400">
-                        Status da oferta: {offer.status}
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <div className="text-sm text-slate-400">Valor ofertado</div>
-                      <div className="text-2xl font-bold text-emerald-400">
-                        R$ {Number(offer.offerPrice).toLocaleString("pt-BR")}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-3">
-                    {renderOfferAction(offer, payment)}
-
-                    {status === "accepted" && !isPaid && (
-                      <button
-                        onClick={() =>
-                          setOpenCheckoutForOfferId((current) =>
-                            current === Number(offer.id) ? null : Number(offer.id)
-                          )
-                        }
-                        className="rounded-2xl border border-blue-400/20 bg-blue-400/10 px-4 py-3 text-sm font-semibold text-blue-200"
-                      >
-                        {openCheckoutForOfferId === Number(offer.id)
-                          ? "Fechar cobrança PayPal"
-                          : "Abrir cobrança PayPal"}
-                      </button>
-                    )}
-                  </div>
-
-                  {status === "accepted" &&
-                    !isPaid &&
-                    openCheckoutForOfferId === Number(offer.id) &&
-                    Number.isFinite(Number(checkoutAmount)) &&
-                    Number(checkoutAmount) > 0 && (
-                      <div className="mt-5 rounded-2xl border border-blue-400/20 bg-blue-400/10 p-5">
-                        <div className="mb-3 text-sm font-medium text-blue-200">
-                          Proposta aceita. Efetue o pagamento da taxa via PayPal
-                          para liberar o contato do comprador.
-                        </div>
-
-                        <SellerPayPalCheckout
-                          key={`paypal-offer-${offer.id}-${checkoutAmount}`}
-                          offerId={Number(offer.id)}
-                          amount={checkoutAmount}
-                          onPaid={() => {
-                            setOpenCheckoutForOfferId(null);
-                            loadData(Number(user.id));
-                          }}
-                        />
-                      </div>
-                    )}
-
-                  {payment && (
-                    <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-slate-300">
-                      <div>
-                        Status do pagamento:{" "}
-                        <span className="font-semibold">
-                          {payment.paymentStatus}
-                        </span>
-                      </div>
-                      <div className="mt-1">
-                        Valor da cobrança:{" "}
-                        <span className="font-semibold text-emerald-400">
-                          R$ {Number(payment.paymentAmount).toLocaleString("pt-BR")}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {buyerContact && (
-                    <div className="mt-4 rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm text-emerald-200">
-                      <div className="font-semibold">
-                        Contato do comprador liberado
-                      </div>
-                      <div className="mt-2">Nome: {buyerContact.name || "-"}</div>
-                      <div>Email: {buyerContact.email || "-"}</div>
-                      <div>Telefone: {buyerContact.phone || "-"}</div>
-                      <div>Instagram: {buyerContact.instagram || "-"}</div>
-                      <div>CPF/CNPJ: {buyerContact.cpfCnpj || "-"}</div>
-                      <div>PayPal: {buyerContact.paypalEmail || "-"}</div>
-                      <div>
-                        Localização:{" "}
-                        {[buyerContact.city, buyerContact.state, buyerContact.country]
-                          .filter(Boolean)
-                          .join(" • ") || "-"}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+        {offers.length === 0 && (
+          <div className="bg-white/5 border border-white/10 p-6 rounded-xl text-slate-400">
+            Nenhuma oferta recebida ainda.
           </div>
         )}
-      </section>
+
+        <div className="space-y-4">
+          {offers.map((offer, index) => (
+            <div
+              key={offer.id}
+              className="bg-white/5 border border-white/10 p-5 rounded-2xl"
+            >
+              <div className="flex justify-between items-start gap-6">
+                <div>
+                  <div className="text-xl font-semibold">
+                    R$ {offer.offerPrice.toLocaleString("pt-BR")}
+                  </div>
+
+                  <div className="text-sm text-slate-400 mt-1">
+                    {new Date(offer.createdAt).toLocaleDateString("pt-BR")}
+                  </div>
+
+                  <div className="mt-3 text-sm text-slate-300 space-y-1">
+                    <div>
+                      👤{" "}
+                      {offer.contactReleased
+                        ? offer.buyer?.name || "-"
+                        : `Comprador ${index + 1}`}
+                    </div>
+
+                    {offer.contactReleased ? (
+                      <>
+                        <div>📧 {offer.buyer?.email || "-"}</div>
+                        <div>📱 {offer.buyer?.phone || "-"}</div>
+                        <div>📷 {offer.buyer?.instagram || "-"}</div>
+                      </>
+                    ) : (
+                      <div className="rounded-xl border border-blue-400/20 bg-blue-400/10 px-3 py-2 text-blue-200 mt-2">
+                        Os dados do comprador serão liberados somente após o pagamento da taxa via PayPal.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="text-right flex flex-col gap-2">
+                  {offer.status === "open" && (
+                    <button
+                      onClick={() => aceitarOferta(offer.id)}
+                      disabled={actionLoadingId === offer.id}
+                      className="bg-white text-black px-4 py-2 rounded-xl font-semibold disabled:opacity-60"
+                    >
+                      {actionLoadingId === offer.id ? "Aceitando..." : "Aceitar proposta"}
+                    </button>
+                  )}
+
+                  {offer.status === "accepted" && !offer.contactReleased && (
+                    <>
+                      <div className="text-green-400 font-medium">✔ Aceita</div>
+                      <button
+                        onClick={() => prepararPaypal(offer.id)}
+                        className="bg-emerald-500 text-white px-4 py-2 rounded-xl font-semibold"
+                      >
+                        Pagar taxa com PayPal
+                      </button>
+                    </>
+                  )}
+
+                  {offer.status === "accepted" && offer.contactReleased && (
+                    <>
+                      <div className="text-green-400 font-medium">✔ Aceita</div>
+                      <div className="text-xs text-emerald-300">
+                        Contato liberado
+                      </div>
+                    </>
+                  )}
+
+                  {offer.status === "cancelled" && (
+                    <div className="text-slate-500">Cancelada</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {paypalOfferId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-slate-950 p-6 text-white shadow-2xl">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="text-sm text-slate-400">Pagamento da taxa</div>
+                <h2 className="mt-1 text-2xl font-bold">PayPal</h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={closePaypalModal}
+                className="rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-blue-400/20 bg-blue-400/10 p-4 text-sm text-blue-200">
+              Após a confirmação do pagamento, os dados do comprador serão liberados automaticamente nesta tela.
+            </div>
+
+            {paypalError && (
+              <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-300">
+                {paypalError}
+              </div>
+            )}
+
+            {!paypalOrderId ? (
+              <div className="mt-6 text-slate-400">Preparando pagamento...</div>
+            ) : (
+              <div className="mt-6">
+                <PayPalScriptProvider
+                  options={{
+                    clientId: paypalClientId,
+                    currency: "BRL",
+                    intent: "capture",
+                  }}
+                >
+                  <PayPalButtons
+                    style={{
+                      layout: "vertical",
+                      shape: "rect",
+                      label: "paypal",
+                    }}
+                    createOrder={async () => {
+                      return paypalOrderId;
+                    }}
+                    onApprove={async (data) => {
+                      const res = await fetch("/api/paypal/capture-order", {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                          orderID: data.orderID,
+                        }),
+                      });
+
+                      const result = await res.json();
+
+                      if (!res.ok || !result.success) {
+                        throw new Error(
+                          result.error || "Erro ao capturar pagamento."
+                        );
+                      }
+
+                      closePaypalModal();
+                      await loadData();
+                    }}
+                    onError={(err) => {
+                      console.error("PAYPAL MODAL ERROR:", err);
+                      setPaypalError("Erro ao processar pagamento PayPal.");
+                    }}
+                    onCancel={() => {
+                      setPaypalError("Pagamento cancelado.");
+                    }}
+                  />
+                </PayPalScriptProvider>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

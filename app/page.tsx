@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import CesiumMapClient from "@/components/CesiumMapClient";
 
 type PropertyPin = {
@@ -12,9 +13,17 @@ type PropertyPin = {
   city: string;
   lat: number;
   lng: number;
+  mainImage: string | null;
 };
 
 type MapBounds = {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+};
+
+type ClusterZoomTarget = {
   north: number;
   south: number;
   east: number;
@@ -78,6 +87,7 @@ function normalizeProperties(items: any[]): PropertyPin[] {
     city: item.city || "-",
     lat: Number(item.latitude),
     lng: Number(item.longitude),
+    mainImage: item.images?.[0]?.imageUrl || null,
   }));
 }
 
@@ -86,6 +96,9 @@ export default function HomePage() {
   const [properties, setProperties] = useState<PropertyPin[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [boundsReady, setBoundsReady] = useState(false);
+  const [clusterZoomTarget, setClusterZoomTarget] =
+    useState<ClusterZoomTarget | null>(null);
 
   const [category, setCategory] = useState("");
   const [propertyType, setPropertyType] = useState("");
@@ -180,11 +193,17 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (!bounds) return;
-    loadFilteredProperties(bounds);
+    if (!bounds || !boundsReady) return;
+
+    const timer = setTimeout(() => {
+      loadFilteredProperties(bounds);
+    }, 500);
+
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     bounds,
+    boundsReady,
     category,
     propertyType,
     priceMin,
@@ -233,10 +252,16 @@ export default function HomePage() {
       }
       return nextBounds;
     });
+
+    setBoundsReady(true);
+  }, []);
+
+  const handleClusterZoomRequest = useCallback((target: ClusterZoomTarget) => {
+    setClusterZoomTarget(target);
   }, []);
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
+    <main className="bg-slate-950 text-white">
       <section className="mx-auto max-w-[1600px] px-6 py-6">
         <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
           <aside className="rounded-[28px] border border-white/10 bg-white/5 p-5">
@@ -263,7 +288,9 @@ export default function HomePage() {
                   <option value="RESIDENCIAL">Residencial</option>
                   <option value="TERRENOS">Terrenos</option>
                   <option value="COMERCIAL">Comercial</option>
-                  <option value="INDUSTRIAL_LOGISTICO">Industrial / Logístico</option>
+                  <option value="INDUSTRIAL_LOGISTICO">
+                    Industrial / Logístico
+                  </option>
                 </select>
               </Field>
 
@@ -369,7 +396,9 @@ export default function HomePage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <button
                   type="button"
-                  onClick={() => (bounds ? loadFilteredProperties(bounds) : loadInitialProperties())}
+                  onClick={() =>
+                    bounds ? loadFilteredProperties(bounds) : loadInitialProperties()
+                  }
                   className="rounded-2xl bg-white px-4 py-3 font-semibold text-slate-900"
                 >
                   Aplicar
@@ -385,30 +414,135 @@ export default function HomePage() {
               </div>
 
               <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 text-sm text-slate-300">
-                {loading ? (
-                  <span>Buscando imóveis...</span>
+                {loading && properties.length === 0 ? (
+                  <span>Carregando imóveis...</span>
                 ) : (
                   <span>{properties.length} imóvel(is) encontrado(s)</span>
                 )}
               </div>
-
-              {error && (
-                <div className="rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-300">
-                  {error}
-                </div>
-              )}
             </div>
           </aside>
 
           <div className="space-y-4">
+            {loading && properties.length === 0 && (
+              <div className="flex justify-center rounded-2xl border border-white/10 bg-white/5 py-6 text-slate-400">
+                Carregando imóveis...
+              </div>
+            )}
+
             <CesiumMapClient
               properties={properties}
               onBoundsChange={handleBoundsChange}
+              clusterZoomTarget={clusterZoomTarget}
+              onClusterZoomRequest={handleClusterZoomRequest}
             />
+
+            <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-sm text-slate-400">
+                    Imóveis na área visível do mapa
+                  </div>
+                  <h3 className="mt-1 text-2xl font-bold">
+                    {properties.length} resultado(s)
+                  </h3>
+                </div>
+
+                {loading && (
+                  <div className="text-sm text-slate-400">
+                    Atualizando lista...
+                  </div>
+                )}
+              </div>
+
+              {properties.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/10 bg-slate-900/40 p-6 text-sm text-slate-400">
+                  Nenhum imóvel encontrado na área atual do mapa com os filtros aplicados.
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {properties.map((property) => (
+                    <Link
+                      key={property.id}
+                      href={`/imovel/${property.id}`}
+                      className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/60 transition hover:border-white/20 hover:bg-slate-900"
+                    >
+                      {property.mainImage ? (
+                        <img
+                          src={property.mainImage}
+                          alt={property.title}
+                          className="h-48 w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-48 items-center justify-center bg-slate-800 text-sm text-slate-500">
+                          Sem foto
+                        </div>
+                      )}
+
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="line-clamp-2 text-lg font-semibold text-white">
+                              {property.title}
+                            </div>
+                            <div className="mt-1 text-sm text-slate-400">
+                              {property.city}
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-sm font-semibold text-emerald-300">
+                            {property.price}
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-2 text-sm text-slate-300">
+                          <div className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2">
+                            <span className="text-slate-400">Situação</span>
+                            <span>{property.legalStatus}</span>
+                          </div>
+
+                          <div className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2">
+                            <span className="text-slate-400">Área</span>
+                            <span>{property.area}</span>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 text-sm font-medium text-blue-300">
+                          Ver imóvel →
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </section>
-    </main>
+      <footer className="fixed bottom-0 left-0 w-full border-t border-white/10 bg-slate-950/90 backdrop-blur">
+      <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-6 py-3 text-xs text-slate-400 sm:flex-row">
+        <div>
+          © 2026 RealStock. Todos os direitos reservados. Plataforma de anúncios imobiliários.
+        </div>
+
+        <a
+          href="mailto:leobatisti@gmail.com"
+          className="text-slate-300 transition hover:text-white"
+        >
+          Contato: leobatisti@gmail.com
+        </a>
+      </div>
+    </footer>
+
+    <div className="pb-16" />
+  </main>
+    
+
+
+
+
+
+
   );
 }
 
@@ -452,5 +586,7 @@ function Toggle({
     >
       {label}
     </button>
+    
   );
+  
 }

@@ -1,13 +1,12 @@
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
-
 
 async function getPayPalAccessToken() {
-  const clientId = process.env.PAYPAL_CLIENT_ID!;
-  const clientSecret = process.env.PAYPAL_CLIENT_SECRET!;
   const base = process.env.PAYPAL_API_BASE!;
+  const clientId = process.env.PAYPAL_CLIENT_ID!;
+  const secret = process.env.PAYPAL_CLIENT_SECRET!;
 
-  const auth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  const auth = Buffer.from(`${clientId}:${secret}`).toString("base64");
 
   const res = await fetch(`${base}/v1/oauth2/token`, {
     method: "POST",
@@ -21,52 +20,31 @@ async function getPayPalAccessToken() {
   const data = await res.json();
 
   if (!res.ok) {
-    console.error("Erro OAuth PayPal capture:", data);
-    throw new Error(data.error_description || "Falha ao autenticar no PayPal.");
+    console.error("PAYPAL TOKEN RESPONSE:", data);
+    throw new Error(
+      data.error_description || data.error || "Falha ao autenticar no PayPal."
+    );
   }
 
   return data.access_token as string;
 }
 
-async function fetchOrder(paypalOrderId: string, accessToken: string, base: string) {
-  const res = await fetch(`${base}/v2/checkout/orders/${paypalOrderId}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  const data = await res.json();
-
-  console.log("PayPal order GET status:", res.status);
-  console.log("PayPal order GET body:", JSON.stringify(data, null, 2));
-
-  return data;
-}
-
-function extractCompletedCapture(data: any) {
-  const capture = data?.purchase_units?.[0]?.payments?.captures?.[0];
-  if (capture?.id && capture?.status === "COMPLETED") {
-    return capture;
-  }
-  return null;
-}
-
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const paypalOrderId = String(body.paypal_order_id || "");
+    const orderId = String(body.orderID || body.orderId || "").trim();
 
-    if (!paypalOrderId) {
+    if (!orderId) {
       return NextResponse.json(
-        { success: false, error: "paypal_order_id não informado." },
+        { success: false, error: "orderID não informado." },
         { status: 400 }
       );
     }
 
     const payment = await prisma.offerPayment.findFirst({
-      where: { paypalOrderId },
+      where: {
+        paypalOrderId: orderId,
+      },
     });
 
     if (!payment) {
@@ -76,7 +54,7 @@ export async function POST(req: Request) {
       );
     }
 
-    if (payment.paymentStatus === "paid") {
+    if (payment.paymentStatus === "paid" && payment.contactReleased) {
       return NextResponse.json({
         success: true,
         already_paid: true,
@@ -86,44 +64,66 @@ export async function POST(req: Request) {
     const accessToken = await getPayPalAccessToken();
     const base = process.env.PAYPAL_API_BASE!;
 
-    const captureRes = await fetch(
-      `${base}/v2/checkout/orders/${paypalOrderId}/capture`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const captureRes = await fetch(`${base}/v2/checkout/orders/${orderId}/capture`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
 
     const captureData = await captureRes.json();
 
-    console.log("PayPal capture status:", captureRes.status);
-    console.log("PayPal capture body:", JSON.stringify(captureData, null, 2));
+    console.log("PAYPAL CAPTURE RESPONSE:", captureData);
 
-    let capture = extractCompletedCapture(captureData);
-
-    if (!capture) {
-      const orderData = await fetchOrder(paypalOrderId, accessToken, base);
-      capture = extractCompletedCapture(orderData);
-    }
-
-    if (!capture) {
+    if (!captureRes.ok) {
       return NextResponse.json(
         {
           success: false,
-          error: captureData?.message || "Pagamento não pôde ser confirmado.",
+          error: captureData.message || "Erro ao capturar pagamento PayPal.",
           detail: captureData,
         },
-        { status: 500 }
+        { status: 400 }
+      );
+    }
+
+    const captureId =
+      captureData?.purchase_units?.[0]?.payments?.captures?.[0]?.id || null;
+
+    const captureStatus =
+      captureData?.purchase_units?.[0]?.payments?.captures?.[0]?.status ||
+      captureData?.status ||
+      null;
+
+    if (!captureId || !captureStatus) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Resposta do PayPal incompleta ao capturar pagamento.",
+          detail: captureData,
+        },
+        { status: 400 }
+      );
+    }
+
+    const paid =
+      String(captureStatus).toUpperCase() === "COMPLETED" ||
+      String(captureStatus).toUpperCase() === "APPROVED";
+
+    if (!paid) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Pagamento não concluído. Status: ${captureStatus}`,
+        },
+        { status: 400 }
       );
     }
 
     await prisma.offerPayment.update({
       where: { id: payment.id },
       data: {
-        paypalCaptureId: capture.id,
+        paypalCaptureId: captureId,
         paymentStatus: "paid",
         contactReleased: true,
         paidAt: new Date(),
@@ -132,16 +132,16 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      capture_id: capture.id,
-      capture_status: capture.status,
+      paymentStatus: "paid",
+      contactReleased: true,
     });
   } catch (error: any) {
-    console.error("PAYPAL CAPTURE ERROR:", error);
+    console.error("PAYPAL CAPTURE ORDER ERROR:", error);
 
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Não foi possível confirmar o pagamento.",
+        error: error.message || "Erro ao capturar pagamento PayPal.",
       },
       { status: 500 }
     );

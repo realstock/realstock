@@ -68,16 +68,19 @@ export default function PropertyLocationPicker({
       handlerRef.current = handler;
 
       handler.setInputAction((click: any) => {
-        let cartesian = viewer.scene.pickPosition(click.position);
+        let cartesian: any = viewer.scene.pickPosition(click.position);
 
-        if (!cartesian) {
-          const ray = viewer.camera.getPickRay(click.position);
-          if (ray) {
-            cartesian = viewer.scene.globe.pick(ray, viewer.scene);
+          if (!cartesian) {
+            const ray = viewer.camera.getPickRay(click.position);
+            if (ray) {
+              const pickedCartesian = viewer.scene.globe.pick(ray, viewer.scene);
+              if (pickedCartesian) {
+                cartesian = pickedCartesian;
+              }
+            }
           }
-        }
 
-        if (!cartesian) return;
+          if (!cartesian) return;
 
         const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
         if (!cartographic) return;

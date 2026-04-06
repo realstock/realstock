@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
 export async function sendEmail({
   to,
@@ -9,33 +9,26 @@ export async function sendEmail({
   subject: string;
   html: string;
 }) {
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT || 587);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const from = process.env.SMTP_FROM || user;
+  const apiKey = process.env.RESEND_API_KEY;
 
-  if (!host || !user || !pass || !from) {
-    console.warn("SMTP não configurado. Email não enviado.");
+  if (!apiKey) {
+    console.warn("RESEND_API_KEY não configurada. Email não enviado.");
     return { success: false, skipped: true };
   }
 
-  const transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: {
-      user,
-      pass,
-    },
-  });
+  const resend = new Resend(apiKey);
+  const from = process.env.EMAIL_FROM || "RealStock <onboarding@resend.dev>";
 
-  await transporter.sendMail({
+  const { data, error } = await resend.emails.send({
     from,
-    to,
+    to: [to],
     subject,
     html,
   });
 
-  return { success: true };
+  if (error) {
+    throw new Error(error.message || "Erro ao enviar email com Resend.");
+  }
+
+  return { success: true, data };
 }

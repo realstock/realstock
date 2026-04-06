@@ -1,14 +1,14 @@
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const buyerId = Number(searchParams.get("buyer_id"));
 
-    if (!buyerId) {
+    if (!buyerId || Number.isNaN(buyerId)) {
       return NextResponse.json(
-        { success: false, error: "buyer_id não informado." },
+        { success: false, error: "buyer_id inválido." },
         { status: 400 }
       );
     }
@@ -17,8 +17,20 @@ export async function GET(req: Request) {
       where: {
         buyerId,
       },
-      include: {
-        property: {
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    const propertyIds = payments
+      .map((payment) => payment.propertyId)
+      .filter(Boolean);
+
+    const properties = propertyIds.length
+      ? await prisma.property.findMany({
+          where: {
+            id: { in: propertyIds },
+          },
           include: {
             images: {
               orderBy: {
@@ -27,20 +39,55 @@ export async function GET(req: Request) {
               take: 1,
             },
           },
-        },
-      },
-      orderBy: {
-        id: "desc",
-      },
+        })
+      : [];
+
+    const propertiesMap = new Map(
+      properties.map((property) => [property.id, property])
+    );
+
+    const enrichedPayments = payments.map((payment) => {
+      const property = propertiesMap.get(payment.propertyId);
+
+      return {
+  id: payment.id,
+  offerId: payment.offerId,
+  buyerId: payment.buyerId,
+  sellerId: payment.sellerId,
+  propertyId: payment.propertyId,
+  acceptedOfferValue: payment.acceptedOfferValue,
+  paymentAmount: payment.paymentAmount,
+  paypalOrderId: payment.paypalOrderId,
+  paypalCaptureId: payment.paypalCaptureId,
+  paymentStatus: payment.paymentStatus,
+  contactReleased: payment.contactReleased,
+  paidAt: payment.paidAt,
+  createdAt: payment.createdAt,
+  property: property
+    ? {
+        id: property.id,
+        title: property.title,
+        city: property.city,
+        state: property.state,
+        neighborhood: property.neighborhood,
+        images: property.images,
+      }
+    : null,
+};
     });
 
     return NextResponse.json({
       success: true,
-      payments,
+      payments: enrichedPayments,
     });
-  } catch (error) {
+  } catch (error: any) {
+    console.error("PAGAMENTOS COMPRADOR ERROR:", error);
+
     return NextResponse.json(
-      { success: false, error: "Não foi possível carregar os pagamentos." },
+      {
+        success: false,
+        error: error?.message || "Erro ao carregar pagamentos do comprador.",
+      },
       { status: 500 }
     );
   }

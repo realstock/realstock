@@ -3,81 +3,79 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
 }
 
 model User {
-
-  id Int @id @default(autoincrement())
-  
-  name     String
-  email    String @unique
-  password String
-  avatar    String?
-  bio       String?
-  cpfCnpj   String?
-  phone     String?
-  instagram String?
-  country String?
-  state   String?
-  city    String?
-  
-paypalEmail String?
-  
-  role     String  @default("USER")
-  verified Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  properties Property[]
-  offers     Offer[]    @relation("BuyerOffers")
+  id          Int        @id @default(autoincrement())
+  email       String     @unique
+  instagram   String?
+  password    String
+  avatar      String?
+  bio         String?
+  city        String?
+  country     String?
+  cpfCnpj     String?
+  createdAt   DateTime   @default(now())
+  name        String
+  paypalEmail String?
+  phone       String?
+  role        String     @default("USER")
+  state       String?
+  updatedAt   DateTime   @updatedAt
+  verified    Boolean    @default(false)
+  offers      Offer[]    @relation("BuyerOffers")
+  properties  Property[]
 
   @@map("users")
 }
 
 model Property {
-	
-  id                  Int      @id @default(autoincrement())
+  id                  Int             @id @default(autoincrement())
   title               String
   description         String?
   price               Decimal
-  legalStatus         String   @map("legal_status")
+  legalStatus         String          @map("legal_status")
   area                String
-  country             String?  @default("Brasil")
-  state               String?
   city                String
   neighborhood        String?
-  street              String?
-  addressNumber       String?  @map("address_number")
-  zipCode             String?  @map("zip_code")
-  googleMapsLink      String?  @map("google_maps_link")
-  googleMapsThumbnail String?  @map("google_maps_thumbnail")
-  youtubeLink         String?  @map("youtube_link")
-  youtubeThumbnail    String?  @map("youtube_thumbnail")
-  topographyPoints    String?  @map("topography_points")
   category            String?
-  propertyType        String?  @map("property_type")
-  areaBuilt           String?  @map("area_built")
+  propertyType        String?         @map("property_type")
+  areaBuilt           String?         @map("area_built")
   bedrooms            Int?
   bathrooms           Int?
-  parkingSpaces       Int?     @map("parking_spaces")
+  parkingSpaces       Int?            @map("parking_spaces")
   suites              Int?
-  furnished           Boolean  @default(false)
-  condominium         Boolean  @default(false)
-  condominiumFee      Decimal? @map("condominium_fee")
-  acceptsFinancing    Boolean  @default(false) @map("accepts_financing")
-  frontSea            Boolean  @default(false) @map("front_sea")
-  pool                Boolean  @default(false)
+  furnished           Boolean         @default(false)
+  condominium         Boolean         @default(false)
+  condominiumFee      Decimal?        @map("condominium_fee")
+  acceptsFinancing    Boolean         @default(false) @map("accepts_financing")
+  frontSea            Boolean         @default(false) @map("front_sea")
+  pool                Boolean         @default(false)
   latitude            Decimal
   longitude           Decimal
-  ownerId             Int      @map("owner_id")
-  createdAt           DateTime @default(now()) @map("created_at")
-
-  owner  User            @relation(fields: [ownerId], references: [id])
-  images PropertyImage[]
-  offers Offer[]
+  ownerId             Int             @map("owner_id")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  country             String?         @default("Brasil")
+  googleMapsLink      String?         @map("google_maps_link")
+  state               String?
+  street              String?
+  zipCode             String?         @map("zip_code")
+  addressNumber       String?         @map("address_number")
+  googleMapsThumbnail String?         @map("google_maps_thumbnail")
+  topographyPoints    String?         @map("topography_points")
+  youtubeLink         String?         @map("youtube_link")
+  youtubeThumbnail    String?         @map("youtube_thumbnail")
+  offers              Offer[]
+  owner               User            @relation(fields: [ownerId], references: [id])
+  images              PropertyImage[]
 
   @@map("properties")
 }
@@ -88,8 +86,7 @@ model PropertyImage {
   imageUrl   String   @map("image_url")
   sortOrder  Int      @default(0) @map("sort_order")
   createdAt  DateTime @default(now()) @map("created_at")
-
-  property Property @relation(fields: [propertyId], references: [id])
+  property   Property @relation(fields: [propertyId], references: [id])
 
   @@map("property_images")
 }
@@ -101,9 +98,8 @@ model Offer {
   offerPrice Decimal  @map("offer_price")
   status     String   @default("open")
   createdAt  DateTime @default(now()) @map("created_at")
-
-  property Property @relation(fields: [propertyId], references: [id])
-  buyer    User     @relation("BuyerOffers", fields: [buyerId], references: [id])
+  buyer      User     @relation("BuyerOffers", fields: [buyerId], references: [id])
+  property   Property @relation(fields: [propertyId], references: [id])
 
   @@map("offers")
 }
@@ -125,3 +121,16 @@ model OfferPayment {
 
   @@map("offer_payments")
 }
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("password_reset_tokens")
+}
+
+
+

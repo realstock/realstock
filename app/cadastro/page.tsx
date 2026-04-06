@@ -1,81 +1,75 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, useEffect, useState, Suspense } from "react";
 
-export default function CadastroPage() {
+function CadastroContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
+  const [cpfCnpj, setCpfCnpj] = useState("");
   const [phone, setPhone] = useState("");
   const [instagram, setInstagram] = useState("");
-  const [cpfCnpj, setCpfCnpj] = useState("");
-
+  const [bio, setBio] = useState("");
+  const [paypalEmail, setPaypalEmail] = useState("");
   const [country, setCountry] = useState("Brasil");
   const [stateName, setStateName] = useState("");
   const [city, setCity] = useState("");
+  const [avatar, setAvatar] = useState("");
 
-  const [paypalEmail, setPaypalEmail] = useState("");
-
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  useEffect(() => {
+    setName(searchParams.get("name") || "");
+    setEmail(searchParams.get("email") || "");
+    setAvatar(searchParams.get("avatar") || "");
+  }, [searchParams]);
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-
     setError("");
     setMessage("");
-
-    if (!name || !email || !password) {
-      setError("Nome, email e senha são obrigatórios.");
-      return;
-    }
+    setLoading(true);
 
     try {
-      setLoading(true);
-
-      const payload = {
-        name,
-        email,
-        password,
-        phone,
-        instagram,
-        cpf_cnpj: cpfCnpj,
-        country,
-        state: stateName,
-        city,
-        paypal_email: paypalEmail,
-      };
-
-      console.log("CADASTRO PAYLOAD:", payload);
-
       const res = await fetch("/api/cadastro", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          cpfCnpj,
+          phone,
+          instagram,
+          bio,
+          paypalEmail,
+          country,
+          state: stateName,
+          city,
+          avatar,
+        }),
       });
 
       const data = await res.json();
-      console.log("CADASTRO RESPOSTA:", data);
 
       if (!res.ok || !data.success) {
-        setError(data.error || "Não foi possível realizar o cadastro.");
-        return;
+        throw new Error(data.error || "Erro ao cadastrar.");
       }
 
-      setMessage("Cadastro realizado com sucesso.");
+      setMessage("Cadastro realizado com sucesso. Faça login para continuar.");
 
       setTimeout(() => {
         router.push("/login");
-      }, 1000);
+      }, 1200);
     } catch (err: any) {
-      console.error("ERRO CADASTRO:", err);
       setError(err.message || "Erro ao cadastrar.");
     } finally {
       setLoading(false);
@@ -83,39 +77,22 @@ export default function CadastroPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <section className="mx-auto max-w-3xl px-6 py-10">
-        <div className="mb-8">
-          <div className="text-sm text-slate-400">Acesso</div>
-          <h1 className="mt-2 text-4xl font-bold">Criar conta</h1>
-          <p className="mt-2 text-slate-400">
-            Cadastre seu perfil para anunciar imóveis e enviar ofertas.
-          </p>
-        </div>
+    <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 py-10 text-white">
+      <div className="w-full max-w-3xl rounded-2xl border border-white/10 bg-white/5 p-8">
+        <h1 className="mb-6 text-center text-3xl font-bold">
+          Criar conta no RealStock
+        </h1>
 
-        {message && (
-          <div className="mb-6 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-emerald-300">
-            {message}
-          </div>
-        )}
-
-        {error && (
-          <div className="mb-6 rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-red-300">
-            {error}
-          </div>
-        )}
-
-        <form
-          onSubmit={handleSubmit}
-          className="rounded-[28px] border border-white/10 bg-white/5 p-6"
-        >
-          <div className="grid gap-4 md:grid-cols-2">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <Grid2>
             <Field label="Nome *">
               <input
+                type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="input"
-                placeholder="Seu nome"
+                placeholder="Seu nome completo"
+                required
               />
             </Field>
 
@@ -125,22 +102,39 @@ export default function CadastroPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="input"
-                placeholder="voce@email.com"
+                placeholder="seu@email.com"
+                required
               />
             </Field>
+          </Grid2>
 
+          <Grid2>
             <Field label="Senha *">
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="input"
-                placeholder="********"
+                placeholder="Crie uma senha"
+                required
               />
             </Field>
 
-            <Field label="Telefone">
+            <Field label="CPF / CNPJ">
               <input
+                type="text"
+                value={cpfCnpj}
+                onChange={(e) => setCpfCnpj(e.target.value)}
+                className="input"
+                placeholder="CPF ou CNPJ"
+              />
+            </Field>
+          </Grid2>
+
+          <Grid2>
+            <Field label="Telefone / WhatsApp">
+              <input
+                type="text"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="input"
@@ -150,24 +144,19 @@ export default function CadastroPage() {
 
             <Field label="Instagram">
               <input
+                type="text"
                 value={instagram}
                 onChange={(e) => setInstagram(e.target.value)}
                 className="input"
                 placeholder="@seuinstagram"
               />
             </Field>
+          </Grid2>
 
-            <Field label="CPF / CNPJ">
-              <input
-                value={cpfCnpj}
-                onChange={(e) => setCpfCnpj(e.target.value)}
-                className="input"
-                placeholder="000.000.000-00"
-              />
-            </Field>
-
+          <Grid2>
             <Field label="País">
               <input
+                type="text"
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
                 className="input"
@@ -177,15 +166,19 @@ export default function CadastroPage() {
 
             <Field label="Estado">
               <input
+                type="text"
                 value={stateName}
                 onChange={(e) => setStateName(e.target.value)}
                 className="input"
                 placeholder="Ceará"
               />
             </Field>
+          </Grid2>
 
+          <Grid2>
             <Field label="Cidade">
               <input
+                type="text"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 className="input"
@@ -202,18 +195,65 @@ export default function CadastroPage() {
                 placeholder="paypal@email.com"
               />
             </Field>
-          </div>
+          </Grid2>
+
+          <Field label="URL da foto de perfil">
+            <input
+              type="text"
+              value={avatar}
+              onChange={(e) => setAvatar(e.target.value)}
+              className="input"
+              placeholder="https://..."
+            />
+          </Field>
+
+          <Field label="Bio">
+            <textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              rows={4}
+              className="input"
+              placeholder="Fale um pouco sobre você, sua atuação e seus imóveis."
+            />
+          </Field>
+
+          {message && (
+            <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-300">
+              {message}
+            </div>
+          )}
+
+          {error && (
+            <div className="rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-300">
+              {error}
+            </div>
+          )}
 
           <button
             type="submit"
             disabled={loading}
-            className="mt-6 w-full rounded-2xl bg-white px-4 py-4 font-semibold text-slate-900 disabled:opacity-60"
+            className="w-full rounded-2xl bg-white px-4 py-3 font-semibold text-slate-900 transition hover:bg-slate-200 disabled:opacity-60"
           >
             {loading ? "Cadastrando..." : "Criar conta"}
           </button>
         </form>
-      </section>
+
+        <div className="mt-6 text-center text-sm text-slate-400">
+          Já tem conta?{" "}
+          <a href="/login" className="text-white hover:underline">
+            Entrar
+          </a>
+        </div>
+      </div>
     </main>
+  );
+}
+
+export default function CadastroPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-slate-950" />}>
+      <CadastroContent />
+    </Suspense>
   );
 }
 
@@ -230,4 +270,8 @@ function Field({
       {children}
     </div>
   );
+}
+
+function Grid2({ children }: { children: React.ReactNode }) {
+  return <div className="grid gap-4 md:grid-cols-2">{children}</div>;
 }

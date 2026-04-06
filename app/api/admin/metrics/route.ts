@@ -3,45 +3,48 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
+    // Total de imóveis
     const totalProperties = await prisma.property.count();
 
-    const activeProperties = await prisma.property.count({
-      where: { status: "active" },
-    });
+    // Como ainda não existe campo status no banco,
+    // vamos simplificar por enquanto
+    const activeProperties = totalProperties;
+    const pendingProperties = 0;
 
-    const pendingProperties = await prisma.property.count({
-      where: { status: "pending" },
-    });
-
-    const expiredProperties = await prisma.property.count({
-      where: { status: "expired" },
-    });
-
+    // Usuários
     const totalUsers = await prisma.user.count();
 
-    const activeSellers = await prisma.property.groupBy({
-      by: ["ownerId"],
-    });
-
+    // Ofertas
     const totalOffers = await prisma.offer.count();
+
+    // Ofertas ativas
+    const activeOffers = await prisma.offer.count({
+      where: {
+        status: {
+          in: ["open", "accepted", "matched"],
+        },
+      },
+    });
 
     return NextResponse.json({
       success: true,
-      metrics: {
+      data: {
         totalProperties,
         activeProperties,
         pendingProperties,
-        expiredProperties,
         totalUsers,
-        activeSellers: activeSellers.length,
         totalOffers,
+        activeOffers,
       },
     });
   } catch (error: any) {
     console.error("ADMIN METRICS ERROR:", error);
 
     return NextResponse.json(
-      { success: false, error: "Erro ao carregar métricas" },
+      {
+        success: false,
+        error: error?.message || "Erro ao carregar métricas.",
+      },
       { status: 500 }
     );
   }

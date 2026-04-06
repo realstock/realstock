@@ -2,11 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-declare global {
-  interface Window {
-    paypal?: any;
-  }
-}
+
 
 export default function SellerPayPalCheckout({
   offerId,

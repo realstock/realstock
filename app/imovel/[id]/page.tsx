@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import OfferBookClient from "@/components/OfferBookClient";
 import PropertyShareButtons from "@/components/PropertyShareButtons";

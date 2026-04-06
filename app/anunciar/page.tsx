@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import PropertyLocationPicker from "@/components/PropertyLocationPicker";
 
 const PROPERTY_CATEGORIES = [
@@ -51,6 +52,40 @@ const PROPERTY_TYPES = {
   ],
 } as const;
 
+const BRAZILIAN_STATES = [
+  { uf: "AC", name: "Acre" },
+  { uf: "AL", name: "Alagoas" },
+  { uf: "AP", name: "Amapá" },
+  { uf: "AM", name: "Amazonas" },
+  { uf: "BA", name: "Bahia" },
+  { uf: "CE", name: "Ceará" },
+  { uf: "DF", name: "Distrito Federal" },
+  { uf: "ES", name: "Espírito Santo" },
+  { uf: "GO", name: "Goiás" },
+  { uf: "MA", name: "Maranhão" },
+  { uf: "MT", name: "Mato Grosso" },
+  { uf: "MS", name: "Mato Grosso do Sul" },
+  { uf: "MG", name: "Minas Gerais" },
+  { uf: "PA", name: "Pará" },
+  { uf: "PB", name: "Paraíba" },
+  { uf: "PR", name: "Paraná" },
+  { uf: "PE", name: "Pernambuco" },
+  { uf: "PI", name: "Piauí" },
+  { uf: "RJ", name: "Rio de Janeiro" },
+  { uf: "RN", name: "Rio Grande do Norte" },
+  { uf: "RS", name: "Rio Grande do Sul" },
+  { uf: "RO", name: "Rondônia" },
+  { uf: "RR", name: "Roraima" },
+  { uf: "SC", name: "Santa Catarina" },
+  { uf: "SP", name: "São Paulo" },
+  { uf: "SE", name: "Sergipe" },
+  { uf: "TO", name: "Tocantins" },
+] as const;
+
+const MAX_IMAGES = 20;
+const MAX_IMAGE_SIZE_BYTES = 500 * 1024;
+const MAX_DIMENSION = 1920;
+
 function formatLabel(value: string) {
   return value
     .toLowerCase()
@@ -58,8 +93,133 @@ function formatLabel(value: string) {
     .replace(/\b\w/g, (l) => l.toUpperCase());
 }
 
+function loadImageFromFile(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(img);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error(`Não foi possível processar a imagem ${file.name}.`));
+    };
+
+    img.src = objectUrl;
+  });
+}
+
+function canvasToBlob(
+  canvas: HTMLCanvasElement,
+  type: string,
+  quality?: number
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("Falha ao gerar a imagem comprimida."));
+          return;
+        }
+        resolve(blob);
+      },
+      type,
+      quality
+    );
+  });
+}
+
+async function compressImageToMax500KB(file: File): Promise<File> {
+  if (file.size <= MAX_IMAGE_SIZE_BYTES) {
+    return file;
+  }
+
+  const img = await loadImageFromFile(file);
+
+  let width = img.width;
+  let height = img.height;
+
+  if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+    const ratio = Math.min(MAX_DIMENSION / width, MAX_DIMENSION / height);
+    width = Math.round(width * ratio);
+    height = Math.round(height * ratio);
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("Não foi possível preparar a compressão da imagem.");
+  }
+
+  ctx.drawImage(img, 0, 0, width, height);
+
+  const targetType = "image/jpeg";
+  const originalBaseName = file.name.replace(/\.[^.]+$/, "");
+  let quality = 0.9;
+
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const blob = await canvasToBlob(canvas, targetType, quality);
+
+    if (blob.size <= MAX_IMAGE_SIZE_BYTES) {
+      return new File([blob], `${originalBaseName}.jpg`, {
+        type: targetType,
+        lastModified: Date.now(),
+      });
+    }
+
+    quality -= 0.1;
+  }
+
+  let resizeFactor = 0.9;
+
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const resizedCanvas = document.createElement("canvas");
+    resizedCanvas.width = Math.max(400, Math.round(width * resizeFactor));
+    resizedCanvas.height = Math.max(400, Math.round(height * resizeFactor));
+
+    const resizedCtx = resizedCanvas.getContext("2d");
+    if (!resizedCtx) {
+      throw new Error("Não foi possível redimensionar a imagem.");
+    }
+
+    resizedCtx.drawImage(img, 0, 0, resizedCanvas.width, resizedCanvas.height);
+
+    let resizedQuality = 0.75;
+
+    for (let qAttempt = 0; qAttempt < 6; qAttempt++) {
+      const blob = await canvasToBlob(
+        resizedCanvas,
+        targetType,
+        resizedQuality
+      );
+
+      if (blob.size <= MAX_IMAGE_SIZE_BYTES) {
+        return new File([blob], `${originalBaseName}.jpg`, {
+          type: targetType,
+          lastModified: Date.now(),
+        });
+      }
+
+      resizedQuality -= 0.1;
+    }
+
+    resizeFactor -= 0.1;
+  }
+
+  throw new Error(
+    `Não foi possível reduzir "${file.name}" para até 500 KB. Tente uma imagem menor.`
+  );
+}
+
 export default function AnunciarPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
 
   const [user, setUser] = useState<any>(null);
 
@@ -107,26 +267,31 @@ export default function AnunciarPage() {
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
 
-  const [images, setImages] = useState<string[]>([]);
+  const [images, setImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
   const [loading, setLoading] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    const stored = localStorage.getItem("realstock_user");
+    if (status === "loading") return;
 
-    if (!stored) {
+    if (status === "unauthenticated") {
       router.push("/login");
       return;
     }
 
-    try {
-      setUser(JSON.parse(stored));
-    } catch {
-      router.push("/login");
+    if (status === "authenticated" && session?.user) {
+      setUser({
+        id: Number((session.user as any).id),
+        name: session.user.name,
+        email: session.user.email,
+        role: (session.user as any).role,
+      });
     }
-  }, [router]);
+  }, [status, session, router]);
 
   const typeOptions = useMemo(() => {
     if (!category) return [];
@@ -134,22 +299,18 @@ export default function AnunciarPage() {
   }, [category]);
 
   function buildGoogleMapsLinkFromCoords(
-  lat: number | null,
-  lng: number | null
-) {
-  if (lat === null || lng === null) return "";
-  if (Number.isNaN(lat) || Number.isNaN(lng)) return "";
-  return `https://www.google.com/maps?q=${lat},${lng}`;
-}
+    lat: number | null,
+    lng: number | null
+  ) {
+    if (lat === null || lng === null) return "";
+    if (Number.isNaN(lat) || Number.isNaN(lng)) return "";
+    return `https://www.google.com/maps?q=${lat},${lng}`;
+  }
 
-  function buildGoogleMapsThumbnail(
-  lat: number | null,
-  lng: number | null
-) {
-  if (lat === null || lng === null) return "";
-
-  return `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
-}
+  function buildGoogleMapsThumbnail(lat: number | null, lng: number | null) {
+    if (lat === null || lng === null) return "";
+    return `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
+  }
 
   function extractYoutubeId(url: string) {
     if (!url) return "";
@@ -198,6 +359,14 @@ export default function AnunciarPage() {
     setYoutubeThumbnail(buildYoutubeThumbnail(youtubeLink));
   }, [youtubeLink]);
 
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach((url) => {
+        if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+      });
+    };
+  }, [imagePreviews]);
+
   function selectCategory(nextCategory: string) {
     setCategory(nextCategory);
     setPropertyType("");
@@ -224,180 +393,247 @@ export default function AnunciarPage() {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
-    const converted = await Promise.all(
-      files.map(
-        (file) =>
-          new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(String(reader.result));
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          })
-      )
-    );
+    setError("");
 
-    setImages((prev) => [...prev, ...converted]);
+    const totalAfterAdd = images.length + files.length;
+    if (totalAfterAdd > MAX_IMAGES) {
+      setError(`Você pode adicionar no máximo ${MAX_IMAGES} fotos por anúncio.`);
+      e.target.value = "";
+      return;
+    }
+
+    try {
+      setUploadingImages(true);
+
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+      const invalidType = files.find((file) => !allowedTypes.includes(file.type));
+
+      if (invalidType) {
+        throw new Error(
+          `A imagem "${invalidType.name}" tem formato inválido. Use JPG, PNG ou WEBP.`
+        );
+      }
+
+      const processedFiles = await Promise.all(
+        files.map((file) => compressImageToMax500KB(file))
+      );
+
+      const invalidSize = processedFiles.find(
+        (file) => file.size > MAX_IMAGE_SIZE_BYTES
+      );
+
+      if (invalidSize) {
+        throw new Error(
+          `A imagem "${invalidSize.name}" ainda ficou acima de 500 KB.`
+        );
+      }
+
+      setImages((prev) => [...prev, ...processedFiles]);
+      setImagePreviews((prev) => [
+        ...prev,
+        ...processedFiles.map((file) => URL.createObjectURL(file)),
+      ]);
+    } catch (err: any) {
+      setError(err.message || "Erro ao processar as imagens.");
+    } finally {
+      setUploadingImages(false);
+      e.target.value = "";
+    }
   }
 
   function removeImage(index: number) {
     setImages((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => {
+      const urlToRemove = prev[index];
+      if (urlToRemove?.startsWith("blob:")) {
+        URL.revokeObjectURL(urlToRemove);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
+  async function uploadImagesAndGetUrls() {
+    const uploadedUrls: string[] = [];
+
+    try {
+      setUploadingImages(true);
+
+      for (const file of images) {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const res = await fetch("/api/upload-image", {
+          method: "POST",
+          body: formData,
+        });
+
+        const raw = await res.text();
+
+        let data: any = null;
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          data = {
+            success: false,
+            error: raw || "Resposta inválida do upload.",
+          };
+        }
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || "Erro ao enviar imagem.");
+        }
+
+        if (!data.imageUrl) {
+          throw new Error("A API de upload não retornou a URL da imagem.");
+        }
+
+        uploadedUrls.push(data.imageUrl);
+      }
+
+      return uploadedUrls;
+    } finally {
+      setUploadingImages(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
-  e.preventDefault();
-  console.log("SUBMIT DISPARADO");
+    e.preventDefault();
 
-  setError("");
-  setMessage("");
+    setError("");
+    setMessage("");
 
-  if (!user?.id) {
-    setError("Usuário não autenticado.");
-    return;
+    if (!user?.id) {
+      setError("Usuário não autenticado.");
+      return;
+    }
+
+    if (!category) {
+      setError("Selecione a categoria do imóvel.");
+      return;
+    }
+
+    if (!propertyType) {
+      setError("Selecione o tipo do imóvel.");
+      return;
+    }
+
+    if (
+      !title ||
+      !description ||
+      !price ||
+      !country ||
+      !stateName ||
+      !city ||
+      !areaTotal ||
+      !legalStatus
+    ) {
+      setError("Preencha os campos obrigatórios.");
+      return;
+    }
+
+    if (latitude === null || longitude === null) {
+      setError("Selecione a localização no mapa.");
+      return;
+    }
+
+    if (images.length === 0) {
+      setError("Adicione pelo menos uma imagem.");
+      return;
+    }
+
+    if (images.length > MAX_IMAGES) {
+      setError(`O anúncio pode ter no máximo ${MAX_IMAGES} fotos.`);
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const uploadedImageUrls = await uploadImagesAndGetUrls();
+
+      const payload = {
+        category,
+        property_type: propertyType,
+
+        title,
+        description,
+        price: Number(price),
+
+        legal_status: legalStatus,
+        area_total: areaTotal,
+        area_built: areaBuilt,
+
+        bedrooms: bedrooms ? Number(bedrooms) : null,
+        bathrooms: bathrooms ? Number(bathrooms) : null,
+        parking_spaces: parkingSpaces ? Number(parkingSpaces) : null,
+        suites: suites ? Number(suites) : null,
+
+        furnished,
+        condominium,
+        condominium_fee: condominiumFee ? Number(condominiumFee) : null,
+        accepts_financing: acceptsFinancing,
+        front_sea: frontSea,
+        pool,
+
+        country,
+        state: stateName,
+        city,
+        neighborhood,
+        street,
+        address_number: addressNumber,
+        zip_code: zipCode,
+
+        google_maps_link: buildGoogleMapsLinkFromCoords(latitude, longitude),
+        google_maps_thumbnail: buildGoogleMapsThumbnail(latitude, longitude),
+
+        youtube_link: youtubeLink,
+        youtube_thumbnail: youtubeThumbnail,
+
+        topography_points: topographyPoints.filter(Boolean).join(","),
+
+        latitude: Number(latitude),
+        longitude: Number(longitude),
+
+        images: uploadedImageUrls,
+      };
+
+      const res = await fetch("/api/anunciar", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const raw = await res.text();
+
+      let data: any = null;
+
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        data = {
+          success: false,
+          error: raw || "Resposta inválida da API.",
+        };
+      }
+
+      if (!res.ok || !data.success) {
+        setError(data?.error || data?.details || "Erro ao publicar anúncio.");
+        return;
+      }
+
+      setMessage("Anúncio publicado com sucesso.");
+
+      setTimeout(() => {
+        router.push("/minha-conta/anuncios");
+      }, 1000);
+    } catch (err: any) {
+      setError(err.message || "Erro inesperado.");
+    } finally {
+      setLoading(false);
+    }
   }
-
-  if (!category) {
-    setError("Selecione a categoria do imóvel.");
-    return;
-  }
-
-  if (!propertyType) {
-    setError("Selecione o tipo do imóvel.");
-    return;
-  }
-
-  if (
-    !title ||
-    !description ||
-    !price ||
-    !country ||
-    !stateName ||
-    !city ||
-    !areaTotal ||
-    !legalStatus
-  ) {
-    console.log("VALIDAÇÃO FALHOU");
-    setError("Preencha os campos obrigatórios.");
-    return;
-  }
-
-  if (latitude === null || longitude === null) {
-    setError("Selecione a localização no mapa.");
-    return;
-  }
-
-  if (images.length === 0) {
-    setError("Adicione pelo menos uma imagem.");
-    return;
-  }
-
-  try {
-    setLoading(true);
-
-    const payload = {
-      owner_id: user.id,
-
-      category,
-      property_type: propertyType,
-
-      title,
-      description,
-      price: Number(price),
-
-      legal_status: legalStatus,
-      area_total: areaTotal,
-      area_built: areaBuilt,
-
-      bedrooms: bedrooms ? Number(bedrooms) : null,
-      bathrooms: bathrooms ? Number(bathrooms) : null,
-      parking_spaces: parkingSpaces ? Number(parkingSpaces) : null,
-      suites: suites ? Number(suites) : null,
-
-      furnished,
-      condominium,
-      condominium_fee: condominiumFee ? Number(condominiumFee) : null,
-      accepts_financing: acceptsFinancing,
-      front_sea: frontSea,
-      pool,
-
-      country,
-      state: stateName,
-      city,
-      neighborhood,
-      street,
-      address_number: addressNumber,
-      zip_code: zipCode,
-
-      google_maps_link: buildGoogleMapsLinkFromCoords(latitude, longitude),
-      google_maps_thumbnail: buildGoogleMapsThumbnail(latitude, longitude),
-
-      youtube_link: youtubeLink,
-      youtube_thumbnail: youtubeThumbnail,
-
-      topography_points: topographyPoints.filter(Boolean).join(","),
-
-      latitude: latitude !== null ? Number(latitude) : null,
-      longitude: longitude !== null ? Number(longitude) : null,
-
-      images,
-    };
-
-    console.log("📦 PAYLOAD ENVIADO:", payload);
-    console.log("MAPS DEBUG", {
-    latitude,
-    longitude,
-    googleMapsLink,
-    googleMapsThumbnail,
-  });
-    const res = await fetch("/api/anunciar", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await res.json();
-
-    console.log("📥 RESPOSTA API:", data);
-
-    // 🔴 AQUI É O PONTO CRÍTICO
-    if (!res.ok || !data.success) {
-  const debugError = JSON.stringify(
-    {
-      status: res.status,
-      data,
-    },
-    null,
-    2
-  );
-
-  console.log("ERRO API ANUNCIAR DEBUG:");
-  console.log(debugError);
-
-  setError(
-    data?.error ||
-      data?.details ||
-      debugError ||
-      "Erro ao publicar anúncio."
-  );
-
-  return;
-}
-
-    console.log("✅ SUCESSO");
-
-    setMessage("Anúncio publicado com sucesso.");
-
-    setTimeout(() => {
-      router.push("/minha-conta/anuncios");
-    }, 1000);
-  } catch (err: any) {
-    console.error("🔥 ERRO CATCH:", err);
-    setError(err.message || "Erro inesperado.");
-  } finally {
-    setLoading(false);
-  }
-}
 
   function renderSpecificFields() {
     if (!propertyType) return null;
@@ -644,6 +880,20 @@ export default function AnunciarPage() {
     return null;
   }
 
+  if (status === "loading") {
+    return (
+      <main className="min-h-screen bg-slate-950 text-white">
+        <section className="mx-auto max-w-7xl px-6 py-8">
+          <div className="text-slate-400">Carregando...</div>
+        </section>
+      </main>
+    );
+  }
+
+  if (status === "unauthenticated") {
+    return null;
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <section className="mx-auto max-w-7xl px-6 py-8">
@@ -835,12 +1085,18 @@ export default function AnunciarPage() {
                         </Field>
 
                         <Field label="Estado *">
-                          <input
+                          <select
                             value={stateName}
                             onChange={(e) => setStateName(e.target.value)}
                             className="input"
-                            placeholder="Ex.: Ceará"
-                          />
+                          >
+                            <option value="">Selecione um estado</option>
+                            {BRAZILIAN_STATES.map((state) => (
+                              <option key={state.uf} value={state.name}>
+                                {state.name} ({state.uf})
+                              </option>
+                            ))}
+                          </select>
                         </Field>
                       </Grid2>
 
@@ -988,19 +1244,23 @@ export default function AnunciarPage() {
                     </div>
                   )}
 
-                  <Field label="Fotos do imóvel *">
+                  <Field label={`Fotos do imóvel * (máx. ${MAX_IMAGES}, até 500 KB cada)`}>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp"
                       multiple
                       onChange={handleFilesChange}
                       className="block w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-slate-300"
                     />
                   </Field>
 
-                  {images.length > 0 && (
+                  <div className="text-xs text-slate-400">
+                    {images.length}/{MAX_IMAGES} fotos selecionadas
+                  </div>
+
+                  {imagePreviews.length > 0 && (
                     <div className="grid grid-cols-4 gap-2">
-                      {images.map((image, index) => (
+                      {imagePreviews.map((image, index) => (
                         <div
                           key={index}
                           className="overflow-hidden rounded-xl border border-white/10 bg-slate-900"
@@ -1024,10 +1284,14 @@ export default function AnunciarPage() {
 
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || uploadingImages}
                     className="w-full rounded-2xl bg-white px-4 py-4 font-semibold text-slate-900 disabled:opacity-60"
                   >
-                    {loading ? "Publicando..." : "Publicar anúncio"}
+                    {uploadingImages
+                      ? "Processando imagens..."
+                      : loading
+                      ? "Publicando..."
+                      : "Publicar anúncio"}
                   </button>
                 </div>
               )}

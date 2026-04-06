@@ -1,32 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: "Usuário não autenticado." },
+        { status: 401 }
+      );
+    }
+
+    const buyerId = Number((session.user as any).id);
+
+    if (!buyerId || Number.isNaN(buyerId)) {
+      return NextResponse.json(
+        { success: false, error: "Usuário inválido." },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
 
     const propertyId = Number(body.property_id);
-    const buyerId = Number(body.buyer_id);
     const offerPrice = Number(body.offer_price);
 
     if (!propertyId || Number.isNaN(propertyId)) {
       return NextResponse.json(
-        { success: false, error: "property_id inválido." },
-        { status: 400 }
-      );
-    }
-
-    if (!buyerId || Number.isNaN(buyerId)) {
-      return NextResponse.json(
-        { success: false, error: "buyer_id inválido." },
+        { success: false, error: "Imóvel inválido." },
         { status: 400 }
       );
     }
 
     if (!offerPrice || Number.isNaN(offerPrice) || offerPrice <= 0) {
       return NextResponse.json(
-        { success: false, error: "offer_price inválido." },
+        { success: false, error: "Valor da proposta inválido." },
         { status: 400 }
       );
     }
@@ -47,31 +59,7 @@ export async function POST(req: NextRequest) {
 
     if (property.ownerId === buyerId) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Você não pode enviar oferta para o próprio anúncio.",
-        },
-        { status: 400 }
-      );
-    }
-
-    const existingActiveOffer = await prisma.offer.findFirst({
-      where: {
-        propertyId,
-        buyerId,
-        status: {
-          in: ["open", "accepted"],
-        },
-      },
-    });
-
-    if (existingActiveOffer) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "Você já possui uma oferta ativa para este imóvel. Cancele a anterior antes de enviar outra.",
-        },
+        { success: false, error: "Você não pode ofertar no próprio imóvel." },
         { status: 400 }
       );
     }
@@ -85,39 +73,19 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // envio de email ao anunciante
     if (property.owner?.email) {
       try {
-        const adminOfferUrl = `${
-          process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-        }/minha-conta/anuncios/${property.id}/ofertas`;
-
         await sendEmail({
           to: property.owner.email,
-          subject: "Seu anúncio recebeu uma nova oferta",
+          subject: `Parabéns, seu anúncio: ${property.title} acaba de receber uma oferta`,
           html: `
-            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
-              <h2 style="margin-bottom: 12px;">Parabéns!</h2>
-
+            <div style="font-family: Arial, sans-serif; line-height:1.6; color:#111827;">
+              <h2>Nova oferta recebida</h2>
               <p>
-                Seu anúncio: <strong>${property.title}</strong> acaba de receber uma oferta.
+                Parabéns, seu anúncio <strong>${property.title}</strong> acaba de receber uma oferta.
               </p>
-
               <p>
-                Acesse o site para avaliar.
-              </p>
-
-              <p>
-                O contato do comprador será liberado após a proposta ser aceita.
-              </p>
-
-              <p style="margin-top: 20px;">
-                <a
-                  href="${adminOfferUrl}"
-                  style="display:inline-block;padding:10px 16px;background:#111827;color:#ffffff;text-decoration:none;border-radius:10px;"
-                >
-                  Avaliar oferta
-                </a>
+                Acesse o site para avaliar. O contato do comprador será liberado após a proposta ser aceita.
               </p>
             </div>
           `,
@@ -132,12 +100,12 @@ export async function POST(req: NextRequest) {
       offer,
     });
   } catch (error: any) {
-    console.error("CREATE OFFER ERROR:", error);
+    console.error("OFFERS ERROR:", error);
 
     return NextResponse.json(
       {
         success: false,
-        error: error?.message || "Erro ao registrar proposta.",
+        error: error?.message || "Erro ao enviar proposta.",
       },
       { status: 500 }
     );

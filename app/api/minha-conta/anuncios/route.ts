@@ -1,21 +1,31 @@
-import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(req.url);
-    const ownerId = Number(searchParams.get("owner_id"));
+    const session = await getServerSession(authOptions);
 
-    if (!ownerId) {
+    if (!session?.user) {
       return NextResponse.json(
-        { success: false, error: "owner_id não informado." },
-        { status: 400 }
+        { success: false, error: "Usuário não autenticado." },
+        { status: 401 }
+      );
+    }
+
+    const userId = Number((session.user as any).id);
+
+    if (!userId || Number.isNaN(userId)) {
+      return NextResponse.json(
+        { success: false, error: "Usuário inválido." },
+        { status: 401 }
       );
     }
 
     const properties = await prisma.property.findMany({
       where: {
-        ownerId,
+        ownerId: userId,
       },
       include: {
         images: {
@@ -26,7 +36,7 @@ export async function GET(req: Request) {
         },
         offers: {
           orderBy: {
-            offerPrice: "desc",
+            createdAt: "desc",
           },
           include: {
             buyer: true,
@@ -34,27 +44,38 @@ export async function GET(req: Request) {
         },
       },
       orderBy: {
-        id: "desc",
+        createdAt: "desc",
       },
     });
 
-    const payments = await prisma.offerPayment.findMany({
-      where: {
-        sellerId: ownerId,
-      },
-      orderBy: {
-        id: "desc",
-      },
-    });
+    const propertyIds = properties.map((property) => property.id);
+
+    const payments = propertyIds.length
+      ? await prisma.offerPayment.findMany({
+          where: {
+            propertyId: {
+              in: propertyIds,
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        })
+      : [];
 
     return NextResponse.json({
       success: true,
       properties,
       payments,
     });
-  } catch {
+  } catch (error: any) {
+    console.error("MINHA CONTA ANUNCIOS ERROR:", error);
+
     return NextResponse.json(
-      { success: false, error: "Não foi possível carregar os anúncios." },
+      {
+        success: false,
+        error: error?.message || "Erro ao buscar anúncios.",
+      },
       { status: 500 }
     );
   }

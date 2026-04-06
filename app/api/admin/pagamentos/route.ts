@@ -66,14 +66,14 @@ export async function GET() {
         buyerId: payment.buyerId,
         sellerId: payment.sellerId,
         propertyId: payment.propertyId,
-        offerAmount: payment.offerAmount,
+        acceptedOfferValue: payment.acceptedOfferValue,
         paymentAmount: payment.paymentAmount,
         paypalOrderId: payment.paypalOrderId,
         paypalCaptureId: payment.paypalCaptureId,
         paymentStatus: payment.paymentStatus,
         contactReleased: payment.contactReleased,
+        paidAt: payment.paidAt,
         createdAt: payment.createdAt,
-        updatedAt: payment.updatedAt,
         seller: seller
           ? {
               id: seller.id,
@@ -83,7 +83,7 @@ export async function GET() {
           : null,
         offer: {
           id: offer?.id ?? payment.offerId,
-          offerPrice: offer?.offerPrice ?? payment.offerAmount,
+          offerPrice: offer?.offerPrice ?? payment.acceptedOfferValue,
           status: offer?.status ?? "-",
           buyer: buyer
             ? {

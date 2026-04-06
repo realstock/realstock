@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 async function getPayPalAccessToken() {
@@ -29,7 +29,7 @@ async function getPayPalAccessToken() {
   return data.access_token as string;
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const offerId = Number(body.offer_id);
@@ -89,6 +89,9 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         already_paid: true,
+        paypal_order_id: payment.paypalOrderId,
+        payment_id: payment.id,
+        payment_amount: paymentAmount,
       });
     }
 
@@ -113,6 +116,9 @@ export async function POST(req: Request) {
             description: `RealStock fee - offer ${offer.id} property ${property.id}`,
           },
         ],
+        application_context: {
+          user_action: "PAY_NOW",
+        },
       }),
     });
 

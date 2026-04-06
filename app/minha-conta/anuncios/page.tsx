@@ -2,142 +2,150 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
-type Property = {
+type PropertyItem = {
   id: number;
   title: string;
-  price: number | string;
-  city: string;
-  state?: string;
-  neighborhood?: string;
-  images?: { imageUrl?: string; url?: string }[];
+  state?: string | null;
+  city?: string | null;
+  neighborhood?: string | null;
+  price: string | number;
+  images?: { imageUrl: string }[];
 };
 
 export default function MeusAnunciosPage() {
-  const [user, setUser] = useState<any>(null);
-  const [properties, setProperties] = useState<Property[]>([]);
+  const { status } = useSession();
+  const router = useRouter();
+
+  const [properties, setProperties] = useState<PropertyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const stored = localStorage.getItem("realstock_user");
+  async function loadProperties() {
+    try {
+      setLoading(true);
+      setError("");
 
-        if (!stored) {
-          setError("Usuário não autenticado.");
-          setLoading(false);
-          return;
-        }
+      const res = await fetch("/api/minha-conta/anuncios");
+      const data = await res.json();
 
-        const parsedUser = JSON.parse(stored);
-        setUser(parsedUser);
-
-        const res = await fetch(
-          `/api/minha-conta/anuncios?owner_id=${parsedUser.id}`
-        );
-
-        const data = await res.json();
-
-        if (!res.ok || !data.success) {
-          throw new Error(data.error || "Erro ao carregar anúncios.");
-        }
-
-        setProperties(data.properties || []);
-      } catch (err: any) {
-        console.error("Erro ao carregar anúncios:", err);
-        setError(err.message || "Erro ao carregar anúncios.");
-      } finally {
-        setLoading(false);
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Erro ao carregar anúncios.");
       }
+
+      setProperties(data.properties || []);
+    } catch (err: any) {
+      setError(err.message || "Erro ao carregar anúncios.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace("/login");
+      return;
     }
 
-    load();
-  }, []);
+    if (status === "authenticated") {
+      loadProperties();
+    }
+  }, [status, router]);
+
+  if (status === "loading" || loading) {
+    return (
+      <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
+        <div className="mx-auto max-w-6xl text-slate-400">Carregando...</div>
+      </main>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Meus anúncios</h1>
-        <p className="text-slate-400">Gerencie seus imóveis anunciados.</p>
-      </div>
-
-      {loading && <div className="text-slate-400">Carregando anúncios...</div>}
-
-      {!loading && error && (
-        <div className="rounded-2xl border border-red-400/20 bg-red-400/10 p-6 text-red-300">
-          {error}
+    <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-8">
+          <div className="text-sm text-slate-400">Minha conta</div>
+          <h1 className="mt-2 text-4xl font-bold">Meus anúncios</h1>
         </div>
-      )}
 
-      {!loading && !error && properties.length === 0 && (
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-slate-400">
-          Você ainda não possui anúncios cadastrados.
-        </div>
-      )}
+        {error && (
+          <div className="mb-6 rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-red-300">
+            {error}
+          </div>
+        )}
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {properties.map((property) => {
-          const image =
-            property.images?.[0]?.imageUrl ||
-            property.images?.[0]?.url ||
-            "/placeholder.jpg";
+        {properties.length === 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-slate-400">
+            Você ainda não possui anúncios cadastrados.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {properties.map((property) => (
+              <div
+                key={property.id}
+                className="rounded-2xl border border-white/10 bg-white/5 p-5"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex gap-4">
+                    <div className="h-24 w-32 overflow-hidden rounded-xl border border-white/10 bg-slate-900">
+                      {property.images?.[0]?.imageUrl ? (
+                        <img
+                          src={property.images[0].imageUrl}
+                          alt={property.title}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-xs text-slate-500">
+                          Sem foto
+                        </div>
+                      )}
+                    </div>
 
-          return (
-            <div
-              key={property.id}
-              className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/60 shadow-xl"
-            >
-              <div className="h-[200px] w-full overflow-hidden">
-                <img
-                  src={image}
-                  alt={property.title}
-                  className="h-full w-full object-cover"
-                />
-              </div>
+                    <div>
+                      <div className="text-lg font-semibold">
+                        {property.title}
+                      </div>
+                      <div className="mt-1 text-sm text-slate-400">
+                        {[property.state, property.city, property.neighborhood]
+                          .filter(Boolean)
+                          .join(" • ")}
+                      </div>
+                      <div className="mt-2 text-sm font-semibold text-emerald-400">
+                        R$ {Number(property.price).toLocaleString("pt-BR")}
+                      </div>
+                    </div>
+                  </div>
 
-              <div className="space-y-3 p-4">
-                <h2 className="text-lg font-bold leading-tight">
-                  {property.title}
-                </h2>
+                  <div className="flex gap-3">
+                    <Link
+                      href={`/anunciar/${property.id}`}
+                      className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white hover:bg-white/10"
+                    >
+                      Editar anúncio
+                    </Link>
 
-                <p className="text-sm text-slate-400">
-                  {[property.neighborhood, property.city, property.state]
-                    .filter(Boolean)
-                    .join(" • ")}
-                </p>
+                    <Link
+                      href={`/imovel/${property.id}`}
+                      className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-900"
+                    >
+                      Ver anúncio
+                    </Link>
 
-                <div className="text-xl font-bold text-emerald-400">
-                  R$ {Number(property.price).toLocaleString("pt-BR")}
+                    <Link
+                      href={`/minha-conta/anuncios/${property.id}/ofertas`}
+                      className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white hover:bg-white/10"
+                    >
+                      Gerenciar ofertas
+                    </Link>
+                  </div>
                 </div>
-
-                <div className="flex gap-3 pt-2">
-  <Link
-    href={`/anunciar/${property.id}`}
-    className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-center text-sm text-white hover:bg-white/10"
-  >
-    Editar anúncio
-  </Link>
-
-  <Link
-    href={`/imovel/${property.id}`}
-    className="flex-1 rounded-2xl bg-white px-4 py-2 text-center text-sm font-semibold text-slate-900"
-  >
-    Ver anúncio
-  </Link>
-
-  <Link
-    href={`/minha-conta/anuncios/${property.id}/ofertas`}
-    className="flex-1 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-center text-sm text-emerald-300 hover:bg-emerald-400/15"
-  >
-    Gerenciar ofertas
-  </Link>
-</div>
               </div>
-            </div>
-          );
-        })}
+            ))}
+          </div>
+        )}
       </div>
-    </div>
+    </main>
   );
 }

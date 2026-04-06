@@ -10,6 +10,10 @@ export default function Header() {
   const { data: session, status } = useSession();
 
   const user = session?.user;
+  const isAdmin = (user as any)?.role === "ADMIN";
+  const debugRole = (user as any)?.role;
+
+  console.log("SESSION:", session);
 
   return (
     <header className="border-b border-white/10 bg-slate-950 text-white">
@@ -20,14 +24,14 @@ export default function Header() {
             alt="RealStock"
             width={500}
             height={120}
-            className="w-full h-[90px] object-fill"
+            className="h-[90px] w-full object-fill"
             priority
           />
         </Link>
 
         <div className="flex items-center gap-4">
           {status === "loading" ? null : user ? (
-            <div className="flex items-center gap-2 z-[9999]">
+            <div className="z-[9999] flex items-center gap-2">
               <div className="relative">
                 <button
                   onClick={() => setMenuOpen((prev) => !prev)}
@@ -63,12 +67,28 @@ export default function Header() {
                     </Link>
 
                     <Link
-                      href="/admin"
+                      href="/minha-conta/perfil"
                       className="block rounded-xl px-4 py-3 text-sm hover:bg-white/10"
                       onClick={() => setMenuOpen(false)}
                     >
-                      Administração
+                      Meu cadastro
                     </Link>
+
+                    {isAdmin && (
+                      <>
+                        <div className="my-2 h-px bg-white/10" />
+                        <Link
+                          href="/admin"
+                          className="block rounded-xl px-4 py-3 text-sm hover:bg-white/10"
+                          onClick={() => setMenuOpen(false)}
+                        >
+                          Administração
+                        </Link>
+                        <span className="text-xs text-yellow-300">
+                          role: {debugRole || "sem-role"}
+                        </span>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

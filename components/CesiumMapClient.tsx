@@ -18,6 +18,7 @@ type PropertyPin = {
   city: string;
   lat: number;
   lng: number;
+  mainImage: string | null;
 };
 
 type MapBounds = {
@@ -27,12 +28,23 @@ type MapBounds = {
   west: number;
 };
 
+type ClusterZoomTarget = {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+};
+
 export default function CesiumMapClient({
   properties,
   onBoundsChange,
+  clusterZoomTarget,
+  onClusterZoomRequest,
 }: {
   properties: PropertyPin[];
   onBoundsChange?: (bounds: MapBounds) => void;
+  clusterZoomTarget?: ClusterZoomTarget | null;
+  onClusterZoomRequest?: (target: ClusterZoomTarget) => void;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const viewerRef = useRef<any>(null);
@@ -42,8 +54,10 @@ export default function CesiumMapClient({
   const clusterListenerAddedRef = useRef(false);
   const propertiesRef = useRef<PropertyPin[]>(properties);
   const onBoundsChangeRef = useRef(onBoundsChange);
+  const onClusterZoomRequestRef = useRef(onClusterZoomRequest);
   const boundsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasZoomedToPinsRef = useRef(false);
+  const lastClusterZoomTargetRef = useRef<string>("");
 
   const [selectedProperty, setSelectedProperty] = useState<PropertyPin | null>(
     null
@@ -57,6 +71,10 @@ export default function CesiumMapClient({
   useEffect(() => {
     onBoundsChangeRef.current = onBoundsChange;
   }, [onBoundsChange]);
+
+  useEffect(() => {
+    onClusterZoomRequestRef.current = onClusterZoomRequest;
+  }, [onClusterZoomRequest]);
 
   function emitBounds(viewer: any, Cesium: any) {
     if (!onBoundsChangeRef.current) return;
@@ -120,8 +138,14 @@ export default function CesiumMapClient({
       if (!clusterListenerAddedRef.current) {
         dataSource.clustering.clusterEvent.addEventListener(
           (clusteredEntities: any[], cluster: any) => {
+            const clusterId = {
+              isCluster: true,
+              clusteredEntities,
+            };
+
             if (cluster.billboard) {
               cluster.billboard.show = false;
+              cluster.billboard.id = clusterId;
             }
 
             if (cluster.point) {
@@ -132,6 +156,7 @@ export default function CesiumMapClient({
               cluster.point.outlineWidth = 2;
               cluster.point.disableDepthTestDistance =
                 Number.POSITIVE_INFINITY;
+              cluster.point.id = clusterId;
             }
 
             if (cluster.label) {
@@ -148,6 +173,7 @@ export default function CesiumMapClient({
               cluster.label.horizontalOrigin = Cesium.HorizontalOrigin.CENTER;
               cluster.label.disableDepthTestDistance =
                 Number.POSITIVE_INFINITY;
+              cluster.label.id = clusterId;
             }
           }
         );
@@ -181,27 +207,33 @@ export default function CesiumMapClient({
       handler.setInputAction((click: any) => {
         const picked = viewer.scene.pick(click.position);
 
-        if (!Cesium.defined(picked) || !picked.id) return;
+        if (!Cesium.defined(picked)) return;
 
-        const pickedObject = picked.id;
+        const pickedId = picked.id;
 
-        if (pickedObject.id) {
-          const selected = propertiesRef.current.find(
-            (item) => item.id.toString() === pickedObject.id
-          );
+        if (pickedId?.isCluster && pickedId?.clusteredEntities?.length) {
+          const entities = pickedId.clusteredEntities;
 
-          if (selected) {
-            setSelectedProperty(selected);
-            setShowMapCard(true);
-            return;
+          const pins = entities
+            .map((entity: any) => {
+              const entityId = Number(String(entity.id));
+              return propertiesRef.current.find((item) => item.id === entityId);
+            })
+            .filter(Boolean) as PropertyPin[];
+
+          if (pins.length > 0) {
+            const north = Math.max(...pins.map((item) => item.lat));
+            const south = Math.min(...pins.map((item) => item.lat));
+            const east = Math.max(...pins.map((item) => item.lng));
+            const west = Math.min(...pins.map((item) => item.lng));
+
+            onClusterZoomRequestRef.current?.({
+              north,
+              south,
+              east,
+              west,
+            });
           }
-        }
-
-        if (
-          pickedObject.clusteredEntities &&
-          pickedObject.clusteredEntities.length
-        ) {
-          const entities = pickedObject.clusteredEntities;
 
           const positions = entities
             .map((entity: any) =>
@@ -219,6 +251,20 @@ export default function CesiumMapClient({
                 emitBounds(viewer, Cesium);
               },
             });
+          }
+
+          return;
+        }
+
+        if (pickedId?.id) {
+          const selected = propertiesRef.current.find(
+            (item) => item.id.toString() === pickedId.id
+          );
+
+          if (selected) {
+            setSelectedProperty(selected);
+            setShowMapCard(true);
+            return;
           }
         }
       }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
@@ -246,6 +292,7 @@ export default function CesiumMapClient({
       initializedRef.current = false;
       clusterListenerAddedRef.current = false;
       hasZoomedToPinsRef.current = false;
+      lastClusterZoomTargetRef.current = "";
     };
   }, []);
 
@@ -288,14 +335,11 @@ export default function CesiumMapClient({
         });
       });
 
-      // força recálculo do clustering
       dataSource.clustering.enabled = false;
       dataSource.clustering.enabled = true;
 
-      // força renderização
       viewer.scene.requestRender();
 
-      // no primeiro carregamento com imóveis, aproxima automaticamente
       if (properties.length > 0 && !hasZoomedToPinsRef.current) {
         hasZoomedToPinsRef.current = true;
 
@@ -323,6 +367,49 @@ export default function CesiumMapClient({
     syncProperties();
   }, [properties, selectedProperty]);
 
+  useEffect(() => {
+    async function applyClusterZoomTarget() {
+      if (!clusterZoomTarget) return;
+
+      const viewer = viewerRef.current;
+      if (!viewer) return;
+
+      const key = JSON.stringify(clusterZoomTarget);
+      if (lastClusterZoomTargetRef.current === key) return;
+
+      lastClusterZoomTargetRef.current = key;
+
+      const Cesium = await import("cesium");
+
+      const paddingLat = Math.max(
+        (clusterZoomTarget.north - clusterZoomTarget.south) * 0.25,
+        0.01
+      );
+      const paddingLng = Math.max(
+        (clusterZoomTarget.east - clusterZoomTarget.west) * 0.25,
+        0.01
+      );
+
+      const rectangle = Cesium.Rectangle.fromDegrees(
+        clusterZoomTarget.west - paddingLng,
+        clusterZoomTarget.south - paddingLat,
+        clusterZoomTarget.east + paddingLng,
+        clusterZoomTarget.north + paddingLat
+      );
+
+      viewer.camera.flyTo({
+        destination: rectangle,
+        duration: 1.2,
+        complete: () => {
+          viewer.scene.requestRender();
+          emitBounds(viewer, Cesium);
+        },
+      });
+    }
+
+    applyClusterZoomTarget();
+  }, [clusterZoomTarget]);
+
   return (
     <div className="relative overflow-hidden rounded-[28px] border border-white/10 shadow-2xl">
       <div
@@ -331,60 +418,74 @@ export default function CesiumMapClient({
       />
 
       {selectedProperty && showMapCard && (
-        <div className="absolute left-5 top-5 z-10 w-[320px] rounded-3xl border border-white/10 bg-slate-950/90 p-4 shadow-2xl backdrop-blur">
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <div className="text-lg font-bold leading-tight">
-                {selectedProperty.title}
+        <div className="absolute left-5 top-5 z-10 w-[340px] overflow-hidden rounded-3xl border border-white/10 bg-slate-950/90 shadow-2xl backdrop-blur">
+          {selectedProperty.mainImage ? (
+            <img
+              src={selectedProperty.mainImage}
+              alt={selectedProperty.title}
+              className="h-44 w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-44 items-center justify-center bg-slate-800 text-sm text-slate-500">
+              Sem foto
+            </div>
+          )}
+
+          <div className="p-4">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <div className="text-lg font-bold leading-tight">
+                  {selectedProperty.title}
+                </div>
+                <div className="mt-1 text-sm text-slate-400">
+                  {selectedProperty.city}
+                </div>
               </div>
-              <div className="mt-1 text-sm text-slate-400">
-                {selectedProperty.city}
+
+              <button
+                onClick={() => setShowMapCard(false)}
+                className="rounded-full border border-white/10 px-2 py-1 text-xs text-slate-300 hover:text-white"
+              >
+                fechar
+              </button>
+            </div>
+
+            <div className="rounded-2xl bg-white/5 p-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-400">Preço</span>
+                <span className="font-semibold text-emerald-400">
+                  {selectedProperty.price}
+                </span>
+              </div>
+
+              <div className="mt-2 flex items-center justify-between text-sm">
+                <span className="text-slate-400">Jurídico</span>
+                <span className="font-semibold">
+                  {selectedProperty.legalStatus}
+                </span>
+              </div>
+
+              <div className="mt-2 flex items-center justify-between text-sm">
+                <span className="text-slate-400">Área</span>
+                <span className="font-semibold">{selectedProperty.area}</span>
               </div>
             </div>
 
-            <button
-              onClick={() => setShowMapCard(false)}
-              className="rounded-full border border-white/10 px-2 py-1 text-xs text-slate-300 hover:text-white"
-            >
-              fechar
-            </button>
-          </div>
+            <div className="mt-4 flex gap-3">
+              <Link
+                href={`/imovel/${selectedProperty.id}`}
+                className="flex-1 rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-slate-900"
+              >
+                Ver anúncio
+              </Link>
 
-          <div className="rounded-2xl bg-white/5 p-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-400">Preço</span>
-              <span className="font-semibold text-emerald-400">
-                {selectedProperty.price}
-              </span>
+              <Link
+                href={`/imovel/${selectedProperty.id}`}
+                className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm text-white"
+              >
+                Fazer oferta
+              </Link>
             </div>
-
-            <div className="mt-2 flex items-center justify-between text-sm">
-              <span className="text-slate-400">Jurídico</span>
-              <span className="font-semibold">
-                {selectedProperty.legalStatus}
-              </span>
-            </div>
-
-            <div className="mt-2 flex items-center justify-between text-sm">
-              <span className="text-slate-400">Área</span>
-              <span className="font-semibold">{selectedProperty.area}</span>
-            </div>
-          </div>
-
-          <div className="mt-4 flex gap-3">
-            <Link
-              href={`/imovel/${selectedProperty.id}`}
-              className="flex-1 rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-slate-900"
-            >
-              Ver anúncio
-            </Link>
-
-            <Link
-              href={`/imovel/${selectedProperty.id}`}
-              className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm text-white"
-            >
-              Fazer oferta
-            </Link>
           </div>
         </div>
       )}
