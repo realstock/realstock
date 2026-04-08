@@ -65,9 +65,18 @@ export default function MeusAnunciosPage() {
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-8">
-          <div className="text-sm text-slate-400">Minha conta</div>
-          <h1 className="mt-2 text-4xl font-bold">Meus anúncios</h1>
+        <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="text-sm text-slate-400">Minha conta</div>
+            <h1 className="mt-2 text-4xl font-bold">Meus anúncios</h1>
+          </div>
+
+          <Link
+            href="/painel/instagram-publisher"
+            className="inline-flex items-center justify-center rounded-2xl border border-pink-400/20 bg-pink-500/10 px-5 py-3 text-sm font-semibold text-pink-300 transition hover:bg-pink-500/20"
+          >
+            Instagram Publisher
+          </Link>
         </div>
 
         {error && (
@@ -118,7 +127,7 @@ export default function MeusAnunciosPage() {
                     </div>
                   </div>
 
-                  <div className="flex gap-3">
+                  <div className="flex flex-wrap gap-3">
                     <Link
                       href={`/anunciar/${property.id}`}
                       className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white hover:bg-white/10"
@@ -138,6 +147,13 @@ export default function MeusAnunciosPage() {
                       className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white hover:bg-white/10"
                     >
                       Gerenciar ofertas
+                    </Link>
+
+                    <Link
+                      href="/painel/instagram-publisher"
+                      className="rounded-2xl border border-pink-400/20 bg-pink-500/10 px-4 py-3 text-sm font-semibold text-pink-300 hover:bg-pink-500/20"
+                    >
+                      Publicar no Instagram
                     </Link>
                   </div>
                 </div>

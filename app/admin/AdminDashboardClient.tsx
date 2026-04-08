@@ -100,6 +100,13 @@ export default function AdminDashboardClient() {
                   external
                   icon={<InstagramIcon />}
                 />
+
+                <QuickAction
+                  title="Taxas Instagram Publisher"
+                  description="Definir valor cobrado para publicação de imóveis no Instagram."
+                  href="/admin/instagram-publisher-taxas"
+                  icon={<InstagramIcon />}
+                />
               </div>
             </div>
           </>
