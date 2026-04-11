@@ -1,3 +1,5 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -125,6 +127,57 @@ export async function PUT(
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error?.message || "Erro ao atualizar anúncio." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.email) {
+      return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const propertyId = Number(id);
+
+    const property = await prisma.property.findUnique({
+      where: { id: propertyId }
+    });
+
+    if (!property) {
+      return NextResponse.json({ success: false, error: "Anúncio não encontrado." }, { status: 404 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (property.ownerId !== user?.id) {
+       return NextResponse.json({ success: false, error: "Você não tem permissão para excluir este anúncio." }, { status: 403 });
+    }
+
+    // Cascade deletion manually
+    await prisma.propertyImage.deleteMany({ where: { propertyId } });
+    
+    // Deletar ofertas e pagamentos precisa ser feito caso existam
+    await prisma.offerPayment.deleteMany({ where: { propertyId } });
+    await prisma.offer.deleteMany({ where: { propertyId } });
+
+    await prisma.property.delete({
+      where: { id: propertyId }
+    });
+
+    return NextResponse.json({
+      success: true
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error?.message || "Erro ao excluir anúncio." },
       { status: 500 }
     );
   }

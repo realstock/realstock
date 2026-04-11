@@ -272,6 +272,27 @@ export default function EditarAnuncioPage() {
     setYoutubeThumbnail(buildYoutubeThumbnail(youtubeLink));
   }, [youtubeLink]);
 
+  async function handleDelete() {
+    if (!window.confirm("Tem certeza que deseja excluir permanentemente este anúncio? Esta ação não pode ser desfeita.")) return;
+
+    try {
+      setSaving(true);
+      setError("");
+      
+      const res = await fetch(`/api/anunciar/${id}`, {
+        method: "DELETE"
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "Erro desconhecido");
+
+      router.push("/minha-conta/anuncios");
+    } catch(err: any) {
+      setError("Erro ao tentar excluir: " + err.message);
+      setSaving(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -729,6 +750,15 @@ export default function EditarAnuncioPage() {
               className="w-full rounded-2xl bg-white px-4 py-4 font-semibold text-slate-900 disabled:opacity-60"
             >
               {saving ? "Salvando..." : "Salvar alterações"}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={saving}
+              className="w-full rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-4 font-semibold text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-60 mt-3"
+            >
+               Excluir anúncio
             </button>
           </div>
         </form>
