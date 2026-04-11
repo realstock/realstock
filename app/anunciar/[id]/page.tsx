@@ -44,6 +44,37 @@ const PROPERTY_TYPES = {
   ],
 } as const;
 
+const BRAZILIAN_STATES = [
+  { uf: "AC", name: "Acre" },
+  { uf: "AL", name: "Alagoas" },
+  { uf: "AP", name: "Amapá" },
+  { uf: "AM", name: "Amazonas" },
+  { uf: "BA", name: "Bahia" },
+  { uf: "CE", name: "Ceará" },
+  { uf: "DF", name: "Distrito Federal" },
+  { uf: "ES", name: "Espírito Santo" },
+  { uf: "GO", name: "Goiás" },
+  { uf: "MA", name: "Maranhão" },
+  { uf: "MT", name: "Mato Grosso" },
+  { uf: "MS", name: "Mato Grosso do Sul" },
+  { uf: "MG", name: "Minas Gerais" },
+  { uf: "PA", name: "Pará" },
+  { uf: "PB", name: "Paraíba" },
+  { uf: "PR", name: "Paraná" },
+  { uf: "PE", name: "Pernambuco" },
+  { uf: "PI", name: "Piauí" },
+  { uf: "RJ", name: "Rio de Janeiro" },
+  { uf: "RN", name: "Rio Grande do Norte" },
+  { uf: "RS", name: "Rio Grande do Sul" },
+  { uf: "RO", name: "Rondônia" },
+  { uf: "RR", name: "Roraima" },
+  { uf: "SC", name: "Santa Catarina" },
+  { uf: "SP", name: "São Paulo" },
+  { uf: "SE", name: "Sergipe" },
+  { uf: "TO", name: "Tocantins" },
+];
+
+
 function formatLabel(value: string) {
   return value
     .toLowerCase()
@@ -85,6 +116,28 @@ export default function EditarAnuncioPage() {
   const [country, setCountry] = useState("Brasil");
   const [stateName, setStateName] = useState("");
   const [city, setCity] = useState("");
+
+  const [citiesList, setCitiesList] = useState<{nome: string}[]>([]);
+
+  useEffect(() => {
+    if (!stateName) {
+      setCitiesList([]);
+      return;
+    }
+    const stateObj = BRAZILIAN_STATES.find((s) => s.name === stateName);
+    if (stateObj) {
+      fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${stateObj.uf}/municipios`)
+        .then(res => res.json())
+        .then(data => {
+           const list = data.map((d: any) => ({ nome: d.nome })).sort((a: any, b: any) => a.nome.localeCompare(b.nome));
+           setCitiesList(list);
+        })
+        .catch(console.error);
+    } else {
+      setCitiesList([]);
+    }
+  }, [stateName]);
+
   const [neighborhood, setNeighborhood] = useState("");
   const [street, setStreet] = useState("");
   const [addressNumber, setAddressNumber] = useState("");
@@ -588,13 +641,46 @@ export default function EditarAnuncioPage() {
                     <input value={country} onChange={(e) => setCountry(e.target.value)} className="input" />
                   </Field>
                   <Field label="Estado *">
-                    <input value={stateName} onChange={(e) => setStateName(e.target.value)} className="input" />
+                    <select
+                      value={stateName}
+                      onChange={(e) => {
+                        setStateName(e.target.value);
+                        setCity(""); 
+                      }}
+                      className="input"
+                    >
+                      <option value="">Selecione um estado</option>
+                      {BRAZILIAN_STATES.map((state) => (
+                        <option key={state.uf} value={state.name}>
+                          {state.name} ({state.uf})
+                        </option>
+                      ))}
+                    </select>
                   </Field>
                 </Grid2>
 
                 <Grid2>
                   <Field label="Cidade *">
-                    <input value={city} onChange={(e) => setCity(e.target.value)} className="input" />
+                    {citiesList.length > 0 ? (
+                      <select
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        className="input"
+                      >
+                        <option value="">Selecione uma cidade</option>
+                        {citiesList.map(c => (
+                          <option key={c.nome} value={c.nome}>{c.nome}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        className="input"
+                        placeholder={stateName ? "Carregando cidades..." : "Selecione o estado"}
+                        disabled={!stateName}
+                      />
+                    )}
                   </Field>
                   <Field label="Bairro">
                     <input value={neighborhood} onChange={(e) => setNeighborhood(e.target.value)} className="input" />

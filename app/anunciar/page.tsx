@@ -247,6 +247,28 @@ export default function AnunciarPage() {
   const [country, setCountry] = useState("Brasil");
   const [stateName, setStateName] = useState("");
   const [city, setCity] = useState("");
+
+  const [citiesList, setCitiesList] = useState<{nome: string}[]>([]);
+
+  useEffect(() => {
+    if (!stateName) {
+      setCitiesList([]);
+      return;
+    }
+    const stateObj = BRAZILIAN_STATES.find((s) => s.name === stateName);
+    if (stateObj) {
+      fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${stateObj.uf}/municipios`)
+        .then(res => res.json())
+        .then(data => {
+           const list = data.map((d: any) => ({ nome: d.nome })).sort((a: any, b: any) => a.nome.localeCompare(b.nome));
+           setCitiesList(list);
+        })
+        .catch(console.error);
+    } else {
+      setCitiesList([]);
+    }
+  }, [stateName]);
+
   const [neighborhood, setNeighborhood] = useState("");
   const [street, setStreet] = useState("");
   const [addressNumber, setAddressNumber] = useState("");
@@ -1087,7 +1109,10 @@ export default function AnunciarPage() {
                         <Field label="Estado *">
                           <select
                             value={stateName}
-                            onChange={(e) => setStateName(e.target.value)}
+                            onChange={(e) => {
+                              setStateName(e.target.value);
+                              setCity("");
+                            }}
                             className="input"
                           >
                             <option value="">Selecione um estado</option>
@@ -1102,12 +1127,26 @@ export default function AnunciarPage() {
 
                       <Grid2>
                         <Field label="Cidade *">
-                          <input
-                            value={city}
-                            onChange={(e) => setCity(e.target.value)}
-                            className="input"
-                            placeholder="Ex.: Trairi"
-                          />
+                          {citiesList.length > 0 ? (
+                            <select
+                              value={city}
+                              onChange={(e) => setCity(e.target.value)}
+                              className="input"
+                            >
+                              <option value="">Selecione uma cidade</option>
+                              {citiesList.map((c) => (
+                                <option key={c.nome} value={c.nome}>{c.nome}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              value={city}
+                              onChange={(e) => setCity(e.target.value)}
+                              className="input"
+                              placeholder={stateName ? "Carregando cidades..." : "Ex.: Trairi"}
+                              disabled={!!stateName && citiesList.length === 0}
+                            />
+                          )}
                         </Field>
 
                         <Field label="Bairro">
