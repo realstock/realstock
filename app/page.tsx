@@ -268,6 +268,8 @@ export default function HomePage() {
   const [availableStates, setAvailableStates] = useState<string[]>([]);
   const [availableCountries, setAvailableCountries] = useState<string[]>([]);
   const [availablePropertyTypes, setAvailablePropertyTypes] = useState<string[]>([]);
+  const [availableCities, setAvailableCities] = useState<string[]>([]);
+  const [availableNeighborhoods, setAvailableNeighborhoods] = useState<string[]>([]);
 
   const [category, setCategory] = useState("");
   const [propertyType, setPropertyType] = useState("");
@@ -276,6 +278,7 @@ export default function HomePage() {
   const [country, setCountry] = useState("");
   const [stateName, setStateName] = useState("");
   const [city, setCity] = useState("");
+  const [neighborhood, setNeighborhood] = useState("");
   const [bedroomsMin, setBedroomsMin] = useState("");
   const [bathroomsMin, setBathroomsMin] = useState("");
   const [frontSea, setFrontSea] = useState(false);
@@ -313,19 +316,29 @@ export default function HomePage() {
     }
   }
 
-  async function loadFilters() {
+  async function loadFilters(uf?: string, cidade?: string) {
     try {
-      const res = await fetch("/api/properties/filters");
+      const url = new URL("/api/properties/filters", window.location.origin);
+      if (uf) url.searchParams.set("state", uf);
+      if (cidade) url.searchParams.set("city", cidade);
+
+      const res = await fetch(url.toString());
       const data = await res.json();
       if (data.success) {
-        if (data.states) setAvailableStates(data.states);
-        if (data.countries) setAvailableCountries(data.countries);
-        if (data.propertyTypes) setAvailablePropertyTypes(data.propertyTypes);
+        if (!uf && data.states) setAvailableStates(data.states);
+        if (!uf && data.countries) setAvailableCountries(data.countries);
+        if (!uf && data.propertyTypes) setAvailablePropertyTypes(data.propertyTypes);
+        if (data.cities) setAvailableCities(data.cities);
+        if (data.neighborhoods) setAvailableNeighborhoods(data.neighborhoods);
       }
     } catch (e) {
       console.error("Falha ao buscar filtros:", e);
     }
   }
+
+  useEffect(() => {
+    loadFilters(stateName, city);
+  }, [stateName, city]);
 
   async function loadFilteredProperties(currentBounds: MapBounds) {
     try {
@@ -344,6 +357,7 @@ export default function HomePage() {
         country,
         state: stateName,
         city,
+        neighborhood,
         bedroomsMin,
         bathroomsMin,
         frontSea,
@@ -377,7 +391,6 @@ export default function HomePage() {
 
   useEffect(() => {
     loadInitialProperties();
-    loadFilters();
   }, []);
 
   useEffect(() => {
@@ -399,12 +412,45 @@ export default function HomePage() {
     country,
     stateName,
     city,
+    neighborhood,
     bedroomsMin,
     bathroomsMin,
     frontSea,
     pool,
     acceptsFinancing,
   ]);
+
+  async function handleApplyFilters() {
+    if (neighborhood && city && stateName) {
+      try {
+        setLoading(true);
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(neighborhood + ", " + city + ", " + stateName + ", Brasil")}&format=json&limit=1`);
+        const data = await res.json();
+        if (data && data.length > 0) {
+          const bb = data[0].boundingbox;
+          handleClusterZoomRequest({ north: parseFloat(bb[1]), south: parseFloat(bb[0]), west: parseFloat(bb[2]), east: parseFloat(bb[3]) });
+          return;
+        }
+      } catch(e) {}
+    } else if (city && stateName) {
+      try {
+        setLoading(true);
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city + ", " + stateName + ", Brasil")}&format=json&limit=1`);
+        const data = await res.json();
+        if (data && data.length > 0) {
+          const bb = data[0].boundingbox;
+          handleClusterZoomRequest({ north: parseFloat(bb[1]), south: parseFloat(bb[0]), west: parseFloat(bb[2]), east: parseFloat(bb[3]) });
+          return;
+        }
+      } catch(e) {}
+    } else if (stateName && BRAZIL_STATE_BOUNDS[stateName]) {
+      handleClusterZoomRequest(BRAZIL_STATE_BOUNDS[stateName]);
+      return;
+    }
+    
+    if (bounds) loadFilteredProperties(bounds);
+    else loadInitialProperties();
+  }
 
   function clearFilters() {
     setCategory("");
@@ -414,6 +460,7 @@ export default function HomePage() {
     setCountry("");
     setStateName("");
     setCity("");
+    setNeighborhood("");
     setBedroomsMin("");
     setBathroomsMin("");
     setFrontSea(false);
@@ -553,14 +600,36 @@ export default function HomePage() {
                 </Field>
 
                 <Field label="Cidade">
-                  <input
+                  <select
                     value={city}
-                    onChange={(e) => setCity(e.target.value)}
+                    onChange={(e) => {
+                      setCity(e.target.value);
+                      setNeighborhood("");
+                    }}
                     className="input"
-                    placeholder="Trairi"
-                  />
+                    disabled={availableCities.length === 0}
+                  >
+                    <option value="">Todas</option>
+                    {availableCities.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
                 </Field>
               </Grid2>
+
+                <Field label="Bairro">
+                  <select
+                    value={neighborhood}
+                    onChange={(e) => setNeighborhood(e.target.value)}
+                    className="input"
+                    disabled={availableNeighborhoods.length === 0}
+                  >
+                    <option value="">Todos</option>
+                    {availableNeighborhoods.map(b => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
+                </Field>
 
               <Grid2>
                 <Field label="Quartos mín.">
@@ -597,9 +666,7 @@ export default function HomePage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <button
                   type="button"
-                  onClick={() =>
-                    bounds ? loadFilteredProperties(bounds) : loadInitialProperties()
-                  }
+                  onClick={handleApplyFilters}
                   className="rounded-2xl bg-white px-4 py-3 font-semibold text-slate-900"
                 >
                   Aplicar

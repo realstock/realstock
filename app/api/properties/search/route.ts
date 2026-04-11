@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       frontSea,
       pool,
       acceptsFinancing,
+      neighborhood,
     } = body;
 
     if (
@@ -60,6 +61,10 @@ export async function POST(req: NextRequest) {
 
     if (city) {
       where.city = { contains: city, mode: "insensitive" };
+    }
+
+    if (neighborhood) {
+      where.neighborhood = { contains: neighborhood, mode: "insensitive" };
     }
 
     if (priceMin || priceMax) {
