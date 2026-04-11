@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Camera, CheckCircle2, Rocket, Globe } from "lucide-react";
+import { Camera, CheckCircle2, Rocket, Globe, BarChart3 } from "lucide-react";
 
 type PropertyItem = {
   id: number;
@@ -15,6 +15,8 @@ type PropertyItem = {
   price: string | number;
   images?: { imageUrl: string }[];
   boostedUntil?: string | null;
+  googleBoostedUntil?: string | null;
+  metaBoostedUntil?: string | null;
 };
 
 export default function MeusAnunciosPage() {
@@ -25,6 +27,8 @@ export default function MeusAnunciosPage() {
   const [instagramPosts, setInstagramPosts] = useState<any[]>([]);
   const [facebookPosts, setFacebookPosts] = useState<any[]>([]);
   const [portfolioBoostedUntil, setPortfolioBoostedUntil] = useState<string | null>(null);
+  const [googlePortfolioBoostedUntil, setGooglePortfolioBoostedUntil] = useState<string | null>(null);
+  const [metaPortfolioBoostedUntil, setMetaPortfolioBoostedUntil] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -44,6 +48,8 @@ export default function MeusAnunciosPage() {
       setInstagramPosts(data.instagramPosts || []);
       setFacebookPosts(data.facebookPosts || []);
       setPortfolioBoostedUntil(data.portfolioBoostedUntil || null);
+      setGooglePortfolioBoostedUntil(data.googlePortfolioBoostedUntil || null);
+      setMetaPortfolioBoostedUntil(data.metaPortfolioBoostedUntil || null);
     } catch (err: any) {
       setError(err.message || "Erro ao carregar anúncios.");
     } finally {
@@ -139,54 +145,70 @@ export default function MeusAnunciosPage() {
                          : 'O sistema da RealStock agrupa as melhores fotos dos seus imóveis no formato de álbum (Carrossel) otimizado para o Instagram e Facebook automaticamente.'}
                      </div>
                      
-                     {portfolioBoostedUntil && new Date(portfolioBoostedUntil) > new Date() && (
-                       <div className="mt-3 inline-flex items-center gap-1 w-fit rounded bg-indigo-500/20 px-2 py-1 text-xs font-bold text-indigo-400 border border-indigo-500/20">
-                         <Rocket size={14} />
-                         Turbinado por mais {Math.ceil((new Date(portfolioBoostedUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias
-                       </div>
-                     )}
+                     {metaPortfolioBoostedUntil && new Date(metaPortfolioBoostedUntil) > new Date() && (
+                        <div className="mt-3 inline-flex items-center gap-1 w-fit rounded bg-indigo-500/20 px-2 py-1 text-xs font-bold text-indigo-400 border border-indigo-500/20">
+                          <Rocket size={14} />
+                          Meta Ads: {Math.ceil((new Date(metaPortfolioBoostedUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias res.
+                        </div>
+                      )}
+                      {googlePortfolioBoostedUntil && new Date(googlePortfolioBoostedUntil) > new Date() && (
+                        <div className="mt-2 inline-flex items-center gap-1 w-fit rounded bg-emerald-500/20 px-2 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/20">
+                          <Rocket size={14} />
+                          Google Ads: {Math.ceil((new Date(googlePortfolioBoostedUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias res.
+                        </div>
+                      )}
                    </div>
                  </div>
 
                  <div className="flex flex-col gap-2">
+                   {(isPublishedAny || googlePortfolioBoostedUntil || metaPortfolioBoostedUntil) && (
+                     <Link href="/minha-conta/anuncios/0/insights" className="flex items-center justify-center gap-2 rounded-2xl border border-yellow-400/20 bg-yellow-500/10 px-4 py-3 text-sm font-semibold text-yellow-300 hover:bg-yellow-500/20 transition-colors">
+                       <BarChart3 size={16} />
+                       Ver Estatísticas / Insights
+                     </Link>
+                   )}
                    {igPermalink && (
                      <a href={igPermalink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 rounded-2xl border border-pink-400/20 bg-pink-500/10 px-4 py-3 text-sm font-semibold text-pink-300 hover:bg-pink-500/20 transition-colors">
-                       <Camera size={16} />
+                       <img src="/icones/instagram.jpg" className="w-5 h-5 rounded hover:scale-110 transition-transform object-cover flex-shrink-0" alt="Instagram" />
                        Ver no Instagam
                      </a>
                    )}
                    {fbPermalink && (
                      <a href={fbPermalink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 rounded-2xl border border-blue-400/20 bg-blue-500/10 px-4 py-3 text-sm font-semibold text-blue-300 hover:bg-blue-500/20 transition-colors">
-                       <Globe size={16} />
+                       <img src="/icones/facebook.jpeg" className="w-5 h-5 rounded hover:scale-110 transition-transform object-cover flex-shrink-0" alt="Facebook" />
                        Ver no Facebook
                      </a>
                    )}
                    
                    <div className="flex gap-2 w-full justify-end">
                      <Link href="/minha-conta/anuncios/portfolio-instagram" className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-pink-400/20 bg-pink-500/10 px-4 py-3 text-sm font-semibold text-pink-300 hover:bg-pink-500/20 transition-colors">
-                       <Camera size={16} />
+                       <img src="/icones/instagram.jpg" className="w-5 h-5 rounded hover:scale-110 transition-transform object-cover flex-shrink-0" alt="Instagram" />
                        {portfolioSession ? 'Republicar no Insta' : 'Publicar no Insta'}
                      </Link>
                      <Link href="/minha-conta/anuncios/portfolio-facebook" className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-blue-400/20 bg-blue-500/10 px-4 py-3 text-sm font-semibold text-blue-300 hover:bg-blue-500/20 transition-colors">
-                       <Globe size={16} />
+                       <img src="/icones/facebook.jpeg" className="w-5 h-5 rounded hover:scale-110 transition-transform object-cover flex-shrink-0" alt="Facebook" />
                        {facebookPortfolioSession ? 'Republicar no Face' : 'Publicar no Face'}
                      </Link>
                    </div>
                    
                    
-                   <div className="flex w-full gap-2 mt-2">
+                   <div className="flex w-full gap-2 mt-2 flex-wrap sm:flex-nowrap">
                      {portfolioSession && (
-                       <Link href={`/minha-conta/anuncios/0/turbinar?platform=instagram`} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-indigo-500/40 bg-gradient-to-r from-purple-500/10 to-indigo-500/10 px-4 py-3 text-sm font-semibold text-indigo-300 hover:from-purple-500/20 hover:to-indigo-500/20 transition-colors shadow-lg shadow-indigo-500/5">
+                       <Link href={`/minha-conta/anuncios/0/turbinar?platform=instagram`} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-indigo-500/40 bg-gradient-to-r from-purple-500/10 to-indigo-500/10 px-4 py-3 text-xs sm:text-sm font-semibold text-indigo-300 hover:from-purple-500/20 hover:to-indigo-500/20 transition-colors shadow-lg shadow-indigo-500/5">
                          <Rocket size={16} />
                          Turbinar Insta
                        </Link>
                      )}
                      {facebookPortfolioSession && (
-                       <Link href={`/minha-conta/anuncios/0/turbinar?platform=facebook`} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-indigo-500/40 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 px-4 py-3 text-sm font-semibold text-blue-300 hover:from-blue-500/20 hover:to-indigo-500/20 transition-colors shadow-lg shadow-blue-500/5">
+                       <Link href={`/minha-conta/anuncios/0/turbinar?platform=facebook`} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-indigo-500/40 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 px-4 py-3 text-xs sm:text-sm font-semibold text-blue-300 hover:from-blue-500/20 hover:to-indigo-500/20 transition-colors shadow-lg shadow-blue-500/5">
                          <Rocket size={16} />
                          Turbinar Face
                        </Link>
                      )}
+                     <Link href={`/minha-conta/anuncios/0/turbinar?platform=google`} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 px-4 py-3 text-xs sm:text-sm font-semibold text-emerald-300 hover:from-emerald-500/20 hover:to-teal-500/20 transition-colors shadow-lg shadow-emerald-500/5">
+                       <Rocket size={16} />
+                       Google Ads
+                     </Link>
                    </div>
                  </div>
                </div>
@@ -245,10 +267,16 @@ export default function MeusAnunciosPage() {
                         R$ {Number(property.price).toLocaleString("pt-BR")}
                       </div>
                       
-                      {property.boostedUntil && new Date(property.boostedUntil) > new Date() && (
+                      {property.metaBoostedUntil && new Date(property.metaBoostedUntil) > new Date() && (
                         <div className="mt-3 inline-flex items-center gap-1 rounded bg-indigo-500/20 px-2 py-1 text-xs font-bold text-indigo-400 border border-indigo-500/20">
                           <Rocket size={14} />
-                          Turbinado por mais {Math.ceil((new Date(property.boostedUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias
+                          Meta Ads: {Math.ceil((new Date(property.metaBoostedUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias res.
+                        </div>
+                      )}
+                      {property.googleBoostedUntil && new Date(property.googleBoostedUntil) > new Date() && (
+                        <div className="mt-2 inline-flex items-center gap-1 rounded bg-emerald-500/20 px-2 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/20">
+                          <Rocket size={14} />
+                          Google Ads: {Math.ceil((new Date(property.googleBoostedUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias res.
                         </div>
                       )}
                     </div>
@@ -277,12 +305,18 @@ export default function MeusAnunciosPage() {
                     </Link>
 
                     <div className="flex flex-col gap-2">
+                      {(isPublished || property.googleBoostedUntil || property.metaBoostedUntil) && (
+                        <Link href={`/minha-conta/anuncios/${property.id}/insights`} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-yellow-400/20 bg-yellow-500/10 px-4 py-3 text-xs font-semibold text-yellow-300 hover:bg-yellow-500/20 transition-colors mb-1">
+                          <BarChart3 size={14} />
+                          Ver Estatísticas Completas
+                        </Link>
+                      )}
                       <div className="flex gap-2">
                         <Link
                           href={`/minha-conta/anuncios/${property.id}/instagram`}
                           className="flex flex-1 justify-center items-center gap-2 rounded-2xl border border-pink-400/20 bg-pink-500/10 px-4 py-3 text-sm font-semibold text-pink-300 hover:bg-pink-500/20 transition-colors"
                         >
-                          <Camera size={16} />
+                          <img src="/icones/instagram.jpg" className="w-5 h-5 rounded hover:scale-110 transition-transform object-cover flex-shrink-0" alt="Instagram" />
                           {isPublished ? 'Republicar no Insta' : 'Publicar no Insta'}
                         </Link>
                         {isPublished && permalink && (
@@ -297,7 +331,7 @@ export default function MeusAnunciosPage() {
                           href={`/minha-conta/anuncios/${property.id}/facebook`}
                           className="flex flex-1 justify-center items-center gap-2 rounded-2xl border border-blue-400/20 bg-blue-500/10 px-4 py-3 text-sm font-semibold text-blue-300 hover:bg-blue-500/20 transition-colors"
                         >
-                          <Globe size={16} />
+                          <img src="/icones/facebook.jpeg" className="w-5 h-5 rounded hover:scale-110 transition-transform object-cover flex-shrink-0" alt="Facebook" />
                           {facebookPosts.find(p => p.listingId === property.id) ? 'Republicar no Face' : 'Publicar no Face'}
                         </Link>
                         {facebookPosts.find(p => p.listingId === property.id)?.validationReport?.permalink && (
@@ -307,19 +341,24 @@ export default function MeusAnunciosPage() {
                         )}
                       </div>
 
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap sm:flex-nowrap">
                         {isPublished && (
                           <Link href={`/minha-conta/anuncios/${property.id}/turbinar?platform=instagram`} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-indigo-500/40 bg-gradient-to-r from-purple-500/10 to-indigo-500/10 px-4 py-3 text-xs font-semibold text-indigo-300 hover:from-purple-500/20 hover:to-indigo-500/20 transition-colors shadow-lg shadow-indigo-500/5">
                              <Rocket size={14} />
-                             Turbinar Insta
+                             Insta Ads
                           </Link>
                         )}
                         {facebookPosts.find(p => p.listingId === property.id) && (
                           <Link href={`/minha-conta/anuncios/${property.id}/turbinar?platform=facebook`} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-indigo-500/40 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 px-4 py-3 text-xs font-semibold text-indigo-300 hover:from-blue-500/20 hover:to-indigo-500/20 transition-colors shadow-lg shadow-indigo-500/5">
                              <Rocket size={14} />
-                             Turbinar Face
+                             Face Ads
                           </Link>
                         )}
+                        
+                        <Link href={`/minha-conta/anuncios/${property.id}/turbinar?platform=google`} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 px-4 py-3 text-xs font-semibold text-emerald-300 hover:from-emerald-500/20 hover:to-teal-500/20 transition-colors shadow-lg shadow-emerald-500/5">
+                           <Rocket size={14} />
+                           Google Ads
+                        </Link>
                       </div>
                     </div>
                   </div>

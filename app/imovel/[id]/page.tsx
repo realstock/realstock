@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import OfferBookClient from "@/components/OfferBookClient";
-import PropertyShareButtons from "@/components/PropertyShareButtons";
 
 export default async function PropertyPage({
   params,
@@ -279,8 +278,6 @@ export default async function PropertyPage({
               aceite de proposta pelo vendedor ou quando uma oferta atingir o valor
               de venda do imóvel.
             </div>
-
-            <PropertyShareButtons title={property.title} url={propertyUrl} />
 
             <div className="mt-5">
               <OfferBookClient

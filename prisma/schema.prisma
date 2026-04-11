@@ -65,7 +65,9 @@ model User {
   state                   String?
   updatedAt               DateTime   @updatedAt
   verified                Boolean    @default(false)
-  portfolioBoostedUntil   DateTime?  @map("portfolio_boosted_until")
+  portfolioBoostedUntil       DateTime?  @map("portfolio_boosted_until")
+  googlePortfolioBoostedUntil DateTime?  @map("google_portfolio_boosted_until")
+  metaPortfolioBoostedUntil   DateTime?  @map("meta_portfolio_boosted_until")
 
   offers      Offer[]    @relation("BuyerOffers")
   properties  Property[]
@@ -110,6 +112,8 @@ model Property {
   youtubeLink         String?         @map("youtube_link")
   youtubeThumbnail    String?         @map("youtube_thumbnail")
   boostedUntil        DateTime?       @map("boosted_until")
+  googleBoostedUntil  DateTime?       @map("google_boosted_until")
+  metaBoostedUntil    DateTime?       @map("meta_boosted_until")
 
   owner               User            @relation(fields: [ownerId], references: [id])
   offers              Offer[]
@@ -201,4 +205,18 @@ model SiteService {
 
   @@index([feeId])
   @@map("site_services")
+}
+model GoogleAdsSession {
+  id             String   @id @default(cuid())
+  listingId      Int      // 0 = portfolio, >0 = property
+  campaignId     String?
+  adGroupId      String?
+  status         String   @default("ACTIVE")
+  budget         Decimal
+  targetUrl      String
+  budgetDays     Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("google_ads_sessions")
 }

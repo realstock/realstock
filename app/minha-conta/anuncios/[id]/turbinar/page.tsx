@@ -110,9 +110,13 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
             <Link href="/minha-conta/anuncios" className="text-sm text-slate-400 hover:text-white">← Voltar</Link>
             <h1 className="mt-4 text-3xl font-bold flex items-center gap-2 text-indigo-400">
                <Rocket size={32} />
-               Turbinar Anúncio no {platform === "facebook" ? "Facebook" : "Instagram"}
+               Turbinar Anúncio no {platform === "facebook" ? "Facebook" : platform === "google" ? "Google Search/Display" : "Instagram"}
             </h1>
-            <p className="mt-2 text-slate-400">Transforme sua postagem recém-criada em um verdadeiro ímã de leads pela Meta Ads.</p>
+            <p className="mt-2 text-slate-400">
+              {platform === "google" 
+                ? "Ative uma campanha inteligente no Google Ads para buscar compradores ativos pesquisando na sua região." 
+                : "Transforme sua postagem recém-criada em um verdadeiro ímã de leads pela Meta Ads."}
+            </p>
           </div>
         </div>
 
@@ -157,7 +161,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
 
                <div className="rounded-2xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/10 to-blue-500/5 p-6">
                    <h2 className="text-xl font-bold mb-1">Qual o orçamento diário do anúncio?</h2>
-                   <p className="text-sm text-slate-400 mb-8">Arraste a barra para definir quanto investir na plataforma Meta por dia.</p>
+                   <p className="text-sm text-slate-400 mb-8">Arraste a barra para definir quanto investir na plataforma {platform === 'google' ? 'Google' : 'Meta'} por dia.</p>
                    
                    <div className="mb-4 flex justify-between items-end">
                        <span className="text-sm font-bold text-slate-500">R$ 10</span>
@@ -220,7 +224,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                        {paypalError && <div className="mb-4 text-sm text-red-400 text-center p-2 bg-red-400/10 rounded-lg">{paypalError}</div>}
 
                        {isBoosting && (
-                           <div className="text-center py-4 text-indigo-400 font-bold animate-pulse">Integração Facebook Ads processando...</div>
+                           <div className="text-center py-4 text-indigo-400 font-bold animate-pulse">Integração {platform === 'google' ? 'Google Ads' : 'Facebook Ads'} processando...</div>
                        )}
 
                        {!isBoosting && !paypalOrderId && (
@@ -237,16 +241,20 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                                 onApprove={async (data) => {
                                   setIsBoosting(true);
                                   try {
-                                    const res = await fetch("/api/paypal/capture-boost-order", {
-                                      method: "POST",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({ orderID: data.orderID, propertyId: id, dailyBudget, platform }),
-                                    });
-                                    const result = await res.json();
-                                    if (!res.ok || !result.success) throw new Error(result.error);
-                                    setSuccessMsg("Sua campanha foi criada com sucesso no Gerenciador de Anúncios e está em análise pelo Meta. Logo seus leads começarão a chegar!");
-                                  } catch (err: any) {
-                                    setPaypalError(err.message || "Erro na integração com a Meta.");
+                                     const captureUrl = platform === "google" 
+                                        ? "/api/paypal/capture-google-order" 
+                                        : "/api/paypal/capture-boost-order";
+                                        
+                                     const res = await fetch(captureUrl, {
+                                       method: "POST",
+                                       headers: { "Content-Type": "application/json" },
+                                       body: JSON.stringify({ orderID: data.orderID, propertyId: id, dailyBudget, platform }),
+                                     });
+                                     const result = await res.json();
+                                     if (!res.ok || !result.success) throw new Error(result.error);
+                                     setSuccessMsg(`Sua campanha foi criada com sucesso e está em análise pelo ${platform === 'google' ? 'Google' : 'Meta'}. Logo seus leads começarão a chegar!`);
+                                   } catch (err: any) {
+                                     setPaypalError(err.message || `Erro na integração com ${platform === 'google' ? 'Google' : 'Meta'}.`);
                                   } finally {
                                     setIsBoosting(false);
                                   }

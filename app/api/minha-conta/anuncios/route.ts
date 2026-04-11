@@ -83,7 +83,7 @@ export async function GET() {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { portfolioBoostedUntil: true },
+      select: { portfolioBoostedUntil: true, googlePortfolioBoostedUntil: true, metaPortfolioBoostedUntil: true },
     });
 
     return NextResponse.json({
@@ -93,6 +93,8 @@ export async function GET() {
       instagramPosts,
       facebookPosts,
       portfolioBoostedUntil: user?.portfolioBoostedUntil,
+      googlePortfolioBoostedUntil: user?.googlePortfolioBoostedUntil,
+      metaPortfolioBoostedUntil: user?.metaPortfolioBoostedUntil,
     });
   } catch (error: any) {
     console.error("MINHA CONTA ANUNCIOS ERROR:", error);

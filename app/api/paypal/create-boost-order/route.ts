@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
               currency_code: "BRL",
               value: totalCharge.toFixed(2),
             },
-            description: `Impulsionamento Meta Ads (${platform})`,
+            description: platform === "google" ? "Impulsionamento Google Ads" : `Impulsionamento Meta Ads (${platform})`,
           },
         ],
         application_context: { user_action: "PAY_NOW" },

@@ -626,7 +626,7 @@ export default function AnunciarPage() {
       setMessage("Anúncio publicado com sucesso.");
 
       setTimeout(() => {
-        router.push("/minha-conta/anuncios");
+        router.push("/anunciar/sucesso");
       }, 1000);
     } catch (err: any) {
       setError(err.message || "Erro inesperado.");

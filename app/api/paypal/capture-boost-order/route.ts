@@ -273,12 +273,12 @@ export async function POST(req: NextRequest) {
     if (Number(propertyId) === 0) {
         await prisma.user.update({
             where: { id: user.id },
-            data: { portfolioBoostedUntil: endTime }
+            data: { portfolioBoostedUntil: endTime, metaPortfolioBoostedUntil: endTime }
         });
     } else {
         await prisma.property.update({
             where: { id: Number(propertyId) },
-            data: { boostedUntil: endTime }
+            data: { boostedUntil: endTime, metaBoostedUntil: endTime }
         });
     }
 
