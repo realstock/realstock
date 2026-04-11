@@ -331,6 +331,7 @@ export default function CesiumMapClient({
               "rgba(15,23,42,0.75)"
             ),
             disableDepthTestDistance: Number.POSITIVE_INFINITY,
+            distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 15000),
           },
         });
       });

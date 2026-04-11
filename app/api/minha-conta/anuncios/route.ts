@@ -63,10 +63,36 @@ export async function GET() {
         })
       : [];
 
+    const instagramPosts = await prisma.instagramPreviewSession.findMany({
+      where: {
+        listingId: {
+          in: [...propertyIds, 0],
+        },
+        status: "PUBLISHED",
+      },
+    });
+
+    const facebookPosts = await prisma.facebookFeedSession.findMany({
+      where: {
+        listingId: {
+          in: [...propertyIds, 0],
+        },
+        status: "PUBLISHED",
+      },
+    });
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { portfolioBoostedUntil: true },
+    });
+
     return NextResponse.json({
       success: true,
       properties,
       payments,
+      instagramPosts,
+      facebookPosts,
+      portfolioBoostedUntil: user?.portfolioBoostedUntil,
     });
   } catch (error: any) {
     console.error("MINHA CONTA ANUNCIOS ERROR:", error);

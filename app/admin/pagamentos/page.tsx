@@ -40,6 +40,9 @@ export default function AdminPagamentosPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [stateFilter, setStateFilter] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   async function loadPayments() {
     try {
@@ -108,9 +111,42 @@ export default function AdminPagamentosPage() {
     const matchesStatus = statusFilter
       ? String(payment.paymentStatus).toLowerCase() === statusFilter.toLowerCase()
       : true;
+      
+    const matchesState = stateFilter 
+      ? payment.offer?.property?.state?.toLowerCase() === stateFilter.toLowerCase()
+      : true;
+      
+    let matchesPeriod = true;
+    if (startDate || endDate) {
+      const paymentDate = new Date(payment.createdAt);
+      paymentDate.setHours(0, 0, 0, 0);
+      
+      if (startDate) {
+        const start = new Date(startDate);
+        // add timezone offset workaround or just compare ISO parts
+        start.setHours(0,0,0,0);
+        // Correctly handle local timezones vs UTC string dates
+        // we can simply use the YYYY-MM-DD string slice
+        const paymentDateStr = payment.createdAt.substring(0, 10);
+        if (paymentDateStr < startDate) {
+           matchesPeriod = false;
+        }
+      }
+      if (endDate) {
+        const paymentDateStr = payment.createdAt.substring(0, 10);
+        if (paymentDateStr > endDate) {
+           matchesPeriod = false;
+        }
+      }
+    }
 
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesStatus && matchesState && matchesPeriod;
   });
+  
+  const uniqueStates = Array.from(
+    new Set(payments.map((p) => p.offer?.property?.state).filter(Boolean))
+  ) as string[];
+  uniqueStates.sort();
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -123,27 +159,63 @@ export default function AdminPagamentosPage() {
           </p>
         </div>
 
-        <div className="mb-6 grid gap-4 lg:grid-cols-[1fr_220px]">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+        <div className="mb-6 grid gap-4 lg:grid-cols-[1fr_minmax(140px,auto)_minmax(140px,auto)_140px_140px]">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3 flex flex-col gap-1">
+            <span className="text-xs font-semibold text-slate-400 px-1">Busca Livre</span>
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por imóvel, comprador, vendedor, email ou PayPal Order ID"
-              className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-white outline-none"
+              placeholder="Imóvel, email, ID..."
+              className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-white outline-none"
             />
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3 flex flex-col gap-1">
+            <span className="text-xs font-semibold text-slate-400 px-1">Status</span>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-white outline-none"
+              className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-white outline-none"
             >
-              <option value="">Todos os status</option>
+              <option value="">Todos</option>
               <option value="pending">Pendente</option>
               <option value="paid">Pago</option>
               <option value="cancelled">Cancelado</option>
             </select>
+          </div>
+          
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3 flex flex-col gap-1">
+            <span className="text-xs font-semibold text-slate-400 px-1">Estado (UF)</span>
+            <select
+              value={stateFilter}
+              onChange={(e) => setStateFilter(e.target.value)}
+              className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-white outline-none"
+            >
+              <option value="">Todos</option>
+              {uniqueStates.map((uf) => (
+                <option key={uf} value={uf}>{uf}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3 flex flex-col gap-1">
+             <span className="text-xs font-semibold text-slate-400 px-1">Data Inicial</span>
+             <input
+               type="date"
+               value={startDate}
+               onChange={(e) => setStartDate(e.target.value)}
+               className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-white outline-none text-sm"
+             />
+          </div>
+          
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3 flex flex-col gap-1">
+             <span className="text-xs font-semibold text-slate-400 px-1">Data Final</span>
+             <input
+               type="date"
+               value={endDate}
+               onChange={(e) => setEndDate(e.target.value)}
+               className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-white outline-none text-sm"
+             />
           </div>
         </div>
 

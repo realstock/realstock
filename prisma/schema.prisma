@@ -13,19 +13,38 @@ enum UserRole {
   ADMIN
 }
 
+enum FeeType {
+  FIXED
+  PERCENTAGE
+}
+
 model InstagramPreviewSession {
-  id                    String   @id @default(cuid())
-  listingId             Int
-  caption               String?
-  status                String   @default("DRAFT")
-  allImageUrls          Json
-  selectedImages        Json
-  validationReport      Json?
-  publishErrors         Json?
-  containerIds          Json?
-  publishedMediaId      String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id               String   @id @default(cuid())
+  listingId        Int
+  caption          String?
+  status           String   @default("DRAFT")
+  allImageUrls     Json
+  selectedImages   Json
+  validationReport Json?
+  publishErrors    Json?
+  containerIds     Json?
+  publishedMediaId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model FacebookFeedSession {
+  id               String   @id @default(cuid())
+  listingId        Int
+  caption          String?
+  status           String   @default("DRAFT")
+  allImageUrls     Json
+  selectedImages   Json
+  validationReport Json?
+  publishErrors    Json?
+  publishedPostId  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model User {
@@ -43,9 +62,11 @@ model User {
   paypalEmail String?
   phone       String?
   role        String     @default("USER")
-  state       String?
-  updatedAt   DateTime   @updatedAt
-  verified    Boolean    @default(false)
+  state                   String?
+  updatedAt               DateTime   @updatedAt
+  verified                Boolean    @default(false)
+  portfolioBoostedUntil   DateTime?  @map("portfolio_boosted_until")
+
   offers      Offer[]    @relation("BuyerOffers")
   properties  Property[]
 
@@ -88,8 +109,10 @@ model Property {
   topographyPoints    String?         @map("topography_points")
   youtubeLink         String?         @map("youtube_link")
   youtubeThumbnail    String?         @map("youtube_thumbnail")
-  offers              Offer[]
+  boostedUntil        DateTime?       @map("boosted_until")
+
   owner               User            @relation(fields: [ownerId], references: [id])
+  offers              Offer[]
   images              PropertyImage[]
 
   @@map("properties")
@@ -101,6 +124,7 @@ model PropertyImage {
   imageUrl   String   @map("image_url")
   sortOrder  Int      @default(0) @map("sort_order")
   createdAt  DateTime @default(now()) @map("created_at")
+
   property   Property @relation(fields: [propertyId], references: [id])
 
   @@map("property_images")
@@ -113,6 +137,7 @@ model Offer {
   offerPrice Decimal  @map("offer_price")
   status     String   @default("open")
   createdAt  DateTime @default(now()) @map("created_at")
+
   buyer      User     @relation("BuyerOffers", fields: [buyerId], references: [id])
   property   Property @relation(fields: [propertyId], references: [id])
 
@@ -147,5 +172,33 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
+model SiteFee {
+  id          Int           @id @default(autoincrement())
+  name        String
+  type        FeeType
+  value       Decimal       @db.Decimal(10, 2)
+  description String?
+  isActive    Boolean       @default(true) @map("is_active")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
 
+  services    SiteService[]
 
+  @@map("site_fees")
+}
+
+model SiteService {
+  id          Int        @id @default(autoincrement())
+  name        String
+  slug        String     @unique
+  description String?
+  isActive    Boolean    @default(true) @map("is_active")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  feeId       Int?       @map("fee_id")
+
+  fee         SiteFee?   @relation(fields: [feeId], references: [id])
+
+  @@index([feeId])
+  @@map("site_services")
+}

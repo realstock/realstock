@@ -99,6 +99,9 @@ export default function HomePage() {
   const [boundsReady, setBoundsReady] = useState(false);
   const [clusterZoomTarget, setClusterZoomTarget] =
     useState<ClusterZoomTarget | null>(null);
+  const [availableStates, setAvailableStates] = useState<string[]>([]);
+  const [availableCountries, setAvailableCountries] = useState<string[]>([]);
+  const [availablePropertyTypes, setAvailablePropertyTypes] = useState<string[]>([]);
 
   const [category, setCategory] = useState("");
   const [propertyType, setPropertyType] = useState("");
@@ -114,9 +117,13 @@ export default function HomePage() {
   const [acceptsFinancing, setAcceptsFinancing] = useState(false);
 
   const typeOptions = useMemo(() => {
-    if (!category) return [];
-    return PROPERTY_TYPES[category as keyof typeof PROPERTY_TYPES] || [];
-  }, [category]);
+    // If no category is selected, we just show all existing types from the db.
+    if (!category) return availablePropertyTypes;
+    
+    // If a category is selected, intersect standard types with DB types so we don't show empty categories
+    const standardTypes: readonly string[] = PROPERTY_TYPES[category as keyof typeof PROPERTY_TYPES] || [];
+    return availablePropertyTypes.filter(dbType => standardTypes.includes(dbType));
+  }, [category, availablePropertyTypes]);
 
   async function loadInitialProperties() {
     try {
@@ -137,6 +144,20 @@ export default function HomePage() {
       setProperties([]);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadFilters() {
+    try {
+      const res = await fetch("/api/properties/filters");
+      const data = await res.json();
+      if (data.success) {
+        if (data.states) setAvailableStates(data.states);
+        if (data.countries) setAvailableCountries(data.countries);
+        if (data.propertyTypes) setAvailablePropertyTypes(data.propertyTypes);
+      }
+    } catch (e) {
+      console.error("Falha ao buscar filtros:", e);
     }
   }
 
@@ -190,6 +211,7 @@ export default function HomePage() {
 
   useEffect(() => {
     loadInitialProperties();
+    loadFilters();
   }, []);
 
   useEffect(() => {
@@ -299,7 +321,6 @@ export default function HomePage() {
                   value={propertyType}
                   onChange={(e) => setPropertyType(e.target.value)}
                   className="input"
-                  disabled={!category}
                 >
                   <option value="">Todos</option>
                   {typeOptions.map((item) => (
@@ -333,22 +354,30 @@ export default function HomePage() {
               </Grid2>
 
               <Field label="País">
-                <input
+                <select
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
                   className="input"
-                  placeholder="Brasil"
-                />
+                >
+                  <option value="">Todos</option>
+                  {availableCountries.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
               </Field>
 
               <Grid2>
                 <Field label="Estado">
-                  <input
+                  <select
                     value={stateName}
                     onChange={(e) => setStateName(e.target.value)}
                     className="input"
-                    placeholder="Ceará"
-                  />
+                  >
+                    <option value="">Todos</option>
+                    {availableStates.map(st => (
+                       <option key={st} value={st}>{st}</option>
+                    ))}
+                  </select>
                 </Field>
 
                 <Field label="Cidade">
