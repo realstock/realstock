@@ -103,11 +103,11 @@ export default function InstagramPublisherPage() {
           >
             ← Voltar aos meus anúncios
           </Link>
-          <h1 className="mt-4 text-3xl font-bold bg-gradient-to-r from-pink-500 to-orange-400 bg-clip-text text-transparent">
-            Publicar no Instagram
+          <h1 className="mt-4 text-3xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">
+            Turbine seu Anúncio
           </h1>
-          <p className="mt-2 text-slate-400">
-            Aumente a visibilidade do seu anúncio postando ele diretamente na página oficial do Instagram da RealStock!
+          <p className="mt-3 text-lg text-slate-300">
+            Aumente a visibilidade do seu anúncio adquirindo os pacotes disponíveis para turbinar seu post no <span className="font-bold text-pink-400">Instagram</span>, <span className="font-bold text-blue-400">Facebook</span> e <span className="font-bold text-emerald-400">Google Ads</span> e feche negócio mais rápido!
           </p>
         </div>
 
