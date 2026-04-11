@@ -12,12 +12,14 @@ type Props = {
   latitude: number | null;
   longitude: number | null;
   onChange: (coords: { latitude: number; longitude: number }) => void;
+  flyToCoords?: { latitude: number; longitude: number } | null;
 };
 
 export default function PropertyLocationPicker({
   latitude,
   longitude,
   onChange,
+  flyToCoords,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const viewerRef = useRef<any>(null);
@@ -160,6 +162,26 @@ export default function PropertyLocationPicker({
 
     updatePinFromProps();
   }, [latitude, longitude]);
+
+  useEffect(() => {
+    async function handleFlyTo() {
+      const viewer = viewerRef.current;
+      if (!viewer || !flyToCoords) return;
+
+      const Cesium = await import("cesium");
+
+      viewer.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(
+          flyToCoords.longitude,
+          flyToCoords.latitude,
+          2000
+        ),
+        duration: 1.5,
+      });
+    }
+
+    handleFlyTo();
+  }, [flyToCoords]);
 
   return (
     <div className="space-y-3">

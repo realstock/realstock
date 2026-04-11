@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import PropertyLocationPicker from "@/components/PropertyLocationPicker";
+import NeighborhoodAutocomplete from "@/components/NeighborhoodAutocomplete";
 
 const PROPERTY_TYPES = {
   RESIDENCIAL: [
@@ -139,6 +140,7 @@ export default function EditarAnuncioPage() {
   }, [stateName]);
 
   const [neighborhood, setNeighborhood] = useState("");
+  const [flyToCoords, setFlyToCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [street, setStreet] = useState("");
   const [addressNumber, setAddressNumber] = useState("");
   const [zipCode, setZipCode] = useState("");
@@ -683,7 +685,13 @@ export default function EditarAnuncioPage() {
                     )}
                   </Field>
                   <Field label="Bairro">
-                    <input value={neighborhood} onChange={(e) => setNeighborhood(e.target.value)} className="input" />
+                    <NeighborhoodAutocomplete
+                      value={neighborhood}
+                      onChange={setNeighborhood}
+                      onSelectCoordinates={setFlyToCoords}
+                      city={city}
+                      stateName={stateName}
+                    />
                   </Field>
                 </Grid2>
 
@@ -736,6 +744,7 @@ export default function EditarAnuncioPage() {
               <PropertyLocationPicker
                 latitude={latitude}
                 longitude={longitude}
+                flyToCoords={flyToCoords}
                 onChange={(coords: { latitude: number; longitude: number }) => {
                   setLatitude(coords.latitude);
                   setLongitude(coords.longitude);
