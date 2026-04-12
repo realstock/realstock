@@ -139,6 +139,37 @@ export default function EditarAnuncioPage() {
     }
   }, [stateName]);
 
+  useEffect(() => {
+    async function geocodeLocation() {
+      if (!stateName) return;
+
+      const query = city ? `${city}, ${stateName}, Brasil` : `${stateName}, Brasil`;
+
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+            query
+          )}`
+        );
+        const data = await res.json();
+
+        if (data && data.length > 0) {
+          const lat = parseFloat(data[0].lat);
+          const lon = parseFloat(data[0].lon);
+          setFlyToCoords({ latitude: lat, longitude: lon });
+        }
+      } catch (err) {
+        console.error("Erro ao buscar coordenadas geográficas:", err);
+      }
+    }
+
+    const timeoutId = setTimeout(() => {
+      geocodeLocation();
+    }, 800);
+
+    return () => clearTimeout(timeoutId);
+  }, [stateName, city]);
+
   const [neighborhood, setNeighborhood] = useState("");
   const [flyToCoords, setFlyToCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [street, setStreet] = useState("");
