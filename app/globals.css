@@ -24,3 +24,12 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Ocultar marca-d'água e mensagens de licença do Cesium globalmente */
+.cesium-viewer-bottom,
+.cesium-widget-credits,
+.cesium-credit-textContainer,
+.cesium-credit-logoContainer {
+  display: none !important;
+  visibility: hidden !important;
+}
