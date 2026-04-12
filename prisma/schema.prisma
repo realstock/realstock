@@ -221,3 +221,32 @@ model GoogleAdsSession {
 
   @@map("google_ads_sessions")
 }
+
+enum EmailDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum EmailStatus {
+  UNREAD
+  READ
+}
+
+model EmailMessage {
+  id        String   @id @default(cuid())
+  threadId  String?
+  sender    String
+  recipient String
+  subject   String?
+  htmlBody  String?
+  textBody  String?
+  status    EmailStatus @default(UNREAD)
+  direction EmailDirection @default(INBOUND)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // self relation for threading replies easily
+  inReplyToId String?
+  inReplyTo   EmailMessage?  @relation("EmailReplies", fields: [inReplyToId], references: [id])
+  replies     EmailMessage[] @relation("EmailReplies")
+}
