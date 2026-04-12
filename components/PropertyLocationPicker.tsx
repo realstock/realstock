@@ -46,7 +46,11 @@ export default function PropertyLocationPicker({
       Cesium.Ion.defaultAccessToken =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJiYjk3YjczMC0xYjg0LTQxNjEtODUyMy1lZDhjNzQ5MTVmZjYiLCJpZCI6NDAyMDMyLCJpYXQiOjE3NzMyNjE1MTd9.ukJFV7pVC7nSPVWifS4NwV5B4la7jvwCK_knj-Ik2Bk";
 
+      const hiddenCredit = document.createElement("div");
+      hiddenCredit.style.display = "none";
+
       const viewer = new Cesium.Viewer(containerRef.current, {
+        creditContainer: hiddenCredit,
         terrain: Cesium.Terrain.fromWorldTerrain(),
         animation: false,
         timeline: false,
