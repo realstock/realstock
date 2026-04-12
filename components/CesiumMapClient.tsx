@@ -208,7 +208,11 @@ export default function CesiumMapClient({
       handler.setInputAction((click: any) => {
         const picked = viewer.scene.pick(click.position);
 
-        if (!Cesium.defined(picked)) return;
+        if (!Cesium.defined(picked)) {
+          setShowMapCard(false);
+          setSelectedProperty(null);
+          return;
+        }
 
         const pickedId = picked.id;
 
@@ -269,6 +273,10 @@ export default function CesiumMapClient({
             return;
           }
         }
+
+        // Se clicar em qualquer outra coisa válida mas irrelevante
+        setShowMapCard(false);
+        setSelectedProperty(null);
       }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
     }
 
