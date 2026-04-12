@@ -258,8 +258,9 @@ export default function CesiumMapClient({
         }
 
         if (pickedId?.id) {
+          const actualId = String(pickedId.id).replace('thumb-', '');
           const selected = propertiesRef.current.find(
-            (item) => item.id.toString() === pickedId.id
+            (item) => item.id.toString() === actualId
           );
 
           if (selected) {
@@ -308,12 +309,16 @@ export default function CesiumMapClient({
 
       dataSource.entities.removeAll();
 
+      // Remove existing thumbnails from the global entity pool to avoid leaks
+      viewer.entities.values
+        .filter((e: any) => String(e.id).startsWith("thumb-"))
+        .forEach((e: any) => viewer.entities.remove(e));
+
       properties.forEach((property) => {
         dataSource.entities.add({
           id: property.id.toString(),
           name: property.title,
           position: Cesium.Cartesian3.fromDegrees(property.lng, property.lat),
-
           billboard: {
             image: "/pin.png",
             width: 36,
@@ -321,20 +326,23 @@ export default function CesiumMapClient({
             verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
             disableDepthTestDistance: Number.POSITIVE_INFINITY,
           },
-
-          label: {
-            text: property.title,
-            pixelOffset: new Cesium.Cartesian2(0, -42),
-            scale: 0.7,
-            fillColor: Cesium.Color.WHITE,
-            showBackground: true,
-            backgroundColor: Cesium.Color.fromCssColorString(
-              "rgba(15,23,42,0.75)"
-            ),
-            disableDepthTestDistance: Number.POSITIVE_INFINITY,
-            distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 15000),
-          },
         });
+
+        if (property.mainImage) {
+          viewer.entities.add({
+            id: `thumb-${property.id}`,
+            position: Cesium.Cartesian3.fromDegrees(property.lng, property.lat),
+            billboard: {
+              image: property.mainImage,
+              width: 100,
+              height: 70,
+              pixelOffset: new Cesium.Cartesian2(0, -42),
+              verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+              disableDepthTestDistance: Number.POSITIVE_INFINITY,
+              distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 4000),
+            }
+          });
+        }
       });
 
       dataSource.clustering.enabled = false;
