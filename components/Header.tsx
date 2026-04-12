@@ -29,6 +29,11 @@ export default function Header() {
           />
         </Link>
 
+        {/* Espaço reservado para o Banner do Google Ads */}
+        <div className="hidden lg:flex flex-1 mx-8 h-[90px] items-center justify-center border border-dashed border-white/20 bg-white/5 rounded-xl text-slate-500 text-sm">
+          Espaço para Banner Google Ads (728x90 px)
+        </div>
+
         <div className="flex items-center gap-4">
           {status === "loading" ? null : user ? (
             <div className="z-[9999] flex items-center gap-2">
