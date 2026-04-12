@@ -173,6 +173,8 @@ export default function PropertyLocationPicker({
 
       const Cesium = await import("cesium");
 
+      viewer.camera.cancelFlight();
+
       viewer.camera.flyTo({
         destination: Cesium.Cartesian3.fromDegrees(
           flyToCoords.longitude,
