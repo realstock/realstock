@@ -69,27 +69,100 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         google: null as any
     };
 
-    if (igSession) {
-        // Pseudo-real Graph API mapping
-        insights.instagram = {
-            likes: generateMock(250, 13),
-            comments: generateMock(15, 7),
-            views: generateMock(4000, 31),
-            reach: generateMock(3500, 19),
-            shares: generateMock(45, 11),
-            publishedDate: igSession.updatedAt
-        };
+    if (igSession && igSession.publishedMediaId) {
+        try {
+            const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
+            if (igToken) {
+              const res = await fetch(`https://graph.facebook.com/v19.0/${igSession.publishedMediaId}?fields=like_count,comments_count,insights.metric(impressions,reach,shares,carousel_album_impressions,carousel_album_reach)&access_token=${igToken}`);
+              const data = await res.json();
+              
+              if (data && !data.error) {
+                  const likes = data.like_count || 0;
+                  const comments = data.comments_count || 0;
+                  
+                  let impressions = 0;
+                  let reach = 0;
+                  let shares = 0;
+                  
+                  if (data.insights && data.insights.data) {
+                      for (const m of data.insights.data) {
+                          if (m.name === 'impressions' && m.values?.[0]) impressions = m.values[0].value;
+                          if (m.name === 'reach' && m.values?.[0]) reach = m.values[0].value;
+                          if (m.name === 'shares' && m.values?.[0]) shares = m.values[0].value;
+                          
+                          // Carrossel aliases (Instagram)
+                          if (m.name === 'carousel_album_impressions' && m.values?.[0]) impressions = m.values[0].value;
+                          if (m.name === 'carousel_album_reach' && m.values?.[0]) reach = m.values[0].value;
+                      }
+                  }
+
+                  insights.instagram = {
+                      likes,
+                      comments,
+                      views: impressions,
+                      reach,
+                      shares,
+                      publishedDate: igSession.updatedAt
+                  };
+              } else {
+                  console.warn("IG Graph API Error:", data.error);
+              }
+            }
+        } catch(e) { console.error("Falha ao buscar insights IG", e); }
+
+        // Fallback zeros caso dê erro (impede que fiquem números fakes inflados)
+        if (!insights.instagram) {
+            insights.instagram = { likes: 0, comments: 0, views: 0, reach: 0, shares: 0, publishedDate: igSession.updatedAt };
+        }
     }
 
-    if (fbSession) {
-        insights.facebook = {
-            likes: generateMock(320, 17),
-            comments: generateMock(28, 5),
-            impressions: generateMock(7000, 43),
-            clicks: generateMock(120, 23),
-            shares: generateMock(80, 29),
-            publishedDate: fbSession.updatedAt
-        };
+    if (fbSession && fbSession.publishedPostId) {
+        try {
+            const userToken = process.env.INSTAGRAM_ACCESS_TOKEN; // Usado também para solicitar as contas FB
+            const pageId = process.env.FACEBOOK_PAGE_ID;
+
+            if (userToken && pageId) {
+                const pageTokenRes = await fetch(`https://graph.facebook.com/v19.0/me/accounts?access_token=${userToken}`);
+                const pageTokenData = await pageTokenRes.json();
+                const pageInfo = pageTokenData.data?.find((p: any) => p.id === pageId);
+
+                if (pageInfo && pageInfo.access_token) {
+                    const res = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}?fields=shares,comments.summary(total_count),likes.summary(total_count),insights.metric(post_impressions,post_clicks)&access_token=${pageInfo.access_token}`);
+                    const data = await res.json();
+                    
+                    if (data && !data.error) {
+                        const likes = data.likes?.summary?.total_count || 0;
+                        const comments = data.comments?.summary?.total_count || 0;
+                        const shares = data.shares?.count || 0;
+                        
+                        let impressions = 0;
+                        let clicks = 0;
+                        
+                        if (data.insights && data.insights.data) {
+                            for (const m of data.insights.data) {
+                                if (m.name === 'post_impressions' && m.values?.[0]) impressions = m.values[0].value;
+                                if (m.name === 'post_clicks' && m.values?.[0]) clicks = m.values[0].value;
+                            }
+                        }
+                    
+                        insights.facebook = {
+                            likes,
+                            comments,
+                            impressions,
+                            clicks,
+                            shares,
+                            publishedDate: fbSession.updatedAt
+                        };
+                    } else {
+                        console.warn("FB Graph API Error:", data.error);
+                    }
+                }
+            }
+        } catch(e) { console.error("Falha ao buscar insights FB", e); }
+
+        if (!insights.facebook) {
+             insights.facebook = { likes: 0, comments: 0, impressions: 0, clicks: 0, shares: 0, publishedDate: fbSession.updatedAt };
+        }
     }
 
     if (goSession) {
