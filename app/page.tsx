@@ -14,6 +14,7 @@ type PropertyPin = {
   lat: number;
   lng: number;
   mainImage: string | null;
+  sponsoredUntil?: string | null;
 };
 
 type MapBounds = {
@@ -254,7 +255,13 @@ function normalizeProperties(items: any[]): PropertyPin[] {
     lat: Number(item.latitude),
     lng: Number(item.longitude),
     mainImage: item.images?.[0]?.imageUrl || null,
-  }));
+    sponsoredUntil: item.sponsoredUntil || null,
+  }))
+  .sort((a: any, b: any) => {
+    const aSponsored = a.sponsoredUntil && new Date(a.sponsoredUntil) > new Date() ? 1 : 0;
+    const bSponsored = b.sponsoredUntil && new Date(b.sponsoredUntil) > new Date() ? 1 : 0;
+    return bSponsored - aSponsored;
+  });
 }
 
 export default function HomePage() {
@@ -733,8 +740,17 @@ export default function HomePage() {
                     <Link
                       key={property.id}
                       href={`/imovel/${property.id}`}
-                      className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/60 transition hover:border-white/20 hover:bg-slate-900"
+                      className={`overflow-hidden rounded-2xl border transition relative ${
+                        property.sponsoredUntil && new Date(property.sponsoredUntil) > new Date()
+                          ? "border-yellow-400 bg-slate-900 shadow-[0_0_15px_rgba(250,204,21,0.2)] hover:shadow-[0_0_25px_rgba(250,204,21,0.4)]"
+                          : "border-white/10 bg-slate-900/60 hover:border-white/20 hover:bg-slate-900"
+                      }`}
                     >
+                      {property.sponsoredUntil && new Date(property.sponsoredUntil) > new Date() && (
+                        <div className="absolute top-0 right-0 bg-gradient-to-l from-yellow-500 to-amber-500 text-yellow-950 font-black text-xs px-3 py-1 rounded-bl-xl shadow-lg z-10 animate-pulse border-b border-l border-yellow-300">
+                          ⭐ PATROCINADO
+                        </div>
+                      )}
                       {property.mainImage ? (
                         <img
                           src={property.mainImage}

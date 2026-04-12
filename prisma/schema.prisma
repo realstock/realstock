@@ -114,6 +114,7 @@ model Property {
   boostedUntil        DateTime?       @map("boosted_until")
   googleBoostedUntil  DateTime?       @map("google_boosted_until")
   metaBoostedUntil    DateTime?       @map("meta_boosted_until")
+  sponsoredUntil      DateTime?       @map("sponsored_until")
 
   owner               User            @relation(fields: [ownerId], references: [id])
   offers              Offer[]

@@ -17,6 +17,7 @@ type PropertyItem = {
   boostedUntil?: string | null;
   googleBoostedUntil?: string | null;
   metaBoostedUntil?: string | null;
+  sponsoredUntil?: string | null;
 };
 
 export default function MeusAnunciosPage() {
@@ -279,6 +280,13 @@ export default function MeusAnunciosPage() {
                           Google Ads: {Math.ceil((new Date(property.googleBoostedUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias res.
                         </div>
                       )}
+                      
+                      {property.sponsoredUntil && new Date(property.sponsoredUntil) > new Date() && (
+                        <div className="mt-2 inline-flex items-center gap-1 rounded bg-yellow-500/20 px-2 py-1 text-xs font-bold text-yellow-300 border border-yellow-500/30">
+                          <Rocket size={14} />
+                          Patrocinado válido por mais {Math.ceil((new Date(property.sponsoredUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -303,6 +311,15 @@ export default function MeusAnunciosPage() {
                     >
                       Gerenciar ofertas
                     </Link>
+
+                    {!(property.sponsoredUntil && new Date(property.sponsoredUntil) > new Date()) && (
+                      <Link
+                        href={`/minha-conta/anuncios/${property.id}/patrocinar`}
+                        className="rounded-2xl bg-gradient-to-r from-yellow-500 to-amber-500 px-4 py-3 text-sm font-bold text-slate-900 border border-yellow-400/50 hover:from-yellow-400 hover:to-amber-400 transition-colors shadow-lg shadow-yellow-500/20"
+                      >
+                        💎 Patrocinar
+                      </Link>
+                    )}
 
                     <div className="flex flex-col gap-2">
                       {(isPublished || property.googleBoostedUntil || property.metaBoostedUntil) && (

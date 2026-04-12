@@ -94,11 +94,10 @@ export default function AdminDashboardClient() {
                 />
 
                 <QuickAction
-                  title="Publicar anúncios no Instagram"
-                  description="Abrir painel de publicação automática no Instagram."
-                  href="https://realstock-publisher.vercel.app/"
-                  external
-                  icon={<InstagramIcon />}
+                  title="Patrocínios Ativos"
+                  description="Visualize e gerencie os imóveis com patrocínio Premium Global em andamento."
+                  href="/admin/patrocinados"
+                  icon={<GemIcon />}
                 />
 
                 <QuickAction
@@ -106,13 +105,6 @@ export default function AdminDashboardClient() {
                   description="Cadastre taxas, serviços do site e defina qual taxa será aplicada a cada serviço."
                   href="/admin/taxas-servicos"
                   icon={<SettingsIcon />}
-                />
-
-                <QuickAction
-                  title="Taxas Instagram Publisher"
-                  description="Definir valor cobrado para publicação de imóveis no Instagram."
-                  href="/admin/taxas-instagram"
-                  icon={<InstagramIcon />}
                 />
               </div>
             </div>
@@ -200,6 +192,25 @@ function SettingsIcon() {
     >
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82L4.21 7.2a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+    </svg>
+  );
+}
+
+function GemIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-5 w-5 text-yellow-400"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M6 3h12l4 6-10 13L2 9Z" />
+      <path d="M11 3 8 9l4 13 4-13-3-6" />
+      <path d="M2 9h20" />
     </svg>
   );
 }

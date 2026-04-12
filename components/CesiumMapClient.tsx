@@ -19,6 +19,7 @@ type PropertyPin = {
   lat: number;
   lng: number;
   mainImage: string | null;
+  sponsoredUntil?: string | null;
 };
 
 type MapBounds = {
