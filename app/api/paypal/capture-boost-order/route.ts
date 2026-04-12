@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: "Mídia do Instagram não encontrada para impulsionar." }, { status: 404 });
         }
         sourceId = igSession.publishedMediaId;
-    } else {
+    } else if (platform === "facebook") {
         const fbSession = await prisma.facebookFeedSession.findFirst({
             where: { listingId: Number(propertyId), status: "PUBLISHED" },
             orderBy: { createdAt: "desc" }
@@ -77,6 +77,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: "Publicação no Facebook não encontrada para impulsionar." }, { status: 404 });
         }
         sourceId = fbSession.publishedPostId;
+    } else {
+        // "meta" unfied platform
+        sourceId = `Prop_${propertyId}`; // Dummy reference ID since we generate dark post from DB images
     }
 
     const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID;
@@ -116,11 +119,11 @@ export async function POST(req: NextRequest) {
 
     const targeting = regionKey ? {
        geo_locations: { regions: [{ key: regionKey }] },
-       publisher_platforms: [platform === "instagram" ? "instagram" : "facebook"],
-       ...(platform === "instagram" ? { instagram_positions: ["stream", "story"] } : { facebook_positions: ["feed", "video_feeds"] })
+       publisher_platforms: platform === "meta" ? ["facebook", "instagram"] : [platform === "instagram" ? "instagram" : "facebook"],
+       ...(platform === "instagram" ? { instagram_positions: ["stream", "story"] } : platform === "facebook" ? { facebook_positions: ["feed", "video_feeds"] } : { instagram_positions: ["stream", "story"], facebook_positions: ["feed", "video_feeds"] })
     } : {
        geo_locations: { countries: ["BR"] },
-       publisher_platforms: [platform === "instagram" ? "instagram" : "facebook"]
+       publisher_platforms: platform === "meta" ? ["facebook", "instagram"] : [platform === "instagram" ? "instagram" : "facebook"]
     };
 
     // 2. CRIA CAMPANHA

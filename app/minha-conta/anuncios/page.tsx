@@ -195,18 +195,12 @@ export default function MeusAnunciosPage() {
                    
                    
                    <div className="flex w-full gap-2 mt-2 flex-wrap sm:flex-nowrap">
-                      {portfolioSession && !(metaPortfolioBoostedUntil && new Date(metaPortfolioBoostedUntil) > new Date()) && (
-                        <Link href={`/minha-conta/anuncios/0/turbinar?platform=instagram`} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-indigo-500/40 bg-gradient-to-r from-purple-500/10 to-indigo-500/10 px-4 py-3 text-xs sm:text-sm font-semibold text-indigo-300 hover:from-purple-500/20 hover:to-indigo-500/20 transition-colors shadow-lg shadow-indigo-500/5">
-                          <Rocket size={16} />
-                          Turbinar Insta
-                        </Link>
-                      )}
-                      {facebookPortfolioSession && !(metaPortfolioBoostedUntil && new Date(metaPortfolioBoostedUntil) > new Date()) && (
-                        <Link href={`/minha-conta/anuncios/0/turbinar?platform=facebook`} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-indigo-500/40 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 px-4 py-3 text-xs sm:text-sm font-semibold text-blue-300 hover:from-blue-500/20 hover:to-indigo-500/20 transition-colors shadow-lg shadow-blue-500/5">
-                          <Rocket size={16} />
-                          Turbinar Face
-                        </Link>
-                      )}
+                       {(portfolioSession || facebookPortfolioSession) && !(metaPortfolioBoostedUntil && new Date(metaPortfolioBoostedUntil) > new Date()) && (
+                         <Link href={`/minha-conta/anuncios/0/turbinar?platform=meta`} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-indigo-500/40 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 px-4 py-3 text-xs sm:text-sm font-semibold text-indigo-300 hover:from-blue-500/20 hover:to-purple-500/20 transition-colors shadow-lg shadow-indigo-500/5">
+                           <Rocket size={16} />
+                           Turbinar Meta Ads
+                         </Link>
+                       )}
                       {!(googlePortfolioBoostedUntil && new Date(googlePortfolioBoostedUntil) > new Date()) && (
                         <Link href={`/minha-conta/anuncios/0/turbinar?platform=google`} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 px-4 py-3 text-xs sm:text-sm font-semibold text-emerald-300 hover:from-emerald-500/20 hover:to-teal-500/20 transition-colors shadow-lg shadow-emerald-500/5">
                           <Rocket size={16} />
@@ -368,16 +362,10 @@ export default function MeusAnunciosPage() {
                       </div>
 
                       <div className="flex gap-2 flex-wrap sm:flex-nowrap">
-                        {isPublished && !(property.metaBoostedUntil && new Date(property.metaBoostedUntil) > new Date()) && (
-                          <Link href={`/minha-conta/anuncios/${property.id}/turbinar?platform=instagram`} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-indigo-500/40 bg-gradient-to-r from-purple-500/10 to-indigo-500/10 px-4 py-3 text-xs font-semibold text-indigo-300 hover:from-purple-500/20 hover:to-indigo-500/20 transition-colors shadow-lg shadow-indigo-500/5">
+                        {(isPublished || facebookPosts.find(p => p.listingId === property.id)) && !(property.metaBoostedUntil && new Date(property.metaBoostedUntil) > new Date()) && (
+                          <Link href={`/minha-conta/anuncios/${property.id}/turbinar?platform=meta`} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-indigo-500/40 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 px-4 py-3 text-xs font-semibold text-indigo-300 hover:from-blue-500/20 hover:to-purple-500/20 transition-colors shadow-lg shadow-indigo-500/5">
                              <Rocket size={14} />
-                             Insta Ads
-                          </Link>
-                        )}
-                        {facebookPosts.find(p => p.listingId === property.id) && !(property.metaBoostedUntil && new Date(property.metaBoostedUntil) > new Date()) && (
-                          <Link href={`/minha-conta/anuncios/${property.id}/turbinar?platform=facebook`} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-indigo-500/40 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 px-4 py-3 text-xs font-semibold text-indigo-300 hover:from-blue-500/20 hover:to-indigo-500/20 transition-colors shadow-lg shadow-indigo-500/5">
-                             <Rocket size={14} />
-                             Face Ads
+                             Meta Ads
                           </Link>
                         )}
                         
