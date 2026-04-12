@@ -18,6 +18,7 @@ type PropertyItem = {
   googleBoostedUntil?: string | null;
   metaBoostedUntil?: string | null;
   sponsoredUntil?: string | null;
+  offers?: any[];
 };
 
 export default function MeusAnunciosPage() {
@@ -307,9 +308,15 @@ export default function MeusAnunciosPage() {
 
                     <Link
                       href={`/minha-conta/anuncios/${property.id}/ofertas`}
-                      className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white hover:bg-white/10"
+                      className={`rounded-2xl border px-4 py-3 text-sm transition-colors ${
+                        property.offers && property.offers.length > 0
+                          ? "border-emerald-500 bg-emerald-600 font-bold text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-500"
+                          : "border-white/10 bg-white/5 text-white hover:bg-white/10"
+                      }`}
                     >
-                      Gerenciar ofertas
+                      {property.offers && property.offers.length > 0 
+                        ? `Gerenciar ofertas (${property.offers.length})` 
+                        : "Gerenciar ofertas"}
                     </Link>
 
                     {!(property.sponsoredUntil && new Date(property.sponsoredUntil) > new Date()) && (
