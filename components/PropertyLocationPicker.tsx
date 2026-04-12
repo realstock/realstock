@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 declare global {
   interface Window {
@@ -12,7 +12,7 @@ type Props = {
   latitude: number | null;
   longitude: number | null;
   onChange: (coords: { latitude: number; longitude: number }) => void;
-  flyToCoords?: { latitude: number; longitude: number } | null;
+  flyToCoords?: { latitude: number; longitude: number; zoomLevel?: number } | null;
 };
 
 export default function PropertyLocationPicker({
@@ -27,6 +27,7 @@ export default function PropertyLocationPicker({
   const selectedPinRef = useRef<any>(null);
   const initializedRef = useRef(false);
   const onChangeRef = useRef(onChange);
+  const [isMapReady, setIsMapReady] = useState(false);
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -65,6 +66,8 @@ export default function PropertyLocationPicker({
         destination: Cesium.Cartesian3.fromDegrees(-39.0, -4.0, 1200000),
         duration: 1.5,
       });
+
+      setIsMapReady(true);
 
       const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
       handlerRef.current = handler;
@@ -166,7 +169,7 @@ export default function PropertyLocationPicker({
   useEffect(() => {
     async function handleFlyTo() {
       const viewer = viewerRef.current;
-      if (!viewer || !flyToCoords) return;
+      if (!viewer || !flyToCoords || !isMapReady) return;
 
       const Cesium = await import("cesium");
 
@@ -174,14 +177,14 @@ export default function PropertyLocationPicker({
         destination: Cesium.Cartesian3.fromDegrees(
           flyToCoords.longitude,
           flyToCoords.latitude,
-          2000
+          flyToCoords.zoomLevel || 2000
         ),
         duration: 1.5,
       });
     }
 
     handleFlyTo();
-  }, [flyToCoords]);
+  }, [flyToCoords, isMapReady]);
 
   return (
     <div className="space-y-3">
