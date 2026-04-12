@@ -2,6 +2,7 @@ import "./globals.css";
 import Providers from "./providers";
 import Header from "@/components/Header";
 import SecurityBlocker from "@/components/SecurityBlocker";
+import Script from "next/script";
 
 export const metadata = {
   title: "RealStock",
@@ -18,6 +19,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
+      <head>
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8662280633716608"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
+      </head>
       <body className="bg-slate-950 text-white">
         <Providers>
           <SecurityBlocker />
