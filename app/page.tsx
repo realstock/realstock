@@ -810,10 +810,10 @@ export default function HomePage() {
         </div>
 
         <a
-          href="mailto:leobatisti@gmail.com"
+          href="mailto:contato@realstock.com.br"
           className="text-slate-300 transition hover:text-white"
         >
-          Contato: leobatisti@gmail.com
+          Contato
         </a>
       </div>
     </footer>
