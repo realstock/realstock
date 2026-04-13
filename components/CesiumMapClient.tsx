@@ -203,7 +203,7 @@ export default function CesiumMapClient({
         boundsTimeoutRef.current = setTimeout(() => {
           viewer.scene.requestRender();
           emitBounds(viewer, Cesium);
-        }, 300);
+        }, 300) as any;
       });
 
       const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);

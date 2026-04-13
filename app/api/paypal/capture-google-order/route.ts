@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { createRealStockGoogleCampaign } from "@/lib/googleAds";
 
 async function getPayPalAccessToken() {
   const base = process.env.PAYPAL_API_BASE!;
@@ -52,12 +53,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Pagamento não concluído. Status: " + captureData.status }, { status: 400 });
     }
 
-    // 2. MOCK / FALLBACK GOOGLE ADS API
-    // As chaves da API do Google Ads serão implementadas no futuro, por enquanto geramos IDs de mock
-    // Baseado na aprovação do plano (Fallback Mode)
-    const mockCampaignId = `MOCK_G_CAMP_${Date.now()}`;
-    const mockAdGroupId = `MOCK_G_ADG_${Date.now()}`;
-    
+    // 2. TRUE GOOGLE ADS API
     const user = await prisma.user.findUnique({
       where: { email: session.user.email }
     });
@@ -68,13 +64,36 @@ export async function POST(req: NextRequest) {
 
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://realstock.com.br";
     const targetUrl = Number(propertyId) === 0 ? baseUrl : `${baseUrl}/imovel/${propertyId}`;
+    
+    // Fetch property title for the Ad
+    const property = Number(propertyId) !== 0 
+      ? await prisma.property.findUnique({ where: { id: Number(propertyId) }})
+      : null;
+      
+    const propertyTitle = property ? property.title : "Portfólio Global";
+
+    // Call Real Google Ads Integration
+    const adsResult = await createRealStockGoogleCampaign(
+      Number(propertyId),
+      propertyTitle,
+      Number(dailyBudget),
+      targetUrl
+    );
+
+    let finalCampaignId = adsResult.campaignId || `MOCK_G_CAMP_${Date.now()}`;
+    let finalAdGroupId = adsResult.adGroupId || `MOCK_G_ADG_${Date.now()}`;
+    let finalStatus = adsResult.success ? "ACTIVE" : "ACTIVE_FALLBACK";
+
+    if (!adsResult.success) {
+       console.warn("⚠️ AVISO: Google Ads API falhou ao publicar a campanha (provável pendência de verificação de conta/DSA). Utilizando Fallback Nativo. Erro: ", adsResult.error);
+    }
 
     await prisma.googleAdsSession.create({
       data: {
         listingId: Number(propertyId),
-        campaignId: mockCampaignId,
-        adGroupId: mockAdGroupId,
-        status: "ACTIVE_FALLBACK",
+        campaignId: finalCampaignId,
+        adGroupId: finalAdGroupId,
+        status: finalStatus,
         budget: dailyBudget,
         budgetDays: 5,
         targetUrl: targetUrl
@@ -103,7 +122,7 @@ export async function POST(req: NextRequest) {
        }
     }
 
-    return NextResponse.json({ success: true, googleCampaignId: mockCampaignId, status: "completed_fallback" });
+    return NextResponse.json({ success: true, googleCampaignId: finalCampaignId, status: finalStatus === "ACTIVE" ? "completed" : "completed_fallback" });
 
   } catch (error: any) {
     console.error("CAPTURE GOOGLE ORDER ERROR:", error);

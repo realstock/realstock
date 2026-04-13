@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getGoogleAdsCampaignInsights } from "@/lib/googleAds";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -55,13 +56,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         orderBy: { createdAt: 'desc' }
     });
 
-    // Deterministic Mock Generator based on listingId
-    const seed = listingId + (user.id * 10);
-    const mockMultiplier = isBoosted ? 8 : 1; 
-
-    const generateMock = (base: number, randBase: number) => {
-        return Math.floor(base * mockMultiplier + ((seed * randBase) % (base / 2)));
-    };
+    // Removed the mock generator because we are using real data API now
 
     const insights = {
         instagram: null as any,
@@ -73,26 +68,28 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         try {
             const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
             if (igToken) {
-              const res = await fetch(`https://graph.facebook.com/v19.0/${igSession.publishedMediaId}?fields=like_count,comments_count,insights.metric(impressions,reach,shares,carousel_album_impressions,carousel_album_reach)&access_token=${igToken}`);
-              const data = await res.json();
+              const baseRes = await fetch(`https://graph.facebook.com/v19.0/${igSession.publishedMediaId}?fields=media_type,like_count,comments_count&access_token=${igToken}`);
+              const baseData = await baseRes.json();
               
-              if (data && !data.error) {
-                  const likes = data.like_count || 0;
-                  const comments = data.comments_count || 0;
+              if (baseData && !baseData.error) {
+                  const likes = baseData.like_count || 0;
+                  const comments = baseData.comments_count || 0;
+                  
+                  // Meta API Update: 'views' unifies impressions, plays, and carousel_album_impressions.
+                  const metricNames = "views,reach,shares"; 
                   
                   let impressions = 0;
                   let reach = 0;
                   let shares = 0;
                   
-                  if (data.insights && data.insights.data) {
-                      for (const m of data.insights.data) {
-                          if (m.name === 'impressions' && m.values?.[0]) impressions = m.values[0].value;
-                          if (m.name === 'reach' && m.values?.[0]) reach = m.values[0].value;
-                          if (m.name === 'shares' && m.values?.[0]) shares = m.values[0].value;
-                          
-                          // Carrossel aliases (Instagram)
-                          if (m.name === 'carousel_album_impressions' && m.values?.[0]) impressions = m.values[0].value;
-                          if (m.name === 'carousel_album_reach' && m.values?.[0]) reach = m.values[0].value;
+                  const insRes = await fetch(`https://graph.facebook.com/v19.0/${igSession.publishedMediaId}/insights?metric=${metricNames}&access_token=${igToken}`);
+                  const insData = await insRes.json();
+
+                  if (insData && insData.data) {
+                      for (const m of insData.data) {
+                          if (m.name === 'views') impressions = m.values[0]?.value || 0;
+                          if (m.name === 'reach') reach = m.values[0]?.value || 0;
+                          if (m.name === 'shares') shares = m.values[0]?.value || 0;
                       }
                   }
 
@@ -105,7 +102,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                       publishedDate: igSession.updatedAt
                   };
               } else {
-                  console.warn("IG Graph API Error:", data.error);
+                  console.warn("IG Graph API Base Error:", baseData.error);
               }
             }
         } catch(e) { console.error("Falha ao buscar insights IG", e); }
@@ -165,17 +162,39 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         }
     }
 
-    if (goSession) {
-        // Google Ads specific metrics (Traffic/CPC based)
+    if (goSession && !goSession.campaignId.includes("MOCK")) {
+        // True Google Ads Metrics
+        const adsData = await getGoogleAdsCampaignInsights(goSession.campaignId);
         const budget = Number(goSession.budget);
-        const clicks = Math.floor(budget * 0.8 * generateMock(10, 3) * mockMultiplier);
-        const impressions = clicks * 14;
-        
+
+        if (adsData.success) {
+            insights.google = {
+                clicks: adsData.clicks,
+                impressions: adsData.impressions,
+                ctr: adsData.ctr,
+                cpc: adsData.cpc,
+                budget: budget.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+                activeDays: goSession.budgetDays
+            };
+        } else {
+            // Keep zeros if API fails or campaign is not active yet
+            insights.google = {
+                clicks: 0,
+                impressions: 0,
+                ctr: "0.00",
+                cpc: "R$ 0,00",
+                budget: budget.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+                activeDays: goSession.budgetDays
+            };
+        }
+    } else if (goSession) {
+        // Fallback backward compatibility for older mocked rows
+        const budget = Number(goSession.budget);
         insights.google = {
-            clicks: clicks,
-            impressions: impressions,
-            ctr: ((clicks / (impressions || 1)) * 100).toFixed(2),
-            cpc: (budget / (clicks || 1)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+            clicks: 0,
+            impressions: 0,
+            ctr: "0.00",
+            cpc: "R$ 0,00",
             budget: budget.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
             activeDays: goSession.budgetDays
         };

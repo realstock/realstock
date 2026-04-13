@@ -37,16 +37,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const where: any = {
-      latitude: {
+    const where: any = {};
+
+    // Only restrict by map bounds if the user hasn't explicitly mandated a specific city or neighborhood.
+    // This prevents zooming glitches from hiding properties that belong to the selected location!
+    if (!city && !neighborhood) {
+      where.latitude = {
         gte: Number(south),
         lte: Number(north),
-      },
-      longitude: {
+      };
+      where.longitude = {
         gte: Number(west),
         lte: Number(east),
-      },
-    };
+      };
+    }
 
     if (category) where.category = category;
     if (propertyType) where.propertyType = propertyType;

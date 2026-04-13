@@ -347,6 +347,27 @@ export default function HomePage() {
     loadFilters(stateName, city);
   }, [stateName, city]);
 
+  async function geocodeAndFlyTo(query: string) {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const { boundingbox } = data[0];
+        if (boundingbox) {
+           const [south, north, west, east] = boundingbox;
+           handleClusterZoomRequest({
+             north: parseFloat(north),
+             south: parseFloat(south),
+             east: parseFloat(east),
+             west: parseFloat(west)
+           });
+        }
+      }
+    } catch(e) {
+      console.error("FlyTo geocoding failed", e);
+    }
+  }
+
   async function loadFilteredProperties(currentBounds: MapBounds) {
     try {
       setLoading(true);
@@ -610,8 +631,14 @@ export default function HomePage() {
                   <select
                     value={city}
                     onChange={(e) => {
-                      setCity(e.target.value);
+                      const newCity = e.target.value;
+                      setCity(newCity);
                       setNeighborhood("");
+                      if (newCity) {
+                        geocodeAndFlyTo(`${newCity}, ${stateName || ""}, Brazil`);
+                      } else if (stateName && BRAZIL_STATE_BOUNDS[stateName]) {
+                        handleClusterZoomRequest(BRAZIL_STATE_BOUNDS[stateName]);
+                      }
                     }}
                     className="input"
                     disabled={availableCities.length === 0}
@@ -627,7 +654,15 @@ export default function HomePage() {
                 <Field label="Bairro">
                   <select
                     value={neighborhood}
-                    onChange={(e) => setNeighborhood(e.target.value)}
+                    onChange={(e) => {
+                      const newNeigh = e.target.value;
+                      setNeighborhood(newNeigh);
+                      if (newNeigh) {
+                        geocodeAndFlyTo(`${newNeigh}, ${city || ""}, ${stateName || ""}, Brazil`);
+                      } else if (city) {
+                        geocodeAndFlyTo(`${city}, ${stateName || ""}, Brazil`);
+                      }
+                    }}
                     className="input"
                     disabled={availableNeighborhoods.length === 0}
                   >

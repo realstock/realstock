@@ -79,6 +79,14 @@ export default function Header() {
                       Meu cadastro
                     </Link>
 
+                    <Link
+                      href="/instrucoes"
+                      className="block rounded-xl px-4 py-3 text-sm text-sky-400 hover:bg-white/10"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Como usar o site
+                    </Link>
+
                     {isAdmin && (
                       <>
                         <div className="my-2 h-px bg-white/10" />

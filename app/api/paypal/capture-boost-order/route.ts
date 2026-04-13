@@ -180,73 +180,85 @@ export async function POST(req: NextRequest) {
     creativeForm.append("name", `Criativo Ad Firebase ${sourceId}`);
 
     /* ==============================================================
-       NOVA LÓGICA: CRIA UM ANÚNCIO (DARK POST) ESPELHANDO A PUBLICAÇÃO FB
+       NOVA LÓGICA: CRIA UM ANÚNCIO (DARK POST ESPELHO) OU IMPULSIONA ORGÂNICO
        ============================================================== */
     
-    // Ler a primeira foto diretamente do DB (Muito mais confiável e rápido que o CDN do instagram)
-    let imageUrl = null;
-    if (Number(propertyId) !== 0) {
-        const propWithImgs = await prisma.property.findUnique({
-             where: { id: Number(propertyId) },
-             include: { images: true }
-        });
-        if (propWithImgs?.images?.length) {
-             imageUrl = propWithImgs.images[0].imageUrl;
+    let isOrganicBoost = false;
+
+    if (platform === "instagram" && sourceId && !sourceId.startsWith("Prop_")) {
+        // Meta Docs: Passing source_instagram_media_id is enough to natively boost organic posts
+        creativeForm.append("source_instagram_media_id", sourceId);
+        isOrganicBoost = true;
+    } else if (platform === "facebook" && sourceId && !sourceId.startsWith("Prop_")) {
+        creativeForm.append("object_story_id", sourceId);
+        isOrganicBoost = true;
+    }
+
+    if (!isOrganicBoost) {
+        // Ler a primeira foto diretamente do DB (Muito mais confiável e rápido que o CDN do instagram)
+        let imageUrl = null;
+        if (Number(propertyId) !== 0) {
+            const propWithImgs = await prisma.property.findUnique({
+                 where: { id: Number(propertyId) },
+                 include: { images: true }
+            });
+            if (propWithImgs?.images?.length) {
+                 imageUrl = propWithImgs.images[0].imageUrl;
+            }
+        } else {
+            // Portfólio, puxa o primeiro imóvel do user
+            const firstProp = await prisma.property.findFirst({
+                 where: { ownerId: user.id },
+                 include: { images: true },
+                 orderBy: { createdAt: 'desc' }
+            });
+            if (firstProp?.images?.length) {
+                 imageUrl = firstProp.images[0].imageUrl;
+            }
         }
-    } else {
-        // Portfólio, puxa o primeiro imóvel do user
-        const firstProp = await prisma.property.findFirst({
-             where: { ownerId: user.id },
-             include: { images: true },
-             orderBy: { createdAt: 'desc' }
-        });
-        if (firstProp?.images?.length) {
-             imageUrl = firstProp.images[0].imageUrl;
+
+        if (!imageUrl) {
+            return NextResponse.json({ success: false, error: `Falha ao localizar imagem no banco de dados para criar o anúncio.` }, { status: 500 });
         }
-    }
 
-    if (!imageUrl) {
-        return NextResponse.json({ success: false, error: `Falha ao localizar imagem no banco de dados para criar o anúncio.` }, { status: 500 });
-    }
+        // Download da imagem para gerar o Buffer do Meta Ads Library
+        let imgBuffer: ArrayBuffer | null = null;
+        try {
+            const imgRes = await fetch(imageUrl);
+            imgBuffer = await imgRes.arrayBuffer();
+        } catch (e) { console.error("Falha ao baixar imagem do Storage", e); }
 
-    // Download da imagem para gerar o Buffer do Meta Ads Library
-    let imgBuffer: ArrayBuffer | null = null;
-    try {
-        const imgRes = await fetch(imageUrl);
-        imgBuffer = await imgRes.arrayBuffer();
-    } catch (e) { console.error("Falha ao baixar imagem do Storage", e); }
-
-    if (!imgBuffer || imgBuffer.byteLength < 100) {
-        return NextResponse.json({ success: false, error: `Falha ao ler bytes da imagem original.` }, { status: 500 });
-    }
-
-    // Converter para Base64 para evitar bug de Blob Boundary no node/nextjs
-    const base64Str = Buffer.from(imgBuffer).toString('base64');
-
-    // Upload imagem na biblioteca de Ad 
-    const imageUploadForm = new URLSearchParams();
-    imageUploadForm.append("bytes", base64Str);
-    imageUploadForm.append("access_token", igToken);
-    
-    const imageRes = await fetch(`${BASE_GRAPH}/${adAccountId}/adimages`, { method: "POST", body: imageUploadForm });
-    const imageData = await imageRes.json();
-
-    let imageHash = "";
-    if (imageData.images && Object.keys(imageData.images).length > 0) {
-        imageHash = imageData.images[Object.keys(imageData.images)[0]].hash;
-    } else {
-        return NextResponse.json({ success: false, error: "Falha ao gerar Ad Image. Mídia indisponível." }, { status: 500 });
-    }
-
-    creativeForm.append("object_story_spec", JSON.stringify({
-        page_id: pageId,
-        link_data: {
-             image_hash: imageHash,
-             link: propertyLink,
-             message: "Confira esta excelente oportunidade que acabou de entrar!"
+        if (!imgBuffer || imgBuffer.byteLength < 100) {
+            return NextResponse.json({ success: false, error: `Falha ao ler bytes da imagem original.` }, { status: 500 });
         }
-    }));
-    /* ============================================================== */
+
+        // Converter para Base64 para evitar bug de Blob Boundary no node/nextjs
+        const base64Str = Buffer.from(imgBuffer).toString('base64');
+
+        // Upload imagem na biblioteca de Ad 
+        const imageUploadForm = new URLSearchParams();
+        imageUploadForm.append("bytes", base64Str);
+        imageUploadForm.append("access_token", igToken);
+        
+        const imageRes = await fetch(`${BASE_GRAPH}/${adAccountId}/adimages`, { method: "POST", body: imageUploadForm });
+        const imageData = await imageRes.json();
+
+        let imageHash = "";
+        if (imageData.images && Object.keys(imageData.images).length > 0) {
+            imageHash = imageData.images[Object.keys(imageData.images)[0]].hash;
+        } else {
+            return NextResponse.json({ success: false, error: "Falha ao gerar Ad Image. Mídia indisponível." }, { status: 500 });
+        }
+
+        creativeForm.append("object_story_spec", JSON.stringify({
+            page_id: pageId,
+            link_data: {
+                 image_hash: imageHash,
+                 link: propertyLink,
+                 message: "Confira esta excelente oportunidade que acabou de entrar!"
+            }
+        }));
+    }
 
     creativeForm.append("access_token", igToken);
 

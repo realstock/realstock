@@ -271,7 +271,7 @@ export default function AnunciarPage() {
   }, [stateName]);
 
   const [neighborhood, setNeighborhood] = useState("");
-  const [flyToCoords, setFlyToCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [flyToCoords, setFlyToCoords] = useState<{ latitude: number; longitude: number; zoomLevel?: number } | null>(null);
   const [street, setStreet] = useState("");
   const [addressNumber, setAddressNumber] = useState("");
   const [zipCode, setZipCode] = useState("");
@@ -316,7 +316,8 @@ export default function AnunciarPage() {
         if (data && data.length > 0) {
           const lat = parseFloat(data[0].lat);
           const lon = parseFloat(data[0].lon);
-          setFlyToCoords({ latitude: lat, longitude: lon });
+          const zoom = city ? 15000 : 700000;
+          setFlyToCoords({ latitude: lat, longitude: lon, zoomLevel: zoom });
         }
       } catch (err) {
         console.error("Erro ao buscar coordenadas geográficas:", err);
