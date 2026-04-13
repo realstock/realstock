@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { prisma } from '@/lib/prisma';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Delay the initialization to prevent Next.js build errors when env is omitted
 
 export async function POST(req: Request) {
   try {
@@ -12,6 +12,8 @@ export async function POST(req: Request) {
     // if (!session || (session.user as any).role !== 'ADMIN') {
     //   return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     // }
+
+    const resend = new Resend(process.env.RESEND_API_KEY || "re_dummy");
 
     const { to, subject, htmlBody, inReplyToId } = await req.json();
 
