@@ -51,7 +51,7 @@ export async function createRealStockGoogleCampaign(
         maximize_clicks: {
            target_spend_micros: microAmount * 5 // Maximize clicks over 5 days
         },
-      },
+      } as any,
     ]);
     const campaignResourceName = campaignRes.results[0].resource_name;
 
@@ -93,8 +93,8 @@ export async function createRealStockGoogleCampaign(
       },
     ]);
 
-    const campaignId = campaignResourceName.split('/')[3];
-    const adGroupId = adGroupResourceName.split('/')[3];
+    const campaignId = campaignResourceName?.split('/')[3] || "";
+    const adGroupId = adGroupResourceName?.split('/')[3] || "";
 
     return { campaignId, adGroupId, success: true };
   } catch (err: any) {
@@ -122,7 +122,7 @@ export async function getGoogleAdsCampaignInsights(campaignId: string) {
     const result = await customer.query(query);
 
     if (result && result.length > 0) {
-      const metrics = result[0].metrics;
+      const metrics = result[0].metrics as any;
       
       return {
         success: true,

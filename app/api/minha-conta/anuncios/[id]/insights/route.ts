@@ -162,7 +162,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         }
     }
 
-    if (goSession && !goSession.campaignId.includes("MOCK")) {
+    if (goSession && goSession.campaignId && !goSession.campaignId.includes("MOCK")) {
         // True Google Ads Metrics
         const adsData = await getGoogleAdsCampaignInsights(goSession.campaignId);
         const budget = Number(goSession.budget);
