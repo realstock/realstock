@@ -181,6 +181,21 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                                 {insights.google.cpc}
                             </div>
                         </div>
+
+                        {/* Prévia do Google Search */}
+                        <div className="bg-white p-5 rounded-2xl col-span-2 mt-2 shadow-inner">
+                            <div className="text-xs text-slate-500 font-semibold mb-3 border-b pb-2">PRÉVIA DE COMO SEU CLIENTE VÊ NA BUSCA DO GOOGLE:</div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="font-bold text-black border border-black rounded px-1 text-[10px]">Patrocinado</span>
+                                <span className="text-slate-800 text-xs">www.realstock.com.br › imovel › {id}</span>
+                            </div>
+                            <h3 className="text-[#1a0dab] font-normal text-[20px] leading-tight hover:underline cursor-pointer">
+                                Lindo Imóvel Disponível - {title.length > 27 ? title.substring(0,27) + "..." : title} - Agende sua visita na RealStock
+                            </h3>
+                            <p className="text-[#4d5156] text-[14px] leading-snug mt-1">
+                                Venha conhecer esta excelente oportunidade exclusiva da RealStock. Agende online. Opção imperdível para compra ou locação. Fale com um de nossos corretores experts.
+                            </p>
+                        </div>
                     </div>
                 </div>
             )}
