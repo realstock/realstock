@@ -114,6 +114,7 @@ export async function getGoogleAdsCampaignInsights(campaignId: string) {
         metrics.impressions,
         metrics.ctr,
         metrics.average_cpc,
+        metrics.cost_micros,
         campaign.status
       FROM campaign
       WHERE campaign.id = ${campaignId}
@@ -129,8 +130,10 @@ export async function getGoogleAdsCampaignInsights(campaignId: string) {
         clicks: Number(metrics.clicks) || 0,
         impressions: Number(metrics.impressions) || 0,
         ctr: Number(metrics.ctr) ? (Number(metrics.ctr) * 100).toFixed(2) : "0.00",
-        // average_cpc is in micros
-        cpc: Number(metrics.average_cpc) ? (Number(metrics.average_cpc) / 1000000).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "R$ 0,00"
+        // cost and cpc are in micros
+        cost: Number(metrics.cost_micros) ? (Number(metrics.cost_micros) / 1000000) : 0,
+        cpc: Number(metrics.average_cpc) ? (Number(metrics.average_cpc) / 1000000) : 0,
+        status: result[0].campaign?.status || "UNKNOWN"
       };
     }
 

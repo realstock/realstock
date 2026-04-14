@@ -106,6 +106,12 @@ export default function AdminDashboardClient() {
                 />
 
                 <QuickAction
+                  title="Auditoria Google Ads"
+                  description="Rastreie os custos reais, CTR e CPC da rede de pesquisa via GAQL."
+                  href="/admin/google-ads-costs"
+                />
+
+                <QuickAction
                   title="Taxas e Serviços"
                   description="Cadastre taxas, serviços do site e defina qual taxa será aplicada a cada serviço."
                   href="/admin/taxas-servicos"
