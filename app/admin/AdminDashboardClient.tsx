@@ -97,7 +97,12 @@ export default function AdminDashboardClient() {
                   title="Patrocínios Ativos"
                   description="Visualize e gerencie os imóveis com patrocínio Premium Global em andamento."
                   href="/admin/patrocinados"
-                  icon={<GemIcon />}
+                />
+
+                <QuickAction
+                  title="Auditoria Meta Ads"
+                  description="Rastreie os custos, impressões e cliques consolidados dos anúncios."
+                  href="/admin/meta-ads-costs"
                 />
 
                 <QuickAction
