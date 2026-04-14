@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
     // 2. CRIA CAMPANHA
     const campaignForm = new URLSearchParams();
     campaignForm.append("name", `RealStock Boost Propriedade ${property.id}`);
-    campaignForm.append("objective", "OUTCOME_ENGAGEMENT");
+    campaignForm.append("objective", "OUTCOME_TRAFFIC"); // Voltar para TRAFFIC para escapar da restrição do HOUSING
     campaignForm.append("status", "ACTIVE");
     campaignForm.append("special_ad_categories", '["HOUSING"]'); // Requisito do FB para imóveis
     campaignForm.append("special_ad_category_country", '["BR"]'); // Requisito do FB para Categoria Especial
