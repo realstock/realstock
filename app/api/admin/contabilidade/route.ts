@@ -31,6 +31,13 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
+    const isPaypalSandboxGlobal = process.env.PAYPAL_API_BASE?.includes("sandbox");
+
+    const mappedTransactions: any[] = transactions.map(tx => ({
+       ...tx,
+       isSandbox: (tx.category === "PAYPAL_FEE" || tx.category === "ADS_BOOST" || tx.description.includes("PayPal")) ? isPaypalSandboxGlobal : false
+    }));
+
     let totalRevenue = 0;
     let totalExpense = 0;
 
@@ -51,7 +58,7 @@ export async function GET(req: NextRequest) {
       OTHER: 0,
     };
 
-    transactions.forEach((tx) => {
+    mappedTransactions.forEach((tx) => {
       const amount = Number(tx.amount);
       if (tx.type === "REVENUE") {
         totalRevenue += amount;
@@ -61,6 +68,49 @@ export async function GET(req: NextRequest) {
         breakdownExpenses[tx.category] = (breakdownExpenses[tx.category] || 0) + amount;
       }
     });
+
+    // Virtual Expenses for Ad Campaigns
+    const metaAds = await prisma.metaAdsSession.findMany({
+       where: { createdAt: { gte: startDate, lt: endDate } }
+    });
+    
+    metaAds.forEach(ad => {
+       const cost = Number(ad.budget) * ad.budgetDays;
+       totalExpense += cost;
+       breakdownExpenses["META_ADS"] += cost;
+       mappedTransactions.push({
+          id: `virtual_meta_${ad.id}`,
+          type: "EXPENSE",
+          category: "META_ADS",
+          amount: cost,
+          description: `Gasto com Meta Ads (${ad.campaignId?.startsWith("MOCK") ? "Simulado" : "Real"})`,
+          referenceId: ad.campaignId,
+          createdAt: ad.createdAt,
+          isSandbox: false
+       });
+    });
+
+    const googleAds = await prisma.googleAdsSession.findMany({
+       where: { createdAt: { gte: startDate, lt: endDate } }
+    });
+
+    googleAds.forEach(ad => {
+       const cost = Number(ad.budget) * ad.budgetDays;
+       totalExpense += cost;
+       breakdownExpenses["GOOGLE_ADS"] += cost;
+       mappedTransactions.push({
+          id: `virtual_google_${ad.id}`,
+          type: "EXPENSE",
+          category: "GOOGLE_ADS",
+          amount: cost,
+          description: `Gasto com Google Ads (${ad.campaignId?.startsWith("MOCK") ? "Simulado" : "Real"})`,
+          referenceId: ad.campaignId,
+          createdAt: ad.createdAt,
+          isSandbox: false
+       });
+    });
+    
+    mappedTransactions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     return NextResponse.json({
       success: true,
@@ -74,7 +124,7 @@ export async function GET(req: NextRequest) {
         revenues: breakdownRevenues,
         expenses: breakdownExpenses,
       },
-      transactions,
+      transactions: mappedTransactions,
     });
   } catch (error: any) {
     console.error("GET ACCOUNTING ERROR:", error);

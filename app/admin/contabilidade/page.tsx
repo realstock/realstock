@@ -30,6 +30,7 @@ export default function ContabilidadePage() {
   const [year, setYear] = useState(new Date().getFullYear());
 
   const [showModal, setShowModal] = useState(false);
+  const [showTransactionsModal, setShowTransactionsModal] = useState<"REVENUE" | "EXPENSE" | null>(null);
   const [form, setForm] = useState({
     type: "EXPENSE",
     category: "VERCEL",
@@ -118,25 +119,31 @@ export default function ContabilidadePage() {
         {data && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-gradient-to-br from-emerald-500/20 to-teal-500/5 border border-emerald-500/20 p-6 rounded-3xl shadow-xl flex items-center gap-4">
-                 <div className="w-14 h-14 bg-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-400">
+              <button 
+                 onClick={() => setShowTransactionsModal("REVENUE")} 
+                 className="text-left bg-gradient-to-br from-emerald-500/20 to-teal-500/5 border border-emerald-500/20 p-6 rounded-3xl shadow-xl flex items-center gap-4 hover:border-emerald-500/50 transition-colors cursor-pointer group"
+              >
+                 <div className="w-14 h-14 bg-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
                     <ArrowUpRight size={28} />
                  </div>
                  <div>
-                    <div className="text-slate-400 text-sm font-semibold uppercase tracking-wider">Receitas</div>
+                    <div className="text-slate-400 text-sm font-semibold uppercase tracking-wider">Receitas (Ver Detalhes)</div>
                     <div className="text-2xl font-black text-emerald-400">{formatBRL(data.summary.totalRevenue)}</div>
                  </div>
-              </div>
+              </button>
               
-              <div className="bg-gradient-to-br from-rose-500/20 to-pink-500/5 border border-rose-500/20 p-6 rounded-3xl shadow-xl flex items-center gap-4">
-                 <div className="w-14 h-14 bg-rose-500/20 rounded-2xl flex items-center justify-center text-rose-400">
+              <button 
+                 onClick={() => setShowTransactionsModal("EXPENSE")} 
+                 className="text-left bg-gradient-to-br from-rose-500/20 to-pink-500/5 border border-rose-500/20 p-6 rounded-3xl shadow-xl flex items-center gap-4 hover:border-rose-500/50 transition-colors cursor-pointer group"
+              >
+                 <div className="w-14 h-14 bg-rose-500/20 rounded-2xl flex items-center justify-center text-rose-400 group-hover:scale-110 transition-transform">
                     <ArrowDownRight size={28} />
                  </div>
                  <div>
-                    <div className="text-slate-400 text-sm font-semibold uppercase tracking-wider">Despesas</div>
+                    <div className="text-slate-400 text-sm font-semibold uppercase tracking-wider">Despesas (Ver Detalhes)</div>
                     <div className="text-2xl font-black text-rose-400">{formatBRL(data.summary.totalExpense)}</div>
                  </div>
-              </div>
+              </button>
 
               <div className={`bg-gradient-to-br p-6 border rounded-3xl shadow-xl flex items-center gap-4 ${data.summary.netProfit >= 0 ? "from-indigo-500/20 to-blue-500/5 border-indigo-500/30" : "from-red-600/20 border-red-500/30"}`}>
                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${data.summary.netProfit >= 0 ? "bg-indigo-500/20 text-indigo-400" : "bg-red-500/20 text-red-400"}`}>
@@ -217,6 +224,65 @@ export default function ContabilidadePage() {
                            <button type="submit" disabled={submitting} className="flex-1 py-3 px-4 rounded-xl font-semibold bg-indigo-500 hover:bg-indigo-400 text-white transition-all text-sm">Salvar Despesa</button>
                         </div>
                      </form>
+                  </div>
+               </div>
+            )}
+
+            {/* Modal de Detalhamento das Transações (Caixa) */}
+            {showTransactionsModal && (
+               <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                  <div className="w-full max-w-3xl bg-slate-900 border border-white/10 rounded-3xl p-6 shadow-2xl max-h-[85vh] flex flex-col">
+                     <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-bold flex items-center gap-2">
+                           {showTransactionsModal === "REVENUE" ? <ArrowUpRight className="text-emerald-400"/> : <ArrowDownRight className="text-rose-400"/>}
+                           {showTransactionsModal === "REVENUE" ? "Extrato de Receitas" : "Extrato de Despesas"}
+                        </h2>
+                        <button onClick={() => setShowTransactionsModal(null)} className="text-slate-400 hover:text-white">✕ Fechar</button>
+                     </div>
+                     
+                     <div className="flex-1 overflow-y-auto pr-2 space-y-3">
+                        {data.transactions
+                           .filter((tx: any) => tx.type === showTransactionsModal)
+                           .map((tx: any) => (
+                              <div key={tx.id} className="bg-black/40 p-4 rounded-xl border border-white/5 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                                 <div>
+                                    <div className="font-semibold text-slate-200">
+                                       {CATEGORIES[tx.category] || tx.category} 
+                                    </div>
+                                    <div className="text-slate-400 text-sm mt-1">{tx.description || "Pagamento Automático"}</div>
+                                    <div className="text-xs text-slate-500 font-mono mt-1">Ref: {tx.referenceId || tx.id}</div>
+                                 </div>
+                                 <div className="flex flex-col sm:items-end text-left sm:text-right">
+                                    <span className={`text-lg font-black ${tx.type === "REVENUE" ? "text-emerald-400" : "text-rose-400"}`}>
+                                       {formatBRL(Number(tx.amount))}
+                                    </span>
+                                    <span className="text-xs text-slate-500 mt-1">{new Date(tx.createdAt).toLocaleString("pt-BR")}</span>
+                                    
+                                    {tx.isSandbox && tx.type === "REVENUE" && (
+                                       <span className="mt-2 inline-block px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-widest bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                                          Sandbox Tester
+                                       </span>
+                                    )}
+                                    {!tx.isSandbox && tx.type === "REVENUE" && tx.category !== "OTHER" && (
+                                       <span className="mt-2 inline-block px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                          Dinheiro Real
+                                       </span>
+                                    )}
+                                    {(tx.category === "META_ADS" || tx.category === "GOOGLE_ADS") && tx.type === "EXPENSE" && (
+                                       <span className="mt-2 inline-block px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-widest bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                                          Verba Ad Campaign
+                                       </span>
+                                    )}
+                                 </div>
+                              </div>
+                           ))}
+                        
+                        {data.transactions.filter((tx: any) => tx.type === showTransactionsModal).length === 0 && (
+                           <div className="text-center py-8 text-slate-500">
+                              Nenhuma transação registrada neste período.
+                           </div>
+                        )}
+                     </div>
                   </div>
                </div>
             )}
