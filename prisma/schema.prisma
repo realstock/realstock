@@ -8,16 +8,6 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-enum UserRole {
-  USER
-  ADMIN
-}
-
-enum FeeType {
-  FIXED
-  PERCENTAGE
-}
-
 model InstagramPreviewSession {
   id               String   @id @default(cuid())
   listingId        Int
@@ -48,29 +38,28 @@ model FacebookFeedSession {
 }
 
 model User {
-  id          Int        @id @default(autoincrement())
-  email       String     @unique
-  instagram   String?
-  password    String
-  avatar      String?
-  bio         String?
-  city        String?
-  country     String?
-  cpfCnpj     String?
-  createdAt   DateTime   @default(now())
-  name        String
-  paypalEmail String?
-  phone       String?
-  role        String     @default("USER")
-  state                   String?
-  updatedAt               DateTime   @updatedAt
-  verified                Boolean    @default(false)
+  id                          Int        @id @default(autoincrement())
+  email                       String     @unique
+  instagram                   String?
+  password                    String
+  avatar                      String?
+  bio                         String?
+  city                        String?
+  country                     String?
+  cpfCnpj                     String?
+  createdAt                   DateTime   @default(now())
+  name                        String
+  paypalEmail                 String?
+  phone                       String?
+  role                        String     @default("USER")
+  state                       String?
+  updatedAt                   DateTime   @updatedAt
+  verified                    Boolean    @default(false)
   portfolioBoostedUntil       DateTime?  @map("portfolio_boosted_until")
   googlePortfolioBoostedUntil DateTime?  @map("google_portfolio_boosted_until")
   metaPortfolioBoostedUntil   DateTime?  @map("meta_portfolio_boosted_until")
-
-  offers      Offer[]    @relation("BuyerOffers")
-  properties  Property[]
+  offers                      Offer[]    @relation("BuyerOffers")
+  properties                  Property[]
 
   @@map("users")
 }
@@ -115,9 +104,8 @@ model Property {
   googleBoostedUntil  DateTime?       @map("google_boosted_until")
   metaBoostedUntil    DateTime?       @map("meta_boosted_until")
   sponsoredUntil      DateTime?       @map("sponsored_until")
-
-  owner               User            @relation(fields: [ownerId], references: [id])
   offers              Offer[]
+  owner               User            @relation(fields: [ownerId], references: [id])
   images              PropertyImage[]
 
   @@map("properties")
@@ -129,7 +117,6 @@ model PropertyImage {
   imageUrl   String   @map("image_url")
   sortOrder  Int      @default(0) @map("sort_order")
   createdAt  DateTime @default(now()) @map("created_at")
-
   property   Property @relation(fields: [propertyId], references: [id])
 
   @@map("property_images")
@@ -142,7 +129,6 @@ model Offer {
   offerPrice Decimal  @map("offer_price")
   status     String   @default("open")
   createdAt  DateTime @default(now()) @map("created_at")
-
   buyer      User     @relation("BuyerOffers", fields: [buyerId], references: [id])
   property   Property @relation(fields: [propertyId], references: [id])
 
@@ -186,40 +172,110 @@ model SiteFee {
   isActive    Boolean       @default(true) @map("is_active")
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
-
   services    SiteService[]
 
   @@map("site_fees")
 }
 
 model SiteService {
-  id          Int        @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   name        String
-  slug        String     @unique
+  slug        String   @unique
   description String?
-  isActive    Boolean    @default(true) @map("is_active")
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  feeId       Int?       @map("fee_id")
-
-  fee         SiteFee?   @relation(fields: [feeId], references: [id])
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  feeId       Int?     @map("fee_id")
+  fee         SiteFee? @relation(fields: [feeId], references: [id])
 
   @@index([feeId])
   @@map("site_services")
 }
+
 model GoogleAdsSession {
-  id             String   @id @default(cuid())
-  listingId      Int      // 0 = portfolio, >0 = property
-  campaignId     String?
-  adGroupId      String?
-  status         String   @default("ACTIVE")
-  budget         Decimal
-  targetUrl      String
-  budgetDays     Int
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id         String   @id @default(cuid())
+  listingId  Int
+  campaignId String?
+  adGroupId  String?
+  status     String   @default("ACTIVE")
+  budget     Decimal
+  targetUrl  String
+  budgetDays Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@map("google_ads_sessions")
+}
+
+model EmailMessage {
+  id          String         @id @default(cuid())
+  threadId    String?
+  sender      String
+  recipient   String
+  subject     String?
+  htmlBody    String?
+  textBody    String?
+  status      EmailStatus    @default(UNREAD)
+  direction   EmailDirection @default(INBOUND)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  inReplyToId String?
+  inReplyTo   EmailMessage?  @relation("EmailReplies", fields: [inReplyToId], references: [id])
+  replies     EmailMessage[] @relation("EmailReplies")
+}
+
+model AdminSponsoredPublication {
+  id                 String    @id @default(cuid())
+  name               String?
+  propertyIds        Json
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  googleBoostedUntil DateTime?
+  metaBoostedUntil   DateTime?
+
+  @@map("admin_sponsored_publications")
+}
+
+model FinancialTransaction {
+  id          String              @id @default(cuid())
+  type        TransactionType
+  category    TransactionCategory
+  amount      Decimal             @db.Decimal(10, 2)
+  currency    String              @default("BRL")
+  description String?
+  referenceId String?
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  @@map("financial_transactions")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum TransactionType {
+  REVENUE
+  EXPENSE
+}
+
+enum TransactionCategory {
+  SPONSOR
+  OFFER
+  POSTS
+  ADS_BOOST
+  PAYPAL_FEE
+  META_ADS
+  GOOGLE_ADS
+  VERCEL
+  SUPABASE
+  OTHER
+}
+
+enum FeeType {
+  FIXED
+  PERCENTAGE
 }
 
 enum EmailDirection {
@@ -232,34 +288,16 @@ enum EmailStatus {
   READ
 }
 
-model EmailMessage {
-  id        String   @id @default(cuid())
-  threadId  String?
-  sender    String
-  recipient String
-  subject   String?
-  htmlBody  String?
-  textBody  String?
-  status    EmailStatus @default(UNREAD)
-  direction EmailDirection @default(INBOUND)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  // self relation for threading replies easily
-  inReplyToId String?
-  inReplyTo   EmailMessage?  @relation("EmailReplies", fields: [inReplyToId], references: [id])
-  replies     EmailMessage[] @relation("EmailReplies")
-}
+model MetaAdsSession {
+  id         String   @id @default(cuid())
+  listingId  Int
+  campaignId String?
+  status     String   @default("IN_PROCESS")
+  budget     Decimal
+  budgetDays Int
+  platform   String   @default("meta")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-model AdminSponsoredPublication {
-  id           String   @id @default(cuid())
-  name         String?
-  propertyIds  Json     // Array of number
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  
-  googleBoostedUntil DateTime?
-  metaBoostedUntil   DateTime?
-
-  @@map("admin_sponsored_publications")
+  @@map("meta_ads_sessions")
 }

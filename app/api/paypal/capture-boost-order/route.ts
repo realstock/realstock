@@ -44,6 +44,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Pagamento não concluído." }, { status: 400 });
     }
 
+    // Accounting Logic
+    try {
+        const captureInfo = captureData.purchase_units?.[0]?.payments?.captures?.[0];
+        if (captureInfo && captureInfo.seller_receivable_breakdown) {
+            const grossAmount = parseFloat(captureInfo.seller_receivable_breakdown.gross_amount.value);
+            const feeAmount = parseFloat(captureInfo.seller_receivable_breakdown.paypal_fee.value);
+
+            await prisma.financialTransaction.createMany({
+                data: [
+                    {
+                        type: "REVENUE",
+                        category: "ADS_BOOST",
+                        amount: grossAmount,
+                        description: `Impulsionamento Meta Ads (Imóvel #${propertyId})`,
+                        referenceId: orderID,
+                    },
+                    {
+                        type: "EXPENSE",
+                        category: "PAYPAL_FEE",
+                        amount: feeAmount,
+                        description: `Tarifa PayPal (Boost Meta)`,
+                        referenceId: orderID,
+                    }
+                ]
+            });
+        }
+    } catch (finErr) {
+        console.error("FINANCE LOGGING ERROR:", finErr);
+    }
+
     const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!user) return NextResponse.json({ success: false, error: "Usuário não encontrado." }, { status: 404 });
 
@@ -120,7 +150,7 @@ export async function POST(req: NextRequest) {
     const targeting = regionKey ? {
        geo_locations: { regions: [{ key: regionKey }] },
        publisher_platforms: platform === "meta" ? ["facebook", "instagram"] : [platform === "instagram" ? "instagram" : "facebook"],
-       ...(platform === "instagram" ? { instagram_positions: ["stream", "story"] } : platform === "facebook" ? { facebook_positions: ["feed", "video_feeds"] } : { instagram_positions: ["stream", "story"], facebook_positions: ["feed", "video_feeds"] })
+       ...(platform === "instagram" ? { instagram_positions: ["stream", "story"] } : platform === "facebook" ? { facebook_positions: ["feed"] } : { instagram_positions: ["stream", "story"], facebook_positions: ["feed"] })
     } : {
        geo_locations: { countries: ["BR"] },
        publisher_platforms: platform === "meta" ? ["facebook", "instagram"] : [platform === "instagram" ? "instagram" : "facebook"]
@@ -180,15 +210,39 @@ export async function POST(req: NextRequest) {
     creativeForm.append("name", `Criativo Ad Firebase ${sourceId}`);
 
     /* ==============================================================
-       NOVA LÓGICA: CRIA UM ANÚNCIO (DARK POST ESPELHO) OU IMPULSIONA ORGÂNICO
+       NOVA LÓGICA: IMPULSIONAMENTO 100% NATIVO OU DARK POST
        ============================================================== */
     
     let isOrganicBoost = false;
 
     if (platform === "instagram" && sourceId && !sourceId.startsWith("Prop_")) {
-        // Meta Docs: Passing source_instagram_media_id is enough to natively boost organic posts
-        creativeForm.append("source_instagram_media_id", sourceId);
-        isOrganicBoost = true;
+        // Resgatar obrigatoriamente o instagram_actor_id da página
+        let igActorId = "";
+        try {
+            const pageRes = await fetch(`${BASE_GRAPH}/${pageId}?fields=instagram_business_account&access_token=${igToken}`);
+            const pageData = await pageRes.json();
+            if (pageData.instagram_business_account?.id) {
+                igActorId = pageData.instagram_business_account.id;
+            }
+        } catch (e) {
+            console.error("Falha ao puxar instagram_business_account", e);
+        }
+
+        if (igActorId) {
+            creativeForm.append("object_story_spec", JSON.stringify({
+                 page_id: pageId,
+                 instagram_actor_id: igActorId,
+                 source_instagram_media_id: sourceId
+            }));
+            isOrganicBoost = true;
+        } else {
+             // Fallback se não achar conta IG
+             creativeForm.append("object_story_spec", JSON.stringify({
+                 page_id: pageId
+             }));
+             creativeForm.append("source_instagram_media_id", sourceId);
+             isOrganicBoost = true;
+        }
     } else if (platform === "facebook" && sourceId && !sourceId.startsWith("Prop_")) {
         creativeForm.append("object_story_id", sourceId);
         isOrganicBoost = true;
@@ -284,6 +338,17 @@ export async function POST(req: NextRequest) {
         console.error("ERRO FINAL ANUNCIO FB", adData);
         return NextResponse.json({ success: false, error: "Anúncio recusado: " + (adData.error?.message||"") }, { status: 500 });
     }
+
+    await prisma.metaAdsSession.create({
+        data: {
+             listingId: Number(propertyId),
+             campaignId: campaignId,
+             status: "IN_PROCESS",
+             budget: Number(dailyBudget) * 5,
+             budgetDays: 5,
+             platform: "meta"
+        }
+    });
 
     if (Number(propertyId) === 0) {
         await prisma.user.update({

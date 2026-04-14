@@ -53,6 +53,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Pagamento não concluído. Status: " + captureData.status }, { status: 400 });
     }
 
+    // Accounting Logic
+    try {
+        const captureInfo = captureData.purchase_units?.[0]?.payments?.captures?.[0];
+        if (captureInfo && captureInfo.seller_receivable_breakdown) {
+            const grossAmount = parseFloat(captureInfo.seller_receivable_breakdown.gross_amount.value);
+            const feeAmount = parseFloat(captureInfo.seller_receivable_breakdown.paypal_fee.value);
+
+            await prisma.financialTransaction.createMany({
+                data: [
+                    {
+                        type: "REVENUE",
+                        category: "ADS_BOOST",
+                        amount: grossAmount,
+                        description: `Impulsionamento Google Ads (Imóvel #${propertyId})`,
+                        referenceId: orderID,
+                    },
+                    {
+                        type: "EXPENSE",
+                        category: "PAYPAL_FEE",
+                        amount: feeAmount,
+                        description: `Tarifa PayPal (Boost Google)`,
+                        referenceId: orderID,
+                    }
+                ]
+            });
+        }
+    } catch (finErr) {
+        console.error("FINANCE LOGGING ERROR:", finErr);
+    }
+
     // 2. TRUE GOOGLE ADS API
     const user = await prisma.user.findUnique({
       where: { email: session.user.email }

@@ -189,16 +189,32 @@ export default function AdminPatrocinadosPage() {
                       </div>
                     )}
 
-                    <div className="grid grid-cols-[1fr,1fr,auto] gap-2 w-full mt-2">
-                        <Link href={`/admin/patrocinados/${pub.id}/instagram`} className="flex items-center justify-center gap-1 rounded-xl border border-pink-400/20 bg-pink-500/10 py-2 text-xs font-semibold text-pink-300 hover:bg-pink-500/20 transition-colors">
-                          <img src="/icones/instagram.jpg" className="w-4 h-4 rounded" alt="Instagram" /> Insta
-                        </Link>
-                        <Link href={`/admin/patrocinados/${pub.id}/facebook`} className="flex items-center justify-center gap-1 rounded-xl border border-blue-400/20 bg-blue-500/10 py-2 text-xs font-semibold text-blue-300 hover:bg-blue-500/20 transition-colors">
-                          <img src="/icones/facebook.jpeg" className="w-4 h-4 rounded" alt="Facebook" /> Face
-                        </Link>
-                        <Link href={`/admin/patrocinados/${pub.id}/turbinar?platform=google`} className="flex items-center justify-center gap-1 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 py-2 px-3 text-xs font-semibold text-emerald-300 hover:from-emerald-500/20 hover:to-teal-500/20 transition-colors">
-                          <Rocket size={14} /> Google Ads
-                        </Link>
+                    <div className="flex flex-col gap-2 mt-2 w-full">
+                        {(isPubPublished || pub.metaBoostedUntil || pub.googleBoostedUntil) && (
+                           <Link href={`/admin/patrocinados/${pub.id}/insights`} className="flex items-center justify-center gap-1 w-full rounded-xl border border-yellow-500/40 bg-yellow-500/10 py-2 text-xs font-semibold text-yellow-300 hover:bg-yellow-500/20 transition-colors shadow-lg">
+                             <BarChart3 size={14} /> Ver Estatísticas / Insights
+                           </Link>
+                        )}
+                        
+                        <div className="flex flex-wrap gap-2 w-full">
+                            {isPubPublished?.validationReport?.permalink ? (
+                                <a href={isPubPublished.validationReport.permalink} target="_blank" rel="noopener noreferrer" className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-transparent bg-pink-500/10 py-2 text-xs font-semibold text-pink-300 hover:bg-pink-500/20 transition-colors">
+                                  <ExternalLink size={14}/> Ver Post Social
+                                </a>
+                            ) : (
+                                <>
+                                  <Link href={`/admin/patrocinados/${pub.id}/instagram`} className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-pink-400/20 bg-pink-500/10 py-2 text-xs font-semibold text-pink-300 hover:bg-pink-500/20 transition-colors">
+                                    <img src="/icones/instagram.jpg" className="w-4 h-4 rounded" alt="Instagram" /> Insta
+                                  </Link>
+                                  <Link href={`/admin/patrocinados/${pub.id}/facebook`} className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-blue-400/20 bg-blue-500/10 py-2 text-xs font-semibold text-blue-300 hover:bg-blue-500/20 transition-colors">
+                                    <img src="/icones/facebook.jpeg" className="w-4 h-4 rounded" alt="Facebook" /> Face
+                                  </Link>
+                                </>
+                            )}
+                            <Link href={`/admin/patrocinados/${pub.id}/turbinar?platform=google`} className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 py-2 px-3 text-xs font-semibold text-emerald-300 hover:from-emerald-500/20 hover:to-teal-500/20 transition-colors">
+                              <Rocket size={14} /> Google Ads
+                            </Link>
+                        </div>
                     </div>
                   </div>
                 )
@@ -246,25 +262,35 @@ export default function AdminPatrocinadosPage() {
               const expireDate = new Date(property.sponsoredUntil);
               const daysLeft = Math.ceil((expireDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
               const isSelected = selectedIds.includes(property.id);
+              
+              // Verificar se este imóvel já faz parte de algum Lote criado pelas publications atuais
+              const isAlreadyPublished = publications.some((pub: any) => pub.propertyIds?.includes(property.id));
 
               return (
                 <div
                   key={property.id}
                   onClick={() => togglePropertySelection(property.id)}
-                  className={`rounded-2xl cursor-pointer border p-6 relative overflow-hidden group transition-all duration-200 shadow-lg ${isSelected ? 'border-sky-500 bg-sky-900/20 shadow-sky-500/10' : 'border-white/10 bg-gradient-to-b from-white/5 to-slate-900/50 hover:border-white/30'}`}
+                  className={`rounded-2xl cursor-pointer border p-6 relative overflow-hidden group transition-all duration-200 shadow-lg ${
+                     isSelected 
+                       ? 'border-sky-500 bg-sky-900/20 shadow-sky-500/10' 
+                       : isAlreadyPublished
+                         ? 'border-emerald-500/60 bg-gradient-to-b from-emerald-500/10 to-teal-900/20 hover:border-emerald-400/80 shadow-emerald-500/5'
+                         : 'border-white/10 bg-gradient-to-b from-white/5 to-slate-900/50 hover:border-white/30'
+                  }`}
                 >
-                  <div className="absolute top-4 left-4 z-10">
-                     {isSelected ? <CheckSquare className="text-sky-400" size={24} /> : <Square className="text-slate-600 group-hover:text-slate-400" size={24} />}
+                  <div className="absolute top-4 left-4 z-10 bg-slate-950/40 rounded-lg p-0.5 backdrop-blur">
+                     {isSelected ? <CheckSquare className="text-sky-400" size={24} /> : <Square className={isAlreadyPublished ? "text-emerald-500 group-hover:text-emerald-400" : "text-slate-600 group-hover:text-slate-400"} size={24} />}
                   </div>
 
-                  <div className="absolute top-0 right-0 bg-yellow-500 text-yellow-950 text-xs font-black px-3 py-1 rounded-bl-xl shadow flex items-center gap-1">
-                    💎 Ativo
+                  <div className={`absolute top-0 right-0 text-xs font-black px-3 py-1 rounded-bl-xl shadow flex items-center gap-1 ${isAlreadyPublished ? 'bg-emerald-500 text-emerald-950' : 'bg-yellow-500 text-yellow-950'}`}>
+                    {isAlreadyPublished ? <><CheckCircle2 size={12}/> Em Lote</> : <>💎 Ativo</>}
                   </div>
-                  <div className="mb-4 mt-6">
-                    <h3 className={`line-clamp-2 text-xl font-bold transition-colors ${isSelected ? 'text-white' : 'text-slate-200'}`}>
+                  
+                  <div className="mb-4 mt-6 text-center lg:text-left flex flex-col gap-1 items-center lg:items-start">
+                    <h3 className={`line-clamp-2 text-xl font-bold transition-colors ${isSelected ? 'text-white' : isAlreadyPublished ? 'text-emerald-100' : 'text-slate-200'}`}>
                       {property.title}
                     </h3>
-                    <div className="mt-1 flex items-center gap-1 text-sm text-slate-400">
+                    <div className={`mt-1 flex items-center justify-center lg:justify-start gap-1 text-sm ${isAlreadyPublished && !isSelected ? 'text-emerald-300/70' : 'text-slate-400'}`}>
                       <MapPin size={14} />
                       {property.city}, {property.state}
                     </div>
@@ -276,7 +302,7 @@ export default function AdminPatrocinadosPage() {
                        <span className="font-semibold text-slate-300">{property.owner?.name?.split(" ")[0]} (ID: {property.owner?.id})</span>
                     </div>
                     <div className="flex justify-between pt-1">
-                       <span className="text-slate-500 flex items-center gap-1"><CalendarClock size={16} className="text-yellow-500/80"/> Restante</span>
+                       <span className={`flex items-center gap-1 ${isAlreadyPublished && !isSelected ? 'text-emerald-500/50' : 'text-slate-500'}`}><CalendarClock size={16} /> Restante</span>
                        <span className="font-bold text-emerald-400">{daysLeft} dias</span>
                     </div>
                     <div className="text-right text-xs text-slate-500">
@@ -289,7 +315,7 @@ export default function AdminPatrocinadosPage() {
                       href={`/imovel/${property.id}`}
                       target="_blank"
                       onClick={e => e.stopPropagation()}
-                      className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-slate-800 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
+                      className="flex flex-1 items-center justify-center gap-1 rounded-xl bg-slate-800 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 hover:scale-105"
                     >
                       <ExternalLink size={16} /> Ver Anúncio
                     </Link>

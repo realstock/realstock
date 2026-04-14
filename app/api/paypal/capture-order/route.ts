@@ -120,6 +120,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Accounting Logic
+    try {
+        const captureInfo = captureData.purchase_units?.[0]?.payments?.captures?.[0];
+        if (captureInfo && captureInfo.seller_receivable_breakdown) {
+            const grossAmount = parseFloat(captureInfo.seller_receivable_breakdown.gross_amount.value);
+            const feeAmount = parseFloat(captureInfo.seller_receivable_breakdown.paypal_fee.value);
+
+            await prisma.financialTransaction.createMany({
+                data: [
+                    {
+                        type: "REVENUE",
+                        category: "OFFER",
+                        amount: grossAmount,
+                        description: `Aprovação de Oferta (Imóvel #${payment.propertyId})`,
+                        referenceId: orderId,
+                    },
+                    {
+                        type: "EXPENSE",
+                        category: "PAYPAL_FEE",
+                        amount: feeAmount,
+                        description: `Tarifa PayPal (Oferta)`,
+                        referenceId: orderId,
+                    }
+                ]
+            });
+        }
+    } catch (finErr) {
+        console.error("FINANCE LOGGING ERROR:", finErr);
+    }
+
     await prisma.offerPayment.update({
       where: { id: payment.id },
       data: {

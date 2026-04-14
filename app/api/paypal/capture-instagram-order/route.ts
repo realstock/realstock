@@ -59,6 +59,36 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
+    // Accounting Logic
+    try {
+        const captureInfo = captureData.purchase_units?.[0]?.payments?.captures?.[0];
+        if (captureInfo && captureInfo.seller_receivable_breakdown) {
+            const grossAmount = parseFloat(captureInfo.seller_receivable_breakdown.gross_amount.value);
+            const feeAmount = parseFloat(captureInfo.seller_receivable_breakdown.paypal_fee.value);
+
+            await prisma.financialTransaction.createMany({
+                data: [
+                    {
+                        type: "REVENUE",
+                        category: "POSTS",
+                        amount: grossAmount,
+                        description: `Publicação de Imóvel #${propertyId} (Instagram)`,
+                        referenceId: orderID,
+                    },
+                    {
+                        type: "EXPENSE",
+                        category: "PAYPAL_FEE",
+                        amount: feeAmount,
+                        description: `Tarifa PayPal (Post Insta)`,
+                        referenceId: orderID,
+                    }
+                ]
+            });
+        }
+    } catch (finErr) {
+        console.error("FINANCE LOGGING ERROR:", finErr);
+    }
+
     // Payment is completed! Now let's fetch the property and post to Instagram
     const property = await prisma.property.findUnique({
       where: { id: Number(propertyId) },

@@ -2,6 +2,15 @@
 
 import { useEffect, useRef } from "react";
 
+interface AdSenseProps {
+  client?: string;
+  slot?: string;
+  format?: string;
+  responsive?: string;
+  style?: React.CSSProperties;
+  className?: string;
+}
+
 export default function AdSenseBanner({
   client = "ca-pub-8662280633716608",
   slot = "", // Optional: specific slot if you create blocks in Adsense panel
@@ -9,7 +18,7 @@ export default function AdSenseBanner({
   responsive = "true",
   style = { display: "block" },
   className = "adsbygoogle",
-}) {
+}: AdSenseProps) {
   const isLoaded = useRef(false);
 
   useEffect(() => {

@@ -51,6 +51,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Pagamento não concluído." }, { status: 400 });
     }
 
+    // Accounting Logic
+    try {
+        const captureInfo = captureData.purchase_units?.[0]?.payments?.captures?.[0];
+        if (captureInfo && captureInfo.seller_receivable_breakdown) {
+            const grossAmount = parseFloat(captureInfo.seller_receivable_breakdown.gross_amount.value);
+            const feeAmount = parseFloat(captureInfo.seller_receivable_breakdown.paypal_fee.value);
+
+            await prisma.financialTransaction.createMany({
+                data: [
+                    {
+                        type: "REVENUE",
+                        category: "POSTS",
+                        amount: grossAmount,
+                        description: `Publicação de Portfólio (Facebook)`,
+                        referenceId: orderID,
+                    },
+                    {
+                        type: "EXPENSE",
+                        category: "PAYPAL_FEE",
+                        amount: feeAmount,
+                        description: `Tarifa PayPal (Portfólio Face)`,
+                        referenceId: orderID,
+                    }
+                ]
+            });
+        }
+    } catch (finErr) {
+        console.error("FINANCE LOGGING ERROR:", finErr);
+    }
+
     const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!user) return NextResponse.json({ success: false, error: "Usuário não encontrado." }, { status: 404 });
 

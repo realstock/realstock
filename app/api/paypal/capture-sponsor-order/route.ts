@@ -62,6 +62,36 @@ export async function POST(req: NextRequest) {
         data: { sponsoredUntil: endTime }
     });
 
+    // Accounting Logic
+    try {
+        const captureInfo = captureData.purchase_units?.[0]?.payments?.captures?.[0];
+        if (captureInfo && captureInfo.seller_receivable_breakdown) {
+            const grossAmount = parseFloat(captureInfo.seller_receivable_breakdown.gross_amount.value);
+            const feeAmount = parseFloat(captureInfo.seller_receivable_breakdown.paypal_fee.value);
+
+            await prisma.financialTransaction.createMany({
+                data: [
+                    {
+                        type: "REVENUE",
+                        category: "SPONSOR",
+                        amount: grossAmount,
+                        description: `Comissionamento Patrocínio de Imóvel #${property.id}`,
+                        referenceId: orderID,
+                    },
+                    {
+                        type: "EXPENSE",
+                        category: "PAYPAL_FEE",
+                        amount: feeAmount,
+                        description: `Tarifa PayPal (Patrocínio)`,
+                        referenceId: orderID,
+                    }
+                ]
+            });
+        }
+    } catch (finErr) {
+        console.error("FINANCE LOGGING ERROR:", finErr);
+    }
+
     return NextResponse.json({ success: true, message: "🚀 Anúncio Patrocinado com sucesso por 3 meses!" });
 
   } catch (error: any) {

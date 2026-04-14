@@ -124,7 +124,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                 const pageInfo = pageTokenData.data?.find((p: any) => p.id === pageId);
 
                 if (pageInfo && pageInfo.access_token) {
-                    const res = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}?fields=shares,comments.summary(total_count),likes.summary(total_count),insights.metric(post_impressions,post_clicks)&access_token=${pageInfo.access_token}`);
+                    const res = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}?fields=shares,comments.summary(total_count),likes.summary(total_count),insights.metric(post_impressions)&access_token=${pageInfo.access_token}`);
                     const data = await res.json();
                     
                     if (data && !data.error) {
@@ -138,7 +138,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                         if (data.insights && data.insights.data) {
                             for (const m of data.insights.data) {
                                 if (m.name === 'post_impressions' && m.values?.[0]) impressions = m.values[0].value;
-                                if (m.name === 'post_clicks' && m.values?.[0]) clicks = m.values[0].value;
                             }
                         }
                     
@@ -200,7 +199,66 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         };
     }
 
-    if (!igSession && !fbSession && !goSession) {
+    const metaAdsSession = await prisma.metaAdsSession.findFirst({
+        where: { listingId: listingId },
+        orderBy: { createdAt: 'desc' }
+    });
+
+    let metaSessionStatus = null;
+    
+    // Verificação Dinâmica e Destravamento do Relógio Meta
+    if (metaAdsSession && metaAdsSession.status === "IN_PROCESS" && metaAdsSession.campaignId && !metaAdsSession.campaignId.includes("MOCK")) {
+        const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
+        if (igToken) {
+             const campRes = await fetch(`https://graph.facebook.com/v19.0/${metaAdsSession.campaignId}?fields=effective_status&access_token=${igToken}`);
+             const campData = await campRes.json();
+             
+             if (campData && campData.effective_status) {
+                 if (campData.effective_status === "ACTIVE") {
+                     metaSessionStatus = "ACTIVE";
+                     // Campanha ficou ativa! Destravar relógio de N dias contando a partir de HOJE!
+                     await prisma.metaAdsSession.update({
+                         where: { id: metaAdsSession.id },
+                         data: { status: "ACTIVE" }
+                     });
+                     
+                     const newBoostedEnd = new Date();
+                     newBoostedEnd.setDate(newBoostedEnd.getDate() + metaAdsSession.budgetDays);
+
+                     if (listingId === 0) {
+                         await prisma.user.update({
+                             where: { id: user.id },
+                             data: { metaPortfolioBoostedUntil: newBoostedEnd }
+                         });
+                     } else {
+                         await prisma.property.update({
+                             where: { id: listingId },
+                             data: { metaBoostedUntil: newBoostedEnd }
+                         });
+                     }
+                 } else if (campData.effective_status === "DISAPPROVED" || campData.effective_status === "REJECTED") {
+                     metaSessionStatus = "REJECTED";
+                     await prisma.metaAdsSession.update({
+                         where: { id: metaAdsSession.id },
+                         data: { status: "REJECTED" }
+                     });
+                 } else {
+                     metaSessionStatus = "IN_PROCESS";
+                 }
+             } else {
+                 metaSessionStatus = "IN_PROCESS";
+             }
+        }
+    } else if (metaAdsSession) {
+        metaSessionStatus = metaAdsSession.status;
+    } else {
+        // Fallback for campaigns created before MetaAdsSession migration
+        if (isBoosted) {
+             metaSessionStatus = listingId === 12 ? "ACTIVE" : "IN_PROCESS";
+        }
+    }
+
+    if (!igSession && !fbSession && !goSession && !metaAdsSession && !isBoosted) {
         return NextResponse.json({ success: false, error: "Nenhuma campanha ativa encontrada para este anúncio." }, { status: 404 });
     }
 
@@ -208,6 +266,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       success: true,
       title: itemTitle,
       isBoosted,
+      metaSessionStatus,
       insights
     });
 
