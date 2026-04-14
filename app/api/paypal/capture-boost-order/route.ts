@@ -315,6 +315,14 @@ export async function POST(req: NextRequest) {
         }));
     }
 
+    creativeForm.append("degrees_of_freedom_spec", JSON.stringify({
+        creative_features_spec: {
+            standard_enhancements: {
+                enroll_status: "OPT_IN"
+            }
+        }
+    }));
+
     creativeForm.append("access_token", igToken);
 
     const creativeRes = await fetch(`${BASE_GRAPH}/${adAccountId}/adcreatives`, { method: "POST", body: creativeForm });
