@@ -193,11 +193,14 @@ export default function AdminPatrocinadosPage() {
                         <Link href={`/admin/patrocinados/${pub.id}/instagram`} className="flex items-center justify-center gap-1 rounded-xl border border-pink-400/20 bg-pink-500/10 py-2 text-xs font-semibold text-pink-300 hover:bg-pink-500/20 transition-colors">
                           <img src="/icones/instagram.jpg" className="w-4 h-4 rounded" alt="Instagram" /> Postar
                         </Link>
-                        <Link href={`/admin/patrocinados/${pub.id}/turbinar?platform=google`} className="flex items-center justify-center gap-1 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 py-2 text-xs font-semibold text-emerald-300 hover:from-emerald-500/20 hover:to-teal-500/20 transition-colors">
-                          <Rocket size={14} /> Google
+                        <Link href={`/admin/patrocinados/${pub.id}/facebook`} className="flex items-center justify-center gap-1 rounded-xl border border-blue-400/20 bg-blue-500/10 py-2 text-xs font-semibold text-blue-300 hover:bg-blue-500/20 transition-colors">
+                           <img src="/icones/facebook.jpeg" className="w-4 h-4 rounded" alt="Facebook" /> Postar
                         </Link>
-                        <Link href={`/admin/patrocinados/${pub.id}/turbinar?platform=facebook`} className="flex items-center justify-center gap-1 rounded-xl border border-indigo-500/40 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 py-2 text-xs font-semibold col-span-2 text-indigo-300 hover:bg-indigo-500/20 transition-colors">
-                           <Rocket size={14} /> Turbinar Lote nas Redes Integradas
+                        <Link href={`/admin/patrocinados/${pub.id}/turbinar?platform=google`} className="flex items-center justify-center gap-1 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 py-2 text-xs font-semibold text-emerald-300 hover:from-emerald-500/20 hover:to-teal-500/20 transition-colors">
+                          <Rocket size={14} /> Google Ads
+                        </Link>
+                        <Link href={`/admin/patrocinados/${pub.id}/turbinar?platform=facebook`} className="flex items-center justify-center gap-1 rounded-xl border border-indigo-500/40 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 py-2 text-xs font-semibold text-indigo-300 hover:bg-indigo-500/20 transition-colors">
+                           <Rocket size={14} /> Meta Ads
                         </Link>
                     </div>
                   </div>

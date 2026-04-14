@@ -7,14 +7,14 @@ const instructionsList = [
     id: "anunciar",
     title: "Como Anunciar um Imóvel",
     icon: <FiPlusCircle className="w-8 h-8 text-sky-400" />,
-    content: "Para cadastrar um novo imóvel e capturar clientes no RealStock, acesse o botão 'Anunciar' no topo da página ou através do seu menu. Preencha os campos exigidos como Título, Descrição, Fotos e Valores. Nossa tecnologia de geolocalização e precificação auxiliará na construção do seu anúncio perfeito. Após salvar, seu imóvel entrará imediatamente na rede pública de listagens premium.",
+    content: "Para cadastrar um novo imóvel e capturar clientes no RealStock, acesse o botão 'Anunciar' no topo da página ou através do seu menu. Preencha os campos exigidos como Título, Descrição, Fotos e Valores. Nossa tecnologia de geolocalização auxiliará na construção do seu anúncio perfeito. Após salvar, seu imóvel entrará imediatamente anunciado na rede RealStock.",
     link: "/anunciar"
   },
   {
     id: "editar",
     title: "Editando ou Excluindo Anúncios",
     icon: <FiEdit3 className="w-8 h-8 text-emerald-400" />,
-    content: "O mercado muda, e o seu anúncio acompanha. Navegue até 'Meus Anúncios' no seu cadastro. Cada propriedade exibe um botão de 'Editar' na tabela, onde você pode reconfigurar fotos, baixar o preço ou alterar descrições. Caso a propriedade já tenha sido vendida, você possui o poder de excluí-la permanentemente em apenas um clique para manter o portfólio limpo.",
+    content: "O mercado muda, e o seu anúncio acompanha. Navegue até 'Meus Anúncios'. Cada propriedade exibe um botão de 'Editar' na tabela, onde você pode reconfigurar fotos, baixar o preço ou alterar descrições. Caso a propriedade já tenha sido vendida, você possui o poder de excluí-la permanentemente em apenas um clique para manter o portfólio limpo.",
     link: "/minha-conta/anuncios"
   },
   {
@@ -28,14 +28,14 @@ const instructionsList = [
     id: "google_ads",
     title: "Turbinando no Google Ads",
     icon: <FiTarget className="w-8 h-8 text-orange-400" />,
-    content: "Precisando vender rápido? Com a integração nativa ao Google Ads construída no RealStock, você não precisa ser um expert em marketing. Basta acessar o painel de Anúncios e clicar em 'Acelerar via Google'. Escolha seu Orçamento Diário, efetue o pagamento seguro via PayPal, e nós arquitetamos campanhas automáticas na rede de pesquisa do Google segmentando ativamente clientes próximos de você na mesma hora.",
+    content: "Precisando vender rápido? Com a integração nativa ao Google Ads e Meta Ads construída no RealStock, você não precisa ser um expert em marketing. Basta acessar o painel de Anúncios e clicar em 'Turbinar via Google' ou 'Turbinar via Instagram'. Escolha seu Orçamento Diário, efetue o pagamento seguro via PayPal, e nós arquitetamos campanhas automáticas na rede de pesquisa do Google e Meta, segmentando ativamente clientes do estado do anúncio na mesma hora.",
     link: "/minha-conta/anuncios"
   },
   {
     id: "instagram",
     title: "Postando & Impulsionando no Instagram",
     icon: <FiShare2 className="w-8 h-8 text-fuchsia-400" />,
-    content: "Transforme o seu imóvel em uma verdadeira obra de arte das redes sociais. Acesse a funcionalidade 'Instagram' do seu anúncio, e o RealStock enviará um incrível carrossel de fotografias acompanhado da Ficha Técnica diretamente para o Perfil Oficial. Além do mais, você pode aplicar taxas de impulsionamento em dólar para a API da Meta patrocinar este Carrossel em toda a sua região metropolitana!",
+    content: "Transforme o seu imóvel em uma verdadeira obra de arte das redes sociais. Acesse a funcionalidade 'Instagram' ou 'Facebook' do seu anúncio, e o RealStock enviará um incrível carrossel de fotografias acompanhado da Ficha Técnica diretamente para o Perfil Oficial. Além do mais, você pode aplicar taxas de impulsionamento para a API da Meta patrocinar este Carrossel em todo estado do anúncio!",
     link: "/minha-conta/anuncios"
   },
   {
@@ -49,7 +49,7 @@ const instructionsList = [
     id: "patrocinar",
     title: "Selo de Imóvel Patrocinado",
     icon: <FiStar className="w-8 h-8 text-amber-400" />,
-    content: "Destaque seu imóvel perante os concorrentes! Ao adquirir o plano de Patrocínio, seu anúncio ganha um selo premium e é automaticamente injetado no pool rotativo de impulsionamentos oficiais da RealStock. Sendo exibido no nosso carrossel principal, postagens oficiais e em todas as campanhas coletivas nas Redes Sociais com altíssima visibilidade.",
+    content: "Destaque seu imóvel perante os concorrentes! Ao adquirir o plano de Patrocínio, seu anúncio ganha um selo premium e é automaticamente injetado no pool rotativo de impulsionamentos oficiais da RealStock. Sendo exibido no nosso carrossel principal, postagens oficiais e em todas as campanhas coletivas nas Redes Sociais com altíssima visibilidade, além de er posicionado em destaque no topo dos resultados de busca.",
     link: "/minha-conta/anuncios"
   }
 ];
@@ -57,7 +57,7 @@ const instructionsList = [
 export default function InstrucoesPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white selection:bg-sky-500/30">
-      
+
       {/* Decorative gradients */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[20%] left-[20%] w-[500px] h-[500px] rounded-full bg-sky-900/20 blur-[120px]" />
@@ -65,7 +65,7 @@ export default function InstrucoesPage() {
       </div>
 
       <div className="relative z-10 max-w-5xl mx-auto px-6 py-20">
-        
+
         {/* Header */}
         <div className="text-center mb-16 space-y-4">
           <Link href="/" className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 transition text-sm text-slate-300 font-medium mb-6">
@@ -82,14 +82,14 @@ export default function InstrucoesPage() {
         {/* Content Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {instructionsList.map((item, index) => (
-            <Link 
+            <Link
               href={item.link}
               key={item.id}
               className="block group relative backdrop-blur-xl bg-slate-900/50 border border-white/10 hover:border-white/30 rounded-3xl p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-sky-900/40 overflow-hidden cursor-pointer"
             >
               {/* Subtle hover gradient */}
               <div className="absolute inset-0 bg-gradient-to-br from-white/[0.04] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              
+
               <div className="relative z-10 flex min-h-full flex-col">
                 <div className="flex items-center gap-5 mb-6">
                   <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-white/5 border border-white/10 group-hover:scale-110 transition-transform duration-300 shadow-lg">
@@ -99,11 +99,11 @@ export default function InstrucoesPage() {
                     {item.title}
                   </h2>
                 </div>
-                
+
                 <p className="text-slate-400 leading-relaxed text-[15px] flex-grow">
                   {item.content}
                 </p>
-                
+
                 <div className="mt-6 flex justify-end">
                   <span className="inline-flex items-center text-sm font-medium text-sky-400 opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
                     Acessar Ferramenta →
@@ -116,13 +116,13 @@ export default function InstrucoesPage() {
 
         {/* Bottom CTA */}
         <div className="mt-20 p-10 backdrop-blur-xl bg-gradient-to-r from-sky-500/10 via-indigo-500/10 to-fuchsia-500/10 border border-white/10 rounded-3xl text-center relative overflow-hidden">
-           <div className="relative z-10">
-              <h3 className="text-3xl font-bold text-white mb-4">Ainda com dúvidas?</h3>
-              <p className="text-slate-300 mb-8 max-w-xl mx-auto">A tecnologia trabalha por você noite e dia. Caso você precise de assistência avançada, envie um ticket para o nosso time de suporte operatório.</p>
-              <Link href="mailto:contato@realstock.com.br" className="inline-flex items-center justify-center px-8 py-4 bg-white text-slate-900 font-bold rounded-2xl hover:scale-105 transition shadow-xl shadow-white/10">
-                 Falar com o Suporte
-              </Link>
-           </div>
+          <div className="relative z-10">
+            <h3 className="text-3xl font-bold text-white mb-4">Ainda com dúvidas?</h3>
+            <p className="text-slate-300 mb-8 max-w-xl mx-auto">A tecnologia trabalha por você noite e dia. Caso você precise de assistência avançada, envie um ticket para o nosso time de suporte operatório.</p>
+            <Link href="mailto:contato@realstock.com.br" className="inline-flex items-center justify-center px-8 py-4 bg-white text-slate-900 font-bold rounded-2xl hover:scale-105 transition shadow-xl shadow-white/10">
+              Falar com o Suporte
+            </Link>
+          </div>
         </div>
 
       </div>
