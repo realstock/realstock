@@ -185,6 +185,7 @@ export async function POST(req: NextRequest) {
     adSetForm.append("daily_budget", dailyBudgetCents.toString());
     adSetForm.append("billing_event", "IMPRESSIONS");
     adSetForm.append("optimization_goal", "POST_ENGAGEMENT");
+    adSetForm.append("promoted_object", JSON.stringify({ page_id: pageId }));
     adSetForm.append("bid_strategy", "LOWEST_COST_WITHOUT_CAP"); // Facebook exige declaração do algoritmo de lances
     adSetForm.append("targeting", JSON.stringify(targeting));
     adSetForm.append("end_time", endTime.toISOString());
