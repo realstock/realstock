@@ -30,8 +30,8 @@ export default function AdSenseBanner({
       style={style}
       data-ad-client={client}
       data-ad-slot={slot || undefined}
-      data-ad-format={format}
-      data-full-width-responsive={responsive}
+      data-ad-format={format || undefined}
+      data-full-width-responsive={responsive === "true" ? "true" : "false"}
     />
   );
 }
