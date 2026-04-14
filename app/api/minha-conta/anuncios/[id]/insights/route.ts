@@ -258,6 +258,31 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         }
     }
 
+    // AGREGADOR DE INSIGHTS PAGOS: Buscar a real performance da Campanha Paga no Meta
+    if (metaAdsSession && metaAdsSession.campaignId && !metaAdsSession.campaignId.includes("MOCK")) {
+        try {
+            const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
+            if (igToken) {
+                const adsRes = await fetch(`https://graph.facebook.com/v19.0/${metaAdsSession.campaignId}/insights?fields=impressions,clicks,reach,spend&access_token=${igToken}`);
+                const adsData = await adsRes.json();
+                if (adsData && adsData.data && adsData.data.length > 0) {
+                    const paidImp = Number(adsData.data[0].impressions) || 0;
+                    const paidClicks = Number(adsData.data[0].clicks) || 0;
+                    const paidReach = Number(adsData.data[0].reach) || 0;
+                    
+                    if (insights.instagram) {
+                         insights.instagram.views = (insights.instagram.views || 0) + paidImp;
+                         insights.instagram.reach = (insights.instagram.reach || 0) + paidReach;
+                    } 
+                    if (insights.facebook) {
+                         insights.facebook.impressions = (insights.facebook.impressions || 0) + paidImp;
+                         insights.facebook.clicks = (insights.facebook.clicks || 0) + paidClicks;
+                    }
+                }
+            }
+        } catch(e) { console.error("Falha ao puxar Paid Ads Insights", e); }
+    }
+
     if (!igSession && !fbSession && !goSession && !metaAdsSession && !isBoosted) {
         return NextResponse.json({ success: false, error: "Nenhuma campanha ativa encontrada para este anúncio." }, { status: 404 });
     }
