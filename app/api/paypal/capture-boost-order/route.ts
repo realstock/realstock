@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
     // 2. CRIA CAMPANHA
     const campaignForm = new URLSearchParams();
     campaignForm.append("name", `RealStock Boost Propriedade ${property.id}`);
-    campaignForm.append("objective", "OUTCOME_TRAFFIC");
+    campaignForm.append("objective", "OUTCOME_ENGAGEMENT");
     campaignForm.append("status", "ACTIVE");
     campaignForm.append("special_ad_categories", '["HOUSING"]'); // Requisito do FB para imóveis
     campaignForm.append("special_ad_category_country", '["BR"]'); // Requisito do FB para Categoria Especial
@@ -184,7 +184,7 @@ export async function POST(req: NextRequest) {
     adSetForm.append("campaign_id", campaignId);
     adSetForm.append("daily_budget", dailyBudgetCents.toString());
     adSetForm.append("billing_event", "IMPRESSIONS");
-    adSetForm.append("optimization_goal", "LINK_CLICKS");
+    adSetForm.append("optimization_goal", "POST_ENGAGEMENT");
     adSetForm.append("bid_strategy", "LOWEST_COST_WITHOUT_CAP"); // Facebook exige declaração do algoritmo de lances
     adSetForm.append("targeting", JSON.stringify(targeting));
     adSetForm.append("end_time", endTime.toISOString());
