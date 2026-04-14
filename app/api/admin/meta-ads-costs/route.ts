@@ -11,10 +11,6 @@ export async function GET() {
 
     // 1. Buscar todas as MetaAdsSessions
     const sessions = await prisma.metaAdsSession.findMany({
-      include: {
-        property: { select: { id: true, title: true } },
-        user: { select: { name: true, email: true } }, // Para Portfolios
-      },
       orderBy: { createdAt: "desc" },
     });
 
@@ -23,13 +19,22 @@ export async function GET() {
 
     // 2. Fetch Graph API Insights interativamente
     for (const adSession of sessions) {
+      let title = `Propriedade ID #${adSession.listingId}`;
+      if (adSession.listingId) {
+         try {
+             // Buscar dinamicamente para não quebrar a tipagem estrita caso listing seja outro ID
+             const prop = await prisma.property.findUnique({ where: { id: adSession.listingId }});
+             if (prop) title = `Imóvel #${prop.id}: ${prop.title}`;
+         } catch(e) {}
+      }
+
       if (!adSession.campaignId || adSession.campaignId.startsWith("MOCK_")) {
         items.push({
           id: adSession.id,
           campaignId: adSession.campaignId,
-          title: adSession.property ? `Imóvel #${adSession.property.id}: ${adSession.property.title}` : `Portfólio de ${adSession.user?.name || "Usuário"}`,
+          title: title,
           status: adSession.status,
-          bRLInvestido: adSession.dailyBudget * adSession.budgetDays,
+          bRLInvestido: Number(adSession.budget) * adSession.budgetDays,
           metaSpend: 0,
           impressions: 0,
           clicks: 0,
@@ -74,9 +79,9 @@ export async function GET() {
       items.push({
         id: adSession.id,
         campaignId: adSession.campaignId,
-        title: adSession.property ? `Imóvel #${adSession.property.id}: ${adSession.property.title}` : `Portfólio de ${adSession.user?.name || "Usuário"}`,
+        title: title,
         status: adSession.status,
-        bRLInvestido: adSession.dailyBudget * adSession.budgetDays,
+        bRLInvestido: Number(adSession.budget) * adSession.budgetDays,
         metaSpend: metaSpend,
         impressions: impressions,
         clicks: clicks,
