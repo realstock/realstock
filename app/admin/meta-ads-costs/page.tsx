@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Activity, RefreshCw, BarChart, ExternalLink, CheckCircle2, CircleDashed } from "lucide-react";
+import { Activity, RefreshCw, BarChart, ExternalLink, CheckCircle2, CircleDashed, Heart } from "lucide-react";
 
 export default function MetaAdsCostsPage() {
   const { data: session, status } = useSession();
@@ -94,6 +94,7 @@ export default function MetaAdsCostsPage() {
                     <th className="p-4 font-semibold text-right">Investido App</th>
                     <th className="p-4 font-semibold text-right">Gasto Meta ($)</th>
                     <th className="p-4 font-semibold text-center">Impressões</th>
+                    <th className="p-4 font-semibold text-center">Reações <Heart size={14} className="inline ml-1 text-pink-500" /></th>
                     <th className="p-4 font-semibold text-center">Cliques</th>
                     <th className="p-4 font-semibold text-center">Status FB</th>
                   </tr>
@@ -123,6 +124,9 @@ export default function MetaAdsCostsPage() {
                       </td>
                       <td className="p-4 text-center font-bold text-indigo-400">
                         {it.impressions.toLocaleString("pt-BR")} <span className="text-xs font-normal opacity-70">views</span>
+                      </td>
+                      <td className="p-4 text-center font-semibold text-pink-400">
+                        {it.likes ? it.likes.toLocaleString("pt-BR") : 0} <span className="text-[10px] uppercase tracking-wider opacity-70 block mt-0.5">Likes</span>
                       </td>
                       <td className="p-4 text-center text-slate-300">
                         {it.clicks.toLocaleString("pt-BR")}

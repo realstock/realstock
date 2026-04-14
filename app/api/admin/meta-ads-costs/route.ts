@@ -38,6 +38,7 @@ export async function GET() {
           metaSpend: 0,
           impressions: 0,
           clicks: 0,
+          likes: 0,
           apiStatus: "MOCK / DEVELOPMENT",
           createdAt: adSession.createdAt
         });
@@ -48,19 +49,24 @@ export async function GET() {
       let metaSpend = 0;
       let impressions = 0;
       let clicks = 0;
+      let likes = 0;
       let apiStatus = adSession.status;
 
       try {
         if (FACEBOOK_ACCESS_TOKEN) {
           // Insights (últimos 30 dias)
           const insRes = await fetch(
-            `https://graph.facebook.com/v19.0/${adSession.campaignId}/insights?fields=spend,impressions,clicks&date_preset=last_30d&access_token=${FACEBOOK_ACCESS_TOKEN}`
+            `https://graph.facebook.com/v19.0/${adSession.campaignId}/insights?fields=spend,impressions,clicks,actions&date_preset=last_30d&access_token=${FACEBOOK_ACCESS_TOKEN}`
           );
           const insJson = await insRes.json();
           if (insJson.data && insJson.data.length > 0) {
             metaSpend = parseFloat(insJson.data[0].spend || "0");
             impressions = parseInt(insJson.data[0].impressions || "0");
             clicks = parseInt(insJson.data[0].clicks || "0");
+
+            const actions = insJson.data[0].actions || [];
+            const actionLike = actions.find((a: any) => a.action_type === "post_reaction" || a.action_type === "like");
+            if (actionLike) likes = parseInt(actionLike.value) || 0;
           }
 
           // Status Real
@@ -85,6 +91,7 @@ export async function GET() {
         metaSpend: metaSpend,
         impressions: impressions,
         clicks: clicks,
+        likes: likes,
         apiStatus: apiStatus,
         createdAt: adSession.createdAt
       });

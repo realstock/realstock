@@ -250,15 +250,19 @@ export async function POST(req: NextRequest) {
     }
 
     if (!isOrganicBoost) {
-        // Ler a primeira foto diretamente do DB (Muito mais confiável e rápido que o CDN do instagram)
-        let imageUrl = null;
+        // Obter até 10 imagens diretamente do DB
+        let imageUrls: string[] = [];
+        let pTitle = "Imóvel Imperdível";
         if (Number(propertyId) !== 0) {
             const propWithImgs = await prisma.property.findUnique({
                  where: { id: Number(propertyId) },
                  include: { images: true }
             });
-            if (propWithImgs?.images?.length) {
-                 imageUrl = propWithImgs.images[0].imageUrl;
+            if (propWithImgs) {
+                 pTitle = propWithImgs.title;
+                 if (propWithImgs.images?.length) {
+                      imageUrls = propWithImgs.images.slice(0, 10).map(img => img.imageUrl);
+                 }
             }
         } else {
             // Portfólio, puxa o primeiro imóvel do user
@@ -267,52 +271,73 @@ export async function POST(req: NextRequest) {
                  include: { images: true },
                  orderBy: { createdAt: 'desc' }
             });
-            if (firstProp?.images?.length) {
-                 imageUrl = firstProp.images[0].imageUrl;
+            if (firstProp) {
+                 pTitle = firstProp.title;
+                 if (firstProp.images?.length) {
+                      imageUrls = firstProp.images.slice(0, 10).map(img => img.imageUrl);
+                 }
             }
         }
 
-        if (!imageUrl) {
-            return NextResponse.json({ success: false, error: `Falha ao localizar imagem no banco de dados para criar o anúncio.` }, { status: 500 });
+        if (imageUrls.length === 0) {
+            return NextResponse.json({ success: false, error: `Falha ao localizar imagens no banco de dados para criar o anúncio.` }, { status: 500 });
         }
 
-        // Download da imagem para gerar o Buffer do Meta Ads Library
-        let imgBuffer: ArrayBuffer | null = null;
-        try {
-            const imgRes = await fetch(imageUrl);
-            imgBuffer = await imgRes.arrayBuffer();
-        } catch (e) { console.error("Falha ao baixar imagem do Storage", e); }
+        // Fast parallel upload de todas as imagens para a AdImages Library
+        const imageHashes = await Promise.all(imageUrls.map(async (url) => {
+            try {
+                const imgRes = await fetch(url);
+                const imgBuffer = await imgRes.arrayBuffer();
+                if (!imgBuffer || imgBuffer.byteLength < 100) return null;
 
-        if (!imgBuffer || imgBuffer.byteLength < 100) {
-            return NextResponse.json({ success: false, error: `Falha ao ler bytes da imagem original.` }, { status: 500 });
-        }
-
-        // Converter para Base64 para evitar bug de Blob Boundary no node/nextjs
-        const base64Str = Buffer.from(imgBuffer).toString('base64');
-
-        // Upload imagem na biblioteca de Ad 
-        const imageUploadForm = new URLSearchParams();
-        imageUploadForm.append("bytes", base64Str);
-        imageUploadForm.append("access_token", igToken);
-        
-        const imageRes = await fetch(`${BASE_GRAPH}/${adAccountId}/adimages`, { method: "POST", body: imageUploadForm });
-        const imageData = await imageRes.json();
-
-        let imageHash = "";
-        if (imageData.images && Object.keys(imageData.images).length > 0) {
-            imageHash = imageData.images[Object.keys(imageData.images)[0]].hash;
-        } else {
-            return NextResponse.json({ success: false, error: "Falha ao gerar Ad Image. Mídia indisponível." }, { status: 500 });
-        }
-
-        creativeForm.append("object_story_spec", JSON.stringify({
-            page_id: pageId,
-            link_data: {
-                 image_hash: imageHash,
-                 link: propertyLink,
-                 message: "Confira esta excelente oportunidade que acabou de entrar!"
+                const base64Str = Buffer.from(imgBuffer).toString('base64');
+                const imageUploadForm = new URLSearchParams();
+                imageUploadForm.append("bytes", base64Str);
+                imageUploadForm.append("access_token", igToken);
+                
+                const uploadRes = await fetch(`${BASE_GRAPH}/${adAccountId}/adimages`, { method: "POST", body: imageUploadForm });
+                const uploadData = await uploadRes.json();
+                
+                if (uploadData.images && Object.keys(uploadData.images).length > 0) {
+                    return uploadData.images[Object.keys(uploadData.images)[0]].hash;
+                }
+            } catch (e) {
+                console.error("Falha ao processar imagem para o Meta:", e);
             }
+            return null;
         }));
+
+        const validHashes = imageHashes.filter(Boolean);
+
+        if (validHashes.length === 0) {
+            return NextResponse.json({ success: false, error: "Falha ao gerar Ad Images. Nenhuma mídia foi processada pela Meta." }, { status: 500 });
+        }
+
+        // Se houver mais de uma foto criamos o formato Carousel (child_attachments)
+        if (validHashes.length > 1) {
+            creativeForm.append("object_story_spec", JSON.stringify({
+                page_id: pageId,
+                link_data: {
+                     link: propertyLink,
+                     message: "Confira esta excelente oportunidade que acabou de entrar!",
+                     child_attachments: validHashes.map(hash => ({
+                          link: propertyLink,
+                          image_hash: hash,
+                          name: pTitle
+                     }))
+                }
+            }));
+        } else {
+            // Unica foto
+            creativeForm.append("object_story_spec", JSON.stringify({
+                page_id: pageId,
+                link_data: {
+                     image_hash: validHashes[0],
+                     link: propertyLink,
+                     message: "Confira esta excelente oportunidade que acabou de entrar!"
+                }
+            }));
+        }
     }
 
     if (!isOrganicBoost) {
