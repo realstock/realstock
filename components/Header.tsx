@@ -18,20 +18,20 @@ export default function Header() {
 
   return (
     <header className="border-b border-white/10 bg-slate-950 text-white">
-      <div className="mx-auto flex max-w-[1600px] items-center justify-between px-6 py-4">
-        <Link href="/" className="block w-[340px]">
+      <div className="mx-auto flex max-w-[1600px] h-[70px] lg:h-[90px] items-center justify-between px-4 lg:px-6">
+        <Link href="/" className="block w-[160px] md:w-[240px] lg:w-[340px]">
           <Image
             src="/logo-realstock.jpg"
             alt="RealStock"
             width={500}
             height={120}
-            className="h-[90px] w-full object-fill"
+            className="h-[50px] lg:h-[90px] w-full object-fill"
             priority
           />
         </Link>
 
         {/* Espaço reservado para o Banner do Google Ads */}
-        <div className="hidden lg:flex flex-1 mx-8 max-h-[90px] items-center justify-center overflow-hidden relative">
+        <div className="hidden lg:flex flex-1 mx-8 h-[90px] max-h-[90px] items-center justify-center overflow-hidden relative">
           <div className="absolute inset-0 flex items-center justify-center -z-10 text-slate-700 text-xs text-dashed border border-white/5 rounded-xl">Anúncio Global</div>
           <AdSenseBanner format="" responsive="false" style={{ display: "inline-block", width: "728px", height: "90px" }} />
         </div>
