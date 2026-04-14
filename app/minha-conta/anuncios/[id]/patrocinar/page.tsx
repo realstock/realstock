@@ -124,10 +124,10 @@ export default function PatrocinarPage({ params }: { params: Promise<{ id: strin
                    <h2 className="text-2xl font-bold text-yellow-500 flex items-center gap-2 mb-2"><Megaphone className="text-yellow-400"/> Benefícios Exclusivos</h2>
                    
                    <p className="text-slate-300 text-lg leading-relaxed">
-                     Ao patrocinar, este anúncio será publicado juntamente com outros anúncios selecionados e <strong>participará das massivas campanhas de impulsionamento do site no Instagram, Facebook e Google Ads</strong> financiadas pela imobiliária.
+                     Ao patrocinar, este anúncio será publicado juntamente com outros 9 anúncios patrocinados e <strong>participará das massivas campanhas de impulsionamento do site no Instagram, Facebook e Google Ads</strong>.
                    </p>
                    <p className="text-slate-300 text-lg leading-relaxed">
-                     Esses anúncios patrocinados receberão um <span className="bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded font-bold border border-yellow-500/30">SELO EXCLUSIVO NO MAPA</span> e aparecerão destacadamente em uma tela focada de Anúncios Patrocinados na área administrativa da plataforma.
+                     Esses anúncios patrocinados receberão um <span className="bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded font-bold border border-yellow-500/30">SELO EXCLUSIVO NO MAPA</span> e aparecerão nas primeiras posições da pesquisa em destaque.
                    </p>
 
                    <div className="bg-slate-900/80 border border-yellow-500/20 p-5 rounded-xl flex items-start gap-4 mt-6">

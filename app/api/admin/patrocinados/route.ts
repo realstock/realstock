@@ -46,9 +46,14 @@ export async function GET() {
       where: { listingId: -1, status: "PUBLISHED" }
     });
 
+    const publications = await prisma.adminSponsoredPublication.findMany({
+      orderBy: { createdAt: "desc" }
+    });
+
     return NextResponse.json({
       success: true,
       properties,
+      publications,
       instagramPosts,
       facebookPosts,
       portfolioBoostedUntil: adminUser?.portfolioBoostedUntil,
@@ -61,5 +66,32 @@ export async function GET() {
       { success: false, error: "Erro ao processar." },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || (session.user as any).role !== "ADMIN") {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { name, propertyIds } = await req.json();
+
+    if (!propertyIds || !Array.isArray(propertyIds) || propertyIds.length === 0) {
+      return NextResponse.json({ success: false, error: "Missing properties array" }, { status: 400 });
+    }
+
+    const pub = await prisma.adminSponsoredPublication.create({
+      data: {
+        name,
+        propertyIds
+      }
+    });
+
+    return NextResponse.json({ success: true, publication: pub });
+  } catch (error: any) {
+    console.error("POST publications error:", error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

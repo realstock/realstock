@@ -250,3 +250,16 @@ model EmailMessage {
   inReplyTo   EmailMessage?  @relation("EmailReplies", fields: [inReplyToId], references: [id])
   replies     EmailMessage[] @relation("EmailReplies")
 }
+
+model AdminSponsoredPublication {
+  id           String   @id @default(cuid())
+  name         String?
+  propertyIds  Json     // Array of number
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  googleBoostedUntil DateTime?
+  metaBoostedUntil   DateTime?
+
+  @@map("admin_sponsored_publications")
+}
