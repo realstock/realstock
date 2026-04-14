@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 import { signOut, useSession } from "next-auth/react";
+import AdSenseBanner from "./AdSenseBanner";
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -30,8 +31,9 @@ export default function Header() {
         </Link>
 
         {/* Espaço reservado para o Banner do Google Ads */}
-        <div className="hidden lg:flex flex-1 mx-8 h-[90px] items-center justify-center border border-dashed border-white/20 bg-white/5 rounded-xl text-slate-500 text-sm">
-          Espaço para Banner Google Ads (728x90 px)
+        <div className="hidden lg:flex flex-1 mx-8 h-[90px] items-center justify-center overflow-hidden relative">
+          <div className="absolute inset-0 flex items-center justify-center -z-10 text-slate-700 text-xs text-dashed border border-white/5 rounded-xl">Anúncio Global</div>
+          <AdSenseBanner style={{ display: "inline-block", width: "728px", height: "90px" }} />
         </div>
 
         <div className="flex items-center gap-4">
