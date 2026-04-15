@@ -118,9 +118,9 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                                     <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Curtidas</div>
                                 </div>
                                 <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-                                    <MessageCircle className="text-orange-400 mb-2" size={20} />
-                                    <div className="text-2xl font-black">{insights.instagram.comments}</div>
-                                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Comentários</div>
+                                    <MousePointerClick className="text-indigo-400 mb-2" size={20} />
+                                    <div className="text-2xl font-black">{insights.instagram.clicks || 0}</div>
+                                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cliques</div>
                                 </div>
                                 <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5 col-span-2 flex items-center justify-between">
                                     <div>

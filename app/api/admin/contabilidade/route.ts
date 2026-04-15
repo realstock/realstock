@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 
     const mappedTransactions: any[] = transactions.map(tx => ({
        ...tx,
-       isSandbox: (tx.category === "PAYPAL_FEE" || tx.category === "ADS_BOOST" || tx.description.includes("PayPal")) ? isPaypalSandboxGlobal : false
+       isSandbox: (tx.category === "PAYPAL_FEE" || tx.category === "ADS_BOOST" || (tx.description && tx.description.includes("PayPal"))) ? isPaypalSandboxGlobal : false
     }));
 
     let totalRevenue = 0;

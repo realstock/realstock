@@ -58,7 +58,7 @@ export async function GET() {
         if (FACEBOOK_ACCESS_TOKEN) {
           // Fetch Organic Likes
           if (adSession.listingId) {
-             const igSession = await prisma.instagramFeedSession.findFirst({
+             const igSession = await prisma.instagramPreviewSession.findFirst({
                  where: { listingId: adSession.listingId, status: "PUBLISHED" },
                  orderBy: { createdAt: "desc" }
              });
