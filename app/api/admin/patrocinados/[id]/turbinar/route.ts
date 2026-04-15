@@ -141,9 +141,18 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
                       igActorId = pData.instagram_business_account?.id;
                   } catch(e) {}
               }
+              
+              if (!igActorId) {
+                  try {
+                      // Fallback: try /me
+                      const meRes = await fetch(`${BASE_GRAPH}/me?fields=instagram_business_account&access_token=${igToken}`);
+                      const meData = await meRes.json();
+                      igActorId = meData.instagram_business_account?.id;
+                  } catch(e) {}
+              }
 
               if (!igActorId) {
-                  throw new Error("Não foi possível localizar o ID da Conta Comercial do Instagram (igActorId). Verifique as configurações.");
+                  throw new Error("Não foi possível localizar o ID da Conta Comercial do Instagram (igActorId). Verifique se a variável INSTAGRAM_IG_USER_ID está configurada no servidor.");
               }
 
               creativeForm.append("object_story_spec", JSON.stringify({
@@ -160,7 +169,10 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
 
       const creativeRes = await fetch(`${BASE_GRAPH}/${adAccountId}/adcreatives`, { method: "POST", body: creativeForm });
       const creativeData = await creativeRes.json();
-      if (!creativeData.id) throw new Error("Falha ao criar Criativo Meta: " + JSON.stringify(creativeData));
+      if (!creativeData.id) {
+          const detail = JSON.stringify(creativeData);
+          throw new Error(`Falha ao criar Criativo Meta. (ID usado: ${igUserId || 'buscando...'}) Erro: ${detail}`);
+      }
 
       // 5. Criar Ad
       const adForm = new URLSearchParams();
