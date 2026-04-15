@@ -137,6 +137,7 @@ export async function POST(req: NextRequest) {
     const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID;
     const pageId = process.env.FACEBOOK_PAGE_ID;
     const igToken = process.env.INSTAGRAM_ACCESS_TOKEN; 
+    const igUserId = process.env.INSTAGRAM_IG_USER_ID;
 
     if (!adAccountId || !pageId || !igToken) {
        console.warn("Pagamento aprovado, porém FB Marketing API não configurada totalmente (.env). Cancelando pipeline Ads.");
@@ -181,7 +182,7 @@ export async function POST(req: NextRequest) {
     // 2. CRIA CAMPANHA
     const campaignForm = new URLSearchParams();
     campaignForm.append("name", `RealStock Boost Propriedade ${property.id}`);
-    campaignForm.append("objective", "OUTCOME_TRAFFIC"); // Voltar para TRAFFIC para escapar da restrição do HOUSING
+    campaignForm.append("objective", "OUTCOME_ENGAGEMENT"); // Compatível com POST_ENGAGEMENT
     campaignForm.append("status", "ACTIVE");
     campaignForm.append("special_ad_categories", '["HOUSING"]'); // Requisito do FB para imóveis
     campaignForm.append("special_ad_category_country", '["BR"]'); // Requisito do FB para Categoria Especial
@@ -240,15 +241,17 @@ export async function POST(req: NextRequest) {
 
     if (platform === "instagram" && sourceId && !sourceId.startsWith("Prop_")) {
         // Resgatar obrigatoriamente o instagram_actor_id da página
-        let igActorId = "";
-        try {
-            const pageRes = await fetch(`${BASE_GRAPH}/${pageId}?fields=instagram_business_account&access_token=${igToken}`);
-            const pageData = await pageRes.json();
-            if (pageData.instagram_business_account?.id) {
-                igActorId = pageData.instagram_business_account.id;
+        let igActorId = igUserId;
+        if (!igActorId) {
+            try {
+                const pageRes = await fetch(`${BASE_GRAPH}/${pageId}?fields=instagram_business_account&access_token=${igToken}`);
+                const pageData = await pageRes.json();
+                if (pageData.instagram_business_account?.id) {
+                    igActorId = pageData.instagram_business_account.id;
+                }
+            } catch (e) {
+                console.error("Falha ao puxar instagram_business_account", e);
             }
-        } catch (e) {
-            console.error("Falha ao puxar instagram_business_account", e);
         }
 
         if (igActorId) {
@@ -259,12 +262,7 @@ export async function POST(req: NextRequest) {
             }));
             isOrganicBoost = true;
         } else {
-             // Fallback se não achar conta IG
-             creativeForm.append("object_story_spec", JSON.stringify({
-                 page_id: pageId
-             }));
-             creativeForm.append("source_instagram_media_id", sourceId);
-             isOrganicBoost = true;
+             throw new Error("Não foi possível localizar o ID da Conta Comercial do Instagram (igActorId). Certifique-se de que a conta está vinculada à sua página e que a variável INSTAGRAM_IG_USER_ID está configurada.");
         }
     } else if (platform === "facebook" && sourceId && !sourceId.startsWith("Prop_")) {
         creativeForm.append("object_story_id", sourceId);
@@ -272,94 +270,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!isOrganicBoost) {
-        // Obter até 10 imagens diretamente do DB
-        let imageUrls: string[] = [];
-        let pTitle = "Imóvel Imperdível";
-        if (Number(propertyId) !== 0) {
-            const propWithImgs = await prisma.property.findUnique({
-                 where: { id: Number(propertyId) },
-                 include: { images: true }
-            });
-            if (propWithImgs) {
-                 pTitle = propWithImgs.title;
-                 if (propWithImgs.images?.length) {
-                      imageUrls = propWithImgs.images.slice(0, 10).map(img => img.imageUrl);
-                 }
-            }
-        } else {
-            // Portfólio, puxa o primeiro imóvel do user
-            const firstProp = await prisma.property.findFirst({
-                 where: { ownerId: user.id },
-                 include: { images: true },
-                 orderBy: { createdAt: 'desc' }
-            });
-            if (firstProp) {
-                 pTitle = firstProp.title;
-                 if (firstProp.images?.length) {
-                      imageUrls = firstProp.images.slice(0, 10).map(img => img.imageUrl);
-                 }
-            }
-        }
-
-        if (imageUrls.length === 0) {
-            return NextResponse.json({ success: false, error: `Falha ao localizar imagens no banco de dados para criar o anúncio.` }, { status: 500 });
-        }
-
-        // Fast parallel upload de todas as imagens para a AdImages Library
-        const imageHashes = await Promise.all(imageUrls.map(async (url) => {
-            try {
-                const imgRes = await fetch(url);
-                const imgBuffer = await imgRes.arrayBuffer();
-                if (!imgBuffer || imgBuffer.byteLength < 100) return null;
-
-                const base64Str = Buffer.from(imgBuffer).toString('base64');
-                const imageUploadForm = new URLSearchParams();
-                imageUploadForm.append("bytes", base64Str);
-                imageUploadForm.append("access_token", igToken);
-                
-                const uploadRes = await fetch(`${BASE_GRAPH}/${adAccountId}/adimages`, { method: "POST", body: imageUploadForm });
-                const uploadData = await uploadRes.json();
-                
-                if (uploadData.images && Object.keys(uploadData.images).length > 0) {
-                    return uploadData.images[Object.keys(uploadData.images)[0]].hash;
-                }
-            } catch (e) {
-                console.error("Falha ao processar imagem para o Meta:", e);
-            }
-            return null;
-        }));
-
-        const validHashes = imageHashes.filter(Boolean);
-
-        if (validHashes.length === 0) {
-            return NextResponse.json({ success: false, error: "Falha ao gerar Ad Images. Nenhuma mídia foi processada pela Meta." }, { status: 500 });
-        }
-
-        // Se houver mais de uma foto criamos o formato Carousel (child_attachments)
-        if (validHashes.length > 1) {
-            creativeForm.append("object_story_spec", JSON.stringify({
-                page_id: pageId,
-                link_data: {
-                     link: propertyLink,
-                     message: "Confira esta excelente oportunidade que acabou de entrar!",
-                     child_attachments: validHashes.map(hash => ({
-                          link: propertyLink,
-                          image_hash: hash,
-                          name: pTitle
-                     }))
-                }
-            }));
-        } else {
-            // Unica foto
-            creativeForm.append("object_story_spec", JSON.stringify({
-                page_id: pageId,
-                link_data: {
-                     image_hash: validHashes[0],
-                     link: propertyLink,
-                     message: "Confira esta excelente oportunidade que acabou de entrar!"
-                }
-            }));
-        }
+        throw new Error("Impulsionamento via Dark Post (postagem fantasma) está desativado. Certifique-se de que o imóvel foi publicado organicamente primeiro.");
     }
 
     if (!isOrganicBoost) {

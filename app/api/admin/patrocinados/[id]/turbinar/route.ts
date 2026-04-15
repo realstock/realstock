@@ -64,6 +64,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID;
       const pageId = process.env.FACEBOOK_PAGE_ID;
       const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
+      const igUserId = process.env.INSTAGRAM_IG_USER_ID;
 
       if (!adAccountId || !pageId || !igToken) {
           throw new Error("Credenciais da Meta Ads (Marketing API) não configuradas no servidor.");
@@ -84,9 +85,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       let usedPlatform = igSession?.publishedMediaId ? "instagram" : (fbSession?.publishedPostId ? "facebook" : "meta");
 
       if (!sourceId) {
-          // Se não houver post orgânico, para admins, vamos exigir que publiquem antes ou falhar (diferente do user flow que cria dark post)
-          // Mas para manter paridade, podemos tentar criar um dark post se o admin quiser
-          sourceId = `AdminPub_${pubId}`; 
+          throw new Error("Post orgânico não encontrado. Publique o lote no Instagram/Facebook antes de impulsionar (Dark Posts desativados).");
       }
 
       const BASE_GRAPH = "https://graph.facebook.com/v19.0";
@@ -94,7 +93,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       // 2. Criar Campanha
       const campaignForm = new URLSearchParams();
       campaignForm.append("name", `Admin Sponsored Lote: ${pub.name || pubId}`);
-      campaignForm.append("objective", "OUTCOME_TRAFFIC");
+      campaignForm.append("objective", "OUTCOME_AWARENESS");
       campaignForm.append("status", "ACTIVE");
       campaignForm.append("special_ad_categories", '["HOUSING"]');
       campaignForm.append("special_ad_category_country", '["BR"]');
@@ -132,14 +131,20 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       creativeForm.append("name", `Criativo Admin Lote ${pubId}`);
       
       let isOrganic = false;
-      if (sourceId && !sourceId.startsWith("AdminPub_")) {
+      if (sourceId) {
           if (usedPlatform === "instagram") {
-              let igActorId = "";
-              try {
-                  const pRes = await fetch(`${BASE_GRAPH}/${pageId}?fields=instagram_business_account&access_token=${igToken}`);
-                  const pData = await pRes.json();
-                  igActorId = pData.instagram_business_account?.id;
-              } catch(e) {}
+              let igActorId = igUserId;
+              if (!igActorId) {
+                  try {
+                      const pRes = await fetch(`${BASE_GRAPH}/${pageId}?fields=instagram_business_account&access_token=${igToken}`);
+                      const pData = await pRes.json();
+                      igActorId = pData.instagram_business_account?.id;
+                  } catch(e) {}
+              }
+
+              if (!igActorId) {
+                  throw new Error("Não foi possível localizar o ID da Conta Comercial do Instagram (igActorId). Verifique as configurações.");
+              }
 
               creativeForm.append("object_story_spec", JSON.stringify({
                   page_id: pageId,
@@ -150,16 +155,6 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
               creativeForm.append("object_story_id", sourceId);
           }
           isOrganic = true;
-      } else {
-          // Fallback simple link for lot
-          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.realstock.com.br";
-          creativeForm.append("object_story_spec", JSON.stringify({
-              page_id: pageId,
-              link_data: {
-                  link: siteUrl,
-                  message: `Confira este novo lote de imóveis patrocinados: ${pub.name || ""}`
-              }
-          }));
       }
       creativeForm.append("access_token", igToken);
 
