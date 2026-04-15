@@ -7,7 +7,7 @@ export default function App() {
     <SafeAreaView style={styles.container}>
       <StatusBar style="auto" />
       <WebView 
-        source={{ uri: 'https://realstock.com.br' }} 
+        source={{ uri: 'https://www.realstock.com.br' }} 
         style={styles.webview}
         allowsBackForwardNavigationGestures={true}
         bounces={false}

@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: "Usuário não encontrado." }, { status: 404 });
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://realstock.com.br";
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.realstock.com.br";
     const targetUrl = Number(propertyId) === 0 ? baseUrl : `${baseUrl}/imovel/${propertyId}`;
     
     // Fetch property title for the Ad

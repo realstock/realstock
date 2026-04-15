@@ -24,7 +24,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     const { dailyBudget, platform } = await req.json();
 
     if (platform === "google") {
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://realstock.com.br";
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.realstock.com.br";
       const targetUrl = baseUrl;
 
       // Call Real Google Ads Integration
