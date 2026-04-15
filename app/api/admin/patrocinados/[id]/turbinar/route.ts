@@ -98,6 +98,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       campaignForm.append("status", "ACTIVE");
       campaignForm.append("special_ad_categories", '["HOUSING"]');
       campaignForm.append("special_ad_category_country", '["BR"]');
+      campaignForm.append("is_adset_budget_sharing_enabled", "false");
       campaignForm.append("access_token", igToken);
 
       const campRes = await fetch(`${BASE_GRAPH}/${adAccountId}/campaigns`, { method: "POST", body: campaignForm });
@@ -116,6 +117,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       adSetForm.append("billing_event", "IMPRESSIONS");
       adSetForm.append("optimization_goal", "REACH");
       adSetForm.append("promoted_object", JSON.stringify({ page_id: pageId }));
+      adSetForm.append("bid_strategy", "LOWEST_COST_WITHOUT_CAP");
       adSetForm.append("targeting", JSON.stringify({ geo_locations: { countries: ["BR"] }, publisher_platforms: ["facebook", "instagram"] }));
       adSetForm.append("end_time", endTime.toISOString());
       adSetForm.append("status", "ACTIVE");
