@@ -136,18 +136,26 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
               let igActorId = igUserId;
               if (!igActorId) {
                   try {
+                      // 1. Try instagram_business_account (Business Account ID)
                       const pRes = await fetch(`${BASE_GRAPH}/${pageId}?fields=instagram_business_account&access_token=${igToken}`);
                       const pData = await pRes.json();
                       igActorId = pData.instagram_business_account?.id;
-                  } catch(e) {}
-              }
-              
-              if (!igActorId) {
-                  try {
-                      // Fallback: try /me
-                      const meRes = await fetch(`${BASE_GRAPH}/me?fields=instagram_business_account&access_token=${igToken}`);
-                      const meData = await meRes.json();
-                      igActorId = meData.instagram_business_account?.id;
+                      
+                      // 2. Try instagram_accounts edge (Legacy Actor IDs often needed for Ads)
+                      if (!igActorId) {
+                          const accRes = await fetch(`${BASE_GRAPH}/${pageId}/instagram_accounts?fields=id&access_token=${igToken}`);
+                          const accData = await accRes.json();
+                          if (accData.data && accData.data.length > 0) {
+                              igActorId = accData.data[0].id;
+                          }
+                      }
+                      
+                      // 3. Try /me fallback
+                      if (!igActorId) {
+                          const meRes = await fetch(`${BASE_GRAPH}/me?fields=instagram_business_account&access_token=${igToken}`);
+                          const meData = await meRes.json();
+                          igActorId = meData.instagram_business_account?.id;
+                      }
                   } catch(e) {}
               }
 
