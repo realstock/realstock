@@ -156,7 +156,6 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
               }
 
               creativeForm.append("object_story_spec", JSON.stringify({
-                  page_id: pageId,
                   instagram_actor_id: igActorId,
                   source_instagram_media_id: sourceId
               }));
