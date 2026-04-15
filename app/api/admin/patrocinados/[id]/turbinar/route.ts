@@ -134,37 +134,42 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       if (sourceId) {
           if (usedPlatform === "instagram") {
               let igActorId = igUserId;
+              
+              // Resolve the actual Actor ID from the API to compare/fallback
+              let apiActorId = null;
+              try {
+                  // 1. Try instagram_business_account
+                  const pRes = await fetch(`${BASE_GRAPH}/${pageId}?fields=instagram_business_account&access_token=${igToken}`);
+                  const pData = await pRes.json();
+                  apiActorId = pData.instagram_business_account?.id;
+                  
+                  // 2. Try instagram_accounts edge
+                  if (!apiActorId) {
+                      const accRes = await fetch(`${BASE_GRAPH}/${pageId}/instagram_accounts?fields=id&access_token=${igToken}`);
+                      const accData = await accRes.json();
+                      if (accData.data && accData.data.length > 0) {
+                          apiActorId = accData.data[0].id;
+                      }
+                  }
+              } catch(e) { console.error("Actor resolution error", e); }
+
+              // Prioritize the one found via API if it exists, as it's guaranteed to be linked to the Page
+              if (apiActorId) {
+                  igActorId = apiActorId;
+              }
+
               if (!igActorId) {
-                  try {
-                      // 1. Try instagram_business_account (Business Account ID)
-                      const pRes = await fetch(`${BASE_GRAPH}/${pageId}?fields=instagram_business_account&access_token=${igToken}`);
-                      const pData = await pRes.json();
-                      igActorId = pData.instagram_business_account?.id;
-                      
-                      // 2. Try instagram_accounts edge (Legacy Actor IDs often needed for Ads)
-                      if (!igActorId) {
-                          const accRes = await fetch(`${BASE_GRAPH}/${pageId}/instagram_accounts?fields=id&access_token=${igToken}`);
-                          const accData = await accRes.json();
-                          if (accData.data && accData.data.length > 0) {
-                              igActorId = accData.data[0].id;
-                          }
-                      }
-                      
-                      // 3. Try /me fallback
-                      if (!igActorId) {
-                          const meRes = await fetch(`${BASE_GRAPH}/me?fields=instagram_business_account&access_token=${igToken}`);
-                          const meData = await meRes.json();
-                          igActorId = meData.instagram_business_account?.id;
-                      }
-                  } catch(e) {}
+                  throw new Error("Não foi possível localizar o ID da Conta Comercial do Instagram (igActorId). Verifique se a sua conta Instagram está vinculada à Página no Facebook.");
               }
 
               if (!igActorId) {
                   throw new Error("Não foi possível localizar o ID da Conta Comercial do Instagram (igActorId). Verifique se a variável INSTAGRAM_IG_USER_ID está configurada no servidor.");
               }
 
-              creativeForm.append("instagram_actor_id", igActorId);
-              creativeForm.append("source_instagram_media_id", sourceId);
+              creativeForm.append("object_story_spec", JSON.stringify({
+                  instagram_actor_id: igActorId,
+                  source_instagram_media_id: sourceId
+              }));
           } else {
               creativeForm.append("object_story_id", sourceId);
           }
@@ -176,7 +181,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       const creativeData = await creativeRes.json();
       if (!creativeData.id) {
           const detail = JSON.stringify(creativeData);
-          throw new Error(`Falha ao criar Criativo Meta. (ID usado: ${igUserId || 'buscando...'}) Erro: ${detail}`);
+          throw new Error(`Falha ao criar Criativo Meta. (ID usado: ${igActorId}) Erro: ${detail}`);
       }
 
       // 5. Criar Ad
