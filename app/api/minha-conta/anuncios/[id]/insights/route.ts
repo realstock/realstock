@@ -76,32 +76,30 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                   const likes = baseData.like_count || 0;
                   const comments = baseData.comments_count || 0;
                   
-                  // Meta API Update: 'views' unifies impressions, plays, and carousel_album_impressions.
-                  const metricNames = "views,reach,shares"; 
+                  // Meta API Update: 'impressions' and 'reach' are standard for IG Media. 'views' and 'shares' are not valid insights metrics for IG media objects via API.
+                  const metricNames = "impressions,reach"; 
                   
                   let impressions = 0;
                   let reach = 0;
-                  let shares = 0;
                   
                   const insRes = await fetch(`https://graph.facebook.com/v19.0/${igSession.publishedMediaId}/insights?metric=${metricNames}&access_token=${igToken}`);
                   const insData = await insRes.json();
 
                   if (insData && insData.data) {
                       for (const m of insData.data) {
-                          if (m.name === 'views') impressions = m.values[0]?.value || 0;
+                          if (m.name === 'impressions') impressions = m.values[0]?.value || 0;
                           if (m.name === 'reach') reach = m.values[0]?.value || 0;
-                          if (m.name === 'shares') shares = m.values[0]?.value || 0;
                       }
                   }
 
-                  insights.instagram = {
-                      likes,
-                      comments,
-                      views: impressions,
-                      reach,
-                      shares,
-                      publishedDate: igSession.updatedAt
-                  };
+                   insights.instagram = {
+                       likes,
+                       comments,
+                       views: impressions, // Mapeado para o frontend
+                       reach,
+                       shares: 0, // Inicia como 0 (métrica não vindo via API Insights de mídia)
+                       publishedDate: igSession.updatedAt
+                   };
               } else {
                   console.warn("IG Graph API Base Error:", baseData.error);
               }
@@ -125,7 +123,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                 const pageInfo = pageTokenData.data?.find((p: any) => p.id === pageId);
 
                 if (pageInfo && pageInfo.access_token) {
-                    const res = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}?fields=shares,comments.summary(total_count),likes.summary(total_count),insights.metric(post_impressions)&access_token=${pageInfo.access_token}`);
+                    // Simplifying to just 'insights' to avoid metric name errors, filtering in code.
+                    const res = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}?fields=shares,comments.summary(total_count),likes.summary(total_count),insights&access_token=${pageInfo.access_token}`);
                     const data = await res.json();
                     
                     if (data && !data.error) {
@@ -136,20 +135,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                         let impressions = 0;
                         let clicks = 0;
                         
+                        // Get metrics from the insights field
                         if (data.insights && data.insights.data) {
                             for (const m of data.insights.data) {
-                                if (m.name === 'post_impressions' && m.values?.[0]) impressions = m.values[0].value;
+                                if ((m.name === 'post_impressions' || m.name === 'impressions') && m.values?.[0]) {
+                                    impressions = m.values[0].value;
+                                }
                             }
                         }
                     
-                        insights.facebook = {
-                            likes,
-                            comments,
-                            impressions,
-                            clicks,
-                            shares,
-                            publishedDate: fbSession.updatedAt
-                        };
+                         insights.facebook = {
+                             likes,
+                             comments,
+                             impressions,
+                             clicks,
+                             shares,
+                             publishedDate: fbSession.updatedAt
+                         };
                     } else {
                         console.warn("FB Graph API Error:", data.error);
                     }

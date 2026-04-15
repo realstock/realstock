@@ -324,57 +324,77 @@ export default function MeusAnunciosPage() {
                       </Link>
                     )}
 
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 mt-4">
+                      {/* STATS BUTTON */}
                       {(isPublished || property.googleBoostedUntil || property.metaBoostedUntil) && (
-                        <Link href={`/minha-conta/anuncios/${property.id}/insights`} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-yellow-400/20 bg-yellow-500/10 px-4 py-3 text-xs font-semibold text-yellow-300 hover:bg-yellow-500/20 transition-colors mb-1">
-                          <BarChart3 size={14} />
+                        <Link 
+                          href={`/minha-conta/anuncios/${property.id}/insights`} 
+                          className="flex w-full items-center justify-center gap-2 rounded-full border border-yellow-500/40 bg-yellow-500/5 px-4 py-4 text-base font-black text-yellow-500 hover:bg-yellow-500/10 transition-all active:scale-[0.98] shadow-lg shadow-yellow-500/5 mb-2"
+                        >
+                          <BarChart3 size={18} />
                           Ver Estatísticas Completas
                         </Link>
                       )}
+
+                      {/* INSTAGRAM GROUP */}
                       <div className="flex gap-2">
                         <Link
                           href={`/minha-conta/anuncios/${property.id}/instagram`}
-                          className="flex flex-1 justify-center items-center gap-2 rounded-2xl border border-pink-400/20 bg-pink-500/10 px-4 py-3 text-sm font-semibold text-pink-300 hover:bg-pink-500/20 transition-colors"
+                          className="flex flex-[2] justify-center items-center gap-3 rounded-2xl border border-pink-500/30 bg-pink-600/10 px-4 py-4 text-base font-bold text-pink-400 hover:bg-pink-600/20 transition-all active:scale-[0.98]"
                         >
-                          <img src="/icones/instagram.jpg" className="w-5 h-5 rounded hover:scale-110 transition-transform object-cover flex-shrink-0" alt="Instagram" />
+                          <img src="/icones/instagram.jpg" className="w-6 h-6 rounded-lg object-cover flex-shrink-0" alt="Instagram" />
                           {isPublished ? 'Republicar no Insta' : 'Publicar no Insta'}
                         </Link>
                         {isPublished && permalink && (
-                          <a href={permalink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 rounded-2xl border border-transparent bg-pink-500/10 px-4 py-3 text-sm text-pink-300 hover:bg-pink-500/20">
+                          <a 
+                            href={permalink} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-white/5 px-4 py-4 text-base font-medium text-pink-300 hover:bg-white/10 transition-all"
+                          >
                              Ver Post
                           </a>
                         )}
                       </div>
                       
+                      {/* FACEBOOK BUTTON */}
                       <div className="flex gap-2">
                         <Link
                           href={`/minha-conta/anuncios/${property.id}/facebook`}
-                          className="flex flex-1 justify-center items-center gap-2 rounded-2xl border border-blue-400/20 bg-blue-500/10 px-4 py-3 text-sm font-semibold text-blue-300 hover:bg-blue-500/20 transition-colors"
+                          className="flex flex-1 justify-center items-center gap-3 rounded-2xl border border-blue-500/30 bg-blue-600/10 px-4 py-4 text-base font-bold text-blue-400 hover:bg-blue-600/20 transition-all active:scale-[0.98]"
                         >
-                          <img src="/icones/facebook.jpeg" className="w-5 h-5 rounded hover:scale-110 transition-transform object-cover flex-shrink-0" alt="Facebook" />
+                          <img src="/icones/facebook.jpeg" className="w-6 h-6 rounded-lg object-cover flex-shrink-0" alt="Facebook" />
                           {facebookPosts.find(p => p.listingId === property.id) ? 'Republicar no Face' : 'Publicar no Face'}
                         </Link>
                         {facebookPosts.find(p => p.listingId === property.id)?.validationReport?.permalink && (
-                          <a href={facebookPosts.find(p => p.listingId === property.id)?.validationReport?.permalink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 rounded-2xl border border-transparent bg-blue-500/10 px-4 py-3 text-sm text-blue-300 hover:bg-blue-500/20">
+                          <a 
+                            href={facebookPosts.find(p => p.listingId === property.id)?.validationReport?.permalink} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="flex items-center justify-center gap-2 rounded-2xl bg-white/5 px-6 py-4 text-base font-medium text-blue-300 hover:bg-white/10 transition-all"
+                          >
                              Ver Post
                           </a>
                         )}
                       </div>
 
-                      <div className="flex gap-2 flex-wrap sm:flex-nowrap">
-                        {(isPublished || facebookPosts.find(p => p.listingId === property.id)) && !(property.metaBoostedUntil && new Date(property.metaBoostedUntil) > new Date()) && (
-                          <Link href={`/minha-conta/anuncios/${property.id}/turbinar?platform=meta`} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-indigo-500/40 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 px-4 py-3 text-xs font-semibold text-indigo-300 hover:from-blue-500/20 hover:to-purple-500/20 transition-colors shadow-lg shadow-indigo-500/5">
-                             <Rocket size={14} />
-                             Meta Ads
-                          </Link>
-                        )}
+                      {/* ADS GROUP */}
+                      <div className="flex gap-2 pt-2">
+                        <Link 
+                          href={`/minha-conta/anuncios/${property.id}/turbinar?platform=meta`} 
+                          className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-4 text-base font-bold text-indigo-300 hover:bg-indigo-500/20 transition-all active:scale-[0.98]"
+                        >
+                           <Rocket size={18} />
+                           Meta Ads
+                        </Link>
                         
-                        {!(property.googleBoostedUntil && new Date(property.googleBoostedUntil) > new Date()) && (
-                          <Link href={`/minha-conta/anuncios/${property.id}/turbinar?platform=google`} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 px-4 py-3 text-xs font-semibold text-emerald-300 hover:from-emerald-500/20 hover:to-teal-500/20 transition-colors shadow-lg shadow-emerald-500/5">
-                             <Rocket size={14} />
-                             Google Ads
-                          </Link>
-                        )}
+                        <Link 
+                          href={`/minha-conta/anuncios/${property.id}/turbinar?platform=google`} 
+                          className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-4 text-base font-bold text-emerald-300 hover:bg-emerald-500/20 transition-all active:scale-[0.98]"
+                        >
+                           <Rocket size={18} />
+                           Google Ads
+                        </Link>
                       </div>
                     </div>
                   </div>

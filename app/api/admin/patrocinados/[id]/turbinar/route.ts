@@ -61,7 +61,8 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
 
       return NextResponse.json({ success: true, message: "Lote Admin publicado no Google Ads!" });
     } else if (platform === "meta" || platform === "instagram" || platform === "facebook") {
-      const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID;
+      const rawAdAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID;
+      const adAccountId = rawAdAccountId && !rawAdAccountId.startsWith('act_') ? `act_${rawAdAccountId}` : rawAdAccountId;
       const pageId = process.env.FACEBOOK_PAGE_ID;
       const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
       const igUserId = process.env.INSTAGRAM_IG_USER_ID;
@@ -90,6 +91,44 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
 
       const BASE_GRAPH = "https://graph.facebook.com/v19.0";
       
+      let igActorId = igUserId || ""; // Base from ENV
+      if (usedPlatform === "instagram") {
+          // Resolve the actual Actor ID from the API to compare/fallback
+          try {
+              let apiActorId = null;
+              // 1. Try instagram_business_account via Page
+              const pRes = await fetch(`${BASE_GRAPH}/${pageId}?fields=instagram_business_account&access_token=${igToken}`);
+              const pData = await pRes.json();
+              apiActorId = pData.instagram_business_account?.id;
+              
+              // 2. Try instagram_accounts edge via Page
+              if (!apiActorId) {
+                  const accRes = await fetch(`${BASE_GRAPH}/${pageId}/instagram_accounts?fields=id&access_token=${igToken}`);
+                  const accData = await accRes.json();
+                  if (accData.data && accData.data.length > 0) {
+                      apiActorId = accData.data[0].id;
+                  }
+              }
+
+              // 3. Try via Ad Account (Marketing API specific)
+              if (!apiActorId) {
+                  const adAccRes = await fetch(`${BASE_GRAPH}/${adAccountId}/instagram_accounts?fields=id&access_token=${igToken}`);
+                  const adAccData = await adAccRes.json();
+                  if (adAccData.data && adAccData.data.length > 0) {
+                      apiActorId = adAccData.data[0].id;
+                  }
+              }
+
+              if (apiActorId) {
+                  igActorId = apiActorId;
+              }
+          } catch(e) { console.error("Actor resolution error", e); }
+
+          if (!igActorId) {
+              throw new Error("Não foi possível localizar o ID da Conta Comercial do Instagram (igActorId). Verifique se a variável INSTAGRAM_IG_USER_ID está configurada no servidor.");
+          }
+      }
+
       // 2. Criar Campanha
       const campaignForm = new URLSearchParams();
       campaignForm.append("name", `Admin Sponsored Lote: ${pub.name || pubId}`);
@@ -109,13 +148,17 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       const endTime = new Date();
       endTime.setDate(endTime.getDate() + 5);
 
+      const promotedObject: any = { page_id: pageId };
+      // Para POST_ENGAGEMENT no Instagram, o promoted_object continua sendo a Page ID.
+      // Se der erro de Actor, o problema é 100% no Criativo.
+
       const adSetForm = new URLSearchParams();
       adSetForm.append("name", `AdSet Admin Lote ${pub.name}`);
       adSetForm.append("campaign_id", campData.id);
       adSetForm.append("daily_budget", dailyBudgetCents.toString());
       adSetForm.append("billing_event", "IMPRESSIONS");
       adSetForm.append("optimization_goal", "REACH");
-      adSetForm.append("promoted_object", JSON.stringify({ page_id: pageId }));
+      adSetForm.append("promoted_object", JSON.stringify(promotedObject));
       adSetForm.append("bid_strategy", "LOWEST_COST_WITHOUT_CAP");
       adSetForm.append("targeting", JSON.stringify({ geo_locations: { countries: ["BR"] }, publisher_platforms: ["facebook", "instagram"] }));
       adSetForm.append("end_time", endTime.toISOString());
@@ -127,61 +170,63 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       if (!adSetData.id) throw new Error("Falha ao criar AdSet Meta: " + JSON.stringify(adSetData));
 
       // 4. Criar Creative (preferindo orgânico)
-      const creativeForm = new URLSearchParams();
-      creativeForm.append("name", `Criativo Admin Lote ${pubId}`);
-      
-      let isOrganic = false;
-      if (sourceId) {
-          if (usedPlatform === "instagram") {
-              let igActorId = igUserId;
-              
-              // Resolve the actual Actor ID from the API to compare/fallback
-              let apiActorId = null;
-              try {
-                  // 1. Try instagram_business_account
-                  const pRes = await fetch(`${BASE_GRAPH}/${pageId}?fields=instagram_business_account&access_token=${igToken}`);
-                  const pData = await pRes.json();
-                  apiActorId = pData.instagram_business_account?.id;
-                  
-                  // 2. Try instagram_accounts edge
-                  if (!apiActorId) {
-                      const accRes = await fetch(`${BASE_GRAPH}/${pageId}/instagram_accounts?fields=id&access_token=${igToken}`);
-                      const accData = await accRes.json();
-                      if (accData.data && accData.data.length > 0) {
-                          apiActorId = accData.data[0].id;
-                      }
-                  }
-              } catch(e) { console.error("Actor resolution error", e); }
-
-              // Prioritize the one found via API if it exists, as it's guaranteed to be linked to the Page
-              if (apiActorId) {
-                  igActorId = apiActorId;
-              }
-
-              if (!igActorId) {
-                  throw new Error("Não foi possível localizar o ID da Conta Comercial do Instagram (igActorId). Verifique se a sua conta Instagram está vinculada à Página no Facebook.");
-              }
-
-              if (!igActorId) {
-                  throw new Error("Não foi possível localizar o ID da Conta Comercial do Instagram (igActorId). Verifique se a variável INSTAGRAM_IG_USER_ID está configurada no servidor.");
-              }
-
-              creativeForm.append("object_story_spec", JSON.stringify({
-                  instagram_actor_id: igActorId,
-                  source_instagram_media_id: sourceId
-              }));
+      const buildCreative = async (actor: string, storySpec: boolean = false, useUserIdKey: boolean = false) => {
+          const form = new URLSearchParams();
+          form.append("name", `Criativo Admin Lote ${pubId}`);
+          const actorKey = useUserIdKey ? "instagram_user_id" : "instagram_actor_id";
+          if (storySpec) {
+            form.append("object_story_spec", JSON.stringify({
+                [actorKey]: actor,
+                source_instagram_media_id: sourceId
+            }));
           } else {
-              creativeForm.append("object_story_id", sourceId);
+            form.append(actorKey, actor);
+            form.append("source_instagram_media_id", sourceId);
           }
-          isOrganic = true;
-      }
-      creativeForm.append("access_token", igToken);
+          form.append("access_token", igToken);
+          const res = await fetch(`${BASE_GRAPH}/${adAccountId}/adcreatives`, { method: "POST", body: form });
+          return res.json();
+      };
 
-      const creativeRes = await fetch(`${BASE_GRAPH}/${adAccountId}/adcreatives`, { method: "POST", body: creativeForm });
-      const creativeData = await creativeRes.json();
+      let creativeData: any = null;
+      if (usedPlatform === "instagram") {
+          // Tentativa 1: instagram_user_id (Pulo do gato para erro #100)
+          creativeData = await buildCreative(igActorId, false, true);
+          
+          // Tentativa 2: instagram_actor_id standard
+          if (creativeData.error && (creativeData.error.code === 100 || creativeData.error.code === 1)) {
+              console.log("Fallback 1: Tentando com instagram_actor_id...");
+              creativeData = await buildCreative(igActorId, true, false);
+          }
+
+          // Tentativa 3: Page ID como Ator
+          if (creativeData.error && (creativeData.error.code === 100 || creativeData.error.code === 1)) {
+              console.log("Fallback 2: Tentando com Page ID...");
+              creativeData = await buildCreative(pageId, true, false);
+          }
+
+          // Tentativa 4: object_story_id
+          if (creativeData.error && (creativeData.error.code === 100 || creativeData.error.code === 1)) {
+              console.log("Fallback 3: Tentando formato object_story_id...");
+              const finalForm = new URLSearchParams();
+              finalForm.append("name", `Criativo Admin Lote ${pubId}`);
+              finalForm.append("object_story_id", sourceId);
+              finalForm.append("access_token", igToken);
+              const finalRes = await fetch(`${BASE_GRAPH}/${adAccountId}/adcreatives`, { method: "POST", body: finalForm });
+              creativeData = await finalRes.json();
+          }
+      } else {
+          const creativeForm = new URLSearchParams();
+          creativeForm.append("name", `Criativo Admin Lote ${pubId}`);
+          creativeForm.append("object_story_id", sourceId);
+          creativeForm.append("access_token", igToken);
+          const creativeRes = await fetch(`${BASE_GRAPH}/${adAccountId}/adcreatives`, { method: "POST", body: creativeForm });
+          creativeData = await creativeRes.json();
+      }
+
       if (!creativeData.id) {
           const detail = JSON.stringify(creativeData);
-          throw new Error(`Falha ao criar Criativo Meta. (ID usado: ${igActorId}) Erro: ${detail}`);
+          throw new Error(`Falha ao criar Criativo Meta. (Platform: ${usedPlatform}, Actor: ${igActorId || "N/A"}) Erro: ${detail}`);
       }
 
       // 5. Criar Ad
@@ -207,7 +252,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     }
 
   } catch (error: any) {
-    console.error("ADMIN GOOGLE ADS PUBLISH ERROR:", error);
+    console.error("ADMIN META ADS PUBLISH ERROR:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

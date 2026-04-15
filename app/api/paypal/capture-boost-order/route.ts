@@ -134,7 +134,8 @@ export async function POST(req: NextRequest) {
         sourceId = `Prop_${propertyId}`;
     }
 
-    const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID;
+    const rawAdAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID;
+    const adAccountId = rawAdAccountId && !rawAdAccountId.startsWith('act_') ? `act_${rawAdAccountId}` : rawAdAccountId;
     const pageId = process.env.FACEBOOK_PAGE_ID;
     const igToken = process.env.INSTAGRAM_ACCESS_TOKEN; 
     const igUserId = process.env.INSTAGRAM_IG_USER_ID;
@@ -182,7 +183,7 @@ export async function POST(req: NextRequest) {
     // 2. CRIA CAMPANHA
     const campaignForm = new URLSearchParams();
     campaignForm.append("name", `RealStock Boost Propriedade ${property.id}`);
-    campaignForm.append("objective", "OUTCOME_ENGAGEMENT"); // Compatível com POST_ENGAGEMENT
+    campaignForm.append("objective", "OUTCOME_AWARENESS"); // Mais estável para impulsionamento via API
     campaignForm.append("status", "ACTIVE");
     campaignForm.append("special_ad_categories", '["HOUSING"]'); // Requisito do FB para imóveis
     campaignForm.append("special_ad_category_country", '["BR"]'); // Requisito do FB para Categoria Especial
@@ -207,7 +208,7 @@ export async function POST(req: NextRequest) {
     adSetForm.append("campaign_id", campaignId);
     adSetForm.append("daily_budget", dailyBudgetCents.toString());
     adSetForm.append("billing_event", "IMPRESSIONS");
-    adSetForm.append("optimization_goal", "POST_ENGAGEMENT");
+    adSetForm.append("optimization_goal", "REACH");
     adSetForm.append("promoted_object", JSON.stringify({ page_id: pageId }));
     adSetForm.append("bid_strategy", "LOWEST_COST_WITHOUT_CAP"); // Facebook exige declaração do algoritmo de lances
     adSetForm.append("targeting", JSON.stringify(targeting));
@@ -239,54 +240,63 @@ export async function POST(req: NextRequest) {
     
     let isOrganicBoost = false;
 
+    const buildCreative = async (actor: string, storySpec: boolean = false, useUserIdKey: boolean = false) => {
+        const form = new URLSearchParams();
+        form.append("name", `Criativo Boost Prop ${propertyId}`);
+        const actorKey = useUserIdKey ? "instagram_user_id" : "instagram_actor_id";
+        
+        if (storySpec) {
+          form.append("object_story_spec", JSON.stringify({
+              [actorKey]: actor,
+              source_instagram_media_id: sourceId
+          }));
+        } else {
+          form.append(actorKey, actor);
+          form.append("source_instagram_media_id", sourceId);
+        }
+        form.append("access_token", igToken);
+        const res = await fetch(`${BASE_GRAPH}/${adAccountId}/adcreatives`, { method: "POST", body: form });
+        return res.json();
+    };
+
+    let creativeData: any = null;
+
     if (platform === "instagram" && sourceId && !sourceId.startsWith("Prop_")) {
-        // Resgatar obrigatoriamente o instagram_actor_id da página
+        // Resgatar igActorId
         let igActorId = igUserId;
         if (!igActorId) {
             try {
                 const pageRes = await fetch(`${BASE_GRAPH}/${pageId}?fields=instagram_business_account&access_token=${igToken}`);
                 const pageData = await pageRes.json();
-                if (pageData.instagram_business_account?.id) {
-                    igActorId = pageData.instagram_business_account.id;
-                }
-            } catch (e) {
-                console.error("Falha ao puxar instagram_business_account", e);
-            }
+                igActorId = pageData.instagram_business_account?.id;
+            } catch (e) {}
         }
 
         if (igActorId) {
-            creativeForm.append("instagram_actor_id", igActorId);
-            creativeForm.append("source_instagram_media_id", sourceId);
-            isOrganicBoost = true;
+            // Tenta o leque de possibilidades
+            creativeData = await buildCreative(igActorId, false, true); // Tentativa 1: instagram_user_id
+
+            if (creativeData.error && (creativeData.error.code === 100 || creativeData.error.code === 1)) {
+                creativeData = await buildCreative(igActorId, true, false); // Fallback 1: story_spec
+            }
+            if (creativeData.error && (creativeData.error.code === 100 || creativeData.error.code === 1)) {
+                creativeData = await buildCreative(pageId, true, false); // Fallback 2: Page ID como Ator
+            }
         } else {
-             throw new Error("Não foi possível localizar o ID da Conta Comercial do Instagram (igActorId). Certifique-se de que a conta está vinculada à sua página e que a variável INSTAGRAM_IG_USER_ID está configurada.");
+             throw new Error("ID do Instagram não encontrado. Vincule sua conta Instagram à Página.");
         }
     } else if (platform === "facebook" && sourceId && !sourceId.startsWith("Prop_")) {
-        creativeForm.append("object_story_id", sourceId);
-        isOrganicBoost = true;
+        const facebookForm = new URLSearchParams();
+        facebookForm.append("name", `Criativo Boost Prop ${propertyId}`);
+        facebookForm.append("object_story_id", sourceId);
+        facebookForm.append("access_token", igToken);
+        const fbRes = await fetch(`${BASE_GRAPH}/${adAccountId}/adcreatives`, { method: "POST", body: facebookForm });
+        creativeData = await fbRes.json();
     }
 
-    if (!isOrganicBoost) {
-        throw new Error("Impulsionamento via Dark Post (postagem fantasma) está desativado. Certifique-se de que o imóvel foi publicado organicamente primeiro.");
-    }
-
-    if (!isOrganicBoost) {
-        creativeForm.append("degrees_of_freedom_spec", JSON.stringify({
-            creative_features_spec: {
-                standard_enhancements: {
-                    enroll_status: "OPT_IN"
-                }
-            }
-        }));
-    }
-
-    creativeForm.append("access_token", igToken);
-
-    const creativeRes = await fetch(`${BASE_GRAPH}/${adAccountId}/adcreatives`, { method: "POST", body: creativeForm });
-    const creativeData = await creativeRes.json();
-    if (!creativeData.id) {
+    if (!creativeData || !creativeData.id) {
         console.error("ERRO CRIATIVO FB", creativeData);
-        return NextResponse.json({ success: false, error: "Falha ao vincular o post do Insta: " + (creativeData.error?.message||"") }, { status: 500 });
+        return NextResponse.json({ success: false, error: "Falha ao vincular o post: " + (creativeData.error?.message||"Desconhecido") }, { status: 500 });
     }
     const creativeId = creativeData.id;
 
