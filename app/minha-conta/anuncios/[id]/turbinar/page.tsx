@@ -18,6 +18,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
   const [property, setProperty] = useState<any>(null);
   const [service, setService] = useState<any>(null);
   const [error, setError] = useState("");
+  const [permalink, setPermalink] = useState<string | null>(null);
   
   // Slider state
   const [dailyBudget, setDailyBudget] = useState<number>(20); // Default R$ 20/day
@@ -52,6 +53,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
 
       setProperty(data.property);
       setService(data.service);
+      setPermalink(data.permalink);
     } catch (err: any) {
       setError(err.message || "Erro de conexão.");
     } finally {
@@ -199,6 +201,11 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                        <div className="absolute bottom-4 left-4 right-4">
                            <div className="text-xs uppercase bg-white/20 px-2 py-1 inline-block rounded text-white font-bold tracking-wider mb-2 backdrop-blur-sm shadow">Preview Patrocinado</div>
                            <h3 className="font-bold text-lg leading-tight line-clamp-2">{property.title}</h3>
+                           {permalink && (
+                                <a href={permalink} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-indigo-300 hover:text-indigo-200 underline">
+                                    Ver post que será turbinado
+                                </a>
+                            )}
                        </div>
                    </div>
 

@@ -211,6 +211,9 @@ export default function AdminPatrocinadosPage() {
                                   </Link>
                                 </>
                             )}
+                            <Link href={`/admin/patrocinados/${pub.id}/turbinar?platform=meta`} className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-indigo-500/40 bg-gradient-to-r from-indigo-500/10 to-indigo-500/20 py-2 px-3 text-xs font-semibold text-indigo-300 hover:from-indigo-500/20 hover:to-indigo-500/30 transition-colors">
+                              <Rocket size={14} /> Meta Ads
+                            </Link>
                             <Link href={`/admin/patrocinados/${pub.id}/turbinar?platform=google`} className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 py-2 px-3 text-xs font-semibold text-emerald-300 hover:from-emerald-500/20 hover:to-teal-500/20 transition-colors">
                               <Rocket size={14} /> Google Ads
                             </Link>

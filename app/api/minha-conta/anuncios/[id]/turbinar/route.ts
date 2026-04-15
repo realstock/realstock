@@ -69,12 +69,24 @@ export async function GET(
         orderBy: { createdAt: "desc" }
     });
 
-    if (!igSession || !igSession.publishedMediaId) {
+    const fbSession = await prisma.facebookFeedSession.findFirst({
+        where: {
+            listingId: propertyId,
+            status: "PUBLISHED"
+        },
+        orderBy: { createdAt: "desc" }
+    });
+
+    const isPublished = (igSession && igSession.publishedMediaId) || (fbSession && fbSession.publishedPostId);
+
+    if (!isPublished) {
         return NextResponse.json(
-            { success: false, error: "Este anúncio não foi publicado no Instagram ainda ou não encontramos o registro." },
+            { success: false, error: "Este anúncio não foi publicado nas redes sociais ainda ou não encontramos o registro." },
             { status: 400 }
         );
     }
+
+    const permalink = igSession?.validationReport ? (igSession.validationReport as any).permalink : (fbSession?.validationReport ? (fbSession.validationReport as any).permalink : null);
 
     // Fetch the site service for 'turbinar'
     const service = await prisma.siteService.findUnique({
@@ -85,7 +97,9 @@ export async function GET(
     return NextResponse.json({
       success: true,
       property,
-      instagramMediaId: igSession.publishedMediaId,
+      instagramMediaId: igSession?.publishedMediaId || null,
+      facebookPostId: fbSession?.publishedPostId || null,
+      permalink,
       service
     });
   } catch (error: any) {

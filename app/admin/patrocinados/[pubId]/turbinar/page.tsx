@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Rocket, Target, CalendarDays, Wallet } from "lucide-react";
 
 export default function AdminLoteGooglePage() {
-  const { status } = useSession();
+   const { status } = useSession();
   const router = useRouter();
   const { pubId } = useParams();
+  const searchParams = useSearchParams();
+  const platform = searchParams.get("platform") || "google";
 
   const [loading, setLoading] = useState(true);
   const [publication, setPublication] = useState<any>(null);
@@ -58,13 +60,13 @@ export default function AdminLoteGooglePage() {
       const res = await fetch(`/api/admin/patrocinados/${pubId}/turbinar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platform: "google", dailyBudget })
+        body: JSON.stringify({ platform, dailyBudget })
       });
       const data = await res.json();
       
       if (!res.ok || !data.success) throw new Error(data.error);
       
-      setSuccessMsg("Lote de Patrocinados foi impulsionado com sucesso no Google Ads!");
+      setSuccessMsg(`Lote de Patrocinados foi impulsionado com sucesso no ${platform === 'google' ? 'Google' : 'Meta'} Ads!`);
     } catch(err: any) {
       setError(err.message);
     } finally {
@@ -84,10 +86,12 @@ export default function AdminLoteGooglePage() {
             <Link href="/admin/patrocinados" className="text-sm text-slate-400 hover:text-white">← Voltar</Link>
             <h1 className="mt-4 text-3xl font-bold flex items-center gap-2 text-indigo-400">
                <Rocket size={32} />
-               Turbinar Anúncio no Google Search/Display
+               Turbinar Anúncio no {platform === 'google' ? 'Google Search/Display' : 'Meta Ads'}
             </h1>
             <p className="mt-2 text-slate-400">
-               Ative uma campanha inteligente no Google Ads para buscar compradores ativos pesquisando na sua região.
+               {platform === 'google' 
+                 ? "Ative uma campanha inteligente no Google Ads para buscar compradores ativos pesquisando na sua região."
+                 : "Transforme este lote em um anúncio de alta performance no Facebook e Instagram."}
             </p>
           </div>
         </div>
@@ -134,7 +138,7 @@ export default function AdminLoteGooglePage() {
 
                <div className="rounded-2xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/10 to-blue-500/5 p-6">
                    <h2 className="text-xl font-bold mb-1">Qual o orçamento diário do anúncio?</h2>
-                   <p className="text-sm text-slate-400 mb-8">Arraste a barra para definir quanto investir na plataforma Google por dia.</p>
+                   <p className="text-sm text-slate-400 mb-8">Arraste a barra para definir quanto investir na plataforma {platform === 'google' ? 'Google' : 'Meta'} por dia.</p>
                    
                    <div className="mb-4 flex justify-between items-end">
                        <span className="text-sm font-bold text-slate-500">R$ 10</span>

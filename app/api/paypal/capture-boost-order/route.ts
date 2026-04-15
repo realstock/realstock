@@ -107,9 +107,31 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: "Publicação no Facebook não encontrada para impulsionar." }, { status: 404 });
         }
         sourceId = fbSession.publishedPostId;
+    } else if (platform === "meta") {
+        // Tenta achar primeiro Instagram, depois Facebook. Se nenhum existir, sourceId continua null e cai na lógica de Dark Post.
+        const igSession = await prisma.instagramPreviewSession.findFirst({
+            where: { listingId: Number(propertyId), status: "PUBLISHED" },
+            orderBy: { createdAt: "desc" }
+        });
+        if (igSession && igSession.publishedMediaId) {
+            sourceId = igSession.publishedMediaId;
+            // Se achou IG, mudamos a plataforma interna para instagram para usar o creative correto, 
+            // mas o targeting (definido na linha 152) continuará sendo [facebook, instagram] se platform original era meta.
+        } else {
+            const fbSession = await prisma.facebookFeedSession.findFirst({
+                where: { listingId: Number(propertyId), status: "PUBLISHED" },
+                orderBy: { createdAt: "desc" }
+            });
+            if (fbSession && fbSession.publishedPostId) {
+                sourceId = fbSession.publishedPostId;
+            }
+        }
+        
+        if (!sourceId) {
+            sourceId = `Prop_${propertyId}`; 
+        }
     } else {
-        // "meta" unfied platform
-        sourceId = `Prop_${propertyId}`; // Dummy reference ID since we generate dark post from DB images
+        sourceId = `Prop_${propertyId}`;
     }
 
     const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID;
