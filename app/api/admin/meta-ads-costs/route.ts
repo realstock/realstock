@@ -39,6 +39,7 @@ export async function GET() {
           impressions: 0,
           clicks: 0,
           likes: 0,
+          organicLikes: 0,
           apiStatus: "MOCK / DEVELOPMENT",
           createdAt: adSession.createdAt
         });
@@ -50,10 +51,26 @@ export async function GET() {
       let impressions = 0;
       let clicks = 0;
       let likes = 0;
+      let organicLikes = 0;
       let apiStatus = adSession.status;
 
       try {
         if (FACEBOOK_ACCESS_TOKEN) {
+          // Fetch Organic Likes
+          if (adSession.listingId) {
+             const igSession = await prisma.instagramFeedSession.findFirst({
+                 where: { listingId: adSession.listingId, status: "PUBLISHED" },
+                 orderBy: { createdAt: "desc" }
+             });
+             if (igSession && igSession.publishedMediaId) {
+                 const mediaRes = await fetch(`https://graph.facebook.com/v19.0/${igSession.publishedMediaId}?fields=like_count&access_token=${FACEBOOK_ACCESS_TOKEN}`);
+                 const mediaData = await mediaRes.json();
+                 if (mediaData.like_count !== undefined) {
+                     organicLikes = parseInt(mediaData.like_count) || 0;
+                 }
+             }
+          }
+
           // Insights (últimos 30 dias)
           const insRes = await fetch(
             `https://graph.facebook.com/v19.0/${adSession.campaignId}/insights?fields=spend,impressions,clicks,actions&date_preset=last_30d&access_token=${FACEBOOK_ACCESS_TOKEN}`
@@ -92,6 +109,7 @@ export async function GET() {
         impressions: impressions,
         clicks: clicks,
         likes: likes,
+        organicLikes: organicLikes,
         apiStatus: apiStatus,
         createdAt: adSession.createdAt
       });

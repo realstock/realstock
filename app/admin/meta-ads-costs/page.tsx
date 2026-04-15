@@ -125,8 +125,18 @@ export default function MetaAdsCostsPage() {
                       <td className="p-4 text-center font-bold text-indigo-400">
                         {it.impressions.toLocaleString("pt-BR")} <span className="text-xs font-normal opacity-70">views</span>
                       </td>
-                      <td className="p-4 text-center font-semibold text-pink-400">
-                        {it.likes ? it.likes.toLocaleString("pt-BR") : 0} <span className="text-[10px] uppercase tracking-wider opacity-70 block mt-0.5">Likes</span>
+                      <td className="p-4 text-center font-semibold flex flex-col gap-1 items-center justify-center">
+                        <span className="text-pink-400 flex items-center gap-1.5">
+                           {it.likes ? it.likes.toLocaleString("pt-BR") : 0} <span className="text-[10px] uppercase font-bold tracking-wider opacity-70">Via Ads</span>
+                        </span>
+                        {it.organicLikes > 0 && (
+                            <span className="text-emerald-400 flex items-center gap-1.5">
+                               {it.organicLikes.toLocaleString("pt-BR")} <span className="text-[10px] uppercase font-bold tracking-wider opacity-70">Orgânico</span>
+                            </span>
+                        )}
+                        {it.organicLikes === 0 && (
+                            <span className="text-slate-600 text-[10px] uppercase font-bold tracking-wider">Dark Post</span>
+                        )}
                       </td>
                       <td className="p-4 text-center text-slate-300">
                         {it.clicks.toLocaleString("pt-BR")}
