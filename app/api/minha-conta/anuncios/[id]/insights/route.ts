@@ -59,6 +59,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     // Removed the mock generator because we are using real data API now
 
     const insights = {
+        metaAds: null as any,
         instagram: null as any,
         facebook: null as any,
         google: null as any
@@ -275,21 +276,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                     const actionLike = actions.find((a: any) => a.action_type === "post_reaction" || a.action_type === "like");
                     if (actionLike) paidLikes = parseInt(actionLike.value) || 0;
 
-                    // Se não tiver orgânico para pendurar, gera o mock visual do Card do Insta para o Dark Post
-                    if (!insights.instagram && !insights.facebook) {
-                        insights.instagram = { likes: 0, comments: 0, views: 0, reach: 0, shares: 0, publishedDate: metaAdsSession.createdAt };
-                    }
-                    
-                    if (insights.instagram) {
-                         insights.instagram.views = (insights.instagram.views || 0) + paidImp;
-                         insights.instagram.reach = (insights.instagram.reach || 0) + paidReach;
-                         insights.instagram.likes = (insights.instagram.likes || 0) + paidLikes;
-                    } 
-                    if (insights.facebook) {
-                         insights.facebook.impressions = (insights.facebook.impressions || 0) + paidImp;
-                         insights.facebook.clicks = (insights.facebook.clicks || 0) + paidClicks;
-                         insights.facebook.likes = (insights.facebook.likes || 0) + paidLikes;
-                    }
+                    insights.metaAds = {
+                        views: paidImp,
+                        clicks: paidClicks,
+                        reach: paidReach,
+                        likes: paidLikes,
+                        spend: adsData.data[0].spend || "0"
+                    };
                 }
             }
         } catch(e) { console.error("Falha ao puxar Paid Ads Insights", e); }

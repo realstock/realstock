@@ -181,6 +181,58 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                                     </div>
                                 </div>
                             </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* META ADS (DARK POST) INSIGHTS */}
+                    {insights.metaAds && (
+                        <div className="rounded-3xl bg-gradient-to-br from-violet-600/10 to-fuchsia-500/5 border border-violet-500/20 p-6 shadow-xl relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-gradient-to-bl from-violet-500 to-fuchsia-600">
+                                    <Rocket size={16} className="text-white" />
+                                </div>
+                                <h2 className="text-xl font-bold">Meta Ads (Turbinado)</h2>
+                            </div>
+
+                            {metaSessionStatus === "IN_PROCESS" && (
+                                <div className="bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 p-3 rounded-lg text-sm mb-4 font-semibold shadow-inner">
+                                    ⚠️ Status: Aguardando aprovação da Meta. O prazo está congelado até aprovação.
+                                </div>
+                            )}
+                            {metaSessionStatus === "ACTIVE" && (
+                                <div className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 p-3 rounded-lg text-sm mb-4 font-semibold shadow-inner">
+                                    ✅ Status: Turbinado e Rodando!
+                                </div>
+                            )}
+                            {metaSessionStatus === "REJECTED" && (
+                                <div className="bg-red-500/20 text-red-300 border border-red-500/30 p-3 rounded-lg text-sm mb-4 font-semibold shadow-inner">
+                                    ❌ Anúncio Rejeitado pela Meta. Revise a imagem para compliance.
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
+                                    <Heart className="text-fuchsia-400 mb-2" size={20} />
+                                    <div className="text-2xl font-black">{insights.metaAds.likes}</div>
+                                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Reações</div>
+                                </div>
+                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
+                                    <MousePointerClick className="text-violet-400 mb-2" size={20} />
+                                    <div className="text-2xl font-black">{insights.metaAds.clicks}</div>
+                                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cliques</div>
+                                </div>
+                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5 col-span-2 flex items-center justify-between">
+                                    <div>
+                                        <Users className="text-violet-300 mb-1" size={20} />
+                                        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Exibições</div>
+                                    </div>
+                                    <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">
+                                        {insights.metaAds.views.toLocaleString('pt-BR')}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
 
