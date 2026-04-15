@@ -255,11 +255,8 @@ export async function POST(req: NextRequest) {
         }
 
         if (igActorId) {
-            creativeForm.append("object_story_spec", JSON.stringify({
-                 page_id: pageId,
-                 instagram_actor_id: igActorId,
-                 source_instagram_media_id: sourceId
-            }));
+            creativeForm.append("instagram_actor_id", igActorId);
+            creativeForm.append("source_instagram_media_id", sourceId);
             isOrganicBoost = true;
         } else {
              throw new Error("Não foi possível localizar o ID da Conta Comercial do Instagram (igActorId). Certifique-se de que a conta está vinculada à sua página e que a variável INSTAGRAM_IG_USER_ID está configurada.");

@@ -155,10 +155,8 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
                   throw new Error("Não foi possível localizar o ID da Conta Comercial do Instagram (igActorId). Verifique se a variável INSTAGRAM_IG_USER_ID está configurada no servidor.");
               }
 
-              creativeForm.append("object_story_spec", JSON.stringify({
-                  instagram_actor_id: igActorId,
-                  source_instagram_media_id: sourceId
-              }));
+              creativeForm.append("instagram_actor_id", igActorId);
+              creativeForm.append("source_instagram_media_id", sourceId);
           } else {
               creativeForm.append("object_story_id", sourceId);
           }
