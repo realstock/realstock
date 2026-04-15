@@ -179,43 +179,62 @@ export default function AdminPatrocinadosPage() {
                     
                     {pub.metaBoostedUntil && new Date(pub.metaBoostedUntil) > new Date() && (
                       <div className="mb-2 inline-flex items-center gap-1 w-fit rounded bg-indigo-500/20 px-2 py-1 text-xs font-bold text-indigo-400 border border-indigo-500/20">
-                          <Rocket size={14} /> Meta Ads ativado
+                          <Rocket size={14} /> Meta Ads ativado por {Math.ceil((new Date(pub.metaBoostedUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias
                       </div>
                     )}
 
                     {pub.googleBoostedUntil && new Date(pub.googleBoostedUntil) > new Date() && (
                       <div className="mb-2 inline-flex items-center gap-1 w-fit rounded bg-emerald-500/20 px-2 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/20">
-                          <Rocket size={14} /> Google Ads ativado
+                          <Rocket size={14} /> Google Ads ativado por {Math.ceil((new Date(pub.googleBoostedUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias
                       </div>
                     )}
 
                     <div className="flex flex-col gap-2 mt-2 w-full">
-                        {(isPubPublished || pub.metaBoostedUntil || pub.googleBoostedUntil) && (
+                        {(instagramPosts.find(p => p.listingId === -2 && (p.caption?.includes(pub.id) || p.caption === pub.id)) || 
+                          facebookPosts.find(p => p.listingId === -2 && (p.caption?.includes(pub.id) || p.caption === pub.id)) || 
+                          pub.metaBoostedUntil || pub.googleBoostedUntil) && (
                            <Link href={`/admin/patrocinados/${pub.id}/insights`} className="flex items-center justify-center gap-1 w-full rounded-xl border border-yellow-500/40 bg-yellow-500/10 py-2 text-xs font-semibold text-yellow-300 hover:bg-yellow-500/20 transition-colors shadow-lg">
                              <BarChart3 size={14} /> Ver Estatísticas / Insights
                            </Link>
                         )}
                         
-                        <div className="flex flex-wrap gap-2 w-full">
-                            {isPubPublished?.validationReport?.permalink ? (
-                                <a href={isPubPublished.validationReport.permalink} target="_blank" rel="noopener noreferrer" className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-transparent bg-pink-500/10 py-2 text-xs font-semibold text-pink-300 hover:bg-pink-500/20 transition-colors">
-                                  <ExternalLink size={14}/> Ver Post Social
+                        <div className="grid grid-cols-2 gap-2 w-full">
+                            {/* INSTAGRAM BLOCK */}
+                            <Link href={`/admin/patrocinados/${pub.id}/instagram`} className="flex items-center justify-center gap-1 rounded-xl border border-pink-400/20 bg-pink-500/5 py-2 text-[10px] font-semibold text-pink-300 hover:bg-pink-500/10 transition-all">
+                              <Plus size={12} /> Post Insta
+                            </Link>
+                            
+                            {instagramPosts.find(p => p.listingId === -2 && (p.caption?.includes(pub.id) || p.caption === pub.id))?.validationReport?.permalink ? (
+                                <a href={instagramPosts.find(p => p.listingId === -2 && (p.caption?.includes(pub.id) || p.caption === pub.id))?.validationReport?.permalink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1 rounded-xl border border-pink-400/30 bg-pink-500/20 py-2 text-[10px] font-bold text-white hover:bg-pink-500/30 transition-all">
+                                  <Camera size={12}/> Ver Insta
                                 </a>
                             ) : (
-                                <>
-                                  <Link href={`/admin/patrocinados/${pub.id}/instagram`} className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-pink-400/20 bg-pink-500/10 py-2 text-xs font-semibold text-pink-300 hover:bg-pink-500/20 transition-colors">
-                                    <img src="/icones/instagram.jpg" className="w-4 h-4 rounded" alt="Instagram" /> Insta
-                                  </Link>
-                                  <Link href={`/admin/patrocinados/${pub.id}/facebook`} className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-blue-400/20 bg-blue-500/10 py-2 text-xs font-semibold text-blue-300 hover:bg-blue-500/20 transition-colors">
-                                    <img src="/icones/facebook.jpeg" className="w-4 h-4 rounded" alt="Facebook" /> Face
-                                  </Link>
-                                </>
+                                <div className="flex items-center justify-center gap-1 rounded-xl border border-white/5 bg-white/5 py-2 text-[10px] font-semibold text-slate-500">
+                                  <Camera size={12}/> Ver Insta
+                                </div>
                             )}
-                            <Link href={`/admin/patrocinados/${pub.id}/turbinar?platform=meta`} className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-indigo-500/40 bg-gradient-to-r from-indigo-500/10 to-indigo-500/20 py-2 px-3 text-xs font-semibold text-indigo-300 hover:from-indigo-500/20 hover:to-indigo-500/30 transition-colors">
-                              <Rocket size={14} /> Meta Ads
+
+                            {/* FACEBOOK BLOCK */}
+                            <Link href={`/admin/patrocinados/${pub.id}/facebook`} className="flex items-center justify-center gap-1 rounded-xl border border-blue-400/20 bg-blue-500/5 py-2 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/10 transition-all">
+                              <Plus size={12} /> Post Face
                             </Link>
-                            <Link href={`/admin/patrocinados/${pub.id}/turbinar?platform=google`} className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 py-2 px-3 text-xs font-semibold text-emerald-300 hover:from-emerald-500/20 hover:to-teal-500/20 transition-colors">
-                              <Rocket size={14} /> Google Ads
+
+                            {facebookPosts.find(p => p.listingId === -2 && (p.caption?.includes(pub.id) || p.caption === pub.id))?.validationReport?.permalink ? (
+                                <a href={facebookPosts.find(p => p.listingId === -2 && (p.caption?.includes(pub.id) || p.caption === pub.id))?.validationReport?.permalink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1 rounded-xl border border-blue-400/30 bg-blue-500/20 py-2 text-[10px] font-bold text-white hover:bg-blue-500/30 transition-all">
+                                  <ExternalLink size={12}/> Ver Face
+                                </a>
+                            ) : (
+                                <div className="flex items-center justify-center gap-1 rounded-xl border border-white/5 bg-white/5 py-2 text-[10px] font-semibold text-slate-500">
+                                  <ExternalLink size={12}/> Ver Face
+                                </div>
+                            )}
+
+                            {/* ADS BLOCK */}
+                            <Link href={`/admin/patrocinados/${pub.id}/turbinar?platform=meta`} className="flex items-center justify-center gap-1 rounded-xl border border-indigo-500/40 bg-indigo-500/10 py-2 text-[10px] font-bold text-indigo-300 hover:bg-indigo-500/20 transition-all">
+                              <Rocket size={12} /> Meta Ads
+                            </Link>
+                            <Link href={`/admin/patrocinados/${pub.id}/turbinar?platform=google`} className="flex items-center justify-center gap-1 rounded-xl border border-emerald-500/40 bg-emerald-500/10 py-2 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/20 transition-all">
+                              <Rocket size={12} /> Google Ads
                             </Link>
                         </div>
                     </div>
