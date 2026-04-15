@@ -263,20 +263,32 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         try {
             const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
             if (igToken) {
-                const adsRes = await fetch(`https://graph.facebook.com/v19.0/${metaAdsSession.campaignId}/insights?fields=impressions,clicks,reach,spend&access_token=${igToken}`);
+                const adsRes = await fetch(`https://graph.facebook.com/v19.0/${metaAdsSession.campaignId}/insights?fields=impressions,clicks,reach,spend,actions&access_token=${igToken}`);
                 const adsData = await adsRes.json();
                 if (adsData && adsData.data && adsData.data.length > 0) {
                     const paidImp = Number(adsData.data[0].impressions) || 0;
                     const paidClicks = Number(adsData.data[0].clicks) || 0;
                     const paidReach = Number(adsData.data[0].reach) || 0;
                     
+                    let paidLikes = 0;
+                    const actions = adsData.data[0].actions || [];
+                    const actionLike = actions.find((a: any) => a.action_type === "post_reaction" || a.action_type === "like");
+                    if (actionLike) paidLikes = parseInt(actionLike.value) || 0;
+
+                    // Se não tiver orgânico para pendurar, gera o mock visual do Card do Insta para o Dark Post
+                    if (!insights.instagram && !insights.facebook) {
+                        insights.instagram = { likes: 0, comments: 0, views: 0, reach: 0, shares: 0, publishedDate: metaAdsSession.createdAt };
+                    }
+                    
                     if (insights.instagram) {
                          insights.instagram.views = (insights.instagram.views || 0) + paidImp;
                          insights.instagram.reach = (insights.instagram.reach || 0) + paidReach;
+                         insights.instagram.likes = (insights.instagram.likes || 0) + paidLikes;
                     } 
                     if (insights.facebook) {
                          insights.facebook.impressions = (insights.facebook.impressions || 0) + paidImp;
                          insights.facebook.clicks = (insights.facebook.clicks || 0) + paidClicks;
+                         insights.facebook.likes = (insights.facebook.likes || 0) + paidLikes;
                     }
                 }
             }
