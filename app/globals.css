@@ -33,3 +33,28 @@ body {
   display: none !important;
   visibility: hidden !important;
 }
+
+.input {
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  outline: none;
+  transition: all 0.2s;
+  appearance: none;
+}
+
+.input:focus {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Forçar cores no Windows/Chrome para os menus dropdown */
+select.input option {
+  background: #1e293b; /* slate-800 */
+  color: white;
+}
+
