@@ -41,9 +41,14 @@ export default function AnunciosTurbinadosPage() {
                     <h1 className="text-5xl md:text-7xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-500 leading-tight">
                         EM ALTA NA META
                     </h1>
-                    <p className="text-slate-400 max-w-2xl mx-auto text-lg">
-                        Confira os imóveis que estão dominando o Instagram e Facebook no momento com o turbinamento profissional da RealStock.
-                    </p>
+                    <div className="max-w-3xl mx-auto">
+                        <p className="text-slate-300 text-lg md:text-xl font-medium mb-3">
+                            Confira os imóveis que estão dominando o Instagram e Facebook no momento.
+                        </p>
+                        <p className="text-slate-500 text-xs md:text-sm leading-relaxed">
+                            Estas visualizações representam <span className="text-indigo-400 font-bold">usuários qualificados</span> filtrados por nossa Inteligência Artificial para entregar seu anúncio a quem realmente importa. Na RealStock, priorizamos a <span className="text-white font-bold">qualidade sobre a quantidade</span>, garantindo que sua venda alcance o máximo de clientes em potencial.
+                        </p>
+                    </div>
                 </div>
 
                 {items.length === 0 ? (
