@@ -108,13 +108,15 @@ export default function AnunciosTurbinadosPage() {
                                             </div>
                                         </div>
 
-                                        <Link 
+                                        <a 
                                             href={item.link}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
                                             className="group/btn flex items-center justify-center gap-2 w-full py-4 rounded-2xl bg-white text-black font-black uppercase text-sm transition-all hover:bg-yellow-400 hover:shadow-xl active:scale-95"
                                         >
-                                            Ver Detalhes do Imóvel
+                                            Ver Detalhes do Anúncio
                                             <ArrowRight size={18} className="transition-transform group-hover/btn:translate-x-1" />
-                                        </Link>
+                                        </a>
                                     </div>
                                 </div>
                             </div>

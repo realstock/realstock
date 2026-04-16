@@ -51,13 +51,24 @@ export async function GET(req: NextRequest) {
             }
         }
 
+        // Buscar link do post real
+        let externalLink = "/";
+        const igSess = await prisma.instagramPreviewSession.findFirst({
+            where: { listingId: -2, status: "PUBLISHED", caption: lot.id },
+            orderBy: { createdAt: "desc" }
+        });
+        if (igSess?.validationReport) {
+            const report = igSess.validationReport as any;
+            if (report.permalink) externalLink = report.permalink;
+        }
+
         items.push({
             id: lot.id,
             type: "LOT",
             title: lot.name || "Lote Especial",
             views,
             image: lotImage,
-            link: `/` // Link para a Home por enquanto, ou insights se preferir
+            link: externalLink
         });
     }
 
@@ -73,13 +84,24 @@ export async function GET(req: NextRequest) {
                 }
             } catch(e) {}
         }
+
+        let externalLink = `/imovel/${prop.id}`;
+        const igSess = await prisma.instagramPreviewSession.findFirst({
+            where: { listingId: prop.id, status: "PUBLISHED" },
+            orderBy: { createdAt: "desc" }
+        });
+        if (igSess?.validationReport) {
+            const report = igSess.validationReport as any;
+            if (report.permalink) externalLink = report.permalink;
+        }
+
         items.push({
             id: prop.id,
             type: "PROPERTY",
             title: prop.title,
             views,
             image: prop.images[0]?.imageUrl || "/placeholder-house.webp",
-            link: `/imovel/${prop.id}`
+            link: externalLink
         });
     }
 
