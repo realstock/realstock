@@ -37,13 +37,27 @@ export async function GET(req: NextRequest) {
                 }
             } catch(e) {}
         }
+
+        // Buscar imagem real do primeiro imóvel do lote
+        let lotImage = "/logo-realstock.jpg";
+        const pIds = lot.propertyIds as number[];
+        if (pIds && pIds.length > 0) {
+            const firstProp = await prisma.property.findUnique({
+                where: { id: pIds[0] },
+                include: { images: { orderBy: { sortOrder: 'asc' }, take: 1 } }
+            });
+            if (firstProp?.images[0]?.imageUrl) {
+                lotImage = firstProp.images[0].imageUrl;
+            }
+        }
+
         items.push({
             id: lot.id,
             type: "LOT",
             title: lot.name || "Lote Especial",
             views,
-            image: "/placeholder-house.webp", // Lotes costumam ser grupos, podemos usar placeholder ou a primeira do primeiro imóvel
-            link: `/admin/patrocinados/${lot.id}/insights` // Link público ou interno? Por enquanto, apenas dados
+            image: lotImage,
+            link: `/` // Link para a Home por enquanto, ou insights se preferir
         });
     }
 
