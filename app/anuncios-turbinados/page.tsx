@@ -76,7 +76,7 @@ export default function AnunciosTurbinadosPage() {
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                                         
-                                        <div className="absolute bottom-4 left-6 flex items-center gap-4">
+                                        <div className="absolute bottom-4 left-6 flex items-center gap-4 group/stats">
                                             <div className="bg-white/20 backdrop-blur-md p-2 rounded-xl border border-white/20">
                                                 <Camera size={20} className="text-white" />
                                             </div>
@@ -93,6 +93,20 @@ export default function AnunciosTurbinadosPage() {
                                                         {(item.organicViews || 0).toLocaleString()} <Eye size={16} className="text-indigo-400" />
                                                     </span>
                                                 </div>
+                                            </div>
+
+                                            {/* Tooltip Persuasivo de IA */}
+                                            <div className="absolute bottom-full left-0 mb-4 w-64 p-4 bg-slate-900/95 backdrop-blur-xl border border-indigo-500/30 rounded-2xl shadow-2xl opacity-0 translate-y-2 pointer-events-none group-hover/stats:opacity-100 group-hover/stats:translate-y-0 transition-all duration-300 z-50">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <div className="bg-indigo-500/20 p-1 rounded-lg">
+                                                        <Rocket size={14} className="text-indigo-400" />
+                                                    </div>
+                                                    <span className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">Impacto Inteligente</span>
+                                                </div>
+                                                <p className="text-[11px] text-slate-300 leading-relaxed font-medium">
+                                                    Achou pouco? Estas <span className="text-white font-bold">{(item.paidViews + item.organicViews).toLocaleString()}</span> pessoas são <span className="text-indigo-300">clientes qualificados</span> selecionados pela nossa IA. Não buscamos quantidade, buscamos os compradores que dão resultado!
+                                                </p>
+                                                <div className="absolute top-full left-6 w-3 h-3 bg-slate-900 border-r border-b border-indigo-500/30 rotate-45 -mt-1.5"></div>
                                             </div>
                                         </div>
                                     </div>
