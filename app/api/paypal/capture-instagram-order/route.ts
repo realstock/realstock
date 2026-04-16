@@ -237,6 +237,15 @@ export async function POST(req: NextRequest) {
        }
     });
 
+    // VINCULAR DIRETAMENTE NO IMÓVEL
+    await prisma.property.update({
+       where: { id: property.id },
+       data: {
+           instagramMediaId: publishData.id,
+           instagramPermalink: permalink
+       }
+    });
+
     // Everything went well!
     return NextResponse.json({
       success: true,

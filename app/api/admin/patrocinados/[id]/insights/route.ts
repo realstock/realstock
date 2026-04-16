@@ -21,7 +21,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ success: false, error: "Lote não encontrado." }, { status: 404 });
     }
 
-    // Capture sessions for this specific publisher box
+    // Capture sessions for fallback if direct link is missing
     const igSession = await prisma.instagramPreviewSession.findFirst({
         where: { listingId: -2, status: "PUBLISHED", caption: pubId },
         orderBy: { createdAt: 'desc' }
@@ -32,14 +32,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         orderBy: { createdAt: 'desc' }
     });
 
-    // Google Ads doesn't strictly link to pubId natively in the mock yet, we'll fetch the global one if pub is boosted
     const goSession = await prisma.googleAdsSession.findFirst({
         where: { listingId: -2, status: { contains: "ACTIVE" } },
         orderBy: { createdAt: 'desc' }
     });
 
     const isBoosted = (pub.googleBoostedUntil && new Date(pub.googleBoostedUntil) > new Date()) || 
-                      (pub.metaBoostedUntil && new Date(pub.metaBoostedUntil) > new Date()) || !!igSession || !!fbSession;
+                      (pub.metaBoostedUntil && new Date(pub.metaBoostedUntil) > new Date()) || 
+                      !!pub.instagramMediaId || !!igSession || !!fbSession;
 
     const insights = {
         metaAds: null as any,
@@ -48,21 +48,27 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         google: null as any
     };
 
-    if (igSession && igSession.publishedMediaId) {
+    // 2. INSTAGRAM ORGANIC INSIGHTS
+    const mediaIdToQuery = pub.instagramMediaId || igSession?.publishedMediaId;
+
+    if (mediaIdToQuery) {
         try {
             const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
             if (igToken) {
-              const baseRes = await fetch(`https://graph.facebook.com/v19.0/${igSession.publishedMediaId}?fields=like_count,comments_count&access_token=${igToken}`);
+              const baseRes = await fetch(`https://graph.facebook.com/v19.0/${mediaIdToQuery}?fields=like_count,comments_count,updated_at&access_token=${igToken}`);
               const baseData = await baseRes.json();
               
               if (baseData && !baseData.error) {
-                  const insRes = await fetch(`https://graph.facebook.com/v19.0/${igSession.publishedMediaId}/insights?metric=impressions,reach,shares&access_token=${igToken}`);
+                  // Tentar buscar métricas abrangentes
+                  const insRes = await fetch(`https://graph.facebook.com/v19.0/${mediaIdToQuery}/insights?metric=impressions,reach,video_views,plays,shares&access_token=${igToken}`);
                   const insData = await insRes.json();
 
                   let impressions = 0, reach = 0, shares = 0;
                   if (insData && insData.data) {
                       for (const m of insData.data) {
-                          if (m.name === 'impressions') impressions = m.values[0]?.value || 0;
+                          if (m.name === 'impressions' || m.name === 'video_views' || m.name === 'plays') {
+                              impressions = m.values[0]?.value || impressions;
+                          }
                           if (m.name === 'reach') reach = m.values[0]?.value || 0;
                           if (m.name === 'shares') shares = m.values[0]?.value || 0;
                       }
@@ -71,17 +77,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                   insights.instagram = {
                       likes: baseData.like_count || 0,
                       comments: baseData.comments_count || 0,
-                      views: impressions, // Mapeado para o frontend como 'views'
+                      views: impressions,
                       reach, 
                       shares,
-                      publishedDate: igSession.updatedAt
+                      publishedDate: baseData.updated_at || igSession?.updatedAt
                   };
               }
             }
-        } catch(e) {}
-        if (!insights.instagram) insights.instagram = { likes: 0, comments: 0, views: 0, reach: 0, shares: 0, publishedDate: igSession.updatedAt };
+        } catch(e) { console.error("IG ANALYTICS ERROR", e); }
+        if (!insights.instagram && igSession) {
+            insights.instagram = { likes: 0, comments: 0, views: 0, reach: 0, shares: 0, publishedDate: igSession.updatedAt };
+        }
     }
 
+    // FACEBOOK INSIGHTS
     if (fbSession && fbSession.publishedPostId) {
         try {
             const userToken = process.env.INSTAGRAM_ACCESS_TOKEN;
@@ -96,7 +105,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                     const data = await res.json();
                     
                     if (data && !data.error) {
-                        let impressions = 0, clicks = 0;
+                        let impressions = 0;
                         if (data.insights && data.insights.data) {
                             for (const m of data.insights.data) {
                                 if (m.name === 'post_impressions' && m.values?.[0]) impressions = m.values[0].value;
@@ -107,14 +116,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                             likes: data.likes?.summary?.total_count || 0,
                             comments: data.comments?.summary?.total_count || 0,
                             shares: data.shares?.count || 0,
-                            impressions, clicks,
+                            impressions,
                             publishedDate: fbSession.updatedAt
                         };
                     }
                 }
             }
         } catch(e) {}
-        if (!insights.facebook) insights.facebook = { likes: 0, comments: 0, impressions: 0, clicks: 0, shares: 0, publishedDate: fbSession.updatedAt };
     }
 
     // 3. META ADS (PAID) INSIGHTS
@@ -122,7 +130,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         try {
             const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
             if (igToken) {
-                // Fetch Ad Insights
                 const adInsRes = await fetch(`https://graph.facebook.com/v19.0/${pub.metaAdId}/insights?fields=impressions,clicks,reach,spend,actions&access_token=${igToken}`);
                 const adInsData = await adInsRes.json();
                 if (adInsData.data && adInsData.data[0]) {
@@ -143,50 +150,25 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                         likes: paidLikes,
                         spend: stats.spend || "0"
                     };
-
-                    // AJUSTE ADITIVO: Orgânico e Pago como independentes
-                    if (insights.instagram) {
-                         // Mantemos o valor original vindo da média insights
-                         insights.instagram.views = insights.instagram.views;
-                    }
-                    if (insights.facebook) {
-                         insights.facebook.impressions = insights.facebook.impressions;
-                    }
                 }
             }
-        } catch(e) {
-            console.error("META AD INSIGHTS ERROR", e);
-        }
+        } catch(e) { console.error("META AD INSIGHTS ERROR", e); }
     }
 
     if (goSession && (pub.googleBoostedUntil && new Date(pub.googleBoostedUntil) > new Date())) {
         const budget = Number(goSession.budget);
-
         if (goSession.campaignId && !goSession.campaignId.includes("MOCK")) {
             const adsData = await getGoogleAdsCampaignInsights(goSession.campaignId);
-            
             if (adsData.success) {
-            insights.google = {
-                clicks: adsData.clicks,
-                impressions: adsData.impressions,
-                ctr: adsData.ctr,
-                cpc: adsData.cpc,
-                budget: budget.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
-                activeDays: goSession.budgetDays
-            };
-            } else {
                 insights.google = {
-                    clicks: 0, impressions: 0, ctr: "0.00", cpc: "R$ 0,00",
+                    clicks: adsData.clicks,
+                    impressions: adsData.impressions,
+                    ctr: adsData.ctr,
+                    cpc: adsData.cpc,
                     budget: budget.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
                     activeDays: goSession.budgetDays
                 };
             }
-        } else {
-            insights.google = {
-                clicks: 0, impressions: 0, ctr: "0.00", cpc: "R$ 0,00",
-                budget: budget.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
-                activeDays: goSession.budgetDays
-            };
         }
     }
 
@@ -205,6 +187,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     });
 
   } catch (error: any) {
+    console.error("GLOBAL INSIGHTS ERROR", error);
     return NextResponse.json({ success: false, error: "Erro interno no servidor." }, { status: 500 });
   }
 }

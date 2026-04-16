@@ -108,6 +108,8 @@ model Property {
   metaAdId            String?         @map("meta_ad_id")
   metaCampaignId      String?         @map("meta_campaign_id")
   sponsoredUntil      DateTime?       @map("sponsored_until")
+  instagramMediaId    String?         @map("instagram_media_id")
+  instagramPermalink  String?         @map("instagram_permalink")
   offers              Offer[]
   owner               User            @relation(fields: [ownerId], references: [id])
   images              PropertyImage[]
@@ -238,6 +240,8 @@ model AdminSponsoredPublication {
   metaBoostedUntil   DateTime?
   metaAdId           String?
   metaCampaignId     String?
+  instagramMediaId   String?
+  instagramPermalink String?
 
   @@map("admin_sponsored_publications")
 }

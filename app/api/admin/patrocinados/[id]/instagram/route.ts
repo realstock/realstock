@@ -100,6 +100,15 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
        }
     });
 
+    // VINCULAR DIRETAMENTE NO ANÚNCIO ADMIN
+    await prisma.adminSponsoredPublication.update({
+       where: { id: pub.id },
+       data: {
+           instagramMediaId: publishData.id,
+           instagramPermalink: permalink
+       }
+    });
+
     return NextResponse.json({ success: true, message: "Lote Admin publicado!" });
 
   } catch (error: any) {
