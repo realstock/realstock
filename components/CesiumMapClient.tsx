@@ -119,7 +119,7 @@ export default function CesiumMapClient({
         terrain: Cesium.Terrain.fromWorldTerrain(),
         baseLayer: Cesium.ImageryLayer.fromWorldImagery({
           style: Cesium.IonWorldImageryStyle.AERIAL_WITH_LABELS,
-        }),
+        } as any),
         animation: false,
         timeline: false,
         baseLayerPicker: true,
