@@ -329,12 +329,22 @@ export async function POST(req: NextRequest) {
     if (Number(propertyId) === 0) {
         await prisma.user.update({
             where: { id: user.id },
-            data: { portfolioBoostedUntil: endTime, metaPortfolioBoostedUntil: endTime }
+            data: { 
+                portfolioBoostedUntil: endTime, 
+                metaPortfolioBoostedUntil: endTime,
+                metaPortfolioAdId: adData.id, // User model might need fields too if they boost portfolio
+                metaPortfolioCampaignId: campaignId
+            }
         });
     } else {
         await prisma.property.update({
             where: { id: Number(propertyId) },
-            data: { boostedUntil: endTime, metaBoostedUntil: endTime }
+            data: { 
+                boostedUntil: endTime, 
+                metaBoostedUntil: endTime,
+                metaAdId: adData.id,
+                metaCampaignId: campaignId
+            }
         });
     }
 

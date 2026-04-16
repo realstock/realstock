@@ -243,7 +243,11 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
 
       await prisma.adminSponsoredPublication.update({
           where: { id: pubId },
-          data: { metaBoostedUntil: endTime }
+          data: { 
+            metaBoostedUntil: endTime,
+            metaAdId: adData.id,
+            metaCampaignId: campData.id
+          }
       });
 
       return NextResponse.json({ success: true, message: "Lote Admin publicado com sucesso no Meta Ads (Facebook/Instagram)!" });

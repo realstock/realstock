@@ -58,6 +58,8 @@ model User {
   portfolioBoostedUntil       DateTime?  @map("portfolio_boosted_until")
   googlePortfolioBoostedUntil DateTime?  @map("google_portfolio_boosted_until")
   metaPortfolioBoostedUntil   DateTime?  @map("meta_portfolio_boosted_until")
+  metaPortfolioAdId           String?    @map("meta_portfolio_ad_id")
+  metaPortfolioCampaignId     String?    @map("meta_portfolio_campaign_id")
   offers                      Offer[]    @relation("BuyerOffers")
   properties                  Property[]
 
@@ -103,6 +105,8 @@ model Property {
   boostedUntil        DateTime?       @map("boosted_until")
   googleBoostedUntil  DateTime?       @map("google_boosted_until")
   metaBoostedUntil    DateTime?       @map("meta_boosted_until")
+  metaAdId            String?         @map("meta_ad_id")
+  metaCampaignId      String?         @map("meta_campaign_id")
   sponsoredUntil      DateTime?       @map("sponsored_until")
   offers              Offer[]
   owner               User            @relation(fields: [ownerId], references: [id])
@@ -232,6 +236,8 @@ model AdminSponsoredPublication {
   updatedAt          DateTime  @updatedAt
   googleBoostedUntil DateTime?
   metaBoostedUntil   DateTime?
+  metaAdId           String?
+  metaCampaignId     String?
 
   @@map("admin_sponsored_publications")
 }
