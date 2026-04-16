@@ -117,6 +117,9 @@ export default function CesiumMapClient({
       const viewer = new Cesium.Viewer(containerRef.current, {
         creditContainer: hiddenCredit,
         terrain: Cesium.Terrain.fromWorldTerrain(),
+        baseLayer: Cesium.ImageryLayer.fromWorldImagery({
+          style: Cesium.IonWorldImageryStyle.AERIAL_WITH_LABELS,
+        }),
         animation: false,
         timeline: false,
         baseLayerPicker: true,
