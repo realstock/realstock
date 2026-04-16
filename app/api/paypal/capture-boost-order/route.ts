@@ -90,41 +90,48 @@ export async function POST(req: NextRequest) {
     let sourceId = null;
 
     if (platform === "instagram") {
-        const igSession = await prisma.instagramPreviewSession.findFirst({
-            where: { listingId: Number(propertyId), status: "PUBLISHED" },
-            orderBy: { createdAt: "desc" }
-        });
-        if (!igSession || !igSession.publishedMediaId) {
+        // Prioridade 1: Vínculo Direto
+        sourceId = property.instagramMediaId;
+
+        // Fallback: Busca antiga
+        if (!sourceId) {
+            const igSession = await prisma.instagramPreviewSession.findFirst({
+                where: { listingId: Number(propertyId), status: "PUBLISHED" },
+                orderBy: { createdAt: "desc" }
+            });
+            sourceId = igSession?.publishedMediaId;
+        }
+        
+        if (!sourceId) {
             return NextResponse.json({ success: false, error: "Mídia do Instagram não encontrada para impulsionar." }, { status: 404 });
         }
-        sourceId = igSession.publishedMediaId;
     } else if (platform === "facebook") {
         const fbSession = await prisma.facebookFeedSession.findFirst({
             where: { listingId: Number(propertyId), status: "PUBLISHED" },
             orderBy: { createdAt: "desc" }
         });
-        if (!fbSession || !fbSession.publishedPostId) {
+        sourceId = fbSession?.publishedPostId;
+        if (!sourceId) {
             return NextResponse.json({ success: false, error: "Publicação no Facebook não encontrada para impulsionar." }, { status: 404 });
         }
-        sourceId = fbSession.publishedPostId;
     } else if (platform === "meta") {
-        // Tenta achar primeiro Instagram, depois Facebook. Se nenhum existir, sourceId continua null e cai na lógica de Dark Post.
-        const igSession = await prisma.instagramPreviewSession.findFirst({
-            where: { listingId: Number(propertyId), status: "PUBLISHED" },
-            orderBy: { createdAt: "desc" }
-        });
-        if (igSession && igSession.publishedMediaId) {
-            sourceId = igSession.publishedMediaId;
-            // Se achou IG, mudamos a plataforma interna para instagram para usar o creative correto, 
-            // mas o targeting (definido na linha 152) continuará sendo [facebook, instagram] se platform original era meta.
-        } else {
+        // Tenta achar primeiro Vínculo Direto Instagram, senão fallback
+        sourceId = property.instagramMediaId;
+        
+        if (!sourceId) {
+            const igSession = await prisma.instagramPreviewSession.findFirst({
+                where: { listingId: Number(propertyId), status: "PUBLISHED" },
+                orderBy: { createdAt: "desc" }
+            });
+            sourceId = igSession?.publishedMediaId;
+        }
+
+        if (!sourceId) {
             const fbSession = await prisma.facebookFeedSession.findFirst({
                 where: { listingId: Number(propertyId), status: "PUBLISHED" },
                 orderBy: { createdAt: "desc" }
             });
-            if (fbSession && fbSession.publishedPostId) {
-                sourceId = fbSession.publishedPostId;
-            }
+            sourceId = fbSession?.publishedPostId;
         }
         
         if (!sourceId) {

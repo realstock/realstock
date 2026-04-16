@@ -72,18 +72,23 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       }
 
       // 1. Localizar Post Orgânico do Lote
-      // O admin salva sessões de lote com listingId: -2 e caption: pubId
-      const igSession = await prisma.instagramPreviewSession.findFirst({
-          where: { listingId: -2, caption: pubId, status: "PUBLISHED" },
-          orderBy: { createdAt: "desc" }
-      });
-      const fbSession = await prisma.facebookFeedSession.findFirst({
-        where: { listingId: -2, caption: pubId, status: "PUBLISHED" },
-        orderBy: { createdAt: "desc" }
-      });
+      // Prioridade total para o vínculo direto (instagramMediaId)
+      let sourceId = pub.instagramMediaId;
+      let usedPlatform = "instagram";
 
-      let sourceId = igSession?.publishedMediaId || fbSession?.publishedPostId;
-      let usedPlatform = igSession?.publishedMediaId ? "instagram" : (fbSession?.publishedPostId ? "facebook" : "meta");
+      // Fallback para busca antiga apenas se não houver vínculo direto
+      if (!sourceId) {
+          const igSession = await prisma.instagramPreviewSession.findFirst({
+              where: { listingId: -2, caption: pubId, status: "PUBLISHED" },
+              orderBy: { createdAt: "desc" }
+          });
+          const fbSession = await prisma.facebookFeedSession.findFirst({
+            where: { listingId: -2, caption: pubId, status: "PUBLISHED" },
+            orderBy: { createdAt: "desc" }
+          });
+          sourceId = igSession?.publishedMediaId || fbSession?.publishedPostId;
+          usedPlatform = igSession?.publishedMediaId ? "instagram" : (fbSession?.publishedPostId ? "facebook" : "meta");
+      }
 
       if (!sourceId) {
           throw new Error("Post orgânico não encontrado. Publique o lote no Instagram/Facebook antes de impulsionar (Dark Posts desativados).");
