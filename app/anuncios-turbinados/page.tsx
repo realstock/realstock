@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Rocket, Eye, Instagram, ArrowRight, Sparkles } from "lucide-react";
+import { Rocket, Eye, Camera, ArrowRight, Sparkles } from "lucide-react";
 
 export default function AnunciosTurbinadosPage() {
     const [items, setItems] = useState<any[]>([]);
@@ -81,7 +81,7 @@ export default function AnunciosTurbinadosPage() {
                                         
                                         <div className="absolute bottom-4 left-6 flex items-center gap-2">
                                             <div className="bg-white/20 backdrop-blur-md p-2 rounded-xl border border-white/20">
-                                                <Instagram size={20} className="text-white" />
+                                                <Camera size={20} className="text-white" />
                                             </div>
                                             <div className="flex flex-col">
                                                 <span className="text-[10px] font-bold text-white/60 uppercase tracking-tighter leading-none">Visto no Meta Ads por</span>
