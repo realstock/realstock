@@ -121,8 +121,7 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
                     {/* ORGANIC INSIGHTS (INSTAGRAM/FACEBOOK POST) */}
-                    {(insights.instagram || insights.facebook) && (
-                        <div className="rounded-3xl bg-gradient-to-br from-slate-800/50 to-slate-900 border border-emerald-500/20 p-6 shadow-xl relative overflow-hidden">
+                    <div className="rounded-3xl bg-gradient-to-br from-slate-800/50 to-slate-900 border border-emerald-500/20 p-6 shadow-xl relative overflow-hidden">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="bg-emerald-500/20 p-2 rounded-xl">
                                     <Users size={20} className="text-emerald-400" />
@@ -155,7 +154,6 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                                 </div>
                             </div>
                         </div>
-                    )}
 
                     {/* PAID INSIGHTS (META ADS) */}
                     {insights.metaAds && (
