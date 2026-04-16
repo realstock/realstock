@@ -56,13 +56,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
               const baseData = await baseRes.json();
               
               if (baseData && !baseData.error) {
-                  const insRes = await fetch(`https://graph.facebook.com/v19.0/${igSession.publishedMediaId}/insights?metric=views,reach,shares&access_token=${igToken}`);
+                  const insRes = await fetch(`https://graph.facebook.com/v19.0/${igSession.publishedMediaId}/insights?metric=impressions,reach,shares&access_token=${igToken}`);
                   const insData = await insRes.json();
 
-                  let views = 0, reach = 0, shares = 0;
+                  let impressions = 0, reach = 0, shares = 0;
                   if (insData && insData.data) {
                       for (const m of insData.data) {
-                          if (m.name === 'views') views = m.values[0]?.value || 0;
+                          if (m.name === 'impressions') impressions = m.values[0]?.value || 0;
                           if (m.name === 'reach') reach = m.values[0]?.value || 0;
                           if (m.name === 'shares') shares = m.values[0]?.value || 0;
                       }
@@ -71,7 +71,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                   insights.instagram = {
                       likes: baseData.like_count || 0,
                       comments: baseData.comments_count || 0,
-                      views, reach, shares,
+                      views: impressions, // Mapeado para o frontend como 'views'
+                      reach, 
+                      shares,
                       publishedDate: igSession.updatedAt
                   };
               }
@@ -200,6 +202,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({
       success: true,
       title: pub.name,
+      totalImpact: (insights.instagram?.views || 0) + (insights.facebook?.impressions || 0) + (insights.metaAds?.views || 0),
       isBoosted,
       metaSessionStatus,
       insights
