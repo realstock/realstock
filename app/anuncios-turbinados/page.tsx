@@ -76,15 +76,23 @@ export default function AnunciosTurbinadosPage() {
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                                         
-                                        <div className="absolute bottom-4 left-6 flex items-center gap-2">
+                                        <div className="absolute bottom-4 left-6 flex items-center gap-4">
                                             <div className="bg-white/20 backdrop-blur-md p-2 rounded-xl border border-white/20">
                                                 <Camera size={20} className="text-white" />
                                             </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] font-bold text-white/60 uppercase tracking-tighter leading-none">Visto no Meta Ads por</span>
-                                                <span className="text-2xl font-black text-white flex items-center gap-2">
-                                                    {item.views.toLocaleString()} <Eye size={18} className="text-white/50" />
-                                                </span>
+                                            <div className="flex gap-6">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[9px] font-bold text-white/50 uppercase tracking-tighter leading-none">Meta Ads</span>
+                                                    <span className="text-xl font-black text-white flex items-center gap-1.5 leading-none">
+                                                        {(item.paidViews || 0).toLocaleString()} <Rocket size={14} className="text-pink-400" />
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[9px] font-bold text-white/50 uppercase tracking-tighter leading-none">Orgânico</span>
+                                                    <span className="text-xl font-black text-white flex items-center gap-1.5 leading-none">
+                                                        {(item.organicViews || 0).toLocaleString()} <Eye size={16} className="text-indigo-400" />
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
