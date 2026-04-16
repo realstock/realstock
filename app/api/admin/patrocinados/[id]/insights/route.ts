@@ -42,6 +42,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                       (pub.metaBoostedUntil && new Date(pub.metaBoostedUntil) > new Date()) || !!igSession || !!fbSession;
 
     const insights = {
+        metaAds: null as any,
         instagram: null as any,
         facebook: null as any,
         google: null as any
@@ -115,30 +116,44 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     // 3. META ADS (PAID) INSIGHTS
-    if (pub.metaAdId && (pub.metaBoostedUntil && new Date(pub.metaBoostedUntil) > new Date())) {
+    if (pub.metaAdId) {
         try {
             const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
             if (igToken) {
                 // Fetch Ad Insights
-                const adInsRes = await fetch(`https://graph.facebook.com/v19.0/${pub.metaAdId}/insights?fields=impressions,clicks,reach,spend&access_token=${igToken}`);
+                const adInsRes = await fetch(`https://graph.facebook.com/v19.0/${pub.metaAdId}/insights?fields=impressions,clicks,reach,spend,actions&access_token=${igToken}`);
                 const adInsData = await adInsRes.json();
                 
                 if (adInsData.data && adInsData.data[0]) {
                     const stats = adInsData.data[0];
-                    // We can distribute these stats or show them in a specific "Paid" section.
-                    // For now, let's update the existing facebook/instagram objects if they are null, or add a 'paid' field.
-                    if (!insights.facebook) {
-                        insights.facebook = { likes: 0, comments: 0, impressions: 0, clicks: 0, shares: 0 };
-                    }
-                    insights.facebook.impressions = Number(stats.impressions || 0);
-                    insights.facebook.clicks = Number(stats.clicks || 0);
+                    const paidImp = Number(stats.impressions || 0);
+                    const paidClicks = Number(stats.clicks || 0);
+                    const paidReach = Number(stats.reach || 0);
 
-                    // If it was an Instagram boost, we might want to update the instagram views/reach too
-                    if (!insights.instagram) {
-                        insights.instagram = { likes: 0, comments: 0, views: 0, reach: 0, shares: 0 };
+                    let paidLikes = 0;
+                    const actions = stats.actions || [];
+                    const actionLike = actions.find((a: any) => a.action_type === "post_reaction" || a.action_type === "like");
+                    if (actionLike) paidLikes = parseInt(actionLike.value) || 0;
+
+                    insights.metaAds = {
+                        views: paidImp,
+                        clicks: paidClicks,
+                        reach: paidReach,
+                        likes: paidLikes,
+                        spend: stats.spend || "0"
+                    };
+
+                    // CALCULAR ORGÂNICO REAL: Subtrair o pago do total do Instagram/Facebook
+                    if (insights.instagram) {
+                        const totalViews = insights.instagram.views;
+                        const organicViews = Math.max(0, totalViews - paidImp);
+                        insights.instagram.views = organicViews;
                     }
-                    insights.instagram.views = Number(stats.impressions || 0);
-                    insights.instagram.reach = Number(stats.reach || 0);
+                    if (insights.facebook) {
+                        const totalViews = insights.facebook.impressions;
+                        const organicViews = Math.max(0, totalViews - paidImp);
+                        insights.facebook.impressions = organicViews;
+                    }
                 }
             }
         } catch(e) {

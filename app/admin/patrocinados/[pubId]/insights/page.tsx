@@ -86,103 +86,109 @@ export default function AdminInsightsPage({ params }: { params: Promise<{ pubId:
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-            {/* INSTAGRAM INSIGHTS */}
-            {insights.instagram && (
-                <div className="rounded-3xl bg-gradient-to-br from-pink-500/10 to-orange-500/5 border border-pink-500/20 p-6 shadow-xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-pink-500/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                    <div className="flex items-center gap-3 mb-6">
-                        <img src="/icones/instagram.jpg" className="w-8 h-8 rounded-lg object-cover" alt="Instagram" />
-                        <h2 className="text-xl font-bold">Instagram Ads</h2>
+                <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col justify-center">
+                        <div className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Impacto Total</div>
+                        <div className="text-4xl font-black text-white">
+                            {(data.totalImpact || ( (insights.instagram?.views || 0) + (insights.facebook?.impressions || 0) + (insights.metaAds?.views || 0) )).toLocaleString('pt-BR')}
+                        </div>
+                        <div className="text-[10px] text-slate-500 mt-1 uppercase">Pessoas alcançadas no total</div>
+                    </div>
+                    
+                    <div className="bg-indigo-600/10 border border-indigo-500/20 rounded-3xl p-6 flex flex-col justify-center">
+                        <div className="text-indigo-300 text-xs font-bold uppercase tracking-widest mb-1">Poder do Boost</div>
+                        <div className="text-4xl font-black text-indigo-400">
+                            {(((insights.metaAds?.views || 0) / ( (data.totalImpact || ( (insights.instagram?.views || 0) + (insights.facebook?.impressions || 0) + (insights.metaAds?.views || 0) )) || 1)) * 100).toFixed(0)}%
+                        </div>
+                        <div className="text-[10px] text-indigo-500 mt-1 uppercase">Vindo do impulsionamento</div>
                     </div>
 
-                    {metaSessionStatus === "IN_PROCESS" && (
-                        <div className="bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 p-3 rounded-lg text-sm mb-4 font-semibold shadow-inner">
-                            ⚠️ Status: Aguardando aprovação da Meta. O prazo está congelado até aprovação.
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-3xl p-6 flex flex-col justify-center">
+                        <div className="text-emerald-300 text-xs font-bold uppercase tracking-widest mb-1">Engajamento Total</div>
+                        <div className="text-4xl font-black text-emerald-400">
+                            {( (insights.instagram?.likes || 0) + (insights.instagram?.comments || 0) + (insights.metaAds?.likes || 0) ).toLocaleString('pt-BR')}
                         </div>
-                    )}
-                    {metaSessionStatus === "ACTIVE" && (
-                        <div className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 p-3 rounded-lg text-sm mb-4 font-semibold shadow-inner">
-                            ✅ Status: Turbinado e Rodando!
-                        </div>
-                    )}
-                    {metaSessionStatus === "REJECTED" && (
-                        <div className="bg-red-500/20 text-red-300 border border-red-500/30 p-3 rounded-lg text-sm mb-4 font-semibold shadow-inner">
-                            ❌ Anúncio Reprovado.
-                        </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-                            <Heart className="text-pink-400 mb-2" size={20} />
-                            <div className="text-2xl font-black">{insights.instagram.likes}</div>
-                            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Curtidas</div>
-                        </div>
-                        <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-                            <MessageCircle className="text-orange-400 mb-2" size={20} />
-                            <div className="text-2xl font-black">{insights.instagram.comments}</div>
-                            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Comentários</div>
-                        </div>
-                        <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5 col-span-2 flex items-center justify-between">
-                            <div>
-                                <Eye className="text-purple-400 mb-1" size={20} />
-                                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Visualizações</div>
-                            </div>
-                            <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-orange-400">
-                                {insights.instagram.views.toLocaleString('pt-BR')}
-                            </div>
-                        </div>
+                        <div className="text-[10px] text-emerald-500 mt-1 uppercase">Curtidas e interações somadas</div>
                     </div>
                 </div>
-            )}
 
-            {/* FACEBOOK INSIGHTS */}
-            {insights.facebook && (
-                <div className="rounded-3xl bg-gradient-to-br from-blue-600/10 to-indigo-500/5 border border-blue-500/20 p-6 shadow-xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                    <div className="flex items-center gap-3 mb-6">
-                        <img src="/icones/facebook.jpeg" className="w-8 h-8 rounded-lg object-cover" alt="Facebook" />
-                        <h2 className="text-xl font-bold">Facebook Ads</h2>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-                    {metaSessionStatus === "IN_PROCESS" && (
-                        <div className="bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 p-3 rounded-lg text-sm mb-4 font-semibold shadow-inner">
-                            ⚠️ Status: Aguardando aprovação da Meta. O prazo está congelado até aprovação.
-                        </div>
-                    )}
-                    {metaSessionStatus === "ACTIVE" && (
-                        <div className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 p-3 rounded-lg text-sm mb-4 font-semibold shadow-inner">
-                            ✅ Status: Turbinado e Rodando!
-                        </div>
-                    )}
-                    {metaSessionStatus === "REJECTED" && (
-                        <div className="bg-red-500/20 text-red-300 border border-red-500/30 p-3 rounded-lg text-sm mb-4 font-semibold shadow-inner">
-                            ❌ Anúncio Reprovado.
-                        </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-                            <Users className="text-blue-400 mb-2" size={20} />
-                            <div className="text-2xl font-black">{insights.facebook.impressions.toLocaleString('pt-BR')}</div>
-                            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Impressões</div>
-                        </div>
-                        <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-                            <MousePointerClick className="text-indigo-400 mb-2" size={20} />
-                            <div className="text-2xl font-black">{insights.facebook.clicks}</div>
-                            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cliques no Link</div>
-                        </div>
-                        <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5 col-span-2 flex items-center justify-between">
-                            <div>
-                                <TrendingUp className="text-blue-300 mb-1" size={20} />
-                                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Alcance Social</div>
+                    {/* ORGANIC INSIGHTS */}
+                    {(insights.instagram || insights.facebook) && (
+                        <div className="rounded-3xl bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 p-6 shadow-xl relative overflow-hidden">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="bg-white/10 p-2 rounded-xl">
+                                    <Users size={20} className="text-slate-300" />
+                                </div>
+                                <h2 className="text-xl font-bold">Alcance Orgânico</h2>
                             </div>
-                            <div className="text-3xl font-black text-blue-400">
-                                {insights.facebook.likes + insights.facebook.shares} Interações
+                            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+                                Performance natural dos posts publicados nas redes sociais sem investimento financeiro.
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5 col-span-2 flex items-center justify-between">
+                                    <div>
+                                        <Eye className="text-slate-400 mb-1" size={20} />
+                                        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Visualizações Gratuitas</div>
+                                    </div>
+                                    <div className="text-3xl font-black text-white">
+                                        {((insights.instagram?.views || 0) + (insights.facebook?.impressions || 0)).toLocaleString('pt-BR')}
+                                    </div>
+                                </div>
+                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
+                                    <Heart className="text-pink-400 mb-2" size={20} />
+                                    <div className="text-xl font-black">{(insights.instagram?.likes || 0) + (insights.facebook?.likes || 0)}</div>
+                                    <div className="text-[10px] font-bold text-slate-500 uppercase">Curtidas</div>
+                                </div>
+                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
+                                    <MessageCircle className="text-blue-400 mb-2" size={20} />
+                                    <div className="text-xl font-black">{(insights.instagram?.comments || 0) + (insights.facebook?.comments || 0)}</div>
+                                    <div className="text-[10px] font-bold text-slate-500 uppercase">Comentários</div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            )}
+                    )}
+
+                    {/* PAID INSIGHTS (META ADS) */}
+                    {insights.metaAds && (
+                        <div className="rounded-3xl bg-gradient-to-br from-indigo-600/20 to-purple-500/10 border border-indigo-500/30 p-6 shadow-xl relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="bg-indigo-600 p-2 rounded-xl shadow-lg">
+                                    <Rocket size={20} className="text-white" />
+                                </div>
+                                <h2 className="text-xl font-bold">Impulsionamento (Meta Ads)</h2>
+                            </div>
+
+                            <p className="text-xs text-indigo-300 mb-6 leading-relaxed">
+                                Tráfego gerado através do investimento pago gerenciado pelo sistema.
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-black/40 p-4 rounded-2xl backdrop-blur-sm border border-indigo-500/20 col-span-2 flex items-center justify-between">
+                                    <div>
+                                        <TrendingUp className="text-indigo-400 mb-1" size={24} />
+                                        <div className="text-xs font-semibold text-indigo-300 uppercase tracking-wider">Visualizações Pagas</div>
+                                    </div>
+                                    <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
+                                        {insights.metaAds.views.toLocaleString('pt-BR')}
+                                    </div>
+                                </div>
+                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
+                                    <MousePointerClick className="text-indigo-400 mb-2" size={20} />
+                                    <div className="text-xl font-black">{insights.metaAds.clicks}</div>
+                                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Cliques no Anúncio</div>
+                                </div>
+                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
+                                    <Activity className="text-purple-400 mb-2" size={20} />
+                                    <div className="text-xl font-black">{Math.round((insights.metaAds.clicks / (insights.metaAds.views || 1)) * 1000) / 10}%</div>
+                                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Taxa de Interesse</div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
             {/* GOOGLE INSIGHTS */}
             {insights.google && (
