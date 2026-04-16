@@ -58,17 +58,14 @@ export default function AnunciosTurbinadosPage() {
                                 key={item.id}
                                 className="group relative rounded-[2.5rem] p-[3px] transition-all hover:scale-[1.02] duration-500 shadow-2xl shadow-purple-500/10"
                                 style={{ 
-                                    background: "linear-gradient(45deg, #FFD700, #FFE44D, #FFD700)" // Borda amarela/dourada solicitada
+                                    background: "linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)" // Borda Instagram
                                 }}
                             >
-                                <div className="absolute -top-4 -right-4 bg-yellow-400 text-black px-4 py-1 rounded-full font-black text-xs z-10 shadow-xl flex items-center gap-1 border-2 border-black">
-                                    <Rocket size={12} fill="black" /> PATROCINADO
+                                <div className="absolute -top-4 -right-4 bg-gradient-to-tr from-purple-600 to-pink-500 text-white px-4 py-1 rounded-full font-black text-[9px] z-10 shadow-xl flex items-center gap-1 border border-white/20">
+                                    <Rocket size={12} fill="white" /> EM ALTA NO INSTAGRAM
                                 </div>
 
-                                <div className="h-full w-full rounded-[2.4rem] overflow-hidden relative flex flex-col"
-                                     style={{
-                                        background: "linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)" // Interior cor do Instagram
-                                     }}>
+                                <div className="h-full w-full rounded-[2.4rem] overflow-hidden relative flex flex-col bg-slate-950">
                                     
                                     {/* Imagem do Item */}
                                     <div className="h-64 w-full relative group">
