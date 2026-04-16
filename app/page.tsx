@@ -16,6 +16,7 @@ type PropertyPin = {
   lng: number;
   mainImage: string | null;
   sponsoredUntil?: string | null;
+  metaBoostedUntil?: string | null;
 };
 
 type MapBounds = {
@@ -257,6 +258,7 @@ function normalizeProperties(items: any[]): PropertyPin[] {
     lng: Number(item.longitude),
     mainImage: item.images?.[0]?.imageUrl || null,
     sponsoredUntil: item.sponsoredUntil || null,
+    metaBoostedUntil: item.metaBoostedUntil || null,
   }))
   .sort((a: any, b: any) => {
     const aSponsored = a.sponsoredUntil && new Date(a.sponsoredUntil) > new Date() ? 1 : 0;
@@ -779,21 +781,33 @@ export default function HomePage() {
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {properties.map((property) => (
-                    <Link
-                      key={property.id}
-                      href={`/imovel/${property.id}`}
-                      className={`overflow-hidden rounded-2xl border transition relative ${
-                        property.sponsoredUntil && new Date(property.sponsoredUntil) > new Date()
-                          ? "border-yellow-400 bg-slate-900 shadow-[0_0_15px_rgba(250,204,21,0.2)] hover:shadow-[0_0_25px_rgba(250,204,21,0.4)]"
-                          : "border-white/10 bg-slate-900/60 hover:border-white/20 hover:bg-slate-900"
-                      }`}
-                    >
-                      {property.sponsoredUntil && new Date(property.sponsoredUntil) > new Date() && (
-                        <div className="absolute top-0 right-0 bg-gradient-to-l from-yellow-500 to-amber-500 text-yellow-950 font-black text-xs px-3 py-1 rounded-bl-xl shadow-lg z-10 animate-pulse border-b border-l border-yellow-300">
-                          ⭐ PATROCINADO
-                        </div>
-                      )}
+                    {properties.map((property) => {
+                      const isSponsored = property.sponsoredUntil && new Date(property.sponsoredUntil) > new Date();
+                      const isMetaBoosted = property.metaBoostedUntil && new Date(property.metaBoostedUntil) > new Date();
+                      
+                      return (
+                        <Link
+                          key={property.id}
+                          href={`/imovel/${property.id}`}
+                          className={`overflow-hidden rounded-2xl border transition relative ${
+                            isSponsored || isMetaBoosted
+                              ? "border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.2)] hover:shadow-[0_0_25px_rgba(250,204,21,0.4)]"
+                              : "border-white/10 bg-slate-900/60 hover:border-white/20 hover:bg-slate-900"
+                          }`}
+                          style={{
+                            background: isMetaBoosted 
+                              ? "linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)" 
+                              : isSponsored 
+                                ? "#0f172a" 
+                                : undefined
+                          }}
+                        >
+                          {(isSponsored || isMetaBoosted) && (
+                            <div className="absolute top-0 right-0 bg-gradient-to-l from-yellow-500 to-amber-500 text-yellow-950 font-black text-[9px] px-3 py-1 rounded-bl-xl shadow-lg z-10 border-b border-l border-yellow-300 flex items-center gap-1">
+                              {isMetaBoosted ? <Rocket size={10} fill="currentColor" /> : "⭐"} 
+                              {isMetaBoosted ? "META ADS" : "PATROCINADO"}
+                            </div>
+                          )}
                       {property.mainImage ? (
                         <img
                           src={property.mainImage}
