@@ -84,29 +84,37 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                     )}
                 </div>
 
-                <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col justify-center">
                         <div className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Impacto Total</div>
                         <div className="text-4xl font-black text-white">
                             {(data.totalImpact || 0).toLocaleString('pt-BR')}
                         </div>
-                        <div className="text-[10px] text-slate-500 mt-1 uppercase">Pessoas alcançadas no total</div>
+                        <div className="text-[10px] text-slate-500 mt-1 uppercase leading-none">Pessoas alcançadas</div>
+                    </div>
+
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-3xl p-6 flex flex-col justify-center">
+                        <div className="text-emerald-300 text-xs font-bold uppercase tracking-widest mb-1 font-black">Visualizações Orgânicas</div>
+                        <div className="text-4xl font-black text-emerald-400">
+                            {((insights.instagram?.views || 0) + (insights.facebook?.impressions || 0)).toLocaleString('pt-BR')}
+                        </div>
+                        <div className="text-[10px] text-emerald-500 mt-1 uppercase leading-none">Vindo do Instagram/Facebook</div>
                     </div>
                     
-                    <div className="bg-indigo-600/10 border border-indigo-500/20 rounded-3xl p-6 flex flex-col justify-center">
+                    <div className="bg-indigo-600/10 border border-indigo-500/20 rounded-3xl p-6 flex flex-col justify-center border-dashed">
                         <div className="text-indigo-300 text-xs font-bold uppercase tracking-widest mb-1">Poder do Boost</div>
                         <div className="text-4xl font-black text-indigo-400">
                             {(((insights.metaAds?.views || 0) / (data.totalImpact || 1)) * 100).toFixed(0)}%
                         </div>
-                        <div className="text-[10px] text-indigo-500 mt-1 uppercase">Vindo do impulsionamento</div>
+                        <div className="text-[10px] text-indigo-500 mt-1 uppercase leading-none">Vindo de Anúncios Pagos</div>
                     </div>
 
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-3xl p-6 flex flex-col justify-center">
-                        <div className="text-emerald-300 text-xs font-bold uppercase tracking-widest mb-1">Engajamento Total</div>
-                        <div className="text-4xl font-black text-emerald-400">
+                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col justify-center">
+                        <div className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Engajamento</div>
+                        <div className="text-4xl font-black text-white">
                             {( (insights.instagram?.likes || 0) + (insights.instagram?.comments || 0) + (insights.metaAds?.likes || 0) ).toLocaleString('pt-BR')}
                         </div>
-                        <div className="text-[10px] text-emerald-500 mt-1 uppercase">Curtidas e interações somadas</div>
+                        <div className="text-[10px] text-slate-500 mt-1 uppercase leading-none">Interações totais</div>
                     </div>
                 </div>
 
@@ -114,36 +122,36 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
 
                     {/* ORGANIC INSIGHTS (INSTAGRAM/FACEBOOK POST) */}
                     {(insights.instagram || insights.facebook) && (
-                        <div className="rounded-3xl bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 p-6 shadow-xl relative overflow-hidden">
+                        <div className="rounded-3xl bg-gradient-to-br from-slate-800/50 to-slate-900 border border-emerald-500/20 p-6 shadow-xl relative overflow-hidden">
                             <div className="flex items-center gap-3 mb-6">
-                                <div className="bg-white/10 p-2 rounded-xl">
-                                    <Users size={20} className="text-slate-300" />
+                                <div className="bg-emerald-500/20 p-2 rounded-xl">
+                                    <Users size={20} className="text-emerald-400" />
                                 </div>
-                                <h2 className="text-xl font-bold">Alcance Orgânico</h2>
+                                <h2 className="text-xl font-bold">Resumo Orgânico</h2>
                             </div>
                             <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-                                Pessoas que encontraram seu imóvel naturalmente através do feed, buscas ou perfil da RealStock.
+                                Estas visualizações ocorreram de forma gratuita no Instagram e Facebook da RealStock através de buscadores e compartilhamentos.
                             </p>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5 col-span-2 flex items-center justify-between">
+                                <div className="bg-emerald-500/10 p-4 rounded-2xl backdrop-blur-sm border border-emerald-500/10 col-span-2 flex items-center justify-between">
                                     <div>
-                                        <Eye className="text-slate-400 mb-1" size={20} />
-                                        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Visualizações Gratuitas</div>
+                                        <Eye className="text-emerald-400 mb-1" size={20} />
+                                        <div className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">Views Gratuitas</div>
                                     </div>
                                     <div className="text-3xl font-black text-white">
                                         {((insights.instagram?.views || 0) + (insights.facebook?.impressions || 0)).toLocaleString('pt-BR')}
                                     </div>
                                 </div>
                                 <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-                                    <Heart className="text-pink-400 mb-2" size={20} />
+                                    <Heart className="text-emerald-400 mb-2" size={16} />
                                     <div className="text-xl font-black">{ (insights.instagram?.likes || 0) + (insights.facebook?.likes || 0) }</div>
-                                    <div className="text-[10px] font-bold text-slate-500 uppercase">Curtidas</div>
+                                    <div className="text-[9px] font-bold text-slate-500 uppercase">Likes</div>
                                 </div>
                                 <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-                                    <MessageCircle className="text-blue-400 mb-2" size={20} />
+                                    <MessageCircle className="text-emerald-400 mb-2" size={16} />
                                     <div className="text-xl font-black">{ (insights.instagram?.comments || 0) + (insights.facebook?.comments || 0) }</div>
-                                    <div className="text-[10px] font-bold text-slate-500 uppercase">Comentários</div>
+                                    <div className="text-[9px] font-bold text-slate-500 uppercase">Comments</div>
                                 </div>
                             </div>
                         </div>
