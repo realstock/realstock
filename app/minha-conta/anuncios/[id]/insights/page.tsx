@@ -84,153 +84,116 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                     )}
                 </div>
 
+                <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col justify-center">
+                        <div className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Impacto Total</div>
+                        <div className="text-4xl font-black text-white">
+                            {(data.totalImpact || 0).toLocaleString('pt-BR')}
+                        </div>
+                        <div className="text-[10px] text-slate-500 mt-1 uppercase">Pessoas alcançadas no total</div>
+                    </div>
+                    
+                    <div className="bg-indigo-600/10 border border-indigo-500/20 rounded-3xl p-6 flex flex-col justify-center">
+                        <div className="text-indigo-300 text-xs font-bold uppercase tracking-widest mb-1">Poder do Boost</div>
+                        <div className="text-4xl font-black text-indigo-400">
+                            {(((insights.metaAds?.views || 0) / (data.totalImpact || 1)) * 100).toFixed(0)}%
+                        </div>
+                        <div className="text-[10px] text-indigo-500 mt-1 uppercase">Vindo do impulsionamento</div>
+                    </div>
+
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-3xl p-6 flex flex-col justify-center">
+                        <div className="text-emerald-300 text-xs font-bold uppercase tracking-widest mb-1">Engajamento Total</div>
+                        <div className="text-4xl font-black text-emerald-400">
+                            {( (insights.instagram?.likes || 0) + (insights.instagram?.comments || 0) + (insights.metaAds?.likes || 0) ).toLocaleString('pt-BR')}
+                        </div>
+                        <div className="text-[10px] text-emerald-500 mt-1 uppercase">Curtidas e interações somadas</div>
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-                    {/* INSTAGRAM INSIGHTS */}
-                    {insights.instagram && (
-                        <div className="rounded-3xl bg-gradient-to-br from-pink-500/10 to-orange-500/5 border border-pink-500/20 p-6 shadow-xl relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-pink-500/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                    {/* ORGANIC INSIGHTS (INSTAGRAM/FACEBOOK POST) */}
+                    {(insights.instagram || insights.facebook) && (
+                        <div className="rounded-3xl bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 p-6 shadow-xl relative overflow-hidden">
                             <div className="flex items-center gap-3 mb-6">
-                                <img src="/icones/instagram.jpg" className="w-8 h-8 rounded-lg object-cover" alt="Instagram" />
-                                <h2 className="text-xl font-bold">Instagram Ads</h2>
+                                <div className="bg-white/10 p-2 rounded-xl">
+                                    <Users size={20} className="text-slate-300" />
+                                </div>
+                                <h2 className="text-xl font-bold">Alcance Orgânico</h2>
                             </div>
-
-                            {metaSessionStatus === "IN_PROCESS" && (
-                                <div className="bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 p-3 rounded-lg text-sm mb-4 font-semibold shadow-inner">
-                                    ⚠️ Status: Aguardando aprovação da Meta. O prazo está congelado até aprovação.
-                                </div>
-                            )}
-                            {metaSessionStatus === "ACTIVE" && (
-                                <div className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 p-3 rounded-lg text-sm mb-4 font-semibold shadow-inner">
-                                    ✅ Status: Turbinado e Rodando!
-                                </div>
-                            )}
-                            {metaSessionStatus === "REJECTED" && (
-                                <div className="bg-red-500/20 text-red-300 border border-red-500/30 p-3 rounded-lg text-sm mb-4 font-semibold shadow-inner">
-                                    ❌ Anúncio Rejeitado pelo Facebook. O prazo não rodará. Revise a imagem para compliance orgânico.
-                                </div>
-                            )}
+                            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+                                Pessoas que encontraram seu imóvel naturalmente através do feed, buscas ou perfil da RealStock.
+                            </p>
 
                             <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5 col-span-2 flex items-center justify-between">
+                                    <div>
+                                        <Eye className="text-slate-400 mb-1" size={20} />
+                                        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Visualizações Gratuitas</div>
+                                    </div>
+                                    <div className="text-3xl font-black text-white">
+                                        {((insights.instagram?.views || 0) + (insights.facebook?.impressions || 0)).toLocaleString('pt-BR')}
+                                    </div>
+                                </div>
                                 <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
                                     <Heart className="text-pink-400 mb-2" size={20} />
-                                    <div className="text-2xl font-black">{insights.instagram.likes}</div>
-                                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Curtidas</div>
+                                    <div className="text-xl font-black">{ (insights.instagram?.likes || 0) + (insights.facebook?.likes || 0) }</div>
+                                    <div className="text-[10px] font-bold text-slate-500 uppercase">Curtidas</div>
                                 </div>
                                 <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-                                    <MousePointerClick className="text-indigo-400 mb-2" size={20} />
-                                    <div className="text-2xl font-black">{insights.instagram.clicks || 0}</div>
-                                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cliques</div>
-                                </div>
-                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5 col-span-2 flex items-center justify-between">
-                                    <div>
-                                        <Eye className="text-purple-400 mb-1" size={20} />
-                                        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Visualizações</div>
-                                    </div>
-                                    <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-orange-400">
-                                        {insights.instagram.views.toLocaleString('pt-BR')}
-                                    </div>
+                                    <MessageCircle className="text-blue-400 mb-2" size={20} />
+                                    <div className="text-xl font-black">{ (insights.instagram?.comments || 0) + (insights.facebook?.comments || 0) }</div>
+                                    <div className="text-[10px] font-bold text-slate-500 uppercase">Comentários</div>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* FACEBOOK INSIGHTS */}
-                    {insights.facebook && (
-                        <div className="rounded-3xl bg-gradient-to-br from-blue-600/10 to-indigo-500/5 border border-blue-500/20 p-6 shadow-xl relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                            <div className="flex items-center gap-3 mb-6">
-                                <img src="/icones/facebook.jpeg" className="w-8 h-8 rounded-lg object-cover" alt="Facebook" />
-                                <h2 className="text-xl font-bold">Facebook Ads</h2>
-                            </div>
-
-                            {metaSessionStatus === "IN_PROCESS" && (
-                                <div className="bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 p-3 rounded-lg text-sm mb-4 font-semibold shadow-inner">
-                                    ⚠️ Status: Aguardando aprovação da Meta. O prazo está congelado até aprovação.
-                                </div>
-                            )}
-                            {metaSessionStatus === "ACTIVE" && (
-                                <div className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 p-3 rounded-lg text-sm mb-4 font-semibold shadow-inner">
-                                    ✅ Status: Turbinado e Rodando!
-                                </div>
-                            )}
-                            {metaSessionStatus === "REJECTED" && (
-                                <div className="bg-red-500/20 text-red-300 border border-red-500/30 p-3 rounded-lg text-sm mb-4 font-semibold shadow-inner">
-                                    ❌ Anúncio Reprovado.
-                                </div>
-                            )}
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-                                    <Users className="text-blue-400 mb-2" size={20} />
-                                    <div className="text-2xl font-black">{insights.facebook.impressions.toLocaleString('pt-BR')}</div>
-                                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Impressões</div>
-                                </div>
-                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-                                    <MousePointerClick className="text-indigo-400 mb-2" size={20} />
-                                    <div className="text-2xl font-black">{insights.facebook.clicks}</div>
-                                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cliques no Link</div>
-                                </div>
-                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5 col-span-2 flex items-center justify-between">
-                                    <div>
-                                        <TrendingUp className="text-blue-300 mb-1" size={20} />
-                                        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Alcance Social</div>
-                                    </div>
-                                    <div className="text-3xl font-black text-blue-400">
-                                        {insights.facebook.likes + insights.facebook.shares} Interações
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* META ADS (DARK POST) INSIGHTS */}
+                    {/* PAID INSIGHTS (META ADS) */}
                     {insights.metaAds && (
-                        <div className="rounded-3xl bg-gradient-to-br from-violet-600/10 to-fuchsia-500/5 border border-violet-500/20 p-6 shadow-xl relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-gradient-to-bl from-violet-500 to-fuchsia-600">
-                                    <Rocket size={16} className="text-white" />
+                        <div className="rounded-3xl bg-gradient-to-br from-indigo-600/20 to-purple-500/10 border border-indigo-500/30 p-6 shadow-xl relative overflow-hidden col-span-1 md:col-span-1">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                            
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-600/30">
+                                        <Rocket size={20} className="text-white" />
+                                    </div>
+                                    <h2 className="text-xl font-bold">Impulsionamento (Meta Ads)</h2>
                                 </div>
-                                <h2 className="text-xl font-bold">Meta Ads (Turbinado)</h2>
                             </div>
 
-                            {metaSessionStatus === "IN_PROCESS" && (
-                                <div className="bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 p-3 rounded-lg text-sm mb-4 font-semibold shadow-inner">
-                                    ⚠️ Status: Aguardando aprovação da Meta. O prazo está congelado até aprovação.
-                                </div>
-                            )}
-                            {metaSessionStatus === "ACTIVE" && (
-                                <div className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 p-3 rounded-lg text-sm mb-4 font-semibold shadow-inner">
-                                    ✅ Status: Turbinado e Rodando!
-                                </div>
-                            )}
-                            {metaSessionStatus === "REJECTED" && (
-                                <div className="bg-red-500/20 text-red-300 border border-red-500/30 p-3 rounded-lg text-sm mb-4 font-semibold shadow-inner">
-                                    ❌ Anúncio Rejeitado pela Meta. Revise a imagem para compliance.
-                                </div>
-                            )}
+                            <p className="text-xs text-indigo-300 mb-6 leading-relaxed">
+                                Pessoas alcançadas através do seu investimento em tráfego pago nas redes sociais.
+                            </p>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-                                    <Heart className="text-fuchsia-400 mb-2" size={20} />
-                                    <div className="text-2xl font-black">{insights.metaAds.likes}</div>
-                                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Reações</div>
-                                </div>
-                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-                                    <MousePointerClick className="text-violet-400 mb-2" size={20} />
-                                    <div className="text-2xl font-black">{insights.metaAds.clicks}</div>
-                                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cliques</div>
-                                </div>
-                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5 col-span-2 flex items-center justify-between">
+                                <div className="bg-black/40 p-4 rounded-2xl backdrop-blur-sm border border-indigo-500/20 col-span-2 flex items-center justify-between animate-pulse-subtle">
                                     <div>
-                                        <Users className="text-violet-300 mb-1" size={20} />
-                                        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Exibições</div>
+                                        <TrendingUp className="text-indigo-400 mb-1" size={24} />
+                                        <div className="text-xs font-semibold text-indigo-300 uppercase tracking-wider">Visualizações Pagas</div>
                                     </div>
-                                    <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">
+                                    <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
                                         {insights.metaAds.views.toLocaleString('pt-BR')}
                                     </div>
                                 </div>
+                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
+                                    <MousePointerClick className="text-indigo-400 mb-2" size={20} />
+                                    <div className="text-xl font-black">{insights.metaAds.clicks}</div>
+                                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Cliques no Anúncio</div>
+                                </div>
+                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
+                                    <Activity className="text-purple-400 mb-2" size={20} />
+                                    <div className="text-xl font-black">{Math.round((insights.metaAds.clicks / (insights.metaAds.views || 1)) * 1000) / 10}%</div>
+                                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Taxa de Interesse</div>
+                                </div>
+
+                                {metaSessionStatus === "ACTIVE" && (
+                                    <div className="col-span-2 mt-2 bg-emerald-500/20 text-emerald-300 text-[10px] font-bold py-2 rounded-xl border border-emerald-500/20 flex items-center justify-center gap-2">
+                                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+                                        CAMPANHA ATIVA E GERANDO RESULTADOS
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

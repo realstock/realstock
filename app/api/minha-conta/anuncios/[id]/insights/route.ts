@@ -285,6 +285,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                         likes: paidLikes,
                         spend: adsData.data[0].spend || "0"
                     };
+
+                    // CALCULAR ORGÂNICO REAL: Subtrair o pago do total do Instagram/Facebook
+                    // A API de Insights de Mídia (igSession) retorna o TOTAL (Orgânico + Pago).
+                    if (insights.instagram) {
+                        const totalViews = insights.instagram.views;
+                        const organicViews = Math.max(0, totalViews - paidImp);
+                        insights.instagram.views = organicViews;
+                    }
+                    if (insights.facebook) {
+                        const totalViews = insights.facebook.impressions;
+                        const organicViews = Math.max(0, totalViews - paidImp);
+                        insights.facebook.impressions = organicViews;
+                    }
                 }
             }
         } catch(e) { console.error("Falha ao puxar Paid Ads Insights", e); }
@@ -297,6 +310,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({
       success: true,
       title: itemTitle,
+      totalImpact: (insights.instagram?.views || 0) + (insights.facebook?.impressions || 0) + (insights.metaAds?.views || 0),
       isBoosted,
       metaSessionStatus,
       insights
