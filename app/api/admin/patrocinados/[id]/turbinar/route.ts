@@ -86,7 +86,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
             where: { listingId: -2, caption: pubId, status: "PUBLISHED" },
             orderBy: { createdAt: "desc" }
           });
-          sourceId = igSession?.publishedMediaId || fbSession?.publishedPostId;
+          sourceId = (igSession?.publishedMediaId || fbSession?.publishedPostId) ?? null;
           usedPlatform = igSession?.publishedMediaId ? "instagram" : (fbSession?.publishedPostId ? "facebook" : "meta");
       }
 

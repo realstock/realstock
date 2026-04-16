@@ -5,19 +5,6 @@ import Link from "next/link";
 import { Rocket } from "lucide-react";
 import CesiumMapClient from "@/components/CesiumMapClient";
 
-type PropertyPin = {
-  id: number;
-  title: string;
-  price: string;
-  legalStatus: string;
-  area: string;
-  city: string;
-  lat: number;
-  lng: number;
-  mainImage: string | null;
-  sponsoredUntil?: string | null;
-  metaBoostedUntil?: string | null;
-};
 
 type MapBounds = {
   north: number;
