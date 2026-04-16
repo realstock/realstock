@@ -130,7 +130,7 @@ export default function AnunciosTurbinadosPage() {
                     <p className="text-slate-400 mb-8 max-w-xl mx-auto">
                         Inicie um turbinamento agora e apareça para milhares de pessoas interessadas no Facebook e Instagram.
                     </p>
-                    <Link href="/anunciar" className="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-2xl font-bold transition-all inline-flex items-center gap-2">
+                    <Link href="/minha-conta/anuncios" className="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-2xl font-bold transition-all inline-flex items-center gap-2">
                         Turbinar meu anúncio <ArrowRight size={20} />
                     </Link>
                 </div>
