@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Rocket } from "lucide-react";
 import CesiumMapClient from "@/components/CesiumMapClient";
 
 type PropertyPin = {
@@ -529,6 +530,13 @@ export default function HomePage() {
         <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
           <aside className="rounded-[28px] border border-white/10 bg-white/5 p-5">
             <div className="mb-5">
+              <Link 
+                href="/anuncios-turbinados" 
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-gradient-to-r from-pink-500 via-red-500 to-orange-500 text-white font-black uppercase text-[10px] tracking-widest shadow-lg shadow-pink-500/20 hover:scale-[1.02] transition-all mb-6 border border-white/20"
+              >
+                <Rocket size={14} /> Em Alta no Instagram
+              </Link>
+              
               <div className="text-sm text-slate-400">Busca geográfica</div>
               <h2 className="mt-1 text-2xl font-bold">Filtros</h2>
               <p className="mt-2 text-sm text-slate-400">
