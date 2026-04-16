@@ -7,6 +7,10 @@ import Script from "next/script";
 export const metadata = {
   title: "RealStock",
   description: "Marketplace de imóveis com negociação em tempo real",
+  icons: {
+    icon: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
   verification: {
     google: "LJnsmiNMwhnZfSojznS3i0CBulwp4oaOOImxZ_SKjNE",
   },
