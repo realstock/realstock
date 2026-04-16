@@ -286,17 +286,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                         spend: adsData.data[0].spend || "0"
                     };
 
-                    // CALCULAR ORGÂNICO REAL: Subtrair o pago do total do Instagram/Facebook
-                    // A API de Insights de Mídia (igSession) retorna o TOTAL (Orgânico + Pago).
+                    // AJUSTE ADITIVO: Tratar Orgânico e Pago como independentes
+                    // Isso garante que os '7 views' orgânicos vistos no app do Instagram apareçam no painel,
+                    // somando-se às visualizações geradas pelo tráfego pago.
                     if (insights.instagram) {
-                        const totalViews = insights.instagram.views;
-                        const organicViews = Math.max(0, totalViews - paidImp);
-                        insights.instagram.views = organicViews;
+                        // Mantemos o valor original vindo da média insights
+                        insights.instagram.views = insights.instagram.views;
                     }
                     if (insights.facebook) {
-                        const totalViews = insights.facebook.impressions;
-                        const organicViews = Math.max(0, totalViews - paidImp);
-                        insights.facebook.impressions = organicViews;
+                        // Mantemos o valor original vindo da média insights
+                        insights.facebook.impressions = insights.facebook.impressions;
                     }
                 }
             }

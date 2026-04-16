@@ -126,7 +126,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                 const adInsRes = await fetch(`https://graph.facebook.com/v19.0/${pub.metaAdId}/insights?fields=impressions,clicks,reach,spend,actions&access_token=${igToken}`);
                 const adInsData = await adInsRes.json();
                 
-                if (adInsData.data && adInsData.data[0]) {
                     const stats = adInsData.data[0];
                     const paidImp = Number(stats.impressions || 0);
                     const paidClicks = Number(stats.clicks || 0);
@@ -145,16 +144,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                         spend: stats.spend || "0"
                     };
 
-                    // CALCULAR ORGÂNICO REAL: Subtrair o pago do total do Instagram/Facebook
+                    // AJUSTE ADITIVO: Orgânico e Pago como independentes
+                    // Isso garante que os '7 views' orgânicos não sumam ao serem comparados com os '42 views' pagos.
+                    // Total Impact = Instagram_Post_Views + Meta_Ads_Views
                     if (insights.instagram) {
-                        const totalViews = insights.instagram.views;
-                        const organicViews = Math.max(0, totalViews - paidImp);
-                        insights.instagram.views = organicViews;
+                         // Mantemos o valor original vindo da média insights (os 7 orgânicos)
+                         insights.instagram.views = insights.instagram.views;
                     }
                     if (insights.facebook) {
-                        const totalViews = insights.facebook.impressions;
-                        const organicViews = Math.max(0, totalViews - paidImp);
-                        insights.facebook.impressions = organicViews;
+                         insights.facebook.impressions = insights.facebook.impressions;
                     }
                 }
             }
