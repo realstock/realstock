@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export async function POST() {
   try {
@@ -24,6 +25,21 @@ export async function POST() {
     const tokenData = await tokenRes.json();
     const accessToken = tokenData.access_token;
 
+    // Buscar Valor Dinâmico do Banco
+    const siteService = await prisma.siteService.findFirst({
+      where: { 
+        OR: [
+          { name: { contains: "logo", mode: "insensitive" } },
+          { slug: "logo" }
+        ]
+      },
+      include: { fee: true }
+    });
+
+    const feeValue = siteService?.fee?.value 
+      ? Number(siteService.fee.value).toFixed(2) 
+      : "50.00"; // Fallback para 50 caso não encontre
+
     const orderRes = await fetch("https://api-m.paypal.com/v2/checkout/orders", {
       method: "POST",
       headers: {
@@ -36,9 +52,9 @@ export async function POST() {
           {
             amount: {
               currency_code: "BRL",
-              value: "99.00",
+              value: feeValue,
             },
-            description: "Destaque de Logo na Página Principal - RealStock",
+            description: `Destaque de Logo na Página Principal - RealStock (${siteService?.name || "Logo na Página"})`,
           },
         ],
       }),

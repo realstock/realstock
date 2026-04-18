@@ -64,7 +64,21 @@ export async function POST(req: Request) {
 
     // 3. Atualizar Usuário e Criar Transação Financeira
     const activeUntil = new Date();
-    activeUntil.setDate(activeUntil.getDate() + 30); // 30 dias de destaque
+    activeUntil.setMonth(activeUntil.getMonth() + 1); // 1 mês de destaque conforme solicitado
+
+    // Buscar Valor Dinâmico do Banco para o registro financeiro
+    const siteService = await prisma.siteService.findFirst({
+      where: { 
+        OR: [
+          { name: { contains: "logo", mode: "insensitive" } },
+          { slug: "logo" }
+        ]
+      },
+      include: { fee: true }
+    });
+    const finalFee = siteService?.fee?.value 
+      ? Number(siteService.fee.value) 
+      : 50.00;
 
     await prisma.$transaction([
       prisma.user.update({
@@ -78,7 +92,7 @@ export async function POST(req: Request) {
         data: {
           type: "REVENUE",
           category: "OTHER",
-          amount: 99.00,
+          amount: finalFee,
           description: `Pagamento Logo na Página - Usuário ${userId}`,
           referenceId: orderID,
         },
