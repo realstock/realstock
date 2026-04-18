@@ -65,6 +65,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Regra: Apenas 1 proposta ativa por usuário por anúncio.
+    // Propostas anteriores do mesmo usuário para este imóvel são marcadas como 'cancelled'
+    await prisma.offer.updateMany({
+      where: {
+        propertyId,
+        buyerId,
+        status: "open",
+      },
+      data: {
+        status: "cancelled",
+      },
+    });
+
     const offer = await prisma.offer.create({
       data: {
         propertyId,

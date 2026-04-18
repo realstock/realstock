@@ -118,7 +118,9 @@ export default function MinhasOfertasPage() {
             {offers.map((offer) => (
               <div
                 key={offer.id}
-                className="rounded-2xl border border-white/10 bg-white/5 p-5"
+                className={`rounded-2xl border border-white/10 bg-white/5 p-5 transition-all ${
+                    offer.status === "cancelled" ? "opacity-40 grayscale-[0.5]" : ""
+                }`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex gap-4">
@@ -137,7 +139,7 @@ export default function MinhasOfertasPage() {
                     </div>
 
                     <div>
-                      <div className="text-lg font-semibold">
+                      <div className={`text-lg font-semibold ${offer.status === "cancelled" ? "text-slate-500" : ""}`}>
                         {offer.property?.title || "Imóvel"}
                       </div>
                       <div className="mt-1 text-sm text-slate-400">
@@ -152,13 +154,13 @@ export default function MinhasOfertasPage() {
 
                       <div className="mt-3 text-sm text-slate-300">
                         Oferta:{" "}
-                        <span className="font-semibold text-emerald-400">
+                        <span className={`font-semibold ${offer.status === "cancelled" ? "text-slate-500 line-through" : "text-emerald-400"}`}>
                           R$ {Number(offer.offerPrice).toLocaleString("pt-BR")}
                         </span>
                       </div>
 
                       <div className="mt-1 text-sm text-slate-400">
-                        Status: {offer.status}
+                        Status: <span className="capitalize">{offer.status}</span>
                       </div>
                     </div>
                   </div>

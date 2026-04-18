@@ -189,16 +189,19 @@ export default function GerenciarOfertasPage() {
           {offers.map((offer, index) => (
             <div
               key={offer.id}
-              className="bg-white/5 border border-white/10 p-5 rounded-2xl"
+              className={`bg-white/5 border border-white/10 p-5 rounded-2xl transition-all ${
+                offer.status === "cancelled" ? "opacity-40 grayscale-[0.5]" : ""
+              }`}
             >
               <div className="flex justify-between items-start gap-6">
                 <div>
-                  <div className="text-xl font-semibold">
+                  <div className={`text-xl font-semibold ${offer.status === "cancelled" ? "line-through text-slate-500" : ""}`}>
                     R$ {offer.offerPrice.toLocaleString("pt-BR")}
                   </div>
 
                   <div className="text-sm text-slate-400 mt-1">
-                    {new Date(offer.createdAt).toLocaleDateString("pt-BR")}
+                    {new Date(offer.createdAt).toLocaleDateString("pt-BR")} 
+                    {offer.status === "cancelled" && " • Cancelada"}
                   </div>
 
                   <div className="mt-3 text-sm text-slate-300 space-y-1">
