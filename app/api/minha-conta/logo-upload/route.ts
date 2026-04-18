@@ -23,9 +23,10 @@ export async function POST(req: Request) {
     // 1. Capturar Pagamento no PayPal
     const clientId = process.env.PAYPAL_CLIENT_ID;
     const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+    const base = process.env.PAYPAL_API_BASE || "https://api-m.sandbox.paypal.com";
     const auth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
 
-    const tokenRes = await fetch("https://api-m.paypal.com/v1/oauth2/token", {
+    const tokenRes = await fetch(`${base}/v1/oauth2/token`, {
       method: "POST",
       body: "grant_type=client_credentials",
       headers: { Authorization: `Basic ${auth}` },
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
     const tokenData = await tokenRes.json();
     const accessToken = tokenData.access_token;
 
-    const captureRes = await fetch(`https://api-m.paypal.com/v2/checkout/orders/${orderID}/capture`, {
+    const captureRes = await fetch(`${base}/v2/checkout/orders/${orderID}/capture`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

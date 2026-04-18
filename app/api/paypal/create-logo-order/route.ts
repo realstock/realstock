@@ -12,15 +12,22 @@ export async function POST() {
 
     const clientId = process.env.PAYPAL_CLIENT_ID;
     const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+    const base = process.env.PAYPAL_API_BASE || "https://api-m.sandbox.paypal.com";
     const auth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
 
-    const tokenRes = await fetch("https://api-m.paypal.com/v1/oauth2/token", {
+    const tokenRes = await fetch(`${base}/v1/oauth2/token`, {
       method: "POST",
       body: "grant_type=client_credentials",
       headers: {
         Authorization: `Basic ${auth}`,
       },
     });
+
+    if (!tokenRes.ok) {
+       const errorData = await tokenRes.json();
+       console.error("PAYPAL AUTH ERROR:", errorData);
+       throw new Error(`Falha na autenticação do PayPal: ${JSON.stringify(errorData)}`);
+    }
 
     const tokenData = await tokenRes.json();
     const accessToken = tokenData.access_token;
@@ -38,9 +45,9 @@ export async function POST() {
 
     const feeValue = siteService?.fee?.value 
       ? Number(siteService.fee.value).toFixed(2) 
-      : "50.00"; // Fallback para 50 caso não encontre
+      : "50.00"; 
 
-    const orderRes = await fetch("https://api-m.paypal.com/v2/checkout/orders", {
+    const orderRes = await fetch(`${base}/v2/checkout/orders`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -61,6 +68,11 @@ export async function POST() {
     });
 
     const orderData = await orderRes.json();
+
+    if (!orderRes.ok) {
+       console.error("PAYPAL ORDER ERROR:", orderData);
+       throw new Error(`Falha ao criar ordem no PayPal: ${orderData.message || JSON.stringify(orderData)}`);
+    }
 
     return NextResponse.json({
       success: true,

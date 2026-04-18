@@ -505,15 +505,27 @@ export default function MeusAnunciosPage() {
                <button 
                  onClick={async () => {
                    if (!selectedLogoFile) return alert("Selecione um logo primeiro");
+                   console.log("Iniciando processo de pagamento do logo...");
                    try {
                      setIsLogoUploading(true);
                      // 1. Criar Ordem PayPal
                      const res = await fetch("/api/paypal/create-logo-order", { method: "POST" });
+                     
+                     if (!res.ok) {
+                        const errorText = await res.text();
+                        console.error("Erro na resposta da API:", errorText);
+                        throw new Error("Erro ao preparar pagamento. Verifique os logs do servidor.");
+                     }
+
                      const data = await res.json();
-                     if (!data.success) throw new Error(data.error);
+                     console.log("Resposta da API de Ordem:", data);
+
+                     if (!data.success) throw new Error(data.error || "Falha desconhecida na API");
+                     
                      setLogoPaypalOrderId(data.paypal_order_id);
                    } catch (err: any) {
-                     alert(err.message);
+                     console.error("Erro no fluxo de confirmação:", err);
+                     alert("Erro: " + err.message);
                    } finally {
                      setIsLogoUploading(false);
                    }
