@@ -31,7 +31,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } }
     });
 
-    const propertiesWithImages = properties.filter(p => p.images && p.images.length > 0);
+    const propertiesWithImages = properties.filter(p => p.images && p.images.length > 0).slice(0, 9);
     // order the propertiesWithImages based on targetIds
     propertiesWithImages.sort((a, b) => targetIds.indexOf(a.id) - targetIds.indexOf(b.id));
 
@@ -39,30 +39,38 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       return NextResponse.json({ success: false, error: "Nenhum imóvel com fotos foi encontrado." }, { status: 400 });
     }
 
-    if (propertiesWithImages.length > 10) {
-      return NextResponse.json({ success: false, error: "Limite de 10 imóveis excedido." }, { status: 400 });
-    }
-
     const igUserId = process.env.INSTAGRAM_IG_USER_ID;
     const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
+    const siteUrl = "https://realstock.com.br"; // Base URL for the logo
 
     if (!igUserId || !igToken) {
       return NextResponse.json({ success: false, error: "Credenciais do Instagram ausentes enviromnent." }, { status: 500 });
     }
 
-    const captionText = `🔥 Especial Oportunidades - ${pub.name || "RealStock"}\n\nConfira esta seleção VIP de anúncios patrocinados 👉\n\nGaranta a melhor negociação exclusiva acessando o link na nossa bio!`;
+    // Gerar legenda automática com endereço e valor de cada imóvel
+    const propertyDetailsText = propertiesWithImages.map((p, index) => {
+        const address = [p.street, p.addressNumber, p.neighborhood, p.city].filter(Boolean).join(", ");
+        const price = Number(p.price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+        return `${index + 1}️⃣ ${address} - ${price}`;
+    }).join("\n");
+
+    const captionText = `🔥 Especial Oportunidades - ${pub.name || "RealStock"}\n\nConfira esta seleção VIP de anúncios patrocinados 👉\n\n${propertyDetailsText}\n\n💎 Garanta a melhor negociação exclusiva acessando o link na nossa bio! #RealStock #ImoveisDeLuxo`;
 
     let finalMediaId = null;
 
-    if (propertiesWithImages.length === 1) {
-       const createMediaRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media?image_url=${encodeURIComponent(propertiesWithImages[0].images[0].imageUrl)}&caption=${encodeURIComponent(captionText)}&access_token=${igToken}`, { method: "POST" });
+    // Carousel items: 1-9 images + 10th Logo
+    const imageUrls = propertiesWithImages.map(p => p.images[0].imageUrl);
+    imageUrls.push(`${siteUrl}/logo-ig.png`); // Adicionar o logo como a 10ª foto
+
+    if (imageUrls.length === 1) {
+       const createMediaRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media?image_url=${encodeURIComponent(imageUrls[0])}&caption=${encodeURIComponent(captionText)}&access_token=${igToken}`, { method: "POST" });
        const mediaData = await createMediaRes.json();
        if (!createMediaRes.ok || !mediaData.id) return NextResponse.json({ success: false, error: "Graph API Err: Mídia" }, { status: 500 });
        finalMediaId = mediaData.id;
     } else {
        const childrenIds: string[] = [];
-       const uploadPromises = propertiesWithImages.map(async (p) => {
-           const res = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media?image_url=${encodeURIComponent(p.images[0].imageUrl)}&is_carousel_item=true&access_token=${igToken}`, { method: "POST" });
+       const uploadPromises = imageUrls.map(async (url) => {
+           const res = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media?image_url=${encodeURIComponent(url)}&is_carousel_item=true&access_token=${igToken}`, { method: "POST" });
            const data = await res.json();
            if (!res.ok || !data.id) throw new Error("Graph API item error.");
            return data.id;

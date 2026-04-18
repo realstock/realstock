@@ -71,8 +71,8 @@ export default function AdminPatrocinadosPage() {
   function togglePropertySelection(id: number) {
     setSelectedIds(prev => {
       if (prev.includes(id)) return prev.filter(pid => pid !== id);
-      if (prev.length >= 10) {
-        alert("Máximo de 10 imóveis por publicação alcançado!");
+      if (prev.length >= 9) {
+        alert("Máximo de 9 imóveis por publicação alcançado (o 10º slide é reservado para o Logo)!");
         return prev;
       }
       return [...prev, id];
