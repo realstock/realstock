@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import OfferBookClient from "@/components/OfferBookClient";
+import AdSenseBanner from "@/components/AdSenseBanner";
 
 export default async function PropertyPage({
   params,
@@ -286,6 +287,17 @@ export default async function PropertyPage({
                 askingPrice={property.price.toString()}
                 offers={offers}
               />
+            </div>
+
+            {/* Banner Lateral Google Ads */}
+            <div className="mt-8 flex justify-center border border-white/5 bg-slate-900/50 rounded-2xl py-6 relative overflow-hidden">
+               <div className="absolute inset-0 flex items-center justify-center -z-10 text-slate-800 text-[10px] uppercase font-black tracking-widest">Publicidade</div>
+               <AdSenseBanner 
+                 slot="" // Aguardando seu novo ID
+                 format="" 
+                 responsive="false" 
+                 style={{ display: "inline-block", width: "300px", height: "600px" }} 
+               />
             </div>
           </aside>
         </div>

@@ -33,7 +33,12 @@ export default function Header() {
         {/* Espaço reservado para o Banner do Google Ads */}
         <div className="hidden lg:flex flex-1 mx-8 h-[90px] max-h-[90px] items-center justify-center overflow-hidden relative">
           <div className="absolute inset-0 flex items-center justify-center -z-10 text-slate-700 text-xs text-dashed border border-white/5 rounded-xl">Anúncio Global</div>
-          <AdSenseBanner format="" responsive="false" style={{ display: "inline-block", width: "728px", height: "90px" }} />
+          <AdSenseBanner 
+            slot="7835437222"
+            format="" 
+            responsive="false" 
+            style={{ display: "inline-block", width: "728px", height: "90px" }} 
+          />
         </div>
 
         <div className="flex items-center gap-4">
