@@ -70,15 +70,15 @@ export async function GET(req: NextRequest) {
     });
 
     // Virtual Expenses for Ad Campaigns
-    // Regra: O usuário paga o total (Ex: R$ 70), o site fica com a taxa (Ex: R$ 10) e o restante vai para Meta/Google (Ex: R$ 60).
+    // Regra: O usuário paga o total (Ex: R$ 60), o site fica com a taxa (Ex: R$ 10) e o restante vai para Meta/Google (Ex: R$ 50).
+    // O custo real é Total / 1.2 (onde 0.2 é a margem de 20% sobre o custo).
     const metaAds = await prisma.metaAdsSession.findMany({
        where: { createdAt: { gte: startDate, lt: endDate } }
     });
     
     metaAds.forEach(ad => {
-       // O custo real na plataforma é o total pago menos a margem do site (Ex: 60/70 = ~0.857)
        const totalPaid = Number(ad.budget) * ad.budgetDays;
-       const cost = totalPaid * (60 / 70); 
+       const cost = totalPaid / 1.2; 
        totalExpense += cost;
        breakdownExpenses["META_ADS"] += cost;
        mappedTransactions.push({
@@ -99,7 +99,7 @@ export async function GET(req: NextRequest) {
 
     googleAds.forEach(ad => {
        const totalPaid = Number(ad.budget) * ad.budgetDays;
-       const cost = totalPaid * (60 / 70);
+       const cost = totalPaid / 1.2;
        totalExpense += cost;
        breakdownExpenses["GOOGLE_ADS"] += cost;
        mappedTransactions.push({
