@@ -1,5 +1,6 @@
 export const getOfferEmailTemplate = (propertyName: string, propertyId: number) => {
-  const baseUrl = process.env.NEXTAUTH_URL || "https://realstock.com.br";
+  // Forçamos o domínio oficial para garantir que o link no e-mail externo sempre funcione
+  const baseUrl = "https://realstock.com.br";
   const offerUrl = `${baseUrl}/minha-conta/anuncios/${propertyId}/ofertas`;
   
   // Usando GIFs de fogos de artifício que funcionam bem em backgrounds e emails
