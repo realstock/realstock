@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Camera, CheckCircle2, Rocket, Globe, BarChart3, Building2, Upload, X } from "lucide-react";
+import { Camera, CheckCircle2, Rocket, Globe, BarChart3, Building2, Upload, X, Wallet, TrendingUp, History, MapPin } from "lucide-react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { uploadToCloudinary } from "@/lib/cloudinary"; // Assumiu que existe ou usarei base64/api
 
@@ -43,6 +43,7 @@ export default function MeusAnunciosPage() {
   const [logoPaypalOrderId, setLogoPaypalOrderId] = useState<string | null>(null);
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [logoActiveUntil, setLogoActiveUntil] = useState<string | null>(null);
+  const [investment, setInvestment] = useState<any>(null);
 
   async function loadProperties() {
     try {
@@ -71,6 +72,14 @@ export default function MeusAnunciosPage() {
     }
   }
 
+  async function loadInvestment() {
+    try {
+      const res = await fetch("/api/minha-conta/investimento");
+      const data = await res.json();
+      if (data.success) setInvestment(data);
+    } catch (e) {}
+  }
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.replace("/login");
@@ -79,6 +88,7 @@ export default function MeusAnunciosPage() {
 
     if (status === "authenticated") {
       loadProperties();
+      loadInvestment();
     }
   }, [status, router]);
 
@@ -446,6 +456,61 @@ export default function MeusAnunciosPage() {
             )})}
           </div>
         )}
+
+        {/* ÁREA DE INVESTIMENTOS */}
+        <div className="mt-12 rounded-[32px] border border-white/10 bg-white/5 p-8 shadow-xl">
+           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                 <div className="flex items-center gap-2 text-sky-400 font-bold uppercase tracking-widest text-[10px] mb-2">
+                    <TrendingUp size={14} /> Meu Investimento Total
+                 </div>
+                 <h2 className="text-4xl font-black text-white">
+                    R$ {investment?.totalSpent?.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || "0,00"}
+                 </h2>
+                 <p className="text-slate-400 mt-2 text-xs">
+                    Valor total investido em publicidade e parcerias no RealStock.
+                 </p>
+              </div>
+              <div className="flex items-center gap-4">
+                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-500/10 text-sky-400">
+                    <Wallet size={28} />
+                 </div>
+              </div>
+           </div>
+
+           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {investment?.breakdown?.map((item: any) => (
+                <div key={item.label} className="rounded-2xl border border-white/5 bg-white/5 p-5 transition-all hover:bg-white/10">
+                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">{item.label}</div>
+                   <div className="text-xl font-bold text-white">R$ {item.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                </div>
+              ))}
+              {(!investment?.breakdown || investment.breakdown.length === 0) && (
+                <div className="col-span-full rounded-2xl border border-dashed border-white/10 p-6 text-center text-slate-500 text-sm">
+                   Nenhum investimento registrado ainda.
+                </div>
+              )}
+           </div>
+
+           {investment?.transactions?.length > 0 && (
+              <div className="mt-12">
+                 <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-6 underline decoration-sky-500/40 underline-offset-4">
+                    <History size={14} /> Histórico Recente de Ativações
+                 </div>
+                 <div className="space-y-3">
+                    {investment.transactions.slice(0, 5).map((t: any) => (
+                      <div key={t.id} className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-3 text-xs">
+                         <div className="flex flex-col gap-0.5">
+                            <span className="font-medium text-slate-200">{t.description}</span>
+                            <span className="text-[10px] text-slate-500">{new Date(t.createdAt).toLocaleDateString("pt-BR")}</span>
+                         </div>
+                         <div className="font-bold text-sky-400">+ R$ {Number(t.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                      </div>
+                    ))}
+                 </div>
+              </div>
+           )}
+        </div>
       </div>
 
       {/* MODAL PARA UPLOAD DE LOGO */}

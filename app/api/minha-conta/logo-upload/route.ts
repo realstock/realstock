@@ -96,6 +96,7 @@ export async function POST(req: Request) {
           amount: finalFee,
           description: `Pagamento Logo na Página - Usuário ${userId}`,
           referenceId: orderID,
+          userId: userId,
         },
       }),
     ]);

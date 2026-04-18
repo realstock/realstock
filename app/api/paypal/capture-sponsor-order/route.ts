@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
                         amount: grossAmount,
                         description: `Comissionamento Patrocínio de Imóvel #${property.id}`,
                         referenceId: orderID,
+                        userId: user.id,
                     },
                     {
                         type: "EXPENSE",
@@ -84,6 +85,7 @@ export async function POST(req: NextRequest) {
                         amount: feeAmount,
                         description: `Tarifa PayPal (Patrocínio)`,
                         referenceId: orderID,
+                        userId: user.id,
                     }
                 ]
             });

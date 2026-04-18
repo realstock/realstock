@@ -59,6 +59,9 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!user) return NextResponse.json({ success: false, error: "Usuário não encontrado." }, { status: 404 });
+
     // Accounting Logic
     try {
         const captureInfo = captureData.purchase_units?.[0]?.payments?.captures?.[0];
@@ -74,6 +77,7 @@ export async function POST(req: NextRequest) {
                         amount: grossAmount,
                         description: `Publicação de Imóvel #${propertyId} (Instagram)`,
                         referenceId: orderID,
+                        userId: user.id,
                     },
                     {
                         type: "EXPENSE",
@@ -81,6 +85,7 @@ export async function POST(req: NextRequest) {
                         amount: feeAmount,
                         description: `Tarifa PayPal (Post Insta)`,
                         referenceId: orderID,
+                        userId: user.id,
                     }
                 ]
             });
