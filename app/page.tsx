@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Rocket } from "lucide-react";
+import { Rocket, Building2 } from "lucide-react";
 import CesiumMapClient from "@/components/CesiumMapClient";
 
 
@@ -297,6 +297,7 @@ export default function HomePage() {
   const [availablePropertyTypes, setAvailablePropertyTypes] = useState<string[]>([]);
   const [availableCities, setAvailableCities] = useState<string[]>([]);
   const [availableNeighborhoods, setAvailableNeighborhoods] = useState<string[]>([]);
+  const [partners, setPartners] = useState<any[]>([]);
 
   const [category, setCategory] = useState("");
   const [propertyType, setPropertyType] = useState("");
@@ -361,6 +362,14 @@ export default function HomePage() {
     } catch (e) {
       console.error("Falha ao buscar filtros:", e);
     }
+  }
+
+  async function loadPartners() {
+    try {
+      const res = await fetch("/api/partners");
+      const data = await res.json();
+      if (data.success) setPartners(data.partners || []);
+    } catch (e) {}
   }
 
   useEffect(() => {
@@ -439,6 +448,7 @@ export default function HomePage() {
 
   useEffect(() => {
     loadInitialProperties();
+    loadPartners();
   }, []);
 
   useEffect(() => {
@@ -758,6 +768,35 @@ export default function HomePage() {
                 )}
               </div>
             </div>
+
+            {/* IMOBILIÁRIAS PARCEIRAS */}
+            {partners.length > 0 && (
+              <div className="mt-10 border-t border-white/10 pt-8">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-sky-400">
+                  <Building2 size={14} />
+                  Imobiliárias Parceiras
+                </div>
+                
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  {partners.map(p => (
+                    <Link 
+                      key={p.id} 
+                      href={`/imobiliaria/${p.id}`}
+                      className="group relative flex aspect-[3/2] items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/5 p-3 transition-all hover:border-sky-500/50 hover:bg-sky-500/5"
+                    >
+                      <img 
+                        src={p.companyLogo} 
+                        alt={p.name} 
+                        className="h-full w-full object-contain transition-transform group-hover:scale-110" 
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-slate-950/60 opacity-0 transition-opacity group-hover:opacity-100">
+                         <span className="text-[10px] font-bold text-white">Ver Imóveis</span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
           </aside>
 
           <div className="space-y-4">

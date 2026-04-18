@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Camera, CheckCircle2, Rocket, Globe, BarChart3 } from "lucide-react";
+import { Camera, CheckCircle2, Rocket, Globe, BarChart3, Building2, Upload, X } from "lucide-react";
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import { uploadToCloudinary } from "@/lib/cloudinary"; // Assumiu que existe ou usarei base64/api
 
 type PropertyItem = {
   id: number;
@@ -34,6 +36,14 @@ export default function MeusAnunciosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
+  const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [isLogoUploading, setIsLogoUploading] = useState(false);
+  const [logoPaypalOrderId, setLogoPaypalOrderId] = useState<string | null>(null);
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  const [logoActiveUntil, setLogoActiveUntil] = useState<string | null>(null);
+
   async function loadProperties() {
     try {
       setLoading(true);
@@ -52,6 +62,8 @@ export default function MeusAnunciosPage() {
       setPortfolioBoostedUntil(data.portfolioBoostedUntil || null);
       setGooglePortfolioBoostedUntil(data.googlePortfolioBoostedUntil || null);
       setMetaPortfolioBoostedUntil(data.metaPortfolioBoostedUntil || null);
+      setLogoActiveUntil(data.logoBoostedUntil || null);
+      setUserAvatar(data.companyLogo || null);
     } catch (err: any) {
       setError(err.message || "Erro ao carregar anúncios.");
     } finally {
@@ -97,6 +109,37 @@ export default function MeusAnunciosPage() {
             {error}
           </div>
         )}
+
+        {/* Banner de Imobiliária Parceira */}
+        <div className="mb-8 overflow-hidden rounded-3xl border border-sky-500/30 bg-gradient-to-br from-sky-600/20 via-slate-900 to-slate-950 p-6 shadow-2xl relative">
+          <div className="absolute -right-12 -top-12 h-64 w-64 rounded-full bg-sky-500/10 blur-3xl" />
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
+            <div className="flex items-center gap-5">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-500/20 text-sky-400">
+                <Building2 size={32} />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Você é uma imobiliária?</h2>
+                <p className="text-slate-400 text-sm mt-1 max-w-md">
+                   Destaque sua marca na página inicial e tenha um portfólio exclusivo para seus clientes.
+                </p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setIsLogoModalOpen(true)}
+              className="group flex items-center gap-2 rounded-2xl bg-sky-500 px-6 py-4 font-bold text-white transition-all hover:bg-sky-400 shadow-lg shadow-sky-500/20 active:scale-95"
+            >
+              Exibir meu Logo no Site
+              <Rocket size={18} className="transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+            </button>
+          </div>
+          
+          {logoActiveUntil && new Date(logoActiveUntil) > new Date() && (
+            <div className="mt-4 flex items-center gap-2 text-xs font-bold text-emerald-400 bg-emerald-500/10 w-fit px-3 py-1 rounded-full border border-emerald-500/20">
+               <CheckCircle2 size={14} /> Logo Ativo até {new Date(logoActiveUntil).toLocaleDateString()}
+            </div>
+          )}
+        </div>
 
         {(() => {
            if (properties.length === 0) return null;
@@ -404,6 +447,116 @@ export default function MeusAnunciosPage() {
           </div>
         )}
       </div>
+
+      {/* MODAL PARA UPLOAD DE LOGO */}
+      {isLogoModalOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-[32px] border border-white/10 bg-slate-950 p-8 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Configurar sua Marca</h2>
+              <button 
+                onClick={() => { setIsLogoModalOpen(false); setLogoPreview(null); setSelectedLogoFile(null); }}
+                className="text-slate-500 hover:text-white"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <p className="mt-2 text-slate-400 text-sm">
+               Seu logo aparecerá na barra lateral da página inicial e levará os clientes direto para seus imóveis.
+            </p>
+
+            <div className="mt-8">
+               <div className="flex flex-col items-center justify-center">
+                  <div className={`relative h-32 w-48 overflow-hidden rounded-2xl border-2 border-dashed transition-colors ${logoPreview ? 'border-sky-500/50 bg-sky-500/5' : 'border-white/10 bg-white/5 hover:border-white/20'}`}>
+                    {logoPreview ? (
+                      <img src={logoPreview} className="h-full w-full object-contain p-2" alt="Preview Logo" />
+                    ) : (
+                      <div className="flex h-full flex-col items-center justify-center gap-2 text-slate-500">
+                         <Upload size={24} />
+                         <span className="text-xs">Clique para selecionar</span>
+                      </div>
+                    )}
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setSelectedLogoFile(file);
+                          setLogoPreview(URL.createObjectURL(file));
+                        }
+                      }}
+                      className="absolute inset-0 cursor-pointer opacity-0" 
+                    />
+                  </div>
+                  {logoPreview && (
+                    <button 
+                       onClick={() => { setLogoPreview(null); setSelectedLogoFile(null); }}
+                       className="mt-2 text-xs text-red-400 underline"
+                    >
+                       Remover imagem
+                    </button>
+                  )}
+               </div>
+            </div>
+
+            {!logoPaypalOrderId ? (
+               <button 
+                 onClick={async () => {
+                   if (!selectedLogoFile) return alert("Selecione um logo primeiro");
+                   try {
+                     setIsLogoUploading(true);
+                     // 1. Criar Ordem PayPal
+                     const res = await fetch("/api/paypal/create-logo-order", { method: "POST" });
+                     const data = await res.json();
+                     if (!data.success) throw new Error(data.error);
+                     setLogoPaypalOrderId(data.paypal_order_id);
+                   } catch (err: any) {
+                     alert(err.message);
+                   } finally {
+                     setIsLogoUploading(false);
+                   }
+                 }}
+                 disabled={!selectedLogoFile || isLogoUploading}
+                 className="mt-8 w-full rounded-2xl bg-white py-4 font-bold text-slate-900 transition-all hover:bg-slate-200 disabled:opacity-50"
+               >
+                 {isLogoUploading ? "Preparando..." : "Confirmar e Pagar Taxa"}
+               </button>
+            ) : (
+              <div className="mt-8">
+                 <PayPalScriptProvider options={{ clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "", currency: "BRL" }}>
+                    <PayPalButtons 
+                       style={{ layout: "vertical", shape: "rect", label: "paypal" }}
+                       createOrder={async () => logoPaypalOrderId}
+                       onApprove={async (data) => {
+                          try {
+                             // 2. Fazer Upload da Imagem para o Servidor (ou transformar em Base64 para teste se não houver Storage)
+                             const formData = new FormData();
+                             formData.append("file", selectedLogoFile!);
+                             formData.append("orderID", data.orderID);
+
+                             const res = await fetch("/api/minha-conta/logo-upload", {
+                                method: "POST",
+                                body: formData
+                             });
+                             const result = await res.json();
+                             if (!result.success) throw new Error(result.error);
+
+                             alert("Sucesso! Seu logo já está em análise e aparecerá no site em breve.");
+                             setIsLogoModalOpen(false);
+                             loadProperties();
+                          } catch (e: any) {
+                             alert("Erro ao finalizar: " + e.message);
+                          }
+                       }}
+                    />
+                 </PayPalScriptProvider>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

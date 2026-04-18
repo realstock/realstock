@@ -55,6 +55,8 @@ model User {
   state                       String?
   updatedAt                   DateTime   @updatedAt
   verified                    Boolean    @default(false)
+  companyLogo                 String?    @map("company_logo")
+  logoBoostedUntil            DateTime?  @map("logo_boosted_until")
   portfolioBoostedUntil       DateTime?  @map("portfolio_boosted_until")
   googlePortfolioBoostedUntil DateTime?  @map("google_portfolio_boosted_until")
   metaPortfolioBoostedUntil   DateTime?  @map("meta_portfolio_boosted_until")
