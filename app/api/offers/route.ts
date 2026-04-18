@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
+import { getOfferEmailTemplate } from "@/lib/email-templates";
 
 export async function POST(req: NextRequest) {
   try {
@@ -78,17 +79,19 @@ export async function POST(req: NextRequest) {
         await sendEmail({
           to: property.owner.email,
           subject: `Parabéns, seu anúncio: ${property.title} acaba de receber uma oferta`,
-          html: `
-            <div style="font-family: Arial, sans-serif; line-height:1.6; color:#111827;">
-              <h2>Nova oferta recebida</h2>
-              <p>
-                Parabéns, seu anúncio <strong>${property.title}</strong> acaba de receber uma oferta.
-              </p>
-              <p>
-                Acesse o site para avaliar. O contato do comprador será liberado após a proposta ser aceita.
-              </p>
-            </div>
-          `,
+          html: getOfferEmailTemplate(property.title, property.id),
+        });
+
+        // Também salva na caixa de entrada interna (banco de dados)
+        await prisma.emailMessage.create({
+          data: {
+            sender: "RealStock <contato@realstock.com.br>",
+            recipient: property.owner.email,
+            subject: `Parabéns, seu anúncio: ${property.title} acaba de receber uma oferta`,
+            htmlBody: getOfferEmailTemplate(property.title, property.id),
+            direction: "OUTBOUND",
+            status: "UNREAD",
+          },
         });
       } catch (emailError) {
         console.error("EMAIL OFFER ERROR:", emailError);

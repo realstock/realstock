@@ -39,7 +39,7 @@ export async function createRealStockGoogleCampaign(
     const campaignRes = await customer.campaigns.create([
       {
         name: `Campanha Imóvel - ${propertyId} - ${Date.now()}`,
-        status: enums.CampaignStatus.PAUSED, // Starts paused for safety initially
+        status: enums.CampaignStatus.ENABLED, 
         advertising_channel_type: enums.AdvertisingChannelType.SEARCH,
         network_settings: {
           target_google_search: true,
