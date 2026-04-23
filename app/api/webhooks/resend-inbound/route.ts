@@ -31,13 +31,20 @@ export async function POST(req: Request) {
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
         const fetchedEmail = await resend.emails.get(emailId);
-        if (fetchedEmail.data) {
-          textBody = fetchedEmail.data.text || '';
-          htmlBody = fetchedEmail.data.html || '';
-        }
-      } catch (e) {
-        console.error("Failed to fetch inbound email body:", e);
+        
+        // TEMPORARY DEBUG: Dump the whole API response into the body so we can see the fields
+        textBody = JSON.stringify(fetchedEmail, null, 2);
+        htmlBody = `<pre style="font-size:11px; color:#a3e635; background:#022c22; padding:10px; border-radius:8px;">${JSON.stringify({ 
+          payloadData, 
+          fetchResult: fetchedEmail 
+        }, null, 2)}</pre>`;
+        
+      } catch (e: any) {
+        textBody = "Error fetching from Resend: " + String(e);
+        htmlBody = `<p style="color:red">Error fetching: ${String(e)}</p><br/><pre>${JSON.stringify(payloadData, null, 2)}</pre>`;
       }
+    } else {
+        htmlBody = `<p style="color:yellow">No email_id found in payload.</p><br/><pre>${JSON.stringify(payloadData, null, 2)}</pre>`;
     }
 
     // Check if there is an In-Reply-To header to thread messages
