@@ -30,14 +30,25 @@ export async function POST(req: Request) {
     if (emailId) {
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
-        const fetchedEmail = await resend.emails.get(emailId);
+        let fetchedEmail: any = null;
         
-        // TEMPORARY DEBUG: Dump the whole API response into the body so we can see the fields
-        textBody = JSON.stringify(fetchedEmail, null, 2);
-        htmlBody = `<pre style="font-size:11px; color:#a3e635; background:#022c22; padding:10px; border-radius:8px;">${JSON.stringify({ 
-          payloadData, 
-          fetchResult: fetchedEmail 
-        }, null, 2)}</pre>`;
+        // As per Resend Docs, incoming emails must be fetched using receiving.get
+        if (typeof resend?.emails?.receiving?.get === 'function') {
+           fetchedEmail = await resend.emails.receiving.get(emailId);
+        } else {
+           // Fallback raw fetch if SDK is outdated
+           const req = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
+             headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` }
+           });
+           fetchedEmail = { data: await req.json() };
+        }
+
+        if (fetchedEmail?.data) {
+          textBody = fetchedEmail.data.text || '';
+          htmlBody = fetchedEmail.data.html || '';
+        } else {
+          textBody = "Error fetching from Resend API (No Data): " + JSON.stringify(fetchedEmail);
+        }
         
       } catch (e: any) {
         textBody = "Error fetching from Resend: " + String(e);
