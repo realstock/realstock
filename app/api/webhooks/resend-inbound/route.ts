@@ -6,6 +6,7 @@ export async function POST(req: Request) {
     // Resend Inbound Webhook payload structure:
     // { "from": "...", "to": "...", "subject": "...", "text": "...", "html": "...", "headers": ... }
     const rawBody = await req.text();
+    console.log("INBOUND RAW BODY:", rawBody);
     let body;
     try {
         body = JSON.parse(rawBody);
@@ -13,12 +14,15 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, error: 'Invalid JSON' }, { status: 400 });
     }
 
+    const payloadData = body.data || body;
+
     // Typical fields from Resend Inbound Webhook payload
-    const from = body.from || 'Unknown Sender';
-    const to = body.to || 'Unknown Recipient';
-    const subject = body.subject || 'No Subject';
-    const textBody = body.text || '';
-    const htmlBody = body.html || '';
+    const from = payloadData.from || 'Unknown Sender';
+    const toRaw = payloadData.to;
+    const to = Array.isArray(toRaw) ? toRaw.join(", ") : (toRaw || 'Unknown Recipient');
+    const subject = payloadData.subject || 'No Subject';
+    const textBody = payloadData.text || '';
+    const htmlBody = payloadData.html || '';
 
     // Check if there is an In-Reply-To header to thread messages
     let inReplyToId = null;

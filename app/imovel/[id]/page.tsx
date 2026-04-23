@@ -293,7 +293,7 @@ export default async function PropertyPage({
             <div className="mt-8 flex justify-center border border-white/5 bg-slate-900/50 rounded-2xl py-6 relative overflow-hidden">
                <div className="absolute inset-0 flex items-center justify-center -z-10 text-slate-800 text-[10px] uppercase font-black tracking-widest">Publicidade</div>
                <AdSenseBanner 
-                 slot="" // Aguardando seu novo ID
+                 slot="7835437222"
                  format="" 
                  responsive="false" 
                  style={{ display: "inline-block", width: "300px", height: "600px" }} 
