@@ -7,7 +7,7 @@ import { signOut, useSession } from "next-auth/react";
 import AdSenseBanner from "./AdSenseBanner";
 
 export default function Header() {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(true);
   const { data: session, status } = useSession();
 
   const user = session?.user;
