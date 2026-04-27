@@ -77,18 +77,18 @@ export default function PropertyGallery({ images, alt }: PropertyGalleryProps) {
     <div className="flex flex-col gap-4">
       {/* Main Image Container */}
       <div 
-        className="relative group overflow-hidden rounded-[20px] md:rounded-[28px] border border-white/10 bg-black h-[320px] sm:h-[400px] md:h-[500px]"
+        className="relative group overflow-hidden rounded-[20px] md:rounded-[28px] border border-white/10 bg-black h-[320px] sm:h-[400px] md:h-[500px] w-full"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
         {/* Main Image */}
-        <div className="w-full h-full flex items-center justify-center p-2 md:p-0">
+        <div className="w-full h-full flex items-center justify-center p-2 md:p-0 select-none">
           <img
-            key={images[currentIndex].id || currentIndex}
             src={images[currentIndex].imageUrl}
             alt={`${alt} - Foto ${currentIndex + 1}`}
-            className="h-full w-full object-contain animate-in fade-in duration-300"
+            className="h-full w-full object-contain transition-opacity duration-300"
+            draggable={false}
           />
         </div>
 
@@ -96,18 +96,20 @@ export default function PropertyGallery({ images, alt }: PropertyGalleryProps) {
         {images.length > 1 && (
           <>
             <button
+              type="button"
               onClick={goPrev}
-              className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-2 md:p-3 rounded-full backdrop-blur-md opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-300 border border-white/20 hover:scale-110 active:scale-95"
+              className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-2 md:p-3 rounded-full backdrop-blur-md transition-all duration-300 border border-white/20 hover:scale-110 active:scale-95"
               aria-label="Anterior"
             >
-              <ChevronLeft className="w-6 h-6 md:w-6 md:h-6" />
+              <ChevronLeft size={24} className="w-6 h-6" />
             </button>
             <button
+              type="button"
               onClick={goNext}
-              className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-2 md:p-3 rounded-full backdrop-blur-md opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-300 border border-white/20 hover:scale-110 active:scale-95"
+              className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-2 md:p-3 rounded-full backdrop-blur-md transition-all duration-300 border border-white/20 hover:scale-110 active:scale-95"
               aria-label="Próxima"
             >
-              <ChevronRight className="w-6 h-6 md:w-6 md:h-6" />
+              <ChevronRight size={24} className="w-6 h-6" />
             </button>
           </>
         )}
@@ -130,18 +132,20 @@ export default function PropertyGallery({ images, alt }: PropertyGalleryProps) {
           {images.map((img, idx) => (
             <button
               key={img.id || idx}
+              type="button"
               onClick={() => setCurrentIndex(idx)}
-              className={`relative flex-shrink-0 w-20 h-16 md:w-28 md:h-20 rounded-xl md:rounded-2xl overflow-hidden transition-all duration-300 snap-center ${
+              className={`relative flex-shrink-0 w-20 h-16 md:w-28 md:h-20 rounded-xl md:rounded-2xl overflow-hidden transition-all duration-300 cursor-pointer snap-center ${
                 currentIndex === idx
                   ? "ring-2 ring-white scale-100 shadow-lg shadow-black/50"
-                  : "border border-white/10 opacity-50 hover:opacity-100 scale-95 hover:scale-100"
+                  : "border border-white/10 opacity-50 active:opacity-80 scale-95"
               }`}
               aria-label={`Ver foto ${idx + 1}`}
             >
               <img
                 src={img.imageUrl}
                 alt={`Miniatura ${idx + 1}`}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover pointer-events-none"
+                draggable={false}
               />
               {/* Optional darkening overlay for non-active thumbnails */}
               {currentIndex !== idx && (
