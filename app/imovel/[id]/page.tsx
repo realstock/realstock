@@ -106,7 +106,7 @@ export default async function PropertyPage({
   ];
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
+    <main className="min-h-screen bg-slate-950 text-white overflow-x-hidden">
       <section className="mx-auto max-w-7xl px-6 py-8">
         <div className="mb-8">
           <div className="text-sm uppercase tracking-[0.2em] text-slate-400">
@@ -120,7 +120,7 @@ export default async function PropertyPage({
         </div>
 
         <div className="grid gap-8 lg:grid-cols-[1.35fr_420px]">
-          <div className="space-y-5">
+          <div className="space-y-5 min-w-0">
             <PropertyGallery images={property.images} alt={property.title} />
 
             <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
