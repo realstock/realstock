@@ -102,7 +102,7 @@ export default function LoginPage() {
             await signIn("google", { callbackUrl: "/" });
           }}
           disabled={loadingGoogle}
-          className="flex w-full items-center justify-center gap-3 rounded-2xl bg-white px-4 py-3 font-semibold text-slate-900 transition hover:bg-slate-200 disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-3 rounded-2xl bg-white px-4 py-3 font-semibold text-slate-900 transition hover:bg-slate-200 disabled:opacity-60 mb-3"
         >
           <img
             src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
@@ -110,6 +110,22 @@ export default function LoginPage() {
             className="h-5 w-5"
           />
           {loadingGoogle ? "Abrindo Google..." : "Entrar com Google"}
+        </button>
+
+        <button
+          onClick={async () => {
+            setLoadingGoogle(true); // Reusing loading state for simplicity
+            await signIn("paypal", { callbackUrl: "/" });
+          }}
+          disabled={loadingGoogle}
+          className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#003087] px-4 py-3 font-semibold text-white transition hover:bg-[#002266] disabled:opacity-60"
+        >
+          <img
+            src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg"
+            alt="PayPal"
+            className="h-5 object-contain brightness-0 invert"
+          />
+          {loadingGoogle ? "Abrindo PayPal..." : "Entrar com PayPal"}
         </button>
 
         <div className="mt-6 text-center text-sm text-slate-400">

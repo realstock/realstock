@@ -14,6 +14,24 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
+    
+    {
+      id: "paypal",
+      name: "PayPal",
+      type: "oauth",
+      wellKnown: "https://www.sandbox.paypal.com/.well-known/openid-configuration", // Use https://www.paypal.com/.well-known/openid-configuration for production
+      authorization: { params: { scope: "openid profile email" } },
+      clientId: process.env.PAYPAL_CLIENT_ID || process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID!,
+      clientSecret: process.env.PAYPAL_CLIENT_SECRET!,
+      profile(profile) {
+        return {
+          id: profile.sub,
+          name: profile.name,
+          email: profile.email,
+          image: profile.picture,
+        }
+      },
+    },
 
     CredentialsProvider({
       name: "credentials",
@@ -56,7 +74,7 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async signIn({ user, account }) {
-      if (account?.provider === "google" && user.email) {
+      if ((account?.provider === "google" || account?.provider === "paypal") && user.email) {
         const email = user.email.toLowerCase();
 
         const existingUser = await prisma.user.findUnique({
@@ -67,7 +85,7 @@ export const authOptions: NextAuthOptions = {
           const name = encodeURIComponent(user.name || "");
           const avatar = encodeURIComponent(user.image || "");
 
-          return `/cadastro?email=${encodeURIComponent(email)}&name=${name}&avatar=${avatar}&from=google`;
+          return `/cadastro?email=${encodeURIComponent(email)}&name=${name}&avatar=${avatar}&from=${account.provider}`;
         }
       }
 
@@ -80,7 +98,7 @@ export const authOptions: NextAuthOptions = {
         (token as any).role = ((user as any).role || "USER") as "USER" | "ADMIN";
       }
 
-      if (account?.provider === "google" && token.email) {
+      if ((account?.provider === "google" || account?.provider === "paypal") && token.email) {
         const dbUser = await prisma.user.findUnique({
           where: { email: token.email.toLowerCase() },
         });
