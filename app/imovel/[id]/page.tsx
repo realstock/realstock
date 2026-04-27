@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import OfferBookClient from "@/components/OfferBookClient";
 import AdSenseBanner from "@/components/AdSenseBanner";
+import PropertyGallery from "@/components/PropertyGallery";
 
 export default async function PropertyPage({
   params,
@@ -39,9 +40,6 @@ export default async function PropertyPage({
   if (!property) {
     notFound();
   }
-
-  const mainImage = property.images[0]?.imageUrl || null;
-  const galleryImages = property.images.slice(1);
 
   const offers = property.offers.map((offer) => ({
     id: offer.id,
@@ -123,36 +121,7 @@ export default async function PropertyPage({
 
         <div className="grid gap-8 lg:grid-cols-[1.35fr_420px]">
           <div className="space-y-5">
-            {mainImage ? (
-              <div className="overflow-hidden rounded-[28px] border border-white/10">
-                <img
-                  src={mainImage}
-                  alt={property.title}
-                  className="h-[440px] w-full object-cover"
-                />
-              </div>
-            ) : (
-              <div className="flex h-[440px] items-center justify-center rounded-[28px] border border-dashed border-white/10 bg-white/5 text-slate-500">
-                Nenhuma foto enviada para este imóvel.
-              </div>
-            )}
-
-            {galleryImages.length > 0 && (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {galleryImages.map((image) => (
-                  <div
-                    key={image.id}
-                    className="overflow-hidden rounded-2xl border border-white/10"
-                  >
-                    <img
-                      src={image.imageUrl}
-                      alt={property.title}
-                      className="h-40 w-full object-cover"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
+            <PropertyGallery images={property.images} alt={property.title} />
 
             <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
               <h2 className="text-xl font-bold">Descrição e detalhes</h2>
