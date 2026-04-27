@@ -1,6 +1,7 @@
 import "./globals.css";
 import Providers from "./providers";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import SecurityBlocker from "@/components/SecurityBlocker";
 import Script from "next/script";
 
@@ -32,11 +33,14 @@ export default function RootLayout({
           strategy="afterInteractive"
         />
       </head>
-      <body className="bg-slate-950 text-white">
+      <body className="bg-slate-950 text-white min-h-screen flex flex-col">
         <Providers>
           <SecurityBlocker />
           <Header />
-          {children}
+          <div className="flex-1">
+            {children}
+          </div>
+          <Footer />
         </Providers>
       </body>
     </html>
