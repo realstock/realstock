@@ -7,11 +7,13 @@ interface VideoCreatorModalProps {
   isOpen: boolean;
   onClose: () => void;
   propertyTitle: string;
+  propertyCity?: string | null;
+  propertyState?: string | null;
   images: { imageUrl: string }[];
   propertyId: number;
 }
 
-export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, images, propertyId }: VideoCreatorModalProps) {
+export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, propertyCity, propertyState, images, propertyId }: VideoCreatorModalProps) {
   const [step, setStep] = useState<"preview" | "generating" | "result">("preview");
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -136,23 +138,32 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, imag
       ctx.shadowBlur = 10;
       ctx.textAlign = "center";
       
-      // Quebra de texto simples
       const words = propertyTitle.toUpperCase().split(" ");
+      let titleY = height - 240;
       if (words.length > 3) {
-          ctx.fillText(words.slice(0, 3).join(" "), width / 2, height - 200);
-          ctx.fillText(words.slice(3).join(" "), width / 2, height - 145);
+          ctx.fillText(words.slice(0, 3).join(" "), width / 2, titleY);
+          ctx.fillText(words.slice(3).join(" "), width / 2, titleY + 55);
+          titleY += 55;
       } else {
-          ctx.fillText(propertyTitle.toUpperCase(), width / 2, height - 160);
+          ctx.fillText(propertyTitle.toUpperCase(), width / 2, titleY);
+      }
+
+      // Texto: Cidade e Estado
+      const locationText = [propertyCity, propertyState].filter(Boolean).join(" • ");
+      if (locationText) {
+          ctx.fillStyle = "#94a3b8"; // slate-400
+          ctx.font = "32px Inter, sans-serif";
+          ctx.fillText(locationText.toUpperCase(), width / 2, titleY + 60);
       }
 
       // Linha decorativa
       ctx.fillStyle = "#38bdf8";
-      ctx.fillRect(width / 2 - 100, height - 110, 200, 4);
+      ctx.fillRect(width / 2 - 120, titleY + 90, 240, 4);
 
       // Texto: RealStock Brand
       ctx.fillStyle = "white";
-      ctx.font = "bold 28px Inter, sans-serif";
-      ctx.fillText("WWW.REALSTOCK.COM.BR", width / 2, height - 60);
+      ctx.font = "bold 32px Inter, sans-serif";
+      ctx.fillText("WWW.REALSTOCK.COM.BR", width / 2, titleY + 140);
 
       // Pequeno delay para garantir que o frame foi renderizado e capturado
       await new Promise(r => setTimeout(r, 33)); // ~30fps

@@ -654,6 +654,8 @@ export default function MeusAnunciosPage() {
           isOpen={isVideoModalOpen}
           onClose={() => setIsVideoModalOpen(false)}
           propertyTitle={selectedPropertyForVideo.title}
+          propertyCity={selectedPropertyForVideo.city}
+          propertyState={selectedPropertyForVideo.state}
           propertyId={selectedPropertyForVideo.id}
           images={selectedPropertyForVideo.images || []}
         />

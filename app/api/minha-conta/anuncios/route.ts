@@ -32,7 +32,6 @@ export async function GET() {
           orderBy: {
             sortOrder: "asc",
           },
-          take: 1,
         },
         offers: {
           orderBy: {
