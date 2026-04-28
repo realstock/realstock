@@ -61,7 +61,7 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
         );
     }
 
-    const { title, isBoosted, metaSessionStatus, insights } = data;
+    const { title, city, state, isBoosted, metaSessionStatus, insights } = data;
 
     return (
         <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
@@ -245,7 +245,7 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                                     <h3 className="text-[#1a0dab] font-normal text-[20px] leading-tight hover:underline cursor-pointer">
                                         {id === '0'
                                             ? "Veja essas oportunidades de imóveis perto de você na www.RealStock.com.br"
-                                            : `Lindo Imóvel Disponível - ${(title?.length || 0) > 27 ? title.substring(0, 27) + "..." : (title || "Destaque")} - Faça sua proposta na RealStock`
+                                            : `${title} - ${city || ""}, ${state || ""}`
                                         }
                                     </h3>
                                     <p className="text-[#4d5156] text-[14px] leading-snug mt-1">

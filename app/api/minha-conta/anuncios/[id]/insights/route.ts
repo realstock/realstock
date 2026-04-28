@@ -182,6 +182,8 @@ export async function GET(
     return NextResponse.json({
       success: true,
       title: property.title,
+      city: property.city,
+      state: property.state,
       totalImpact: (insights.instagram?.views || 0) + (insights.facebook?.impressions || 0) + (insights.metaAds?.views || 0) + (insights.google?.impressions || 0),
       isBoosted,
       metaSessionStatus,
