@@ -561,9 +561,9 @@ export default function HomePage() {
             <div className="mb-5">
               <Link 
                 href="/anuncios-turbinados" 
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-gradient-to-r from-pink-500 via-red-500 to-orange-500 text-white font-black uppercase text-[10px] tracking-widest shadow-lg shadow-pink-500/20 hover:scale-[1.02] transition-all mb-6 border border-white/20"
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-black uppercase text-[10px] tracking-widest shadow-lg shadow-blue-500/20 hover:scale-[1.02] transition-all mb-6 border border-white/20"
               >
-                <Rocket size={14} /> Em Alta no Instagram
+                <Rocket size={14} /> Em Alta
               </Link>
               
               <div className="text-sm text-slate-400">Busca geográfica</div>

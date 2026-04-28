@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getGoogleAdsCampaignInsights } from "@/lib/googleAds";
 
 export async function GET(req: NextRequest) {
   try {
@@ -81,6 +82,7 @@ export async function GET(req: NextRequest) {
             id: lot.id,
             type: "LOT",
             title: lot.name || "Lote Especial",
+            platform: "meta",
             views: paidViews + organicViews,
             paidViews,
             organicViews,
@@ -131,11 +133,81 @@ export async function GET(req: NextRequest) {
             id: prop.id,
             type: "PROPERTY",
             title: prop.title,
+            platform: "meta",
             views: paidViews + organicViews,
             paidViews,
             organicViews,
             image: prop.images[0]?.imageUrl || "/placeholder-house.webp",
             link: externalLink
+        });
+    }
+
+    // Processar Google Lots
+    const googleBoostedLots = await prisma.adminSponsoredPublication.findMany({
+      where: { googleBoostedUntil: { gt: now } }
+    });
+
+    for (const lot of googleBoostedLots) {
+        let paidViews = 0;
+        const session = await prisma.googleAdsSession.findFirst({
+            where: { listingId: -2, status: { in: ["ACTIVE", "ACTIVE_FALLBACK"] } },
+            orderBy: { createdAt: "desc" }
+        });
+        if (session && session.campaignId && !session.campaignId.includes("MOCK")) {
+            const insights = await getGoogleAdsCampaignInsights(session.campaignId);
+            if (insights.success) paidViews = insights.impressions;
+        }
+        
+        let lotImage = "/logo-realstock.jpg";
+        const pIds = lot.propertyIds as number[];
+        if (pIds && pIds.length > 0) {
+            const firstProp = await prisma.property.findUnique({
+                where: { id: pIds[0] },
+                include: { images: { orderBy: { sortOrder: 'asc' }, take: 1 } }
+            });
+            if (firstProp?.images[0]?.imageUrl) lotImage = firstProp.images[0].imageUrl;
+        }
+
+        items.push({
+            id: lot.id + "_g",
+            type: "LOT",
+            title: lot.name || "Lote Especial",
+            platform: "google",
+            views: paidViews,
+            paidViews,
+            organicViews: 0,
+            image: lotImage,
+            link: "/"
+        });
+    }
+
+    // Processar Google Properties
+    const googleBoostedProperties = await prisma.property.findMany({
+      where: { googleBoostedUntil: { gt: now } },
+      include: { images: { orderBy: { sortOrder: 'asc' }, take: 1 } }
+    });
+
+    for (const prop of googleBoostedProperties) {
+        let paidViews = 0;
+        const session = await prisma.googleAdsSession.findFirst({
+            where: { listingId: prop.id, status: { in: ["ACTIVE", "ACTIVE_FALLBACK"] } },
+            orderBy: { createdAt: "desc" }
+        });
+        if (session && session.campaignId && !session.campaignId.includes("MOCK")) {
+            const insights = await getGoogleAdsCampaignInsights(session.campaignId);
+            if (insights.success) paidViews = insights.impressions;
+        }
+
+        items.push({
+            id: prop.id + "_g",
+            type: "PROPERTY",
+            platform: "google",
+            title: prop.title,
+            views: paidViews,
+            paidViews,
+            organicViews: 0,
+            image: prop.images[0]?.imageUrl || "/placeholder-house.webp",
+            link: `/imovel/${prop.id}`
         });
     }
 

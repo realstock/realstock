@@ -7,6 +7,7 @@ import { Rocket, Eye, Camera, ArrowRight, Sparkles } from "lucide-react";
 export default function AnunciosTurbinadosPage() {
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<"instagram" | "google">("instagram");
 
     useEffect(() => {
         fetch("/api/vitrine-turbinada")
@@ -39,35 +40,66 @@ export default function AnunciosTurbinadosPage() {
                         <Sparkles size={12} /> Exclusivo RealStock
                     </div>
                     <h1 className="text-5xl md:text-7xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-500 leading-tight">
-                        EM ALTA NA META
+                        EM ALTA NA BUSCA
                     </h1>
-                    <div className="max-w-3xl mx-auto">
+                    <div className="max-w-3xl mx-auto mb-10">
                         <p className="text-slate-300 text-lg md:text-xl font-medium mb-3">
-                            Confira os imóveis que estão dominando o Instagram e Facebook no momento.
+                            Confira os imóveis que estão dominando o Instagram e Google no momento.
                         </p>
                         <p className="text-slate-500 text-xs md:text-sm leading-relaxed">
                             Estas visualizações representam <span className="text-indigo-400 font-bold">usuários qualificados</span> filtrados por nossa Inteligência Artificial para entregar seu anúncio a quem realmente importa. Na RealStock, priorizamos a <span className="text-white font-bold">qualidade sobre a quantidade</span>, garantindo que sua venda alcance o máximo de clientes em potencial.
                         </p>
                     </div>
+
+                    {/* TABS */}
+                    <div className="flex flex-wrap items-center justify-center gap-4 mb-4">
+                        <button 
+                            onClick={() => setActiveTab("instagram")}
+                            className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black uppercase text-[12px] tracking-widest transition-all ${
+                                activeTab === "instagram" 
+                                ? "bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 text-white shadow-lg shadow-pink-500/30 scale-105" 
+                                : "bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10"
+                            }`}
+                        >
+                            <Rocket size={16} /> Em Alta no Instagram
+                        </button>
+
+                        <button 
+                            onClick={() => setActiveTab("google")}
+                            className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black uppercase text-[12px] tracking-widest transition-all ${
+                                activeTab === "google" 
+                                ? "bg-gradient-to-r from-[#4285F4] via-[#EA4335] to-[#FBBC05] text-white shadow-lg shadow-[#4285F4]/30 scale-105" 
+                                : "bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10"
+                            }`}
+                        >
+                            <Sparkles size={16} /> Em Alta no Google
+                        </button>
+                    </div>
                 </div>
 
-                {items.length === 0 ? (
+                {items.filter(i => activeTab === 'instagram' ? i.platform === 'meta' : i.platform === 'google').length === 0 ? (
                     <div className="text-center py-20 border border-dashed border-white/10 rounded-3xl">
                         <p className="text-slate-500 italic">Nenhum anúncio turbinado no momento. Seja o primeiro!</p>
                         <Link href="/anunciar" className="mt-4 inline-block text-pink-500 hover:underline">Turbine seu imóvel agora</Link>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {items.map((item) => (
+                        {items.filter(i => activeTab === 'instagram' ? i.platform === 'meta' : i.platform === 'google').map((item) => (
                             <div 
                                 key={item.id}
                                 className="group relative rounded-[2.5rem] p-[3px] transition-all hover:scale-[1.02] duration-500 shadow-2xl shadow-purple-500/10"
                                 style={{ 
-                                    background: "linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)" // Borda Instagram
+                                    background: activeTab === 'instagram' 
+                                        ? "linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)" 
+                                        : "linear-gradient(135deg, #4285F4 0%, #EA4335 50%, #34A853 100%)"
                                 }}
                             >
-                                <div className="absolute -top-4 -right-4 bg-gradient-to-tr from-purple-600 to-pink-500 text-white px-4 py-1 rounded-full font-black text-[9px] z-10 shadow-xl flex items-center gap-1 border border-white/20">
-                                    <Rocket size={12} fill="white" /> EM ALTA NO INSTAGRAM
+                                <div className={`absolute -top-4 -right-4 text-white px-4 py-1 rounded-full font-black text-[9px] z-10 shadow-xl flex items-center gap-1 border border-white/20 ${
+                                    activeTab === 'instagram' 
+                                    ? "bg-gradient-to-tr from-purple-600 to-pink-500" 
+                                    : "bg-gradient-to-tr from-[#4285F4] to-[#34A853]"
+                                }`}>
+                                    <Rocket size={12} fill="white" /> {activeTab === 'instagram' ? "EM ALTA NO INSTAGRAM" : "EM ALTA NO GOOGLE"}
                                 </div>
 
                                 <div className="h-full w-full rounded-[2.4rem] overflow-hidden relative flex flex-col bg-slate-950">
@@ -87,17 +119,19 @@ export default function AnunciosTurbinadosPage() {
                                             </div>
                                             <div className="flex gap-6">
                                                 <div className="flex flex-col">
-                                                    <span className="text-[9px] font-bold text-white/50 uppercase tracking-tighter leading-none">Meta Ads</span>
+                                                    <span className="text-[9px] font-bold text-white/50 uppercase tracking-tighter leading-none">{activeTab === 'instagram' ? 'Meta Ads' : 'Google Ads'}</span>
                                                     <span className="text-xl font-black text-white flex items-center gap-1.5 leading-none">
-                                                        {(item.paidViews || 0).toLocaleString()} <Rocket size={14} className="text-pink-400" />
+                                                        {(item.paidViews || 0).toLocaleString()} <Rocket size={14} className={activeTab === 'instagram' ? "text-pink-400" : "text-[#4285F4]"} />
                                                     </span>
                                                 </div>
+                                                {activeTab === 'instagram' && (
                                                 <div className="flex flex-col">
                                                     <span className="text-[9px] font-bold text-white/50 uppercase tracking-tighter leading-none">Orgânico</span>
                                                     <span className="text-xl font-black text-white flex items-center gap-1.5 leading-none">
                                                         {(item.organicViews || 0).toLocaleString()} <Eye size={16} className="text-indigo-400" />
                                                     </span>
                                                 </div>
+                                                )}
                                             </div>
 
                                             {/* Tooltip Persuasivo de IA */}
@@ -152,7 +186,7 @@ export default function AnunciosTurbinadosPage() {
                 <div className="mt-24 text-center p-12 rounded-[3.5rem] bg-gradient-to-br from-indigo-900/20 to-slate-900/50 border border-white/10">
                     <h2 className="text-3xl font-bold mb-4">Quer seu imóvel nesta vitrine?</h2>
                     <p className="text-slate-400 mb-8 max-w-xl mx-auto">
-                        Inicie um turbinamento agora e apareça para milhares de pessoas interessadas no Facebook e Instagram.
+                        Inicie um turbinamento agora e apareça para milhares de pessoas interessadas no Facebook, Instagram e Rede de Pesquisa do Google.
                     </p>
                     <Link href="/minha-conta/anuncios" className="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-2xl font-bold transition-all inline-flex items-center gap-2">
                         Turbinar meu anúncio <ArrowRight size={20} />
