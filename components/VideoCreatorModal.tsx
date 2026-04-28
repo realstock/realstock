@@ -179,8 +179,8 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
   }
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
-      <div className="relative w-full max-w-4xl overflow-hidden rounded-[32px] border border-white/10 bg-slate-950 shadow-2xl">
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md overflow-y-auto">
+      <div className="relative w-full max-w-4xl overflow-y-auto max-h-[95vh] rounded-[32px] border border-white/10 bg-slate-950 shadow-2xl scrollbar-hide">
         <button 
           onClick={onClose}
           className="absolute right-6 top-6 z-10 rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-white/20"
