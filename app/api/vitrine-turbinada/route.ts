@@ -155,7 +155,7 @@ export async function GET(req: NextRequest) {
         });
         if (session && session.campaignId && !session.campaignId.includes("MOCK")) {
             const insights = await getGoogleAdsCampaignInsights(session.campaignId);
-            if (insights.success) paidViews = insights.impressions;
+            if (insights.success) paidViews = insights.impressions || 0;
         }
         
         let lotImage = "/logo-realstock.jpg";
@@ -195,7 +195,7 @@ export async function GET(req: NextRequest) {
         });
         if (session && session.campaignId && !session.campaignId.includes("MOCK")) {
             const insights = await getGoogleAdsCampaignInsights(session.campaignId);
-            if (insights.success) paidViews = insights.impressions;
+            if (insights.success) paidViews = insights.impressions || 0;
         }
 
         items.push({
