@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     if (platform === "google") {
         // Resolve Target URL
         let processAppUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || "https://www.realstock.com.br";
-        if (processAppUrl.includes("localhost")) {
+        if (processAppUrl.includes("localhost") || processAppUrl.includes("192.168") || processAppUrl.includes("127.0.0.1")) {
             processAppUrl = "https://www.realstock.com.br";
         }
         const propertyLink = Number(propertyId) === 0 ? processAppUrl : `${processAppUrl}/imovel/${property.id}`;
