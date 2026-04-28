@@ -31,6 +31,7 @@ export default function QuemSomosPage() {
           </p>
           <p className="leading-relaxed">
             Nossa plataforma foi desenvolvida do zero para conectar, de maneira fluída e sem barreiras ocultas, o proprietário ou corretor oficial e parceiro diretamente à ponta final do investidor, reduzindo o trânsito de documentações terceirizadas e concentrando em uma interface simples todo o ecossistema e visualização de prospecções. 
+          </p>
         </div>
 
         {/* AdTech Hub */}
