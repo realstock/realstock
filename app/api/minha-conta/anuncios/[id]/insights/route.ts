@@ -79,17 +79,17 @@ export async function GET(
               if (baseData && !baseData.error) {
                   const insRes = await fetch(`https://graph.facebook.com/v19.0/${finalMediaId}/insights?metric=impressions,reach,video_views,plays,shares&access_token=${igToken}`);
                   const insData = await insRes.json();
-
-                  let impressions = 0, reach = 0, shares = 0;
-                  if (insData && insData.data) {
-                      for (const m of insData.data) {
-                          if (m.name === 'impressions' || m.name === 'video_views' || m.name === 'plays') {
-                              impressions = m.values[0]?.value || impressions;
-                          }
-                          if (m.name === 'reach') reach = m.values[0]?.value || 0;
-                          if (m.name === 'shares') shares = m.values[0]?.value || 0;
-                      }
-                  }
+                let impressions = 0, reach = 0, shares = 0;
+                if (insData && insData.data) {
+                    for (const m of insData.data) {
+                        const val = m.values?.[0]?.value || 0;
+                        if (m.name === 'impressions' || m.name === 'video_views' || m.name === 'plays') {
+                            impressions += val;
+                        }
+                        if (m.name === 'reach') reach = val;
+                        if (m.name === 'shares') shares = val;
+                    }
+                }
 
                   insights.instagram = {
                       likes: baseData.like_count || 0,
