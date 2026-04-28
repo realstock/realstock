@@ -48,9 +48,10 @@ export async function createRealStockGoogleCampaign(
           target_partner_search_network: false,
         },
         campaign_budget: budgetResourceName,
-        maximize_clicks: {
-           target_spend_micros: microAmount * 5 // Maximize clicks over 5 days
+        manual_cpc: {
+           enhanced_cpc_enabled: false
         },
+        contains_eu_political_advertising: "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
       } as any,
     ]);
     const campaignResourceName = campaignRes.results[0].resource_name;
@@ -63,6 +64,7 @@ export async function createRealStockGoogleCampaign(
         name: groupName,
         type: enums.AdGroupType.SEARCH_STANDARD,
         status: enums.AdGroupStatus.ENABLED,
+        cpc_bid_micros: 2000000 // R$ 2.00 por clique de teto
       },
     ]);
     const adGroupResourceName = adGroupRes.results[0].resource_name;
