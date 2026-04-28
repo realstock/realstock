@@ -111,6 +111,9 @@ export default function LoginPage() {
             alt="Google"
             className="h-5 w-5"
           />
+          {loadingGoogle ? "Abrindo Google..." : "Entrar com Google"}
+        </button>
+
         {/* Botão de Facebook oculto temporariamente enquanto a configuração das permissões (email) está pendente no Meta Developer Dashboard.
         <button
           onClick={async () => {
