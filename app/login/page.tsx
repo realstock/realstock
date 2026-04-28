@@ -113,6 +113,7 @@ export default function LoginPage() {
           {loadingGoogle ? "Abrindo Google..." : "Entrar com Google"}
         </button>
 
+        {/* Botão de PayPal oculto temporariamente enquanto a aprovação de Compliance (App Live) está "Pending" no PayPal Developer Dashboard.
         <button
           onClick={async () => {
             setLoadingPayPal(true);
@@ -128,6 +129,7 @@ export default function LoginPage() {
           />
           {loadingPayPal ? "Abrindo PayPal..." : "Entrar com PayPal"}
         </button>
+        */}
 
         <div className="mt-6 text-center text-sm text-slate-400">
           Não tem conta?{" "}
