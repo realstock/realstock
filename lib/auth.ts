@@ -21,6 +21,7 @@ export const authOptions: NextAuthOptions = {
       type: "oauth",
       wellKnown: "https://www.sandbox.paypal.com/.well-known/openid-configuration", // Use https://www.paypal.com/.well-known/openid-configuration for production
       authorization: { params: { scope: "openid profile email" } },
+      idToken: true,
       clientId: process.env.PAYPAL_CLIENT_ID || process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID!,
       clientSecret: process.env.PAYPAL_CLIENT_SECRET!,
       profile(profile) {
