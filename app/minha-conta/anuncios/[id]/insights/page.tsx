@@ -241,10 +241,11 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                                         <span className="font-bold text-black border border-black rounded px-1 text-[10px]">Patrocinado</span>
                                         <span className="text-slate-800 text-xs">www.realstock.com.br › imovel › {id}</span>
                                     </div>
+
                                     <h3 className="text-[#1a0dab] font-normal text-[20px] leading-tight hover:underline cursor-pointer">
                                         {id === '0'
                                             ? "Veja essas oportunidades de imóveis perto de você na www.RealStock.com.br"
-                                            : `Lindo Imóvel Disponível - ${title.length > 27 ? title.substring(0, 27) + "..." : title} - Faça sua proposta na RealStock`
+                                            : `Lindo Imóvel Disponível - ${(title?.length || 0) > 27 ? title.substring(0, 27) + "..." : (title || "Destaque")} - Faça sua proposta na RealStock`
                                         }
                                     </h3>
                                     <p className="text-[#4d5156] text-[14px] leading-snug mt-1">

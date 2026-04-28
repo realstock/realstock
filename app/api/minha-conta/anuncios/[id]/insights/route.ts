@@ -47,6 +47,12 @@ export async function GET(
                       !!(property.googleBoostedUntil && new Date(property.googleBoostedUntil) > new Date()) ||
                       !!property.instagramMediaId || !!fbSession;
 
+    const meSession = await prisma.metaAdsSession.findFirst({
+        where: { listingId: propertyId },
+        orderBy: { createdAt: 'desc' }
+    });
+    const metaSessionStatus = meSession?.status || null;
+
     const insights = {
         metaAds: null as any,
         instagram: null as any,
@@ -175,8 +181,10 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
+      title: property.title,
       totalImpact: (insights.instagram?.views || 0) + (insights.facebook?.impressions || 0) + (insights.metaAds?.views || 0) + (insights.google?.impressions || 0),
       isBoosted,
+      metaSessionStatus,
       insights
     });
 
