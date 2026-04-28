@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { createRealStockGoogleCampaign } from "@/lib/googleAds";
 
 async function getPayPalAccessToken() {
   const base = process.env.PAYPAL_API_BASE!;
@@ -84,7 +85,64 @@ export async function POST(req: NextRequest) {
       });
       if (!property) return NextResponse.json({ success: false, error: "Anúncio inválido." }, { status: 404 });
     } else {
-      property = { id: 0, state: user.state || "Brasil" }; // Pseudo-property for target
+      property = { id: 0, state: user.state || "Brasil", title: "Portfólio de Imóveis Exclusivo" }; // Pseudo-property for target
+    }
+
+    if (platform === "google") {
+        // Resolve Target URL
+        let processAppUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || "https://www.realstock.com.br";
+        if (processAppUrl.includes("localhost")) {
+            processAppUrl = "https://www.realstock.com.br";
+        }
+        const propertyLink = Number(propertyId) === 0 ? processAppUrl : `${processAppUrl}/imovel/${property.id}`;
+        
+        // Crate Google Campaign
+        const googleRes = await createRealStockGoogleCampaign(
+            Number(propertyId),
+            property.title,
+            Number(dailyBudget),
+            propertyLink
+        );
+
+        const endTime = new Date();
+        endTime.setDate(endTime.getDate() + 5);
+
+        if (!googleRes.success) {
+            console.error("ERRO FINAL ANUNCIO GOOGLE", googleRes.error);
+            // Pagamento foi efetuado, salva o tempo mesmo assim para não penalizar usuário (e tentar retentativa ou só fallback orgânico local)
+            if (Number(propertyId) === 0) {
+                await prisma.user.update({ where: { id: user.id }, data: { googlePortfolioBoostedUntil: endTime } });
+            } else {
+                await prisma.property.update({ where: { id: Number(propertyId) }, data: { googleBoostedUntil: endTime } });
+            }
+            return NextResponse.json({ success: true, warning: "Pagamento aprovado, mas falha ao criar campanha Google Ads: " + googleRes.error });
+        }
+
+        await prisma.googleAdsSession.create({
+            data: {
+                listingId: Number(propertyId),
+                campaignId: googleRes.campaignId,
+                adGroupId: googleRes.adGroupId,
+                status: "ACTIVE",
+                budget: Number(dailyBudget) * 5,
+                budgetDays: 5,
+                targetUrl: propertyLink
+            }
+        });
+
+        if (Number(propertyId) === 0) {
+            await prisma.user.update({
+                where: { id: user.id },
+                data: { googlePortfolioBoostedUntil: endTime }
+            });
+        } else {
+            await prisma.property.update({
+                where: { id: Number(propertyId) },
+                data: { googleBoostedUntil: endTime }
+            });
+        }
+
+        return NextResponse.json({ success: true, message: "🚀 Anúncio turbinado com sucesso na rede Google Ads!" });
     }
 
     let sourceId = null;

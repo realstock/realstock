@@ -104,7 +104,7 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                     <div className="bg-indigo-600/10 border border-indigo-500/20 rounded-3xl p-6 flex flex-col justify-center border-dashed">
                         <div className="text-indigo-300 text-xs font-bold uppercase tracking-widest mb-1">Poder do Boost</div>
                         <div className="text-4xl font-black text-indigo-400">
-                            {(((insights.metaAds?.views || 0) / (data.totalImpact || 1)) * 100).toFixed(0)}%
+                            {((((insights.metaAds?.views || 0) + (insights.google?.impressions || 0)) / (data.totalImpact || 1)) * 100).toFixed(0)}%
                         </div>
                         <div className="text-[10px] text-indigo-500 mt-1 uppercase leading-none">Vindo de Anúncios Pagos</div>
                     </div>
@@ -112,7 +112,7 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                     <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col justify-center">
                         <div className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Engajamento</div>
                         <div className="text-4xl font-black text-white">
-                            {( (insights.instagram?.likes || 0) + (insights.instagram?.comments || 0) + (insights.metaAds?.likes || 0) ).toLocaleString('pt-BR')}
+                            {( (insights.instagram?.likes || 0) + (insights.instagram?.comments || 0) + (insights.metaAds?.likes || 0) + (insights.google?.clicks || 0) ).toLocaleString('pt-BR')}
                         </div>
                         <div className="text-[10px] text-slate-500 mt-1 uppercase leading-none">Interações totais</div>
                     </div>
