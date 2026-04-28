@@ -22,6 +22,7 @@ export default function InstagramPublisherPage() {
   const [paypalError, setPaypalError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [isPublishing, setIsPublishing] = useState(false);
+  const [postType, setPostType] = useState<"carousel" | "reels">("carousel");
 
   async function loadData() {
     try {
@@ -149,6 +150,28 @@ export default function InstagramPublisherPage() {
               <div className="text-sm text-slate-300 whitespace-pre-wrap max-h-32 overflow-y-auto">
                 {property.description || "Nenhuma descrição."}
               </div>
+
+              {property.reelsVideoUrl && (
+                <div className="mt-6 border-t border-white/10 pt-4">
+                   <h3 className="text-sm font-bold text-white mb-3">Formato da Publicação</h3>
+                   <div className="grid grid-cols-2 gap-3">
+                      <button 
+                        onClick={() => setPostType("carousel")}
+                        className={`flex flex-col items-center gap-2 rounded-xl border p-3 transition-all ${postType === 'carousel' ? 'border-pink-500 bg-pink-500/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}
+                      >
+                         <div className="text-xs font-bold">CARROSSEL</div>
+                         <div className="text-[10px] text-slate-500">Álbum de Fotos</div>
+                      </button>
+                      <button 
+                        onClick={() => setPostType("reels")}
+                        className={`flex flex-col items-center gap-2 rounded-xl border p-3 transition-all ${postType === 'reels' ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}
+                      >
+                         <div className="text-xs font-bold text-indigo-400">REELS IA</div>
+                         <div className="text-[10px] text-slate-500">Vídeo Dinâmico</div>
+                      </button>
+                   </div>
+                </div>
+              )}
             </div>
 
             {/* Pagamento e Confirmação */}
@@ -206,7 +229,8 @@ export default function InstagramPublisherPage() {
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({
                             orderID: data.orderID,
-                            propertyId: propertyId
+                            propertyId: propertyId,
+                            postType: postType
                           }),
                         });
                         const result = await res.json();

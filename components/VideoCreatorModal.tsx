@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Play, Download, Film, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { X, Play, Download, Film, Loader2, Sparkles, Wand2, CheckCircle2, ShieldCheck } from "lucide-react";
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 
 interface VideoCreatorModalProps {
   isOpen: boolean;
@@ -18,6 +19,10 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
+  const [isIncorporateLoading, setIsIncorporateLoading] = useState(false);
+  const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
+  const [isPaid, setIsPaid] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -85,6 +90,7 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
 
     recorder.onstop = () => {
       const blob = new Blob(chunksRef.current, { type: "video/webm" });
+      setVideoBlob(blob);
       setVideoUrl(URL.createObjectURL(blob));
       setStep("result");
       setProgress(100);
@@ -272,22 +278,102 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
               )}
 
               {step === "result" && (
-                <>
-                  <a 
-                    href={videoUrl!} 
-                    download={`video-imovel-${propertyId}.webm`}
-                    className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-4 font-bold text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-400 active:scale-95"
-                  >
-                    <Download size={20} />
-                    Baixar Vídeo (WEBM)
-                  </a>
+                <div className="flex flex-col gap-4">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                     <h4 className="text-sm font-bold text-white mb-2">Escolha uma opção:</h4>
+                     <div className="grid grid-cols-1 gap-3">
+                        <a 
+                          href={videoUrl!} 
+                          download={`video-imovel-${propertyId}.webm`}
+                          className="flex items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 py-3 text-sm font-bold text-white transition-all hover:bg-white/10"
+                        >
+                          <Download size={18} />
+                          Baixar Grátis (WEBM)
+                        </a>
+
+                        {!isPaid ? (
+                          <>
+                            <div className="my-2 h-px bg-white/10" />
+                            <div className="flex items-center gap-2 text-indigo-400 font-bold text-[10px] uppercase mb-2">
+                               <Rocket size={14} /> Power Up: Reels Automático
+                            </div>
+                            <p className="text-[11px] text-slate-500 mb-4 italic">
+                               Ao incorporar, o vídeo ficará salvo no seu anúncio e você poderá postá-lo como Reels no Instagram com 1 clique.
+                            </p>
+                            
+                            {!paypalOrderId ? (
+                              <button 
+                                onClick={async () => {
+                                  try {
+                                    setIsIncorporateLoading(true);
+                                    const res = await fetch("/api/paypal/create-reels-order", { 
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ propertyId })
+                                    });
+                                    const data = await res.json();
+                                    if (data.success) setPaypalOrderId(data.paypal_order_id);
+                                    else throw new Error(data.error);
+                                  } catch (e: any) {
+                                    alert("Erro ao preparar pagamento: " + e.message);
+                                  } finally {
+                                    setIsIncorporateLoading(false);
+                                  }
+                                }}
+                                disabled={isIncorporateLoading}
+                                className="flex items-center justify-center gap-2 rounded-2xl bg-indigo-500 py-4 font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-400 active:scale-95 disabled:opacity-50"
+                              >
+                                {isIncorporateLoading ? <Loader2 className="animate-spin" size={18} /> : <Film size={18} />}
+                                Incorporar ao Anúncio
+                              </button>
+                            ) : (
+                              <PayPalScriptProvider options={{ clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "", currency: "BRL" }}>
+                                <PayPalButtons 
+                                  style={{ layout: "vertical", shape: "rect" }}
+                                  createOrder={async () => paypalOrderId}
+                                  onApprove={async (data) => {
+                                    try {
+                                      setIsIncorporateLoading(true);
+                                      const formData = new FormData();
+                                      formData.append("file", videoBlob!, `video-${propertyId}.webm`);
+                                      formData.append("orderID", data.orderID);
+                                      formData.append("propertyId", propertyId.toString());
+
+                                      const res = await fetch("/api/minha-conta/video-upload", { method: "POST", body: formData });
+                                      const result = await res.json();
+                                      if (result.success) {
+                                        setIsPaid(true);
+                                        alert("Sucesso! O vídeo agora faz parte do seu anúncio.");
+                                      } else throw new Error(result.error);
+                                    } catch (e: any) {
+                                      alert("Erro ao finalizar incorporação: " + e.message);
+                                    } finally {
+                                      setIsIncorporateLoading(false);
+                                    }
+                                  }}
+                                />
+                              </PayPalScriptProvider>
+                            )}
+                          </>
+                        ) : (
+                          <div className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 py-4 font-bold text-emerald-400">
+                             <CheckCircle2 size={18} /> Vídeo Incorporado!
+                          </div>
+                        )}
+                     </div>
+                  </div>
+                  
                   <button 
-                    onClick={() => setStep("preview")}
-                    className="text-sm text-slate-500 hover:text-white transition-colors"
+                    onClick={() => {
+                        setStep("preview");
+                        setPaypalOrderId(null);
+                        setIsPaid(false);
+                    }}
+                    className="text-xs text-slate-500 hover:text-white transition-colors"
                   >
                     Tentar outro formato
                   </button>
-                </>
+                </div>
               )}
             </div>
 

@@ -113,6 +113,8 @@ model Property {
   sponsoredUntil      DateTime?       @map("sponsored_until")
   instagramMediaId    String?         @map("instagram_media_id")
   instagramPermalink  String?         @map("instagram_permalink")
+  reelsVideoUrl       String?         @map("reels_video_url")
+  reelsVideoPaidAt    DateTime?       @map("reels_video_paid_at")
   offers              Offer[]
   owner               User            @relation(fields: [ownerId], references: [id])
   images              PropertyImage[]
@@ -285,6 +287,7 @@ enum TransactionCategory {
   GOOGLE_ADS
   VERCEL
   SUPABASE
+  REELS_VIDEO
   OTHER
 }
 

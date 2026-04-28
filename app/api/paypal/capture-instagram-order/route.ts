@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 401 });
     }
 
-    const { orderID, propertyId } = await req.json();
+    const { orderID, propertyId, postType = "carousel" } = await req.json();
 
     if (!orderID || !propertyId) {
       return NextResponse.json({ success: false, error: "Parâmetros inválidos." }, { status: 400 });
@@ -130,7 +130,21 @@ export async function POST(req: NextRequest) {
 
     let finalMediaId = null;
 
-    if (imagesToPost.length === 1) {
+    if (postType === "reels" && property.reelsVideoUrl) {
+       // Publicar como REELS
+       const createReelRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media?media_type=REELS&video_url=${encodeURIComponent(property.reelsVideoUrl)}&caption=${encodeURIComponent(caption)}&access_token=${igToken}`, {
+           method: "POST"
+       });
+       const reelData = await createReelRes.json();
+       if (!createReelRes.ok || !reelData.id) {
+           console.error("IG CREATE REEL ERROR", reelData);
+           return NextResponse.json({
+             success: false,
+             error: "Erro ao criar container do Reels. Verifique se o vídeo possui formato compatível. Detalhes: " + (reelData.error?.message || "Desconhecido")
+           }, { status: 500 });
+       }
+       finalMediaId = reelData.id;
+    } else if (imagesToPost.length === 1) {
        // Apenas 1 foto, post simples
        const singleUrl = imagesToPost[0].imageUrl;
        const createMediaRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media?image_url=${encodeURIComponent(singleUrl)}&caption=${encodeURIComponent(caption)}&access_token=${igToken}`, {
