@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { Building2, Rocket, ShieldCheck } from "lucide-react";
+import { Building2, Rocket, ShieldCheck, Megaphone } from "lucide-react";
 
 export const metadata = {
   title: "Quem Somos | RealStock",
@@ -31,6 +31,19 @@ export default function QuemSomosPage() {
           </p>
           <p className="leading-relaxed">
             Nossa plataforma foi desenvolvida do zero para conectar, de maneira fluída e sem barreiras ocultas, o proprietário ou corretor oficial e parceiro diretamente à ponta final do investidor, reduzindo o trânsito de documentações terceirizadas e concentrando em uma interface simples todo o ecossistema e visualização de prospecções. 
+        </div>
+
+        {/* AdTech Hub */}
+        <div className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-500/20 rounded-[28px] p-8 md:p-12 shadow-2xl space-y-6">
+          <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+            <span className="bg-blue-500/20 p-2 rounded-xl"><Megaphone className="w-6 h-6 text-blue-400" /></span>
+            Primeira AdTech Imobiliária Autônoma
+          </h2>
+          <p className="leading-relaxed">
+            Muito além de uma vitrine virtual, a <strong>RealStock</strong> evoluiu para se tornar um ecossistema 100% autônomo de publicidade (AdTech). Nós substituímos o complexo e custoso trabalho manual das agências de marketing ao integrarmos a nossa arquitetura diretamente com as APIs Oficiais do <strong>Google Ads</strong> e da <strong>Meta (Facebook & Instagram)</strong>.
+          </p>
+          <p className="leading-relaxed">
+            Com apenas um clique e um pagamento seguro transparente via PayPal, o nosso servidor constrói instantaneamente toda a estrutura hierárquica de tráfego pago nos bastidores — orçamentos matemáticos, grupos de anúncios segmentados, lances de Inteligência Artificial e a evasão de malhas de restrições de marketing. Seu imóvel alcança o topo do mundo online na velocidade de um clique, exibindo 100% dos relatórios (Insights) de cliques integrados dentro do seu próprio painel corporativo.
           </p>
         </div>
 
