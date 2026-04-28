@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Play, Download, Film, Loader2, Sparkles, Wand2, CheckCircle2, ShieldCheck } from "lucide-react";
+import { X, Play, Download, Film, Loader2, Sparkles, Wand2, CheckCircle2, ShieldCheck, Rocket } from "lucide-react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 
 interface VideoCreatorModalProps {
