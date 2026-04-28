@@ -23,17 +23,6 @@ export default function QuemSomosPage() {
           </p>
         </div>
 
-        {/* Origin Content */}
-        <div className="bg-slate-900 border border-white/10 rounded-[28px] p-8 md:p-12 shadow-2xl space-y-6">
-          <h2 className="text-2xl font-bold text-white mb-4">A Nossa História</h2>
-          <p className="leading-relaxed">
-            A <strong>RealStock</strong> começou através da identificação de um problema estrutural muito grave no mercado imobiliário da América Latina: a lentidão e a obscuridade entre os catálogos dos imóveis anunciados na internet e a realidade para a aquisição da posse dessas propriedades. Muitas vezes os compradores enfrentavam burocracias ou informações falsas.
-          </p>
-          <p className="leading-relaxed">
-            Nossa plataforma foi desenvolvida do zero para conectar, de maneira fluída e sem barreiras ocultas, o proprietário ou corretor oficial e parceiro diretamente à ponta final do investidor, reduzindo o trânsito de documentações terceirizadas e concentrando em uma interface simples todo o ecossistema e visualização de prospecções. 
-          </p>
-        </div>
-
         {/* AdTech Hub */}
         <div className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-500/20 rounded-[28px] p-8 md:p-12 shadow-2xl space-y-6">
           <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-3">
