@@ -1,5 +1,6 @@
 import { type NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import FacebookProvider from "next-auth/providers/facebook";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
@@ -13,6 +14,11 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+
+    FacebookProvider({
+      clientId: process.env.FACEBOOK_CLIENT_ID!,
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
     }),
     
     {
@@ -78,7 +84,7 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async signIn({ user, account }) {
-      if ((account?.provider === "google" || account?.provider === "paypal") && user.email) {
+      if ((account?.provider === "google" || account?.provider === "paypal" || account?.provider === "facebook") && user.email) {
         const email = user.email.toLowerCase();
 
         const existingUser = await prisma.user.findUnique({
@@ -102,7 +108,7 @@ export const authOptions: NextAuthOptions = {
         (token as any).role = ((user as any).role || "USER") as "USER" | "ADMIN";
       }
 
-      if ((account?.provider === "google" || account?.provider === "paypal") && token.email) {
+      if ((account?.provider === "google" || account?.provider === "paypal" || account?.provider === "facebook") && token.email) {
         const dbUser = await prisma.user.findUnique({
           where: { email: token.email.toLowerCase() },
         });
