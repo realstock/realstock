@@ -109,8 +109,13 @@ export default async function PropertyPage({
     <main className="min-h-screen bg-slate-950 text-white overflow-x-hidden">
       <section className="mx-auto max-w-7xl px-6 py-8">
         <div className="mb-8">
-          <div className="text-sm uppercase tracking-[0.2em] text-slate-400">
-            anúncio imobiliário
+          <div className="flex items-center justify-between">
+            <div className="text-sm uppercase tracking-[0.2em] text-slate-400">
+              anúncio imobiliário
+            </div>
+            <div className="bg-white/10 px-3 py-1 rounded-full text-[11px] font-bold text-slate-400 border border-white/10">
+              IMÓVEL #{property.id}
+            </div>
           </div>
 
           <h1 className="mt-3 text-4xl font-bold">{property.title}</h1>
