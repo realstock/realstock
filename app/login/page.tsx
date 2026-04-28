@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loadingEmail, setLoadingEmail] = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [loadingPayPal, setLoadingPayPal] = useState(false);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -81,7 +82,7 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={loadingEmail}
+            disabled={loadingEmail || loadingGoogle || loadingPayPal}
             className="w-full rounded-2xl bg-white px-4 py-3 font-semibold text-slate-900 transition hover:bg-slate-200 disabled:opacity-60"
           >
             {loadingEmail ? "Entrando..." : "Entrar com email"}
@@ -101,7 +102,7 @@ export default function LoginPage() {
             setLoadingGoogle(true);
             await signIn("google", { callbackUrl: "/" });
           }}
-          disabled={loadingGoogle}
+          disabled={loadingGoogle || loadingPayPal || loadingEmail}
           className="flex w-full items-center justify-center gap-3 rounded-2xl bg-white px-4 py-3 font-semibold text-slate-900 transition hover:bg-slate-200 disabled:opacity-60 mb-3"
         >
           <img
@@ -114,10 +115,10 @@ export default function LoginPage() {
 
         <button
           onClick={async () => {
-            setLoadingGoogle(true); // Reusing loading state for simplicity
+            setLoadingPayPal(true);
             await signIn("paypal", { callbackUrl: "/" });
           }}
-          disabled={loadingGoogle}
+          disabled={loadingPayPal || loadingGoogle || loadingEmail}
           className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#003087] px-4 py-3 font-semibold text-white transition hover:bg-[#002266] disabled:opacity-60"
         >
           <img
@@ -125,7 +126,7 @@ export default function LoginPage() {
             alt="PayPal"
             className="h-5 object-contain brightness-0 invert"
           />
-          {loadingGoogle ? "Abrindo PayPal..." : "Entrar com PayPal"}
+          {loadingPayPal ? "Abrindo PayPal..." : "Entrar com PayPal"}
         </button>
 
         <div className="mt-6 text-center text-sm text-slate-400">
