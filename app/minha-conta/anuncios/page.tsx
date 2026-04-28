@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Camera, CheckCircle2, Rocket, Globe, BarChart3, Building2, Upload, X, Wallet, TrendingUp, History, MapPin } from "lucide-react";
+import { Camera, CheckCircle2, Rocket, Globe, BarChart3, Building2, Upload, X, Wallet, TrendingUp, History, MapPin, Film } from "lucide-react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import VideoCreatorModal from "@/components/VideoCreatorModal";
 
 type PropertyItem = {
   id: number;
@@ -43,6 +44,9 @@ export default function MeusAnunciosPage() {
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [logoActiveUntil, setLogoActiveUntil] = useState<string | null>(null);
   const [investment, setInvestment] = useState<any>(null);
+
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [selectedPropertyForVideo, setSelectedPropertyForVideo] = useState<PropertyItem | null>(null);
 
   async function loadProperties() {
     try {
@@ -376,6 +380,17 @@ export default function MeusAnunciosPage() {
                       </Link>
                     )}
 
+                    <button
+                      onClick={() => {
+                        setSelectedPropertyForVideo(property);
+                        setIsVideoModalOpen(true);
+                      }}
+                      className="rounded-2xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm font-bold text-sky-400 hover:bg-sky-500/20 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Film size={18} />
+                      🎬 Criar Vídeo IA
+                    </button>
+
                     <div className="flex flex-col gap-2 mt-4">
                       {/* STATS BUTTON */}
                       {(isPublished || property.googleBoostedUntil || property.metaBoostedUntil) && (
@@ -632,6 +647,16 @@ export default function MeusAnunciosPage() {
             )}
           </div>
         </div>
+      )}
+
+      {isVideoModalOpen && selectedPropertyForVideo && (
+        <VideoCreatorModal 
+          isOpen={isVideoModalOpen}
+          onClose={() => setIsVideoModalOpen(false)}
+          propertyTitle={selectedPropertyForVideo.title}
+          propertyId={selectedPropertyForVideo.id}
+          images={selectedPropertyForVideo.images || []}
+        />
       )}
     </main>
   );
