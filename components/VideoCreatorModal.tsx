@@ -49,6 +49,31 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, imag
     canvas.width = width;
     canvas.height = height;
 
+    // 1. Pre-load de todas as imagens
+    const loadedImages: HTMLImageElement[] = [];
+    for (let i = 0; i < images.length; i++) {
+        setProgress(Math.round(((i + 1) / images.length) * 20)); // Primeiros 20% para o carregamento
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = images[i].imageUrl;
+        await new Promise((resolve) => {
+            img.onload = () => {
+                loadedImages.push(img);
+                resolve(null);
+            };
+            img.onerror = () => {
+                console.error("Erro ao carregar imagem:", images[i].imageUrl);
+                resolve(null);
+            };
+        });
+    }
+
+    if (loadedImages.length === 0) {
+        alert("Não foi possível carregar as imagens do anúncio.");
+        setStep("preview");
+        return;
+    }
+
     const stream = canvas.captureStream(30); // 30 FPS
     const recorder = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp9" });
 
@@ -60,13 +85,14 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, imag
       const blob = new Blob(chunksRef.current, { type: "video/webm" });
       setVideoUrl(URL.createObjectURL(blob));
       setStep("result");
+      setProgress(100);
     };
 
     recorder.start();
 
-    // Lógica de renderização frame-a-frame
+    // 2. Lógica de renderização frame-a-frame
     const durationPerImage = 3; // segundos
-    const totalDuration = images.length * durationPerImage;
+    const totalDuration = loadedImages.length * durationPerImage;
     const fps = 30;
     const totalFrames = totalDuration * fps;
 
@@ -75,52 +101,61 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, imag
       const imageIndex = Math.floor(currentTime / durationPerImage);
       const imageProgress = (currentTime % durationPerImage) / durationPerImage;
       
-      setProgress(Math.round((frame / totalFrames) * 100));
+      // Barra de progresso vai de 20% a 100%
+      setProgress(20 + Math.round((frame / totalFrames) * 80));
 
-      // Carregar e desenhar imagem
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.src = images[imageIndex].imageUrl;
-
-      await new Promise((resolve) => {
-        img.onload = resolve;
-        // Se falhar (ex: bloqueio de CORS), seguimos para a próxima ou usamos placeholder
-        img.onerror = resolve; 
-      });
+      const img = loadedImages[imageIndex];
+      if (!img) continue;
 
       // Limpar canvas
       ctx.fillStyle = "#020617";
       ctx.fillRect(0, 0, width, height);
 
       // Efeito de Zoom (Ken Burns)
-      const scale = 1 + imageProgress * 0.2;
+      const scale = 1 + imageProgress * 0.15;
       const drawWidth = width * scale;
       const drawHeight = (img.height * (drawWidth / img.width));
       const offsetX = (width - drawWidth) / 2;
       const offsetY = (height - drawHeight) / 2;
 
+      ctx.save();
       ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+      ctx.restore();
 
       // Overlay de Gradiente
       const grad = ctx.createLinearGradient(0, height * 0.6, 0, height);
       grad.addColorStop(0, "transparent");
-      grad.addColorStop(1, "rgba(0,0,0,0.8)");
+      grad.addColorStop(1, "rgba(0,0,0,0.9)");
       ctx.fillStyle = grad;
       ctx.fillRect(0, height * 0.6, width, height * 0.4);
 
       // Texto: Título
       ctx.fillStyle = "white";
-      ctx.font = "bold 40px Inter, sans-serif";
+      ctx.font = "bold 44px Inter, sans-serif";
+      ctx.shadowColor = "rgba(0,0,0,0.5)";
+      ctx.shadowBlur = 10;
       ctx.textAlign = "center";
-      ctx.fillText(propertyTitle.toUpperCase(), width / 2, height - 150);
+      
+      // Quebra de texto simples
+      const words = propertyTitle.toUpperCase().split(" ");
+      if (words.length > 3) {
+          ctx.fillText(words.slice(0, 3).join(" "), width / 2, height - 200);
+          ctx.fillText(words.slice(3).join(" "), width / 2, height - 145);
+      } else {
+          ctx.fillText(propertyTitle.toUpperCase(), width / 2, height - 160);
+      }
+
+      // Linha decorativa
+      ctx.fillStyle = "#38bdf8";
+      ctx.fillRect(width / 2 - 100, height - 110, 200, 4);
 
       // Texto: RealStock Brand
-      ctx.fillStyle = "#38bdf8"; // sky-400
-      ctx.font = "bold 24px Inter, sans-serif";
-      ctx.fillText("WWW.REALSTOCK.COM.BR", width / 2, height - 80);
+      ctx.fillStyle = "white";
+      ctx.font = "bold 28px Inter, sans-serif";
+      ctx.fillText("WWW.REALSTOCK.COM.BR", width / 2, height - 60);
 
-      // Pequeno delay para simular processamento e permitir que o navegador respire
-      await new Promise(r => setTimeout(r, 10));
+      // Pequeno delay para garantir que o frame foi renderizado e capturado
+      await new Promise(r => setTimeout(r, 33)); // ~30fps
     }
 
     recorder.stop();
