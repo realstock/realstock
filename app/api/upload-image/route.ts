@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
-const MAX_IMAGE_SIZE_BYTES = 500 * 1024;
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 
 function sanitizeFileName(name: string) {
   return name
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: "Arquivo muito grande. Cada imagem deve ter no máximo 500 KB.",
+          error: "Arquivo muito grande. Cada imagem deve ter no máximo 5 MB.",
         },
         { status: 400 }
       );
