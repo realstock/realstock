@@ -15,9 +15,10 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get("file") as File;
     const orderID = formData.get("orderID") as string;
-    const propertyId = Number(formData.get("propertyId"));
+    const propertyIdRaw = formData.get("propertyId");
+    const propertyId = Number(propertyIdRaw);
 
-    if (!file || !propertyId) {
+    if (!file || propertyIdRaw === null || isNaN(propertyId)) {
       return NextResponse.json({ success: false, error: "Dados ausentes" }, { status: 400 });
     }
 
