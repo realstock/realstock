@@ -173,7 +173,7 @@ export async function createRealStockGoogleCampaign(
         {
             campaign: campaignResourceName,
             location: {
-                resource_name: `geoTargetConstants/${locationId}`
+                geo_target_constant: `geoTargetConstants/${locationId}`
             }
         }
     ]);

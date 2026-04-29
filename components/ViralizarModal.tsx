@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Rocket, CheckCircle2, Loader2, Sparkles, Zap, TrendingUp, Globe, Film, Instagram, Facebook } from "lucide-react";
+import { X, Rocket, CheckCircle2, Loader2, Sparkles, Zap, TrendingUp, Globe, Film, Camera, Share2 } from "lucide-react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import confetti from "canvas-confetti";
 
@@ -23,9 +23,9 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
   const services = [
     { id: "google", name: "Patrocinar Site (Google Ads)", icon: <Globe size={16} /> },
     { id: "video", name: "Criar Vídeo IA", icon: <Film size={16} /> },
-    { id: "ig_carousel", name: "Postar Carrossel Instagram", icon: <Instagram size={16} /> },
-    { id: "ig_reels", name: "Postar Reel Instagram", icon: <Instagram size={16} /> },
-    { id: "fb_carousel", name: "Postar Carrossel Facebook", icon: <Facebook size={16} /> },
+    { id: "ig_carousel", name: "Postar Carrossel Instagram", icon: <Camera size={16} /> },
+    { id: "ig_reels", name: "Postar Reel Instagram", icon: <Camera size={16} /> },
+    { id: "fb_carousel", name: "Postar Carrossel Facebook", icon: <Share2 size={16} /> },
   ];
 
   useEffect(() => {

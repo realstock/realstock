@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
         data: {
           portfolioBoostedUntil: boostedDate,
           googlePortfolioBoostedUntil: boostedDate,
-          reelsVideoPaidAt: new Date()
+          portfolioVideoPaidAt: new Date()
         }
       });
       
