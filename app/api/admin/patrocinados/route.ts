@@ -39,11 +39,11 @@ export async function GET() {
     });
 
     const instagramPosts = await prisma.instagramPreviewSession.findMany({
-      where: { listingId: -1, status: "PUBLISHED" }
+      where: { listingId: { in: [-1, -2] }, status: "PUBLISHED" }
     });
 
     const facebookPosts = await prisma.facebookFeedSession.findMany({
-      where: { listingId: -1, status: "PUBLISHED" }
+      where: { listingId: { in: [-1, -2] }, status: "PUBLISHED" }
     });
 
     const publications = await prisma.adminSponsoredPublication.findMany({

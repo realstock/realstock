@@ -60,7 +60,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
 
     // Carousel items: 1-9 images + 10th Logo
     const imageUrls = propertiesWithImages.map(p => p.images[0].imageUrl);
-    imageUrls.push(`${siteUrl}/logo-ig.png`); // Adicionar o logo como a 10ª foto
+    imageUrls.push(pub.customLogoUrl || `${siteUrl}/logo-ig.png`); // Adicionar o logo como a última foto do carrossel (independente da quantidade)
 
     if (imageUrls.length === 1) {
        const createMediaRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media?image_url=${encodeURIComponent(imageUrls[0])}&caption=${encodeURIComponent(captionText)}&access_token=${igToken}`, { method: "POST" });

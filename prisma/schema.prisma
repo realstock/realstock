@@ -251,6 +251,7 @@ model AdminSponsoredPublication {
   metaCampaignId     String?
   instagramMediaId   String?
   instagramPermalink String?
+  customLogoUrl      String?   @map("custom_logo_url")
 
   @@map("admin_sponsored_publications")
 }

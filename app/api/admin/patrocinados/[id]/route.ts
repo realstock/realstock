@@ -22,3 +22,29 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
+export async function PATCH(req: Request, context: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || (session.user as any).role !== "ADMIN") {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await context.params;
+    const { name, customLogoUrl } = await req.json();
+
+    const updated = await prisma.adminSponsoredPublication.update({
+      where: { id },
+      data: {
+        name,
+        customLogoUrl
+      }
+    });
+
+    return NextResponse.json({ success: true, publication: updated });
+  } catch (error: any) {
+    console.error("PATCH publication error:", error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
