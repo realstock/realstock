@@ -276,7 +276,12 @@ export default function MeusAnunciosPage() {
                                   price: 0,
                                   images: properties
                                     .filter(p => p.images && p.images.length > 0)
-                                    .map(p => p.images![0]) // Pega apenas a primeira imagem de cada imóvel
+                                    .map(p => ({
+                                      imageUrl: p.images![0].imageUrl,
+                                      title: p.title,
+                                      city: p.city || "",
+                                      state: p.state || ""
+                                    })) // Mapeia imagem com metadados do imóvel
                                     .slice(0, 12) // Máximo 12 imóveis para o vídeo do portfólio
                                 });
                                 setIsVideoModalOpen(true);

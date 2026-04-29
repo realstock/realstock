@@ -10,7 +10,7 @@ interface VideoCreatorModalProps {
   propertyTitle: string;
   propertyCity?: string | null;
   propertyState?: string | null;
-  images: { imageUrl: string }[];
+  images: { imageUrl: string, title?: string; city?: string; state?: string }[];
   propertyId: number;
   onSuccess?: (videoUrl: string) => void;
 }
@@ -30,7 +30,7 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
   const chunksRef = useRef<Blob[]>([]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
-  const [includeMusic, setIncludeMusic] = useState(false);
+  const [includeMusic, setIncludeMusic] = useState(true);
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
 
@@ -215,7 +215,7 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
     recorder.start(1000);
 
     // 2. Lógica de renderização frame-a-frame otimizada
-    const durationPerImage = 2.5; 
+    const durationPerImage = 3.5; // Slower transition (from 2.5 to 3.5)
     const totalDuration = loadedImages.length * durationPerImage;
     const fps = 30;
     const totalFrames = totalDuration * fps;
@@ -252,25 +252,29 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
       ctx.fillStyle = grad;
       ctx.fillRect(0, height * 0.6, width, height * 0.4);
 
-      // Texto: Título
+      // Texto: Título dinâmico (usa o do imóvel se for portfólio, senão o título geral)
+      const displayTitle = (images[imageIndex]?.title || propertyTitle).toUpperCase();
+      const displayCity = images[imageIndex]?.city || propertyCity;
+      const displayState = images[imageIndex]?.state || propertyState;
+
       ctx.fillStyle = "white";
       ctx.font = "bold 44px Inter, sans-serif";
       ctx.shadowColor = "rgba(0,0,0,0.5)";
       ctx.shadowBlur = 10;
       ctx.textAlign = "center";
       
-      const words = propertyTitle.toUpperCase().split(" ");
+      const words = displayTitle.split(" ");
       let titleY = height - 240;
       if (words.length > 3) {
           ctx.fillText(words.slice(0, 3).join(" "), width / 2, titleY);
           ctx.fillText(words.slice(3).join(" "), width / 2, titleY + 55);
           titleY += 55;
       } else {
-          ctx.fillText(propertyTitle.toUpperCase(), width / 2, titleY);
+          ctx.fillText(displayTitle, width / 2, titleY);
       }
 
-      // Texto: Cidade e Estado
-      const locationText = [propertyCity, propertyState].filter(Boolean).join(" • ");
+      // Texto: Cidade e Estado dinâmico
+      const locationText = [displayCity, displayState].filter(Boolean).join(" • ");
       if (locationText) {
           ctx.fillStyle = "#94a3b8"; // slate-400
           ctx.font = "32px Inter, sans-serif";
@@ -284,7 +288,7 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
       // Desenhar site/footer
       ctx.fillStyle = "rgba(255,255,255,0.7)";
       ctx.font = "500 24px Inter, sans-serif";
-      ctx.fillText("www.realstock.com.br", width / 2, height - 60);
+      ctx.fillText("WWW.REALSTOCK.COM.BR", width / 2, height - 60);
 
       // Sincronizar com a gravação
       await new Promise(resolve => requestAnimationFrame(resolve));
