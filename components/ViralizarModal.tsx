@@ -164,7 +164,7 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-lg min-h-[500px] flex flex-col justify-center rounded-[32px] border border-white/10 bg-slate-950 p-6 md:p-8 shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-lg max-h-[95vh] overflow-y-auto flex flex-col rounded-[32px] border border-white/10 bg-slate-950 p-5 md:p-6 shadow-2xl">
         {/* Background Glow */}
         <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-purple-500/10 blur-3xl" />
         <div className="absolute -left-24 -bottom-24 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
@@ -181,12 +181,12 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
             <div className="flex items-center gap-2 text-purple-400 font-bold text-[10px] uppercase tracking-widest mb-2">
               <Zap size={14} className="fill-purple-400" /> Pacote Viralizar
             </div>
-            <h2 className="text-3xl font-black text-white">Deixe seu anuncio preparado para poder ser impulsionado nas redes socials</h2>
-            <p className="mt-3 text-slate-400 text-sm leading-relaxed">
+            <h2 className="text-2xl font-black text-white">Deixe seu anúncio preparado para as redes sociais</h2>
+            <p className="mt-2 text-slate-400 text-xs leading-relaxed">
               Ative todos os nossos serviços de marketing de uma vez e economize agora.
             </p>
 
-            <div className="mt-6 space-y-2">
+            <div className="mt-4 space-y-2">
               {viralizarServices.map((s, idx) => (
                 <div key={idx} className="flex items-center justify-between rounded-2xl bg-white/5 border border-white/5 p-3 transition-all hover:bg-white/10">
                   <div className="flex items-center gap-3">
@@ -208,7 +208,7 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
               {isLoadingFees && <div className="text-center text-xs text-slate-500 animate-pulse">Carregando taxas...</div>}
             </div>
 
-            <div className="mt-6 flex items-center justify-between bg-gradient-to-r from-purple-600/20 to-indigo-600/20 rounded-2xl p-6 border border-purple-500/30">
+            <div className="mt-4 flex items-center justify-between bg-gradient-to-r from-purple-600/20 to-indigo-600/20 rounded-2xl p-4 border border-purple-500/30">
                <div>
                   <div className="text-[10px] font-black text-purple-400 uppercase tracking-tighter">Oferta Exclusiva</div>
                   <div className="flex items-baseline gap-2">
@@ -235,7 +235,7 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
                   )}
                 </button>
             </div>
-            <div className="mt-6 rounded-2xl bg-white/5 border border-white/5 p-4">
+            <div className="mt-4 rounded-2xl bg-white/5 border border-white/5 p-3">
               <p className="text-[10px] text-slate-400 leading-relaxed text-center italic">
                 Após a ativação desse serviço você poderá contratar qualquer serviço de impulsionamento da Meta e do Google diretamente do site da RealStock, podendo escolher qual impulsionar, além de destacar e colocar o anúncio nos primeiros da lista de pesquisa do site.
               </p>
