@@ -18,6 +18,7 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
   const [currentAction, setCurrentAction] = useState("");
   const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
   
+  const [isStarting, setIsStarting] = useState(false);
   const [viralizarServices, setViralizarServices] = useState<any[]>([]);
   const [isLoadingFees, setIsLoadingFees] = useState(true);
 
@@ -50,6 +51,7 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
     fetchFees();
   }, []);
 
+
   const totalOriginal = viralizarServices.reduce((acc, s) => acc + (s.value || 0), 0);
   const bundlePrice = totalOriginal / 2;
 
@@ -81,6 +83,12 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
   if (!isOpen) return null;
 
   async function handleStartViralizar() {
+    if (bundlePrice <= 0) {
+      alert("Erro ao calcular valor do pacote. Por favor, tente novamente em instantes.");
+      return;
+    }
+
+    setIsStarting(true);
     try {
       const res = await fetch("/api/paypal/create-viralizar-order", {
         method: "POST",
@@ -88,14 +96,16 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
         body: JSON.stringify({ propertyId, amount: bundlePrice }),
       });
       const data = await res.json();
-      if (data.success) {
+      if (data.success && data.paypal_order_id) {
         setPaypalOrderId(data.paypal_order_id);
         setStep("payment");
       } else {
-        alert("Erro ao preparar pagamento: " + data.error);
+        alert("Erro ao preparar pagamento: " + (data.error || "Erro desconhecido"));
       }
     } catch (err) {
-      alert("Erro de conexão.");
+      alert("Erro de conexão com o servidor de pagamentos.");
+    } finally {
+      setIsStarting(false);
     }
   }
 
@@ -154,7 +164,7 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-lg rounded-[32px] border border-white/10 bg-slate-950 p-8 shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-lg min-h-[500px] flex flex-col justify-center rounded-[32px] border border-white/10 bg-slate-950 p-6 md:p-8 shadow-2xl overflow-hidden">
         {/* Background Glow */}
         <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-purple-500/10 blur-3xl" />
         <div className="absolute -left-24 -bottom-24 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
@@ -176,9 +186,9 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
               Ative todos os nossos serviços de marketing de uma vez e economize agora.
             </p>
 
-            <div className="mt-8 space-y-3">
+            <div className="mt-6 space-y-2">
               {viralizarServices.map((s, idx) => (
-                <div key={idx} className="flex items-center justify-between rounded-2xl bg-white/5 border border-white/5 p-4 transition-all hover:bg-white/10">
+                <div key={idx} className="flex items-center justify-between rounded-2xl bg-white/5 border border-white/5 p-3 transition-all hover:bg-white/10">
                   <div className="flex items-center gap-3">
                     <div className="bg-purple-500/20 p-2 rounded-lg text-purple-400">
                       {s.icon}
@@ -198,7 +208,7 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
               {isLoadingFees && <div className="text-center text-xs text-slate-500 animate-pulse">Carregando taxas...</div>}
             </div>
 
-            <div className="mt-8 flex items-center justify-between bg-gradient-to-r from-purple-600/20 to-indigo-600/20 rounded-2xl p-6 border border-purple-500/30">
+            <div className="mt-6 flex items-center justify-between bg-gradient-to-r from-purple-600/20 to-indigo-600/20 rounded-2xl p-6 border border-purple-500/30">
                <div>
                   <div className="text-[10px] font-black text-purple-400 uppercase tracking-tighter">Oferta Exclusiva</div>
                   <div className="flex items-baseline gap-2">
@@ -207,13 +217,23 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
                   </div>
                   <div className="text-[10px] text-emerald-400 font-bold uppercase mt-1">50% de Desconto Ativado</div>
                </div>
-               <button 
-                 onClick={handleStartViralizar}
-                 className="group flex items-center gap-2 rounded-xl bg-purple-500 px-6 py-4 font-bold text-white transition-all hover:bg-purple-400 shadow-lg shadow-purple-500/20"
-               >
-                 Viralizar
-                 <Rocket size={18} className="transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
-               </button>
+                <button 
+                  onClick={handleStartViralizar}
+                  disabled={isStarting || isLoadingFees}
+                  className="group flex items-center gap-2 rounded-xl bg-purple-500 px-6 py-4 font-bold text-white transition-all hover:bg-purple-400 shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isStarting ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      Processando...
+                    </>
+                  ) : (
+                    <>
+                      Viralizar
+                      <Rocket size={18} className="transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                    </>
+                  )}
+                </button>
             </div>
             <div className="mt-6 rounded-2xl bg-white/5 border border-white/5 p-4">
               <p className="text-[10px] text-slate-400 leading-relaxed text-center italic">
