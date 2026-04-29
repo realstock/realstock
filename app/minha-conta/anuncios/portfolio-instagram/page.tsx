@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
-import { Camera } from "lucide-react";
+import { Camera, X } from "lucide-react";
 
 export default function PortfolioInstagramPage() {
   const { status } = useSession();
@@ -107,9 +107,15 @@ export default function PortfolioInstagramPage() {
     <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
       <div className="mx-auto max-w-4xl">
         <div className="mb-8">
-          <Link href="/minha-conta/anuncios" className="text-sm text-slate-400 hover:text-white">
-            ← Voltar aos meus anúncios
-          </Link>
+          <div className="mb-6">
+            <Link 
+              href="/minha-conta/anuncios" 
+              className="inline-flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-sm font-bold text-slate-300 transition-all hover:bg-white/10 hover:text-white hover:border-sky-500/50 shadow-lg shadow-sky-500/5 group"
+            >
+              <X size={16} className="rotate-45 group-hover:scale-110 transition-transform" />
+              Voltar para Anúncios
+            </Link>
+          </div>
           <h1 className="mt-4 text-3xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">
             Turbinar Portfólio no Instagram
           </h1>

@@ -30,6 +30,15 @@ export default function MinhaContaPage() {
 
       <section className="mx-auto max-w-6xl px-6 py-10">
         <div className="mb-8">
+          <Link 
+            href="/" 
+            className="inline-flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-sm font-bold text-slate-300 transition-all hover:bg-white/10 hover:text-white hover:border-sky-500/50 shadow-lg group"
+          >
+            <X size={16} className="rotate-45 group-hover:scale-110 transition-transform" />
+            Voltar para o Início
+          </Link>
+        </div>
+        <div className="mb-8">
           <div className="text-sm text-slate-400">Minha conta</div>
           <h1 className="mt-2 text-4xl font-bold">Olá, {user.userName || user.user_name}</h1>
           <p className="mt-2 text-slate-400">

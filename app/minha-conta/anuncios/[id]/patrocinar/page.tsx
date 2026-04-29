@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
-import { Gem, Megaphone, CalendarDays, Wallet } from "lucide-react";
+import { Gem, Megaphone, CalendarDays, Wallet, X } from "lucide-react";
 
 export default function PatrocinarPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -94,7 +94,15 @@ export default function PatrocinarPage({ params }: { params: Promise<{ id: strin
       <div className="mx-auto max-w-5xl">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <Link href="/minha-conta/anuncios" className="text-sm text-slate-400 hover:text-white">← Voltar</Link>
+            <div className="mb-6">
+              <Link 
+                href="/minha-conta/anuncios" 
+                className="inline-flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-sm font-bold text-slate-300 transition-all hover:bg-white/10 hover:text-white hover:border-sky-500/50 shadow-lg shadow-sky-500/5 group"
+              >
+                <X size={16} className="rotate-45 group-hover:scale-110 transition-transform" />
+                Voltar para Anúncios
+              </Link>
+            </div>
             <h1 className="mt-4 text-3xl font-bold flex items-center gap-2 text-yellow-400">
                <Gem size={32} />
                Patrocinar Anúncio Oficialmente

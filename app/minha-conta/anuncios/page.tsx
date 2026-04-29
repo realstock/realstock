@@ -114,6 +114,15 @@ export default function MeusAnunciosPage() {
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
       <div className="mx-auto max-w-6xl">
+        <div className="mb-6">
+          <Link 
+            href="/minha-conta" 
+            className="inline-flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-sm font-bold text-slate-300 transition-all hover:bg-white/10 hover:text-white hover:border-sky-500/50 shadow-lg shadow-sky-500/5 group"
+          >
+            <X size={16} className="rotate-45 group-hover:scale-110 transition-transform" />
+            Voltar para o Painel
+          </Link>
+        </div>
         <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="text-sm text-slate-400">Minha conta</div>

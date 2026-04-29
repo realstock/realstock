@@ -183,9 +183,10 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
 
         <button 
           onClick={onClose}
-          className="absolute right-6 top-6 z-10 text-slate-500 hover:text-white"
+          className="absolute right-6 top-6 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-slate-900/80 text-slate-400 hover:text-white transition-all backdrop-blur-md border border-white/10 shadow-lg"
+          title="Fechar"
         >
-          <X size={24} />
+          <X size={20} />
         </button>
 
         {(step === "details" || step === "payment") && (

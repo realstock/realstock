@@ -51,7 +51,15 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
         return (
             <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
                 <div className="mx-auto max-w-5xl">
-                    <Link href="/minha-conta/anuncios" className="text-sm text-slate-400 hover:text-white mb-4 block">← Voltar</Link>
+                    <div className="mb-6">
+                        <Link 
+                            href="/minha-conta/anuncios" 
+                            className="inline-flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-sm font-bold text-slate-300 transition-all hover:bg-white/10 hover:text-white hover:border-sky-500/50 shadow-lg group"
+                        >
+                            <X size={16} className="rotate-45 group-hover:scale-110 transition-transform" />
+                            Voltar para Anúncios
+                        </Link>
+                    </div>
                     <div className="rounded-xl border border-red-400/20 bg-red-400/10 p-6 text-red-300">
                         <h2 className="font-bold text-lg mb-2">Relatório Indisponível</h2>
                         <p>{error}</p>
@@ -66,7 +74,15 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
     return (
         <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
             <div className="mx-auto max-w-5xl">
-                <Link href="/minha-conta/anuncios" className="text-sm text-slate-400 hover:text-white">← Voltar aos anúncios</Link>
+                <div className="mb-6">
+                    <Link 
+                        href="/minha-conta/anuncios" 
+                        className="inline-flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-sm font-bold text-slate-300 transition-all hover:bg-white/10 hover:text-white hover:border-sky-500/50 shadow-lg group"
+                    >
+                        <X size={16} className="rotate-45 group-hover:scale-110 transition-transform" />
+                        Voltar para Anúncios
+                    </Link>
+                </div>
 
                 <div className="mt-6 flex flex-col md:flex-row md:items-center justify-between border-b border-white/10 pb-6 mb-8">
                     <div>
