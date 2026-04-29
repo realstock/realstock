@@ -20,6 +20,7 @@ type PropertyItem = {
   googleBoostedUntil?: string | null;
   metaBoostedUntil?: string | null;
   sponsoredUntil?: string | null;
+  reelsVideoUrl?: string | null;
   offers?: any[];
 };
 
@@ -47,6 +48,7 @@ export default function MeusAnunciosPage() {
 
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [selectedPropertyForVideo, setSelectedPropertyForVideo] = useState<PropertyItem | null>(null);
+  const [viewingVideoUrl, setViewingVideoUrl] = useState<string | null>(null);
 
   async function loadProperties() {
     try {
@@ -218,53 +220,77 @@ export default function MeusAnunciosPage() {
                    </div>
                  </div>
 
-                 <div className="flex flex-col gap-2">
-                   {(isPublishedAny || googlePortfolioBoostedUntil || metaPortfolioBoostedUntil) && (
-                     <Link href="/minha-conta/anuncios/0/insights" className="flex items-center justify-center gap-2 rounded-2xl border border-yellow-400/20 bg-yellow-500/10 px-4 py-3 text-sm font-semibold text-yellow-300 hover:bg-yellow-500/20 transition-colors">
-                       <BarChart3 size={16} />
-                       Ver Estatísticas / Insights
-                     </Link>
-                   )}
-                   {igPermalink && (
-                     <a href={igPermalink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 rounded-2xl border border-pink-400/20 bg-pink-500/10 px-4 py-3 text-sm font-semibold text-pink-300 hover:bg-pink-500/20 transition-colors">
-                       <img src="/icones/instagram.jpg" className="w-5 h-5 rounded hover:scale-110 transition-transform object-cover flex-shrink-0" alt="Instagram" />
-                       Ver no Instagam
-                     </a>
-                   )}
-                   {fbPermalink && (
-                     <a href={fbPermalink} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 rounded-2xl border border-blue-400/20 bg-blue-500/10 px-4 py-3 text-sm font-semibold text-blue-300 hover:bg-blue-500/20 transition-colors">
-                       <img src="/icones/facebook.jpeg" className="w-5 h-5 rounded hover:scale-110 transition-transform object-cover flex-shrink-0" alt="Facebook" />
-                       Ver no Facebook
-                     </a>
-                   )}
-                   
-                   <div className="flex gap-2 w-full justify-end">
-                     <Link href="/minha-conta/anuncios/portfolio-instagram" className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-pink-400/20 bg-pink-500/10 px-4 py-3 text-sm font-semibold text-pink-300 hover:bg-pink-500/20 transition-colors">
-                       <img src="/icones/instagram.jpg" className="w-5 h-5 rounded hover:scale-110 transition-transform object-cover flex-shrink-0" alt="Instagram" />
-                       {portfolioSession ? 'Republicar no Insta' : 'Publicar no Insta'}
-                     </Link>
-                     <Link href="/minha-conta/anuncios/portfolio-facebook" className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-blue-400/20 bg-blue-500/10 px-4 py-3 text-sm font-semibold text-blue-300 hover:bg-blue-500/20 transition-colors">
-                       <img src="/icones/facebook.jpeg" className="w-5 h-5 rounded hover:scale-110 transition-transform object-cover flex-shrink-0" alt="Facebook" />
-                       {facebookPortfolioSession ? 'Republicar no Face' : 'Publicar no Face'}
-                     </Link>
-                   </div>
-                   
-                   
-                   <div className="flex w-full gap-2 mt-2 flex-wrap sm:flex-nowrap">
-                       {(portfolioSession || facebookPortfolioSession) && !(metaPortfolioBoostedUntil && new Date(metaPortfolioBoostedUntil) > new Date()) && (
-                         <Link href={`/minha-conta/anuncios/0/turbinar?platform=meta`} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-indigo-500/40 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 px-4 py-3 text-xs sm:text-sm font-semibold text-indigo-300 hover:from-blue-500/20 hover:to-purple-500/20 transition-colors shadow-lg shadow-indigo-500/5">
-                           <Rocket size={16} />
-                           Turbinar Meta Ads
-                         </Link>
-                       )}
-                      {!(googlePortfolioBoostedUntil && new Date(googlePortfolioBoostedUntil) > new Date()) && (
-                        <Link href={`/minha-conta/anuncios/0/turbinar?platform=google`} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 px-4 py-3 text-xs sm:text-sm font-semibold text-emerald-300 hover:from-emerald-500/20 hover:to-teal-500/20 transition-colors shadow-lg shadow-emerald-500/5">
-                          <Rocket size={16} />
-                          Google Ads
+                      <div className="flex flex-col gap-3 min-w-[300px]">
+                    {/* Ações de Visualização e Insights */}
+                    <div className="flex flex-wrap gap-2">
+                      {(isPublishedAny || googlePortfolioBoostedUntil || metaPortfolioBoostedUntil) && (
+                        <Link href="/minha-conta/anuncios/0/insights" className="flex-1 min-w-[140px] flex items-center justify-center gap-2 rounded-xl bg-yellow-500/10 border border-yellow-500/20 px-4 py-2.5 text-xs font-bold text-yellow-500 transition-all hover:bg-yellow-500/20">
+                          <BarChart3 size={14} />
+                          Ver Insights
                         </Link>
                       )}
-                   </div>
-                 </div>
+                      {igPermalink && (
+                        <a href={igPermalink} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[140px] flex items-center justify-center gap-2 rounded-xl bg-pink-500/10 border border-pink-500/20 px-4 py-2.5 text-xs font-bold text-pink-400 transition-all hover:bg-pink-500/20">
+                          <img src="/icones/instagram.jpg" className="w-4 h-4 rounded-sm object-cover" alt="" />
+                          Ver Insta
+                        </a>
+                      )}
+                      {fbPermalink && (
+                        <a href={fbPermalink} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[140px] flex items-center justify-center gap-2 rounded-xl bg-blue-500/10 border border-blue-500/20 px-4 py-2.5 text-xs font-bold text-blue-400 transition-all hover:bg-blue-500/20">
+                          <img src="/icones/facebook.jpeg" className="w-4 h-4 rounded-sm object-cover" alt="" />
+                          Ver Face
+                        </a>
+                      )}
+                    </div>
+                    
+                    {/* Painel de Publicação e Impulsionamento */}
+                    <div className="rounded-2xl bg-white/5 border border-white/5 p-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <div className="text-[9px] font-black uppercase tracking-wider text-slate-500 mb-1">Publicação</div>
+                          <div className="flex gap-2">
+                            <Link href="/minha-conta/anuncios/portfolio-instagram" className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-2 text-[11px] font-bold text-white transition-all hover:bg-white/10">
+                              Instagram
+                            </Link>
+                            <Link href="/minha-conta/anuncios/portfolio-facebook" className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-2 text-[11px] font-bold text-white transition-all hover:bg-white/10">
+                              Facebook
+                            </Link>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setSelectedPropertyForVideo({
+                                id: 0,
+                                title: "Meu Portfólio",
+                                city: "RealStock",
+                                state: "Pro",
+                                price: 0,
+                                images: properties
+                                  .filter(p => p.images && p.images.length > 0)
+                                  .flatMap(p => p.images || [])
+                                  .slice(0, 12) // Máximo 12 imagens para o vídeo do portfólio
+                              });
+                              setIsVideoModalOpen(true);
+                            }}
+                            className="w-full flex items-center justify-center gap-2 rounded-xl border border-sky-500/20 bg-sky-500/5 py-2 text-[11px] font-bold text-sky-400 transition-all hover:bg-sky-500/10"
+                          >
+                            <Film size={12} /> Criar Vídeo do Portfólio (IA)
+                          </button>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="text-[9px] font-black uppercase tracking-wider text-slate-500 mb-1">Impulsionamento</div>
+                          <div className="flex gap-2">
+                            <Link href={`/minha-conta/anuncios/0/turbinar?platform=meta`} className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-indigo-500/20 bg-indigo-500/5 py-2 text-[11px] font-bold text-indigo-300 transition-all hover:bg-indigo-500/10">
+                              <Rocket size={12} /> Meta
+                            </Link>
+                            <Link href={`/minha-conta/anuncios/0/turbinar?platform=google`} className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 py-2 text-[11px] font-bold text-emerald-300 transition-all hover:bg-emerald-500/10">
+                              <Rocket size={12} /> Google
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                </div>
              </div>
            );
@@ -343,125 +369,121 @@ export default function MeusAnunciosPage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-3">
-                    <Link
-                      href={`/anunciar/${property.id}`}
-                      className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white hover:bg-white/10"
-                    >
-                      Editar anúncio
-                    </Link>
-
-                    <Link
-                      href={`/imovel/${property.id}`}
-                      className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-900"
-                    >
-                      Ver anúncio
-                    </Link>
-
-                    <Link
-                      href={`/minha-conta/anuncios/${property.id}/ofertas`}
-                      className={`rounded-2xl border px-4 py-3 text-sm transition-colors ${
-                        property.offers && property.offers.length > 0
-                          ? "border-emerald-500 bg-emerald-600 font-bold text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-500"
-                          : "border-white/10 bg-white/5 text-white hover:bg-white/10"
-                      }`}
-                    >
-                      {property.offers && property.offers.length > 0 
-                        ? `Gerenciar ofertas (${property.offers.length})` 
-                        : "Gerenciar ofertas"}
-                    </Link>
-
-                    {!(property.sponsoredUntil && new Date(property.sponsoredUntil) > new Date()) && (
+                  <div className="flex-1 min-w-[300px]">
+                    {/* Botões de Gestão Rápida */}
+                    <div className="flex flex-wrap gap-2 mb-6">
                       <Link
-                        href={`/minha-conta/anuncios/${property.id}/patrocinar`}
-                        className="rounded-2xl bg-gradient-to-r from-yellow-500 to-amber-500 px-4 py-3 text-sm font-bold text-slate-900 border border-yellow-400/50 hover:from-yellow-400 hover:to-amber-400 transition-colors shadow-lg shadow-yellow-500/20"
+                        href={`/imovel/${property.id}`}
+                        className="flex-1 min-w-[120px] rounded-xl bg-white px-4 py-2.5 text-center text-sm font-bold text-slate-900 transition-all hover:bg-slate-200 active:scale-95"
                       >
-                        💎 Patrocinar
+                        Ver Anúncio
                       </Link>
-                    )}
+                      <Link
+                        href={`/anunciar/${property.id}`}
+                        className="flex-1 min-w-[120px] rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-center text-sm font-semibold text-white transition-all hover:bg-white/10 active:scale-95"
+                      >
+                        Editar
+                      </Link>
+                      <Link
+                        href={`/minha-conta/anuncios/${property.id}/ofertas`}
+                        className={`flex-1 min-w-[120px] rounded-xl border px-4 py-2.5 text-center text-sm font-semibold transition-all active:scale-95 ${
+                          property.offers && property.offers.length > 0
+                            ? "border-emerald-500 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                            : "border-white/10 bg-white/5 text-white hover:bg-white/10"
+                        }`}
+                      >
+                        Ofertas {property.offers && property.offers.length > 0 && `(${property.offers.length})`}
+                      </Link>
+                    </div>
 
-                    <button
-                      onClick={() => {
-                        setSelectedPropertyForVideo(property);
-                        setIsVideoModalOpen(true);
-                      }}
-                      className="rounded-2xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm font-bold text-sky-400 hover:bg-sky-500/20 transition-all flex items-center justify-center gap-2"
-                    >
-                      <Film size={18} />
-                      🎬 Criar Vídeo IA
-                    </button>
-
-                    <div className="flex flex-col gap-2 mt-4">
-                      {/* STATS BUTTON */}
-                      {(isPublished || property.googleBoostedUntil || property.metaBoostedUntil) && (
-                        <Link 
-                          href={`/minha-conta/anuncios/${property.id}/insights`} 
-                          className="flex w-full items-center justify-center gap-2 rounded-full border border-yellow-500/40 bg-yellow-500/5 px-4 py-4 text-base font-black text-yellow-500 hover:bg-yellow-500/10 transition-all active:scale-[0.98] shadow-lg shadow-yellow-500/5 mb-2"
-                        >
-                          <BarChart3 size={18} />
-                          Ver Estatísticas Completas
-                        </Link>
-                      )}
-
-                      {/* INSTAGRAM GROUP */}
-                      <div className="flex gap-2">
-                        <Link
-                          href={`/minha-conta/anuncios/${property.id}/instagram`}
-                          className="flex flex-[2] justify-center items-center gap-3 rounded-2xl border border-pink-500/30 bg-pink-600/10 px-4 py-4 text-base font-bold text-pink-400 hover:bg-pink-600/20 transition-all active:scale-[0.98]"
-                        >
-                          <img src="/icones/instagram.jpg" className="w-6 h-6 rounded-lg object-cover flex-shrink-0" alt="Instagram" />
-                          {isPublished ? 'Republicar no Insta' : 'Publicar no Insta'}
-                        </Link>
-                        {isPublished && permalink && (
-                          <a 
-                            href={permalink} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-white/5 px-4 py-4 text-base font-medium text-pink-300 hover:bg-white/10 transition-all"
+                    {/* Painel de Performance e Marketing */}
+                    <div className="rounded-2xl bg-white/5 border border-white/5 p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                          <TrendingUp size={12} />
+                          Marketing & Performance
+                        </div>
+                        {(isPublished || property.googleBoostedUntil || property.metaBoostedUntil) && (
+                          <Link 
+                            href={`/minha-conta/anuncios/${property.id}/insights`}
+                            className="flex items-center gap-1 text-[10px] font-bold text-yellow-500 hover:underline"
                           >
-                             Ver Post
-                          </a>
-                        )}
-                      </div>
-                      
-                      {/* FACEBOOK BUTTON */}
-                      <div className="flex gap-2">
-                        <Link
-                          href={`/minha-conta/anuncios/${property.id}/facebook`}
-                          className="flex flex-1 justify-center items-center gap-3 rounded-2xl border border-blue-500/30 bg-blue-600/10 px-4 py-4 text-base font-bold text-blue-400 hover:bg-blue-600/20 transition-all active:scale-[0.98]"
-                        >
-                          <img src="/icones/facebook.jpeg" className="w-6 h-6 rounded-lg object-cover flex-shrink-0" alt="Facebook" />
-                          {facebookPosts.find(p => p.listingId === property.id) ? 'Republicar no Face' : 'Publicar no Face'}
-                        </Link>
-                        {facebookPosts.find(p => p.listingId === property.id)?.validationReport?.permalink && (
-                          <a 
-                            href={facebookPosts.find(p => p.listingId === property.id)?.validationReport?.permalink} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="flex items-center justify-center gap-2 rounded-2xl bg-white/5 px-6 py-4 text-base font-medium text-blue-300 hover:bg-white/10 transition-all"
-                          >
-                             Ver Post
-                          </a>
+                            <BarChart3 size={12} />
+                            VER INSIGHTS
+                          </Link>
                         )}
                       </div>
 
-                      {/* ADS GROUP */}
-                      <div className="flex gap-2 pt-2">
-                        <Link 
-                          href={`/minha-conta/anuncios/${property.id}/turbinar?platform=meta`} 
-                          className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-4 text-base font-bold text-indigo-300 hover:bg-indigo-500/20 transition-all active:scale-[0.98]"
-                        >
-                           <Rocket size={18} />
-                           Meta Ads
-                        </Link>
-                        
-                        <Link 
-                          href={`/minha-conta/anuncios/${property.id}/turbinar?platform=google`} 
-                          className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-4 text-base font-bold text-emerald-300 hover:bg-emerald-500/20 transition-all active:scale-[0.98]"
-                        >
-                           <Rocket size={18} />
-                           Google Ads
-                        </Link>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Redes Sociais */}
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <Link
+                              href={`/minha-conta/anuncios/${property.id}/instagram`}
+                              className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-pink-500/20 bg-pink-500/5 py-2.5 text-xs font-bold text-pink-400 transition-all hover:bg-pink-500/10"
+                            >
+                              <img src="/icones/instagram.jpg" className="w-4 h-4 rounded-sm object-cover" alt="" />
+                              Insta
+                            </Link>
+                            <Link
+                              href={`/minha-conta/anuncios/${property.id}/facebook`}
+                              className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-blue-500/20 bg-blue-500/5 py-2.5 text-xs font-bold text-blue-400 transition-all hover:bg-blue-500/10"
+                            >
+                              <img src="/icones/facebook.jpeg" className="w-4 h-4 rounded-sm object-cover" alt="" />
+                              Face
+                            </Link>
+                          </div>
+                          
+                          {property.reelsVideoUrl ? (
+                            <button
+                              onClick={() => setViewingVideoUrl(property.reelsVideoUrl!)}
+                              className="w-full flex items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 py-2.5 text-xs font-bold text-emerald-400 transition-all hover:bg-emerald-500/10"
+                            >
+                              <Film size={14} />
+                              Ver Vídeo IA
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setSelectedPropertyForVideo(property);
+                                setIsVideoModalOpen(true);
+                              }}
+                              className="w-full flex items-center justify-center gap-2 rounded-xl border border-sky-500/20 bg-sky-500/5 py-2.5 text-xs font-bold text-sky-400 transition-all hover:bg-sky-500/10"
+                            >
+                              <Film size={14} />
+                              Criar Vídeo IA
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Impulsionamento */}
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <Link 
+                              href={`/minha-conta/anuncios/${property.id}/turbinar?platform=meta`}
+                              className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-indigo-500/20 bg-indigo-500/5 py-2.5 text-xs font-bold text-indigo-300 transition-all hover:bg-indigo-500/10"
+                            >
+                              <Rocket size={14} />
+                              Meta Ads
+                            </Link>
+                            <Link 
+                              href={`/minha-conta/anuncios/${property.id}/turbinar?platform=google`}
+                              className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 py-2.5 text-xs font-bold text-emerald-300 transition-all hover:bg-emerald-500/10"
+                            >
+                              <Rocket size={14} />
+                              Google
+                            </Link>
+                          </div>
+
+                          {!(property.sponsoredUntil && new Date(property.sponsoredUntil) > new Date()) && (
+                            <Link
+                              href={`/minha-conta/anuncios/${property.id}/patrocinar`}
+                              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-yellow-500/30 py-2.5 text-xs font-black text-yellow-500 transition-all hover:from-amber-500/30 hover:to-yellow-500/30"
+                            >
+                              💎 Patrocinar Imóvel
+                            </Link>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -658,7 +680,41 @@ export default function MeusAnunciosPage() {
           propertyState={selectedPropertyForVideo.state}
           propertyId={selectedPropertyForVideo.id}
           images={selectedPropertyForVideo.images || []}
+          onSuccess={(videoUrl) => {
+            setProperties(prev => prev.map(p => 
+              p.id === selectedPropertyForVideo.id ? { ...p, reelsVideoUrl: videoUrl } : p
+            ));
+          }}
         />
+      )}
+
+      {/* MODAL PARA VER VÍDEO */}
+      {viewingVideoUrl && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
+          <div className="relative w-full max-w-sm rounded-[32px] border border-white/20 bg-slate-950 p-1 shadow-2xl overflow-hidden">
+             <button 
+               onClick={() => setViewingVideoUrl(null)}
+               className="absolute top-4 right-4 z-50 rounded-full bg-black/50 p-2 text-white/70 hover:text-white transition-colors backdrop-blur-md"
+             >
+               <X size={24} />
+             </button>
+             
+             <div className="aspect-[9/16] w-full overflow-hidden rounded-[28px] bg-slate-900">
+                <video 
+                  key={viewingVideoUrl}
+                  src={viewingVideoUrl} 
+                  className="h-full w-full object-cover" 
+                  controls 
+                  autoPlay
+                  playsInline
+                />
+             </div>
+             
+             <div className="p-6 text-center">
+                <p className="text-xs text-slate-500 font-medium">Este vídeo está incorporado ao seu anúncio e pronto para ser postado no Instagram.</p>
+             </div>
+          </div>
+        </div>
       )}
     </main>
   );

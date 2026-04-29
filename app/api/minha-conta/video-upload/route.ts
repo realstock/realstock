@@ -17,46 +17,63 @@ export async function POST(req: Request) {
     const orderID = formData.get("orderID") as string;
     const propertyId = Number(formData.get("propertyId"));
 
-    if (!file || !orderID || !propertyId) {
+    if (!file || !propertyId) {
       return NextResponse.json({ success: false, error: "Dados ausentes" }, { status: 400 });
     }
 
-    // 1. Capturar Pagamento no PayPal
-    const clientId = process.env.PAYPAL_CLIENT_ID;
-    const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
-    const base = process.env.PAYPAL_API_BASE || "https://api-m.sandbox.paypal.com";
-    const auth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+    let finalOrderID = orderID;
+    let finalFeeValue = 0;
 
-    const tokenRes = await fetch(`${base}/v1/oauth2/token`, {
-      method: "POST",
-      body: "grant_type=client_credentials",
-      headers: { Authorization: `Basic ${auth}` },
-    });
-    const tokenData = await tokenRes.json();
-    const accessToken = tokenData.access_token;
+    if (orderID && orderID !== "FREE") {
+        // 1. Capturar Pagamento no PayPal
+        const clientId = process.env.PAYPAL_CLIENT_ID;
+        const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+        const base = process.env.PAYPAL_API_BASE || "https://api-m.sandbox.paypal.com";
+        const auth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
 
-    const captureRes = await fetch(`${base}/v2/checkout/orders/${orderID}/capture`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-    const captureData = await captureRes.json();
+        const tokenRes = await fetch(`${base}/v1/oauth2/token`, {
+        method: "POST",
+        body: "grant_type=client_credentials",
+        headers: { Authorization: `Basic ${auth}` },
+        });
+        const tokenData = await tokenRes.json();
+        const accessToken = tokenData.access_token;
 
-    if (captureData.status !== "COMPLETED") {
-       return NextResponse.json({ success: false, error: "Pagamento não concluído no PayPal" }, { status: 400 });
+        const captureRes = await fetch(`${base}/v2/checkout/orders/${orderID}/capture`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+        },
+        });
+        const captureData = await captureRes.json();
+
+        if (captureData.status !== "COMPLETED") {
+            return NextResponse.json({ success: false, error: "Pagamento não concluído no PayPal" }, { status: 400 });
+        }
+
+        const siteService = await prisma.siteService.findFirst({
+            where: { slug: "reels" },
+            include: { fee: true }
+        });
+        finalFeeValue = siteService?.fee?.value ? Number(siteService.fee.value) : 29.90;
+    } else {
+        finalOrderID = "FREE";
+        finalFeeValue = 0;
     }
 
     // 2. Upload do Vídeo para Supabase
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const fileName = `reels/${propertyId}-${Date.now()}.webm`;
+    
+    // Identificar extensão correta baseada no tipo do arquivo
+    const extension = file.type === 'video/mp4' ? 'mp4' : 'webm';
+    const fileName = `reels/${propertyId}-${Date.now()}.${extension}`;
     const filePath = fileName;
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from("property-images") // Usando o bucket existente
-      .upload(filePath, buffer, { contentType: "video/webm" });
+      .upload(filePath, buffer, { contentType: file.type || "video/webm" });
 
     if (uploadError) throw uploadError;
 
@@ -65,12 +82,6 @@ export async function POST(req: Request) {
       .getPublicUrl(filePath);
 
     // 3. Atualizar Imóvel e Criar Transação Financeira
-    const siteService = await prisma.siteService.findFirst({
-      where: { slug: "reels" },
-      include: { fee: true }
-    });
-    const finalFee = siteService?.fee?.value ? Number(siteService.fee.value) : 29.90;
-
     await prisma.$transaction([
       prisma.property.update({
         where: { id: propertyId, ownerId: userId },
@@ -83,9 +94,9 @@ export async function POST(req: Request) {
         data: {
           type: "REVENUE",
           category: "REELS_VIDEO",
-          amount: finalFee,
+          amount: finalFeeValue,
           description: `Taxa de Criação/Incorporação Reels - Imóvel ${propertyId}`,
-          referenceId: orderID,
+          referenceId: finalOrderID,
           userId: userId,
         },
       }),

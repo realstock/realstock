@@ -33,11 +33,17 @@ export async function GET(
     let property: any = null;
 
     if (propertyId === 0) {
+      const userProperties = await prisma.property.findMany({
+        where: { ownerId: user.id },
+        include: { images: { take: 1, orderBy: { sortOrder: "asc" } } },
+        take: 5
+      });
+
       property = {
         id: 0,
         title: "Portfólio de Imóveis (Todos)",
         state: user.state || "Brasil",
-        images: [{ imageUrl: user.avatar || "https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" }]
+        images: userProperties.flatMap(p => p.images)
       };
     } else {
       property = await prisma.property.findFirst({
@@ -48,7 +54,6 @@ export async function GET(
         include: {
           images: {
             orderBy: { sortOrder: "asc" },
-            take: 1,
           },
         },
       });
@@ -61,7 +66,7 @@ export async function GET(
       }
     }
 
-    const igSession = await prisma.instagramPreviewSession.findFirst({
+    const igSessions = await prisma.instagramPreviewSession.findMany({
         where: {
             listingId: propertyId,
             status: "PUBLISHED"
@@ -69,7 +74,7 @@ export async function GET(
         orderBy: { createdAt: "desc" }
     });
 
-    const fbSession = await prisma.facebookFeedSession.findFirst({
+    const fbSessions = await prisma.facebookFeedSession.findMany({
         where: {
             listingId: propertyId,
             status: "PUBLISHED"
@@ -77,18 +82,13 @@ export async function GET(
         orderBy: { createdAt: "desc" }
     });
 
-    const isPublished = (igSession && igSession.publishedMediaId) || (fbSession && fbSession.publishedPostId);
-
-    if (!isPublished) {
+    if (igSessions.length === 0 && fbSessions.length === 0 && propertyId !== 0) {
         return NextResponse.json(
-            { success: false, error: "Este anúncio não foi publicado nas redes sociais ainda ou não encontramos o registro." },
+            { success: false, error: "Este anúncio não possui publicações ativas para turbinar." },
             { status: 400 }
         );
     }
 
-    const permalink = igSession?.validationReport ? (igSession.validationReport as any).permalink : (fbSession?.validationReport ? (fbSession.validationReport as any).permalink : null);
-
-    // Fetch the site service for 'turbinar'
     const service = await prisma.siteService.findUnique({
       where: { slug: "turbinar" },
       include: { fee: true },
@@ -97,9 +97,8 @@ export async function GET(
     return NextResponse.json({
       success: true,
       property,
-      instagramMediaId: igSession?.publishedMediaId || null,
-      facebookPostId: fbSession?.publishedPostId || null,
-      permalink,
+      igSessions,
+      fbSessions,
       service
     });
   } catch (error: any) {

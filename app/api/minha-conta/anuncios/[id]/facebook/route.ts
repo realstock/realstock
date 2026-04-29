@@ -71,9 +71,21 @@ export async function GET(
       );
     }
 
+    const publishedSessions = await prisma.facebookFeedSession.findMany({
+      where: {
+        listingId: propertyId,
+        status: "PUBLISHED"
+      },
+      select: {
+        postType: true,
+        validationReport: true
+      }
+    });
+
     return NextResponse.json({
       success: true,
       property,
+      publishedSessions,
       service: {
         id: service.id,
         name: service.name,

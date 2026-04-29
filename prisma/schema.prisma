@@ -11,6 +11,7 @@ datasource db {
 model InstagramPreviewSession {
   id               String   @id @default(cuid())
   listingId        Int
+  postType         String   @default("carousel")
   caption          String?
   status           String   @default("DRAFT")
   allImageUrls     Json
@@ -26,6 +27,7 @@ model InstagramPreviewSession {
 model FacebookFeedSession {
   id               String   @id @default(cuid())
   listingId        Int
+  postType         String   @default("carousel")
   caption          String?
   status           String   @default("DRAFT")
   allImageUrls     Json

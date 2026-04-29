@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import { Volume2, VolumeX } from "lucide-react";
 
 export default function InstagramPublisherPage() {
   const { status } = useSession();
@@ -16,6 +17,7 @@ export default function InstagramPublisherPage() {
   const [loading, setLoading] = useState(true);
   const [property, setProperty] = useState<any>(null);
   const [service, setService] = useState<any>(null);
+  const [publishedSessions, setPublishedSessions] = useState<any[]>([]);
   const [error, setError] = useState("");
   
   const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
@@ -23,6 +25,23 @@ export default function InstagramPublisherPage() {
   const [successMsg, setSuccessMsg] = useState("");
   const [isPublishing, setIsPublishing] = useState(false);
   const [postType, setPostType] = useState<"carousel" | "reels">("carousel");
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isMuted, setIsMuted] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = isMuted;
+    }
+  }, [isMuted]);
+
+  useEffect(() => {
+    if (!property?.images || property.images.length <= 1 || postType === "reels") return;
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % property.images.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [property, postType]);
 
   async function loadData() {
     try {
@@ -38,6 +57,7 @@ export default function InstagramPublisherPage() {
 
       setProperty(data.property);
       setService(data.service);
+      setPublishedSessions(data.publishedSessions || []);
     } catch (err: any) {
       setError(err.message || "Erro ao carregar detalhes do anúncio.");
     } finally {
@@ -136,10 +156,48 @@ export default function InstagramPublisherPage() {
               <h2 className="text-xl font-semibold mb-4">Resumo do anúncio</h2>
               
               <div className="aspect-square w-full rounded-xl bg-slate-900 border border-white/10 overflow-hidden relative mb-4">
-                 {property.images?.[0]?.imageUrl ? (
-                    <img src={property.images[0].imageUrl} alt="Imagem da capa" className="w-full h-full object-cover" />
+                 {postType === "reels" && property.reelsVideoUrl ? (
+                   <div className="relative w-full h-full">
+                     <video 
+                       ref={videoRef}
+                       key={property.reelsVideoUrl}
+                       className="w-full h-full object-cover" 
+                       autoPlay 
+                       loop 
+                       muted={isMuted}
+                       playsInline 
+                     >
+                       <source src={property.reelsVideoUrl} type={property.reelsVideoUrl.endsWith('.mp4') ? 'video/mp4' : 'video/webm'} />
+                     </video>
+                     <button 
+                        onClick={() => setIsMuted(!isMuted)}
+                        className="absolute bottom-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md transition hover:bg-black/70"
+                        title={isMuted ? "Ligar som" : "Desligar som"}
+                      >
+                        {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                      </button>
+                   </div>
                  ) : (
-                    <div className="flex h-full items-center justify-center text-slate-500">Sem foto</div>
+                   <div className="w-full h-full relative">
+                      {property.images?.map((img: any, idx: number) => (
+                        <img 
+                          key={idx}
+                          src={img.imageUrl} 
+                          alt={`Slide ${idx}`} 
+                          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${idx === currentImageIndex ? 'opacity-100' : 'opacity-0'}`} 
+                        />
+                      ))}
+                      
+                      {/* Pontos do Carrossel */}
+                      <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-20">
+                        {property.images?.map((_: any, idx: number) => (
+                          <div 
+                            key={idx} 
+                            className={`h-1 rounded-full transition-all ${idx === currentImageIndex ? 'w-4 bg-white' : 'w-1 bg-white/30'}`}
+                          />
+                        ))}
+                      </div>
+                   </div>
                  )}
               </div>
 
@@ -154,22 +212,26 @@ export default function InstagramPublisherPage() {
               {property.reelsVideoUrl && (
                 <div className="mt-6 border-t border-white/10 pt-4">
                    <h3 className="text-sm font-bold text-white mb-3">Formato da Publicação</h3>
-                   <div className="grid grid-cols-2 gap-3">
-                      <button 
-                        onClick={() => setPostType("carousel")}
-                        className={`flex flex-col items-center gap-2 rounded-xl border p-3 transition-all ${postType === 'carousel' ? 'border-pink-500 bg-pink-500/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}
-                      >
-                         <div className="text-xs font-bold">CARROSSEL</div>
-                         <div className="text-[10px] text-slate-500">Álbum de Fotos</div>
-                      </button>
-                      <button 
-                        onClick={() => setPostType("reels")}
-                        className={`flex flex-col items-center gap-2 rounded-xl border p-3 transition-all ${postType === 'reels' ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}
-                      >
-                         <div className="text-xs font-bold text-indigo-400">REELS IA</div>
-                         <div className="text-[10px] text-slate-500">Vídeo Dinâmico</div>
-                      </button>
-                   </div>
+                    <div className="grid grid-cols-2 gap-3">
+                       <button 
+                         onClick={() => setPostType("carousel")}
+                         className={`flex flex-col items-center gap-2 rounded-xl border p-3 transition-all ${postType === 'carousel' ? 'border-pink-500 bg-pink-500/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}
+                       >
+                          <div className="text-xs font-bold uppercase">Carrossel</div>
+                          <div className="text-[10px] text-slate-500">
+                             {publishedSessions.find(s => s.postType === "carousel") ? "✅ Publicado" : "Álbum de Fotos"}
+                          </div>
+                       </button>
+                       <button 
+                         onClick={() => setPostType("reels")}
+                         className={`flex flex-col items-center gap-2 rounded-xl border p-3 transition-all ${postType === 'reels' ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}
+                       >
+                          <div className="text-xs font-bold text-indigo-400 uppercase">Reels IA</div>
+                          <div className="text-[10px] text-slate-500">
+                             {publishedSessions.find(s => s.postType === "reels") ? "✅ Publicado" : "Vídeo Dinâmico"}
+                          </div>
+                       </button>
+                    </div>
                 </div>
               )}
             </div>
@@ -203,14 +265,25 @@ export default function InstagramPublisherPage() {
                   </div>
               )}
 
-              {!isPublishing && !paypalOrderId ? (
-                <button
-                  onClick={startPaypalCheckout}
-                  className="w-full rounded-2xl bg-gradient-to-r from-pink-500 to-orange-400 px-6 py-4 text-center font-bold text-white transition hover:opacity-90"
-                >
-                  Pagar e Postar Agora
-                </button>
-              ) : !isPublishing && paypalOrderId ? (
+               {!isPublishing && !paypalOrderId ? (
+                 publishedSessions.find(s => s.postType === postType) ? (
+                    <a 
+                      href={publishedSessions.find(s => s.postType === postType)?.validationReport?.permalink || "#"} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="w-full block rounded-2xl bg-white/10 border border-white/10 px-6 py-4 text-center font-bold text-white transition hover:bg-white/20"
+                    >
+                      Ver Post Publicado
+                    </a>
+                 ) : (
+                    <button
+                      onClick={startPaypalCheckout}
+                      className="w-full rounded-2xl bg-gradient-to-r from-pink-500 to-orange-400 px-6 py-4 text-center font-bold text-white transition hover:opacity-90"
+                    >
+                      Postar Agora
+                    </button>
+                 )
+               ) : !isPublishing && paypalOrderId ? (
                  <PayPalScriptProvider
                   options={{
                     clientId: paypalClientId,

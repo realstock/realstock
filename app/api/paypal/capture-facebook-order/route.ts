@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 401 });
     }
 
-    const { orderID, propertyId } = await req.json();
+    const { orderID, propertyId, postType = "carousel" } = await req.json();
 
     if (!orderID || !propertyId) {
       return NextResponse.json({ success: false, error: "Parâmetros inválidos." }, { status: 400 });
@@ -59,6 +59,9 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
+    // Fetch user for financial record
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+
     // Accounting Logic
     try {
         const captureInfo = captureData.purchase_units?.[0]?.payments?.captures?.[0];
@@ -74,6 +77,7 @@ export async function POST(req: NextRequest) {
                         amount: grossAmount,
                         description: `Publicação de Imóvel #${propertyId} (Facebook)`,
                         referenceId: orderID,
+                        userId: user?.id
                     },
                     {
                         type: "EXPENSE",
@@ -81,6 +85,7 @@ export async function POST(req: NextRequest) {
                         amount: feeAmount,
                         description: `Tarifa PayPal (Post Face)`,
                         referenceId: orderID,
+                        userId: user?.id
                     }
                 ]
             });
@@ -128,26 +133,9 @@ export async function POST(req: NextRequest) {
     
     const pageToken = pageInfo.access_token;
 
-    // Check if there's an old post to delete (for republishing)
-    const oldSession = await prisma.facebookFeedSession.findFirst({
-        where: { listingId: property.id, status: "PUBLISHED" },
-        orderBy: { createdAt: "desc" }
-    });
-
-    if (oldSession && oldSession.publishedPostId) {
-        try {
-            console.log("Deleting old fb post: " + oldSession.publishedPostId);
-            await fetch(`${BASE_GRAPH}/${oldSession.publishedPostId}?access_token=${pageToken}`, { method: 'DELETE' });
-            await prisma.facebookFeedSession.update({
-                where: { id: oldSession.id },
-                data: { status: 'DELETED' }
-            });
-        } catch(e) { console.error("Could not delete old post", e); }
-    }
-
     // Publish to Facebook Graph API
     const imagesToPost = property.images?.slice(0, 10) || [];
-    if (imagesToPost.length === 0) {
+    if (imagesToPost.length === 0 && postType === "carousel") {
         return NextResponse.json({
           success: false,
           error: "O anúncio precisa ter no mínimo 1 foto para publicar no Facebook. Pagamento aprovado, porém postagem falhou."
@@ -158,7 +146,27 @@ export async function POST(req: NextRequest) {
 
     let finalPostId = null;
 
-    if (imagesToPost.length === 1) {
+    if (postType === "reels" && property.reelsVideoUrl) {
+       // Publicar como VÍDEO (Reels no Facebook Page)
+       const videoParams = new URLSearchParams();
+       videoParams.append('file_url', property.reelsVideoUrl);
+       videoParams.append('description', caption);
+       videoParams.append('access_token', pageToken);
+
+       const createVideoRes = await fetch(`${BASE_GRAPH}/${pageId}/videos`, {
+           method: "POST",
+           body: videoParams
+       });
+       const videoData = await createVideoRes.json();
+       if (!createVideoRes.ok || !videoData.id) {
+           console.error("FB CREATE VIDEO ERROR", videoData);
+           return NextResponse.json({
+             success: false,
+             error: "Erro ao postar vídeo no Facebook. Mensagem: " + (videoData.error?.message || "Desconhecido")
+           }, { status: 500 });
+       }
+       finalPostId = videoData.id;
+    } else if (imagesToPost.length === 1) {
        // Apenas 1 foto, post simples
        const singleUrl = imagesToPost[0].imageUrl;
        
@@ -246,6 +254,7 @@ export async function POST(req: NextRequest) {
     await prisma.facebookFeedSession.create({
        data: {
          listingId: property.id,
+         postType: postType,
          status: "PUBLISHED",
          publishedPostId: finalPostId,
          allImageUrls: [],

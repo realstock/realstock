@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 401 });
     }
 
-    const { orderID, propertyId, dailyBudget, platform } = await req.json();
+    const { orderID, propertyId, dailyBudget, platform, postType } = await req.json();
 
     if (!orderID || !propertyId || !dailyBudget) {
       return NextResponse.json({ success: false, error: "Parâmetros inválidos." }, { status: 400 });
@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
         // Fallback: Busca antiga
         if (!sourceId) {
             const igSession = await prisma.instagramPreviewSession.findFirst({
-                where: { listingId: Number(propertyId), status: "PUBLISHED" },
+                where: { listingId: Number(propertyId), status: "PUBLISHED", postType: postType || "carousel" },
                 orderBy: { createdAt: "desc" }
             });
             sourceId = igSession?.publishedMediaId;
@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
         }
     } else if (platform === "facebook") {
         const fbSession = await prisma.facebookFeedSession.findFirst({
-            where: { listingId: Number(propertyId), status: "PUBLISHED" },
+            where: { listingId: Number(propertyId), status: "PUBLISHED", postType: postType || "carousel" },
             orderBy: { createdAt: "desc" }
         });
         sourceId = fbSession?.publishedPostId;
@@ -178,7 +178,7 @@ export async function POST(req: NextRequest) {
         
         if (!sourceId) {
             const igSession = await prisma.instagramPreviewSession.findFirst({
-                where: { listingId: Number(propertyId), status: "PUBLISHED" },
+                where: { listingId: Number(propertyId), status: "PUBLISHED", postType: postType || "carousel" },
                 orderBy: { createdAt: "desc" }
             });
             sourceId = igSession?.publishedMediaId;
@@ -186,7 +186,7 @@ export async function POST(req: NextRequest) {
 
         if (!sourceId) {
             const fbSession = await prisma.facebookFeedSession.findFirst({
-                where: { listingId: Number(propertyId), status: "PUBLISHED" },
+                where: { listingId: Number(propertyId), status: "PUBLISHED", postType: postType || "carousel" },
                 orderBy: { createdAt: "desc" }
             });
             sourceId = fbSession?.publishedPostId;

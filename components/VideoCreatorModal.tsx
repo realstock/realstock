@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Play, Download, Film, Loader2, Sparkles, Wand2, CheckCircle2, ShieldCheck, Rocket } from "lucide-react";
+import { X, Play, Download, Film, Loader2, Sparkles, Wand2, CheckCircle2, ShieldCheck, Rocket, Music } from "lucide-react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 
 interface VideoCreatorModalProps {
@@ -12,9 +12,10 @@ interface VideoCreatorModalProps {
   propertyState?: string | null;
   images: { imageUrl: string }[];
   propertyId: number;
+  onSuccess?: (videoUrl: string) => void;
 }
 
-export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, propertyCity, propertyState, images, propertyId }: VideoCreatorModalProps) {
+export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, propertyCity, propertyState, images, propertyId, onSuccess }: VideoCreatorModalProps) {
   const [step, setStep] = useState<"preview" | "generating" | "result">("preview");
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -24,8 +25,45 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
   const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
   const [isPaid, setIsPaid] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const recordingAudioRef = useRef<HTMLAudioElement | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+
+  const [includeMusic, setIncludeMusic] = useState(false);
+  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+  const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
+
+  const toggleAudioPreview = async () => {
+    try {
+      if (isPlayingPreview) {
+        audioPreviewRef.current?.pause();
+        setIsPlayingPreview(false);
+      } else {
+        const LOCAL_MUSIC_URL = "/music/trend-hype.mp3"; 
+        
+        if (!audioPreviewRef.current) {
+          audioPreviewRef.current = new Audio(LOCAL_MUSIC_URL);
+          audioPreviewRef.current.loop = true;
+        }
+        
+        if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        }
+        
+        if (audioContextRef.current.state === 'suspended') {
+          await audioContextRef.current.resume();
+        }
+
+        await audioPreviewRef.current.play();
+        setIsPlayingPreview(true);
+        setIncludeMusic(true);
+      }
+    } catch (err) {
+      console.error("Erro ao tocar prévia:", err);
+      setIsPlayingPreview(false);
+    }
+  };
 
   // Carrossel de prévia automática
   useEffect(() => {
@@ -40,6 +78,10 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
   if (!isOpen) return null;
 
   async function handleGenerateVideo() {
+    if (isPlayingPreview) {
+      audioPreviewRef.current?.pause();
+      setIsPlayingPreview(false);
+    }
     setStep("generating");
     setProgress(0);
     chunksRef.current = [];
@@ -47,14 +89,13 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
 
     // Configurações do vídeo (9:16 para Reels/Mobile)
     const width = 720;
     const height = 1280;
     canvas.width = width;
     canvas.height = height;
+    const ctx = canvas.getContext("2d")!;
 
     // 1. Pre-load de todas as imagens
     const loadedImages: HTMLImageElement[] = [];
@@ -81,25 +122,100 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
         return;
     }
 
-    const stream = canvas.captureStream(30); // 30 FPS
-    const recorder = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp9" });
+    const stream = canvas.captureStream(30); // Sincronizado com os 30fps da gravação
+    let finalStream = stream;
+
+    // 1.5 Preparar Áudio se solicitado
+    if (includeMusic) {
+      try {
+        if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        }
+        
+        const LOCAL_MUSIC_URL = "/music/trend-hype.mp3"; 
+
+        const audio = new Audio(LOCAL_MUSIC_URL);
+        audio.loop = true;
+        recordingAudioRef.current = audio;
+        
+        await new Promise((resolve) => {
+          audio.oncanplaythrough = resolve;
+          setTimeout(resolve, 3000);
+        });
+
+        const source = audioContextRef.current.createMediaElementSource(audio);
+        const gainNode = audioContextRef.current.createGain();
+        gainNode.gain.value = 0.8;
+        
+        const destination = audioContextRef.current.createMediaStreamDestination();
+        
+        source.connect(gainNode);
+        gainNode.connect(destination);
+        
+        const silenceGain = audioContextRef.current.createGain();
+        silenceGain.gain.value = 0;
+        gainNode.connect(silenceGain);
+        silenceGain.connect(audioContextRef.current.destination);
+
+        const audioTrack = destination.stream.getAudioTracks()[0];
+        if (audioTrack) {
+          finalStream = new MediaStream([
+            ...stream.getVideoTracks(),
+            audioTrack
+          ]);
+        }
+        
+        await audio.play();
+      } catch (err) {
+        console.warn("Erro ao configurar áudio:", err);
+      }
+    }
+
+    // 1.8 Seleção de codec simplificada para máxima compatibilidade
+    const mimeType = MediaRecorder.isTypeSupported('video/mp4') 
+      ? 'video/mp4' 
+      : 'video/webm';
+    
+    console.log("Iniciando gravação com MimeType:", mimeType);
+
+    chunksRef.current = [];
+    const recorder = new MediaRecorder(finalStream, { 
+      mimeType,
+      videoBitsPerSecond: 1500000 // Reduzido para 1.5Mbps para maior estabilidade
+    });
 
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) chunksRef.current.push(e.data);
     };
 
     recorder.onstop = () => {
-      const blob = new Blob(chunksRef.current, { type: "video/webm" });
-      setVideoBlob(blob);
-      setVideoUrl(URL.createObjectURL(blob));
+      console.log("Gravação finalizada. Total de chunks:", chunksRef.current.length);
       setStep("result");
       setProgress(100);
+      finalStream.getTracks().forEach(t => t.stop());
+      if (recordingAudioRef.current) {
+        recordingAudioRef.current.pause();
+        recordingAudioRef.current.currentTime = 0;
+        recordingAudioRef.current = null;
+      }
+      const blob = new Blob(chunksRef.current, { type: mimeType });
+      setVideoBlob(blob);
+      setVideoUrl(URL.createObjectURL(blob));
     };
 
-    recorder.start();
+    // Renderizar o PRIMEIRO QUADRO antes de começar o recorder (ajuda o Safari)
+    ctx.fillStyle = "#020617";
+    ctx.fillRect(0, 0, width, height);
+    if (loadedImages[0]) {
+      ctx.drawImage(loadedImages[0], 0, 0, width, height);
+    }
+    
+    // Pequena espera antes de começar de fato
+    await new Promise(r => setTimeout(r, 100));
+    recorder.start(1000);
 
-    // 2. Lógica de renderização frame-a-frame
-    const durationPerImage = 3; // segundos
+    // 2. Lógica de renderização frame-a-frame otimizada
+    const durationPerImage = 2.5; 
     const totalDuration = loadedImages.length * durationPerImage;
     const fps = 30;
     const totalFrames = totalDuration * fps;
@@ -109,7 +225,6 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
       const imageIndex = Math.floor(currentTime / durationPerImage);
       const imageProgress = (currentTime % durationPerImage) / durationPerImage;
       
-      // Barra de progresso vai de 20% a 100%
       setProgress(20 + Math.round((frame / totalFrames) * 80));
 
       const img = loadedImages[imageIndex];
@@ -166,16 +281,21 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
       ctx.fillStyle = "#38bdf8";
       ctx.fillRect(width / 2 - 120, titleY + 90, 240, 4);
 
-      // Texto: RealStock Brand
-      ctx.fillStyle = "white";
-      ctx.font = "bold 32px Inter, sans-serif";
-      ctx.fillText("WWW.REALSTOCK.COM.BR", width / 2, titleY + 140);
+      // Desenhar site/footer
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      ctx.font = "500 24px Inter, sans-serif";
+      ctx.fillText("www.realstock.com.br", width / 2, height - 60);
 
-      // Pequeno delay para garantir que o frame foi renderizado e capturado
-      await new Promise(r => setTimeout(r, 33)); // ~30fps
+      // Sincronizar com a gravação
+      await new Promise(resolve => requestAnimationFrame(resolve));
     }
 
     recorder.stop();
+    // Limpeza de áudio será feita pelo browser ou por referência se necessário
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
   }
 
   return (
@@ -264,6 +384,29 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
                   <div className="text-xs text-slate-500 mt-1">Título e site adicionados com design moderno.</div>
                 </div>
               </div>
+
+              <div className="flex items-center justify-between gap-4 rounded-2xl bg-indigo-500/10 p-4 border border-indigo-500/20">
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={toggleAudioPreview}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-bold text-[10px] transition-all ${isPlayingPreview ? 'bg-indigo-500 text-white animate-pulse' : 'bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30'}`}
+                    title={isPlayingPreview ? "Pausar Prévia" : "Ouvir Prévia"}
+                  >
+                    {isPlayingPreview ? <Music size={14} /> : <Play size={14} />}
+                    {isPlayingPreview ? "TOCANDO" : "OUVIR"}
+                  </button>
+                  <div>
+                    <div className="text-sm font-bold text-white">Trilha Sonora Trend</div>
+                    <div className="text-[10px] text-slate-400 uppercase font-black">Modern Ambient / Luxury</div>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIncludeMusic(!includeMusic)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${includeMusic ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${includeMusic ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
             </div>
 
             <div className="mt-12 flex flex-col gap-3">
@@ -288,7 +431,7 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
                           className="flex items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 py-3 text-sm font-bold text-white transition-all hover:bg-white/10"
                         >
                           <Download size={18} />
-                          Baixar Grátis (WEBM)
+                          Baixar Vídeo (WEBM)
                         </a>
 
                         {!isPaid ? (
@@ -298,62 +441,41 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
                                <Rocket size={14} /> Power Up: Reels Automático
                             </div>
                             <p className="text-[11px] text-slate-500 mb-4 italic">
-                               Ao incorporar, o vídeo ficará salvo no seu anúncio e você poderá postá-lo como Reels no Instagram com 1 clique.
+                               O vídeo ficará salvo no seu anúncio e você poderá postá-lo como Reels no Instagram com 1 clique. (GRATUITO)
                             </p>
                             
-                            {!paypalOrderId ? (
-                              <button 
-                                onClick={async () => {
-                                  try {
-                                    setIsIncorporateLoading(true);
-                                    const res = await fetch("/api/paypal/create-reels-order", { 
-                                      method: "POST",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({ propertyId })
-                                    });
-                                    const data = await res.json();
-                                    if (data.success) setPaypalOrderId(data.paypal_order_id);
-                                    else throw new Error(data.error);
-                                  } catch (e: any) {
-                                    alert("Erro ao preparar pagamento: " + e.message);
-                                  } finally {
-                                    setIsIncorporateLoading(false);
-                                  }
-                                }}
-                                disabled={isIncorporateLoading}
-                                className="flex items-center justify-center gap-2 rounded-2xl bg-indigo-500 py-4 font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-400 active:scale-95 disabled:opacity-50"
-                              >
-                                {isIncorporateLoading ? <Loader2 className="animate-spin" size={18} /> : <Film size={18} />}
-                                Incorporar ao Anúncio
-                              </button>
-                            ) : (
-                              <PayPalScriptProvider options={{ clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "", currency: "BRL" }}>
-                                <PayPalButtons 
-                                  style={{ layout: "vertical", shape: "rect" }}
-                                  createOrder={async () => paypalOrderId}
-                                  onApprove={async (data) => {
-                                    try {
-                                      setIsIncorporateLoading(true);
-                                      const formData = new FormData();
-                                      formData.append("file", videoBlob!, `video-${propertyId}.webm`);
-                                      formData.append("orderID", data.orderID);
-                                      formData.append("propertyId", propertyId.toString());
+                            <button 
+                              onClick={async () => {
+                                try {
+                                  setIsIncorporateLoading(true);
+                                  const formData = new FormData();
+                                  formData.append("file", videoBlob!, `video-${propertyId}.webm`);
+                                  formData.append("orderID", "FREE");
+                                  formData.append("propertyId", propertyId.toString());
 
-                                      const res = await fetch("/api/minha-conta/video-upload", { method: "POST", body: formData });
-                                      const result = await res.json();
-                                      if (result.success) {
-                                        setIsPaid(true);
-                                        alert("Sucesso! O vídeo agora faz parte do seu anúncio.");
-                                      } else throw new Error(result.error);
-                                    } catch (e: any) {
-                                      alert("Erro ao finalizar incorporação: " + e.message);
-                                    } finally {
-                                      setIsIncorporateLoading(false);
-                                    }
-                                  }}
-                                />
-                              </PayPalScriptProvider>
-                            )}
+                                  const res = await fetch("/api/minha-conta/video-upload", { 
+                                    method: "POST", 
+                                    body: formData 
+                                  });
+                                  const result = await res.json();
+                                  
+                                  if (result.success) {
+                                    setIsPaid(true);
+                                    if (onSuccess) onSuccess(result.videoUrl);
+                                    alert("Sucesso! O vídeo agora faz parte do seu anúncio.");
+                                  } else throw new Error(result.error);
+                                } catch (e: any) {
+                                  alert("Erro ao finalizar incorporação: " + e.message);
+                                } finally {
+                                  setIsIncorporateLoading(false);
+                                }
+                              }}
+                              disabled={isIncorporateLoading}
+                              className="flex items-center justify-center gap-2 rounded-2xl bg-indigo-500 py-4 font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-400 active:scale-95 disabled:opacity-50"
+                            >
+                              {isIncorporateLoading ? <Loader2 className="animate-spin" size={18} /> : <Film size={18} />}
+                              Incorporar ao Anúncio Agora
+                            </button>
                           </>
                         ) : (
                           <div className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 py-4 font-bold text-emerald-400">

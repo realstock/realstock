@@ -196,7 +196,8 @@ export async function POST(req: NextRequest) {
 
     // Wait for Instagram backend to deeply process the Media Container before attempting to publish
     let isReady = false;
-    for (let attempt = 0; attempt < 6; attempt++) {
+    const maxAttempts = 30; // 90 seconds total
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
         // Sleep for 3 seconds between polls
         await new Promise(r => setTimeout(r, 3000));
         
@@ -247,6 +248,7 @@ export async function POST(req: NextRequest) {
     await prisma.instagramPreviewSession.create({
        data: {
          listingId: property.id,
+         postType: postType,
          status: "PUBLISHED",
          publishedMediaId: publishData.id,
          allImageUrls: [],
