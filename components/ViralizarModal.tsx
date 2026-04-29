@@ -164,7 +164,11 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-lg max-h-[95vh] overflow-y-auto flex flex-col rounded-[32px] border border-white/10 bg-slate-950 p-5 md:p-6 shadow-2xl">
+      <style jsx global>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
+      <div className="relative w-full max-w-lg max-h-[98vh] overflow-y-auto no-scrollbar flex flex-col rounded-[32px] border border-white/10 bg-slate-950 p-5 md:p-6 shadow-2xl">
         {/* Background Glow */}
         <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-purple-500/10 blur-3xl" />
         <div className="absolute -left-24 -bottom-24 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
@@ -219,13 +223,18 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
                </div>
                 <button 
                   onClick={handleStartViralizar}
-                  disabled={isStarting || isLoadingFees}
+                  disabled={isStarting || isLoadingFees || !!paypalOrderId}
                   className="group flex items-center gap-2 rounded-xl bg-purple-500 px-6 py-4 font-bold text-white transition-all hover:bg-purple-400 shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isStarting ? (
                     <>
                       <Loader2 size={18} className="animate-spin" />
                       Processando...
+                    </>
+                  ) : paypalOrderId ? (
+                    <>
+                      Aguardando Pagamento
+                      <CheckCircle2 size={18} />
                     </>
                   ) : (
                     <>
@@ -235,6 +244,24 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
                   )}
                 </button>
             </div>
+
+            {paypalOrderId && (
+              <div className="mt-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                  <p className="text-center text-xs text-slate-400 mb-4">Finalize com o PayPal abaixo:</p>
+                  <PayPalScriptProvider options={{ clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || process.env.PAYPAL_CLIENT_ID || "", currency: "BRL" }}>
+                    <PayPalButtons 
+                      style={{ layout: "vertical", shape: "rect", height: 45 }}
+                      createOrder={async () => paypalOrderId}
+                      onApprove={async (data) => {
+                        executeBundle(data.orderID);
+                      }}
+                    />
+                  </PayPalScriptProvider>
+                </div>
+              </div>
+            )}
+
             <div className="mt-4 rounded-2xl bg-white/5 border border-white/5 p-3">
               <p className="text-[10px] text-slate-400 leading-relaxed text-center italic">
                 Após a ativação desse serviço você poderá contratar qualquer serviço de impulsionamento da Meta e do Google diretamente do site da RealStock, podendo escolher qual impulsionar, além de destacar e colocar o anúncio nos primeiros da lista de pesquisa do site.
@@ -243,22 +270,6 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
           </div>
         )}
 
-        {step === "payment" && paypalOrderId && (
-          <div className="relative z-10 text-center py-8">
-            <h2 className="text-2xl font-bold mb-4">Finalize o Pagamento</h2>
-            <p className="text-slate-400 mb-8 text-sm">Use o PayPal para ativar seu pacote Viralizar com segurança.</p>
-            
-            <PayPalScriptProvider options={{ clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "", currency: "BRL" }}>
-              <PayPalButtons 
-                style={{ layout: "vertical", shape: "rect" }}
-                createOrder={async () => paypalOrderId}
-                onApprove={async (data) => {
-                  executeBundle(data.orderID);
-                }}
-              />
-            </PayPalScriptProvider>
-          </div>
-        )}
 
         {step === "executing" && (
           <div className="relative z-10 text-center py-12">
