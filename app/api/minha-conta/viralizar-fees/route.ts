@@ -4,10 +4,16 @@ import { prisma } from "@/lib/prisma";
 export async function GET() {
   try {
     // Buscar todos os serviços ativos e suas taxas
-    const services = await prisma.siteService.findMany({
-      where: { isActive: true },
-      include: { fee: true }
-    });
+    let services: any[] = [];
+    try {
+      services = await prisma.siteService.findMany({
+        where: { isActive: true },
+        include: { fee: true }
+      });
+    } catch (dbError) {
+      console.warn("DB Connection failed in viralizar-fees, using defaults:", dbError);
+    }
+
 
     // Mapear para um formato fácil de usar no modal Viralizar
     // O objetivo é encontrar os serviços específicos do pacote
