@@ -18,15 +18,41 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
   const [currentAction, setCurrentAction] = useState("");
   const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
   
-  const BUNDLE_PRICE = 99.00; // 50% de desconto de R$ 198,00
+  const [viralizarServices, setViralizarServices] = useState<any[]>([]);
+  const [isLoadingFees, setIsLoadingFees] = useState(true);
 
-  const services = [
-    { id: "google", name: "Patrocinar Site (Google Ads)", icon: <Globe size={16} /> },
-    { id: "video", name: "Criar Vídeo IA", icon: <Film size={16} /> },
-    { id: "ig_carousel", name: "Postar Carrossel Instagram", icon: <Camera size={16} /> },
-    { id: "ig_reels", name: "Postar Reel Instagram", icon: <Camera size={16} /> },
-    { id: "fb_carousel", name: "Postar Carrossel Facebook", icon: <Share2 size={16} /> },
-  ];
+  useEffect(() => {
+    async function fetchFees() {
+      try {
+        const res = await fetch("/api/minha-conta/viralizar-fees");
+        const data = await res.json();
+        if (data.success) {
+          const icons: Record<string, any> = {
+            google: <Globe size={16} />,
+            video: <Film size={16} />,
+            ig_carousel: <Camera size={16} />,
+            ig_reels: <Camera size={16} />,
+            fb_carousel: <Share2 size={16} />,
+            fb_reels: <Share2 size={16} />,
+          };
+          
+          setViralizarServices(data.services.map((s: any) => ({
+            ...s,
+            icon: icons[s.id] || <Sparkles size={16} />
+          })));
+        }
+      } catch (e) {
+        console.error("Erro ao buscar taxas", e);
+      } finally {
+        setIsLoadingFees(false);
+      }
+    }
+    fetchFees();
+  }, []);
+
+  const totalOriginal = viralizarServices.reduce((acc, s) => acc + (s.value || 0), 0);
+  const bundlePrice = totalOriginal / 2;
+
 
   useEffect(() => {
     if (step === "success") {
@@ -59,7 +85,7 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
       const res = await fetch("/api/paypal/create-viralizar-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ propertyId, amount: BUNDLE_PRICE }),
+        body: JSON.stringify({ propertyId, amount: bundlePrice }),
       });
       const data = await res.json();
       if (data.success) {
@@ -79,11 +105,12 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
 
     const actions = [
       { id: "capture", label: "Confirmando pagamento...", weight: 10 },
-      { id: "google", label: "Configurando Google Ads...", weight: 20 },
-      { id: "video", label: "Gerando Vídeo IA...", weight: 25 },
+      { id: "google", label: "Configurando Patrocínio...", weight: 15 },
+      { id: "video", label: "Gerando Vídeo IA...", weight: 15 },
       { id: "meta_ig", label: "Publicando no Instagram...", weight: 15 },
       { id: "meta_reels", label: "Publicando Reels...", weight: 15 },
       { id: "meta_fb", label: "Publicando no Facebook...", weight: 15 },
+      { id: "meta_fb_reels", label: "Publicando Reels Facebook...", weight: 15 },
     ];
 
     let currentProgress = 0;
@@ -144,31 +171,35 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
             <div className="flex items-center gap-2 text-purple-400 font-bold text-[10px] uppercase tracking-widest mb-2">
               <Zap size={14} className="fill-purple-400" /> Pacote Viralizar
             </div>
-            <h2 className="text-3xl font-black text-white">Domine a Internet</h2>
+            <h2 className="text-3xl font-black text-white">Deixe seu anuncio preparado para poder ser impulsionado nas redes socials</h2>
             <p className="mt-3 text-slate-400 text-sm leading-relaxed">
-              Ative todos os nossos serviços de marketing de uma vez e coloque seu anúncio no topo do Google e das Redes Sociais.
+              Ative todos os nossos serviços de marketing de uma vez e economize agora.
             </p>
 
             <div className="mt-8 space-y-3">
-              {services.map((s, idx) => (
+              {viralizarServices.map((s, idx) => (
                 <div key={idx} className="flex items-center justify-between rounded-2xl bg-white/5 border border-white/5 p-4 transition-all hover:bg-white/10">
                   <div className="flex items-center gap-3">
                     <div className="bg-purple-500/20 p-2 rounded-lg text-purple-400">
                       {s.icon}
                     </div>
-                    <span className="text-sm font-semibold text-slate-200">{s.name}</span>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-slate-200">{s.name}</span>
+                      <span className="text-[10px] text-slate-500">R$ {Number(s.value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                    </div>
                   </div>
                   <div className="text-[10px] font-bold text-slate-500">INCLUSO</div>
                 </div>
               ))}
+              {isLoadingFees && <div className="text-center text-xs text-slate-500 animate-pulse">Carregando taxas...</div>}
             </div>
 
             <div className="mt-8 flex items-center justify-between bg-gradient-to-r from-purple-600/20 to-indigo-600/20 rounded-2xl p-6 border border-purple-500/30">
                <div>
                   <div className="text-[10px] font-black text-purple-400 uppercase tracking-tighter">Oferta Exclusiva</div>
                   <div className="flex items-baseline gap-2">
-                     <span className="text-slate-500 line-through text-sm">R$ 198,00</span>
-                     <span className="text-3xl font-black text-white">R$ 99,00</span>
+                     <span className="text-slate-500 line-through text-sm">R$ {totalOriginal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                     <span className="text-3xl font-black text-white">R$ {bundlePrice.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="text-[10px] text-emerald-400 font-bold uppercase mt-1">50% de Desconto Ativado</div>
                </div>
