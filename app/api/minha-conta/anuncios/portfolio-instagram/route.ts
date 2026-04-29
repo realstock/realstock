@@ -70,9 +70,18 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const instagramPosts = await prisma.instagramPreviewSession.findMany({
+      where: {
+        listingId: 0, // PORTFOLIO
+        status: "PUBLISHED",
+      },
+    });
+
     return NextResponse.json({
       success: true,
       properties,
+      instagramPosts,
+      portfolioVideoUrl: user.portfolioVideoUrl,
       service: {
         id: service.id,
         name: service.name + " (Portfólio Completo)",

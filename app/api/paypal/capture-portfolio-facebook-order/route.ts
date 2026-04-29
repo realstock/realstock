@@ -28,13 +28,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 401 });
     }
 
-    const { orderID, selectedPropertyIds } = await req.json();
+    const { orderID, selectedPropertyIds, postType } = await req.json();
 
     if (!orderID || !Array.isArray(selectedPropertyIds) || selectedPropertyIds.length === 0) {
       return NextResponse.json({ success: false, error: "Parâmetros inválidos ou nenhum imóvel selecionado." }, { status: 400 });
     }
 
-    if (selectedPropertyIds.length > 10) {
+    if (postType === "carousel" && selectedPropertyIds.length > 10) {
       return NextResponse.json({ success: false, error: "O limite do Facebook é de 10 fotos por carrossel." }, { status: 400 });
     }
 
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
                         type: "REVENUE",
                         category: "POSTS",
                         amount: grossAmount,
-                        description: `Publicação de Portfólio (Facebook)`,
+                        description: `Publicação de Portfólio (Facebook ${postType})`,
                         referenceId: orderID,
                     },
                     {
@@ -83,21 +83,6 @@ export async function POST(req: NextRequest) {
 
     const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!user) return NextResponse.json({ success: false, error: "Usuário não encontrado." }, { status: 404 });
-
-    const properties = await prisma.property.findMany({
-      where: { 
-         ownerId: user.id,
-         id: { in: selectedPropertyIds.map(Number) }
-      },
-      include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
-      orderBy: { createdAt: "desc" },
-    });
-
-    const propertiesWithImages = properties.filter(p => p.images && p.images.length > 0);
-
-    if (propertiesWithImages.length === 0) {
-        return NextResponse.json({ success: false, error: "Nenhum anúncio com foto encontrado para o portfólio." }, { status: 400 });
-    }
 
     const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
     const pageId = process.env.FACEBOOK_PAGE_ID;
@@ -142,63 +127,100 @@ export async function POST(req: NextRequest) {
 
     let finalPostId = null;
 
-    if (propertiesWithImages.length === 1) {
-       const singleUrl = propertiesWithImages[0].images[0].imageUrl;
-       
-       const urlParams = new URLSearchParams();
-       urlParams.append('url', singleUrl);
-       urlParams.append('message', caption);
-       urlParams.append('access_token', pageToken);
+    if (postType === "reels") {
+        if (!user.portfolioVideoUrl) {
+            return NextResponse.json({ success: false, error: "Vídeo do portfólio não encontrado." }, { status: 400 });
+        }
 
-       const createMediaRes = await fetch(`${BASE_GRAPH}/${pageId}/photos`, {
-           method: "POST",
-           body: urlParams
-       });
+        const videoParams = new URLSearchParams();
+        videoParams.append('file_url', user.portfolioVideoUrl);
+        videoParams.append('description', caption);
+        videoParams.append('access_token', pageToken);
 
-       const mediaData = await createMediaRes.json();
-       
-       if (!createMediaRes.ok || !mediaData.post_id) {
-          console.error("FB CREATE MEDIA ERROR", mediaData);
-          return NextResponse.json({ success: false, error: "Erro ao criar foto no Facebook Page." }, { status: 500 });
-       }
-       finalPostId = mediaData.post_id;
+        const createVideoRes = await fetch(`${BASE_GRAPH}/${pageId}/videos`, {
+            method: "POST",
+            body: videoParams
+        });
+        const videoData = await createVideoRes.json();
+        if (!createVideoRes.ok || !videoData.id) {
+            console.error("FB VIDEO ERROR", videoData);
+            return NextResponse.json({ success: false, error: "Erro ao postar vídeo no Facebook." }, { status: 500 });
+        }
+        finalPostId = videoData.id;
     } else {
-       const attachedMedia = [];
-       for (const prop of propertiesWithImages) {
-           const urlParams = new URLSearchParams();
-           urlParams.append('url', prop.images[0].imageUrl);
-           urlParams.append('published', 'false');
-           urlParams.append('access_token', pageToken);
+        const properties = await prisma.property.findMany({
+          where: { 
+             ownerId: user.id,
+             id: { in: selectedPropertyIds.map(Number) }
+          },
+          include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+          orderBy: { createdAt: "desc" },
+        });
+
+        const propertiesWithImages = properties.filter(p => p.images && p.images.length > 0);
+
+        if (propertiesWithImages.length === 0) {
+            return NextResponse.json({ success: false, error: "Nenhum anúncio com foto encontrado para o portfólio." }, { status: 400 });
+        }
+
+        if (propertiesWithImages.length === 1) {
+           const singleUrl = propertiesWithImages[0].images[0].imageUrl;
            
-           const res = await fetch(`${BASE_GRAPH}/${pageId}/photos`, {
+           const urlParams = new URLSearchParams();
+           urlParams.append('url', singleUrl);
+           urlParams.append('message', caption);
+           urlParams.append('access_token', pageToken);
+
+           const createMediaRes = await fetch(`${BASE_GRAPH}/${pageId}/photos`, {
                method: "POST",
                body: urlParams
            });
+
+           const mediaData = await createMediaRes.json();
            
-           const data = await res.json();
-           if (!res.ok || !data.id) {
-               console.error("FB CREATE PHOTO ITEM ERROR", data);
-               return NextResponse.json({ success: false, error: "Erro ao upar foto da galeria." }, { status: 500 });
+           if (!createMediaRes.ok || !mediaData.post_id) {
+              console.error("FB CREATE MEDIA ERROR", mediaData);
+              return NextResponse.json({ success: false, error: "Erro ao criar foto no Facebook Page." }, { status: 500 });
            }
-           attachedMedia.push({ media_fbid: data.id });
-       }
+           finalPostId = mediaData.post_id;
+        } else {
+           const attachedMedia = [];
+           for (const prop of propertiesWithImages) {
+               const urlParams = new URLSearchParams();
+               urlParams.append('url', prop.images[0].imageUrl);
+               urlParams.append('published', 'false');
+               urlParams.append('access_token', pageToken);
+               
+               const res = await fetch(`${BASE_GRAPH}/${pageId}/photos`, {
+                   method: "POST",
+                   body: urlParams
+               });
+               
+               const data = await res.json();
+               if (!res.ok || !data.id) {
+                   console.error("FB CREATE PHOTO ITEM ERROR", data);
+                   return NextResponse.json({ success: false, error: "Erro ao upar foto da galeria." }, { status: 500 });
+               }
+               attachedMedia.push({ media_fbid: data.id });
+           }
 
-       const feedParams = new URLSearchParams();
-       feedParams.append('message', caption);
-       feedParams.append('attached_media', JSON.stringify(attachedMedia));
-       feedParams.append('access_token', pageToken);
+           const feedParams = new URLSearchParams();
+           feedParams.append('message', caption);
+           feedParams.append('attached_media', JSON.stringify(attachedMedia));
+           feedParams.append('access_token', pageToken);
 
-       const createFeedRes = await fetch(`${BASE_GRAPH}/${pageId}/feed`, { 
-         method: "POST",
-         body: feedParams
-       });
-       const feedData = await createFeedRes.json();
-       
-       if (!createFeedRes.ok || !feedData.id) {
-           console.error("FB CREATE FEED ERROR", feedData);
-           return NextResponse.json({ success: false, error: "Erro ao criar post em galeria no Facebook." }, { status: 500 });
-       }
-       finalPostId = feedData.id;
+           const createFeedRes = await fetch(`${BASE_GRAPH}/${pageId}/feed`, { 
+             method: "POST",
+             body: feedParams
+           });
+           const feedData = await createFeedRes.json();
+           
+           if (!createFeedRes.ok || !feedData.id) {
+               console.error("FB CREATE FEED ERROR", feedData);
+               return NextResponse.json({ success: false, error: "Erro ao criar post em galeria no Facebook." }, { status: 500 });
+           }
+           finalPostId = feedData.id;
+        }
     }
 
     let permalink = "";
@@ -215,6 +237,7 @@ export async function POST(req: NextRequest) {
          listingId: 0, // 0 = PORTFOLIO
          status: "PUBLISHED",
          publishedPostId: finalPostId,
+         postType: postType === "reels" ? "reels" : "carousel",
          allImageUrls: [],
          selectedImages: [],
          validationReport: { permalink, isPortfolio: true },

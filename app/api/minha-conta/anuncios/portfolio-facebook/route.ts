@@ -70,9 +70,18 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const facebookPosts = await prisma.facebookFeedSession.findMany({
+      where: {
+        listingId: 0, // PORTFOLIO
+        status: "PUBLISHED",
+      },
+    });
+
     return NextResponse.json({
       success: true,
       properties,
+      facebookPosts,
+      portfolioVideoUrl: user.portfolioVideoUrl,
       service: {
         id: service.id,
         name: service.name + " (Portfólio Completo)",

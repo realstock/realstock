@@ -28,13 +28,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 401 });
     }
 
-    const { orderID, selectedPropertyIds } = await req.json();
+    const { orderID, selectedPropertyIds, postType } = await req.json();
 
     if (!orderID || !Array.isArray(selectedPropertyIds) || selectedPropertyIds.length === 0) {
       return NextResponse.json({ success: false, error: "Parâmetros inválidos ou nenhum imóvel selecionado." }, { status: 400 });
     }
 
-    if (selectedPropertyIds.length > 10) {
+    if (postType === "carousel" && selectedPropertyIds.length > 10) {
       return NextResponse.json({ success: false, error: "O limite do Instagram é de 10 fotos por carrossel." }, { status: 400 });
     }
 
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
                         type: "REVENUE",
                         category: "POSTS",
                         amount: grossAmount,
-                        description: `Publicação de Portfólio (Instagram)`,
+                        description: `Publicação de Portfólio (Instagram ${postType})`,
                         referenceId: orderID,
                     },
                     {
@@ -84,21 +84,6 @@ export async function POST(req: NextRequest) {
     const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!user) return NextResponse.json({ success: false, error: "Usuário não encontrado." }, { status: 404 });
 
-    const properties = await prisma.property.findMany({
-      where: { 
-         ownerId: user.id,
-         id: { in: selectedPropertyIds.map(Number) }
-      },
-      include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
-      orderBy: { createdAt: "desc" },
-    });
-
-    const propertiesWithImages = properties.filter(p => p.images && p.images.length > 0);
-
-    if (propertiesWithImages.length === 0) {
-        return NextResponse.json({ success: false, error: "Nenhum anúncio com foto encontrado para o portfólio." }, { status: 400 });
-    }
-
     const igUserId = process.env.INSTAGRAM_IG_USER_ID;
     const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
 
@@ -106,40 +91,86 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Credenciais do Instagram não configuradas." }, { status: 500 });
     }
 
-    const caption = `🌟 Conheça nosso Portfólio de Imóveis!\n\nConfira as novidades e melhores oportunidades passando para o lado 👉\n\nEntre em contato ou acesse nosso site para mais detalhes de cada imóvel!`;
+    const caption = `🌟 Conheça nosso Portfólio de Imóveis!\n\nConfira as novidades e melhores oportunidades da RealStock!\n\nEntre em contato ou acesse nosso site para mais detalhes de cada imóvel!`;
 
     let finalMediaId = null;
 
-    if (propertiesWithImages.length === 1) {
-       const createMediaRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media?image_url=${encodeURIComponent(propertiesWithImages[0].images[0].imageUrl)}&caption=${encodeURIComponent(caption)}&access_token=${igToken}`, { method: "POST" });
-       const mediaData = await createMediaRes.json();
-       if (!createMediaRes.ok || !mediaData.id) return NextResponse.json({ success: false, error: "Erro ao criar mídia." }, { status: 500 });
-       finalMediaId = mediaData.id;
-    } else {
-       const childrenIds: string[] = [];
-       try {
-           const uploadPromises = propertiesWithImages.map(async (prop) => {
-               const res = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media?image_url=${encodeURIComponent(prop.images[0].imageUrl)}&is_carousel_item=true&access_token=${igToken}`, { method: "POST" });
-               const data = await res.json();
-               if (!res.ok || !data.id) throw new Error(data.error?.message || "Erro desconhecido ao upar item.");
-               return data.id;
-           });
-           
-           const ids = await Promise.all(uploadPromises);
-           childrenIds.push(...ids);
-       } catch (err: any) {
-           return NextResponse.json({ success: false, error: "Erro ao upar itens do carrossel: " + err.message }, { status: 500 });
+    if (postType === "reels") {
+       if (!user.portfolioVideoUrl) {
+          return NextResponse.json({ success: false, error: "Vídeo do portfólio não encontrado. Gere o vídeo primeiro." }, { status: 400 });
        }
+       
+       const createMediaRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media?video_url=${encodeURIComponent(user.portfolioVideoUrl)}&media_type=REELS&caption=${encodeURIComponent(caption)}&access_token=${igToken}`, { method: "POST" });
+       const mediaData = await createMediaRes.json();
+       if (!createMediaRes.ok || !mediaData.id) {
+          console.error("FB REELS ERROR", mediaData);
+          return NextResponse.json({ success: false, error: "Erro ao criar Reels." }, { status: 500 });
+       }
+       finalMediaId = mediaData.id;
 
-       const createCarouselRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media?media_type=CAROUSEL&children=${childrenIds.join(',')}&caption=${encodeURIComponent(caption)}&access_token=${igToken}`, { method: "POST" });
-       const carouselData = await createCarouselRes.json();
-       if (!createCarouselRes.ok || !carouselData.id) return NextResponse.json({ success: false, error: "Erro ao criar carrossel." }, { status: 500 });
-       finalMediaId = carouselData.id;
+       // Reels needs status check
+       let ready = false;
+       for (let i = 0; i < 10; i++) {
+          await new Promise(r => setTimeout(r, 3000));
+          const checkRes = await fetch(`https://graph.facebook.com/v19.0/${finalMediaId}?fields=status_code&access_token=${igToken}`);
+          const checkData = await checkRes.json();
+          if (checkData.status_code === 'FINISHED') {
+             ready = true;
+             break;
+          }
+       }
+       if (!ready) return NextResponse.json({ success: false, error: "O vídeo ainda está sendo processado pelo Instagram. Tente publicar novamente em instantes." }, { status: 500 });
+
+    } else {
+        const properties = await prisma.property.findMany({
+          where: { 
+             ownerId: user.id,
+             id: { in: selectedPropertyIds.map(Number) }
+          },
+          include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+          orderBy: { createdAt: "desc" },
+        });
+
+        const propertiesWithImages = properties.filter(p => p.images && p.images.length > 0);
+
+        if (propertiesWithImages.length === 0) {
+            return NextResponse.json({ success: false, error: "Nenhum anúncio com foto encontrado para o portfólio." }, { status: 400 });
+        }
+
+        if (propertiesWithImages.length === 1) {
+           const createMediaRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media?image_url=${encodeURIComponent(propertiesWithImages[0].images[0].imageUrl)}&caption=${encodeURIComponent(caption)}&access_token=${igToken}`, { method: "POST" });
+           const mediaData = await createMediaRes.json();
+           if (!createMediaRes.ok || !mediaData.id) return NextResponse.json({ success: false, error: "Erro ao criar mídia." }, { status: 500 });
+           finalMediaId = mediaData.id;
+        } else {
+           const childrenIds: string[] = [];
+           try {
+               const uploadPromises = propertiesWithImages.map(async (prop) => {
+                   const res = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media?image_url=${encodeURIComponent(prop.images[0].imageUrl)}&is_carousel_item=true&access_token=${igToken}`, { method: "POST" });
+                   const data = await res.json();
+                   if (!res.ok || !data.id) throw new Error(data.error?.message || "Erro desconhecido ao upar item.");
+                   return data.id;
+               });
+               
+               const ids = await Promise.all(uploadPromises);
+               childrenIds.push(...ids);
+           } catch (err: any) {
+               return NextResponse.json({ success: false, error: "Erro ao upar itens do carrossel: " + err.message }, { status: 500 });
+           }
+
+           const createCarouselRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media?media_type=CAROUSEL&children=${childrenIds.join(',')}&caption=${encodeURIComponent(caption)}&access_token=${igToken}`, { method: "POST" });
+           const carouselData = await createCarouselRes.json();
+           if (!createCarouselRes.ok || !carouselData.id) return NextResponse.json({ success: false, error: "Erro ao criar carrossel." }, { status: 500 });
+           finalMediaId = carouselData.id;
+        }
     }
 
     const publishRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media_publish?creation_id=${finalMediaId}&access_token=${igToken}`, { method: "POST" });
     const publishData = await publishRes.json();
-    if (!publishRes.ok || !publishData.id) return NextResponse.json({ success: false, error: "Erro ao publicar." }, { status: 500 });
+    if (!publishRes.ok || !publishData.id) {
+       console.error("PUBLISH ERROR", publishData);
+       return NextResponse.json({ success: false, error: "Erro ao publicar." }, { status: 500 });
+    }
 
     let permalink = "";
     try {
@@ -153,6 +184,7 @@ export async function POST(req: NextRequest) {
          listingId: 0, // 0 = PORTFOLIO
          status: "PUBLISHED",
          publishedMediaId: publishData.id,
+         postType: postType === "reels" ? "reels" : "carousel",
          allImageUrls: [],
          selectedImages: [],
          validationReport: { permalink, isPortfolio: true },
