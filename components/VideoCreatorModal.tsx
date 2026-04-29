@@ -215,7 +215,8 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
     recorder.start(1000);
 
     // 2. Lógica de renderização frame-a-frame otimizada
-    const durationPerImage = 3.5; // Slower transition (from 2.5 to 3.5)
+    const targetTotalDuration = 60; // Máximo de 60 segundos para Reels/Ads
+    const durationPerImage = Math.min(targetTotalDuration / loadedImages.length, 7.0); // Dividindo o tempo total pelas fotos, máximo 7s cada
     const totalDuration = loadedImages.length * durationPerImage;
     const fps = 30;
     const totalFrames = totalDuration * fps;
