@@ -160,6 +160,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Liberar contatos para todo o imóvel (pagamento único por imóvel)
+    await prisma.property.update({
+      where: { id: payment.propertyId },
+      data: { contactFeePaidAt: new Date() }
+    });
+
     return NextResponse.json({
       success: true,
       paymentStatus: "paid",

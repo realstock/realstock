@@ -66,6 +66,14 @@ export async function POST(req: NextRequest) {
     const acceptedOfferValue = Number(offer.offerPrice);
     const paymentAmount = Number(((2 * acceptedOfferValue) / 10000).toFixed(2));
 
+    if (property.contactFeePaidAt) {
+      return NextResponse.json({
+        success: true,
+        already_paid: true,
+        message: "Os contatos deste imóvel já foram liberados por um pagamento anterior."
+      });
+    }
+
     let payment = await prisma.offerPayment.findFirst({
       where: { offerId: offer.id },
     });

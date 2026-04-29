@@ -70,9 +70,11 @@ export async function GET(
 
     const paymentsMap = new Map(payments.map((payment) => [payment.offerId, payment]));
 
+    const isContactFeePaid = !!property.contactFeePaidAt;
+
     const safeOffers = offers.map((offer, index) => {
       const payment = paymentsMap.get(offer.id);
-      const contactReleased = Boolean(payment?.contactReleased);
+      const contactReleased = isContactFeePaid || Boolean(payment?.contactReleased);
 
       return {
         id: offer.id,
@@ -104,6 +106,7 @@ export async function GET(
         city: property.city,
         state: property.state,
         neighborhood: property.neighborhood,
+        contactFeePaidAt: property.contactFeePaidAt,
       },
       offers: safeOffers,
     });

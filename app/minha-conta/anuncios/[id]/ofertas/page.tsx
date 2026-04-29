@@ -129,6 +129,11 @@ export default function GerenciarOfertasPage() {
       throw new Error(data.error || "Erro ao preparar pagamento PayPal.");
     }
 
+    if (data.already_paid) {
+      await loadData();
+      return;
+    }
+
     if (!data.paypal_order_id) {
       throw new Error("A ordem PayPal não foi retornada.");
     }
@@ -176,6 +181,18 @@ export default function GerenciarOfertasPage() {
         {error && (
           <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl mb-6 text-red-300">
             {error}
+          </div>
+        )}
+
+        {property?.contactFeePaidAt && (
+          <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-xl mb-6 text-emerald-300 flex items-center gap-3">
+             <div className="bg-emerald-500 p-1 rounded-full text-black">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+             </div>
+             <div>
+                <div className="font-bold">Contatos Liberados</div>
+                <div className="text-xs opacity-80">Você já pagou a taxa para este imóvel. Todos os contatos atuais e futuros estão visíveis.</div>
+             </div>
           </div>
         )}
 

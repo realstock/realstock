@@ -119,6 +119,7 @@ model Property {
   instagramPermalink  String?         @map("instagram_permalink")
   reelsVideoUrl       String?         @map("reels_video_url")
   reelsVideoPaidAt    DateTime?       @map("reels_video_paid_at")
+  contactFeePaidAt    DateTime?       @map("contact_fee_paid_at")
   offers              Offer[]
   owner               User            @relation(fields: [ownerId], references: [id])
   images              PropertyImage[]
