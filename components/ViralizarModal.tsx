@@ -154,7 +154,7 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-xl rounded-[32px] border border-white/10 bg-slate-950 p-8 shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-lg rounded-[32px] border border-white/10 bg-slate-950 p-8 shadow-2xl overflow-hidden">
         {/* Background Glow */}
         <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-purple-500/10 blur-3xl" />
         <div className="absolute -left-24 -bottom-24 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
@@ -214,6 +214,11 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
                  Viralizar
                  <Rocket size={18} className="transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
                </button>
+            </div>
+            <div className="mt-6 rounded-2xl bg-white/5 border border-white/5 p-4">
+              <p className="text-[10px] text-slate-400 leading-relaxed text-center italic">
+                Após a ativação desse serviço você poderá contratar qualquer serviço de impulsionamento da Meta e do Google diretamente do site da RealStock, podendo escolher qual impulsionar, além de destacar e colocar o anúncio nos primeiros da lista de pesquisa do site.
+              </p>
             </div>
           </div>
         )}
