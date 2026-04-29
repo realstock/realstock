@@ -52,6 +52,15 @@ export async function POST(req: NextRequest) {
     });
 
     const data = await response.json();
+    
+    if (!response.ok) {
+      console.error("PAYPAL ERROR DETAILS:", data);
+      return NextResponse.json({ 
+        success: false, 
+        error: data.message || "Erro na API do PayPal. Verifique as credenciais no .env." 
+      }, { status: response.status });
+    }
+
     return NextResponse.json({ success: true, paypal_order_id: data.id });
   } catch (error: any) {
     console.error("PAYPAL CREATE VIRALIZAR ORDER ERROR:", error);
