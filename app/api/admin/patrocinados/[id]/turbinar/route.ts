@@ -32,7 +32,11 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
         0, // Admin doesn't need a specific property id for global search
         pub.name || "Patrocínio Admin",
         Number(dailyBudget) || 50,
-        targetUrl
+        targetUrl,
+        undefined, // city
+        undefined, // state
+        undefined, // category
+        undefined  // propertyType
       );
 
       let finalCampaignId = adsResult.campaignId || `MOCK_G_CAMP_ADMIN_${Date.now()}`;

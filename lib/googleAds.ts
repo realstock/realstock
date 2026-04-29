@@ -20,7 +20,9 @@ export async function createRealStockGoogleCampaign(
   dailyBudgetBrl: number,
   targetUrl: string,
   city?: string,
-  state?: string
+  state?: string,
+  category?: string,
+  propertyType?: string
 ) {
   try {
     const customer = getGoogleAdsCustomer();
@@ -103,17 +105,19 @@ export async function createRealStockGoogleCampaign(
     // 5. Add Keywords
     const keywordTexts = [
         "comprar imovel",
-        "casa a venda",
-        "apartamento a venda",
         propertyTitle.toLowerCase(),
         `imovel ${propertyId}`,
         "realstock imoveis"
     ];
 
-    if (city) {
-        keywordTexts.push(`imovel em ${city.toLowerCase()}`);
-        keywordTexts.push(`casa em ${city.toLowerCase()}`);
+    if (category) {
+        keywordTexts.push(category.toLowerCase());
+        keywordTexts.push(`comprar ${category.toLowerCase()}`);
     }
+    if (propertyType) {
+        keywordTexts.push(propertyType.toLowerCase());
+    }
+
     if (state) {
         keywordTexts.push(`imovel em ${state.toLowerCase()}`);
     }

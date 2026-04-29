@@ -112,7 +112,9 @@ export async function POST(req: NextRequest) {
       Number(dailyBudget),
       targetUrl,
       property?.city || undefined,
-      property?.state || undefined
+      property?.state || undefined,
+      property?.category || undefined,
+      property?.propertyType || undefined
     );
 
     let finalCampaignId = adsResult.campaignId || `MOCK_G_CAMP_${Date.now()}`;

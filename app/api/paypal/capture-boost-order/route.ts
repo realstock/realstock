@@ -101,7 +101,11 @@ export async function POST(req: NextRequest) {
             Number(propertyId),
             property.title,
             Number(dailyBudget),
-            propertyLink
+            propertyLink,
+            property?.city || undefined,
+            property?.state || undefined,
+            property?.category || undefined,
+            property?.propertyType || undefined
         );
 
         const endTime = new Date();
