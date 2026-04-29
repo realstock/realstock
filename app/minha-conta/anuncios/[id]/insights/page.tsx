@@ -4,7 +4,7 @@ import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { BarChart3, TrendingUp, Users, Heart, MessageCircle, Eye, MousePointerClick, Activity, DollarSign, Rocket } from "lucide-react";
+import { BarChart3, TrendingUp, Users, Heart, MessageCircle, Eye, MousePointerClick, Activity, DollarSign, Rocket, X } from "lucide-react";
 
 export default function InsightsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);

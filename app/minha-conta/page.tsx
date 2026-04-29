@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { X } from "lucide-react";
 
 export default function MinhaContaPage() {
   const [user, setUser] = useState<any>(null);
