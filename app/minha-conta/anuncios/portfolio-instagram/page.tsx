@@ -60,15 +60,10 @@ export default function PortfolioInstagramPage() {
   }
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login");
-      return;
-    }
-
     if (status === "authenticated") {
       loadData();
     }
-  }, [status, router]);
+  }, [status]);
 
   async function startPaypalCheckout() {
     try {
@@ -95,7 +90,7 @@ export default function PortfolioInstagramPage() {
 
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
-  if (status === "loading" || loading) {
+  if (loading) {
     return (
       <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
         <div className="mx-auto max-w-4xl text-slate-400">Carregando portfólio...</div>

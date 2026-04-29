@@ -16,14 +16,10 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
     const [error, setError] = useState("");
 
     useEffect(() => {
-        if (status === "unauthenticated") {
-            router.push("/login");
-            return;
-        }
         if (status === "authenticated") {
             fetchInsights();
         }
-    }, [status, router]);
+    }, [status]);
 
     async function fetchInsights() {
         try {
@@ -43,7 +39,7 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
         }
     }
 
-    if (status === "loading" || loading) {
+    if (loading) {
         return <main className="min-h-screen bg-slate-950 px-6 py-8 text-white"><div className="mx-auto max-w-5xl text-slate-400">Carregando processamento Graph API...</div></main>;
     }
 

@@ -50,15 +50,10 @@ export default function MinhasOfertasPage() {
   }
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.replace("/login");
-      return;
-    }
-
     if (status === "authenticated") {
       loadOffers();
     }
-  }, [status, router]);
+  }, [status]);
 
   async function handleCancel(offerId: number) {
     const confirmed = window.confirm("Deseja cancelar essa oferta?");
@@ -88,10 +83,10 @@ export default function MinhasOfertasPage() {
     }
   }
 
-  if (status === "loading" || loading) {
+  if (loading) {
     return (
       <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
-        <div className="mx-auto max-w-6xl text-slate-400">Carregando...</div>
+        <div className="mx-auto max-w-6xl text-slate-400">Carregando ofertas...</div>
       </main>
     );
   }

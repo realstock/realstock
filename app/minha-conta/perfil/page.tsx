@@ -60,15 +60,10 @@ export default function PerfilPage() {
   }
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login");
-      return;
-    }
-
     if (status === "authenticated") {
       loadProfile();
     }
-  }, [status, router]);
+  }, [status]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -111,10 +106,10 @@ export default function PerfilPage() {
     }
   }
 
-  if (status === "loading" || loading) {
+  if (loading) {
     return (
       <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
-        <div className="mx-auto max-w-4xl text-slate-400">Carregando...</div>
+        <div className="mx-auto max-w-4xl text-slate-400">Carregando perfil...</div>
       </main>
     );
   }

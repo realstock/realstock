@@ -92,21 +92,16 @@ export default function MeusAnunciosPage() {
   }
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.replace("/login");
-      return;
-    }
-
     if (status === "authenticated") {
       loadProperties();
       loadInvestment();
     }
-  }, [status, router]);
+  }, [status]);
 
-  if (status === "loading" || loading) {
+  if (loading) {
     return (
       <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
-        <div className="mx-auto max-w-6xl text-slate-400">Carregando...</div>
+        <div className="mx-auto max-w-6xl text-slate-400">Carregando dados...</div>
       </main>
     );
   }

@@ -3,27 +3,17 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export default function MinhaContaPage() {
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    const stored = localStorage.getItem("realstock_user");
-
-    if (!stored) {
-      window.location.href = "/login";
-      return;
-    }
-
-    setUser(JSON.parse(stored));
-  }, []);
+  const { data: session } = useSession();
 
   function handleLogout() {
-    localStorage.removeItem("realstock_user");
-    window.location.href = "/";
+    signOut({ callbackUrl: "/" });
   }
 
-  if (!user) return null;
+  const userName = session?.user?.name || "Usuário";
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -41,7 +31,7 @@ export default function MinhaContaPage() {
         </div>
         <div className="mb-8">
           <div className="text-sm text-slate-400">Minha conta</div>
-          <h1 className="mt-2 text-4xl font-bold">Olá, {user.userName || user.user_name}</h1>
+          <h1 className="mt-2 text-4xl font-bold">Olá, {userName}</h1>
           <p className="mt-2 text-slate-400">
             Gerencie seus anúncios e acompanhe suas ofertas.
           </p>
