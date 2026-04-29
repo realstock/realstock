@@ -52,6 +52,14 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
   }, []);
 
 
+  useEffect(() => {
+    if (!isOpen) {
+      setStep("details");
+      setPaypalOrderId(null);
+      setIsStarting(false);
+    }
+  }, [isOpen]);
+
   const totalOriginal = viralizarServices.reduce((acc, s) => acc + (s.value || 0), 0);
   const bundlePrice = totalOriginal / 2;
 
@@ -180,7 +188,7 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
           <X size={24} />
         </button>
 
-        {step === "details" && (
+        {(step === "details" || step === "payment") && (
           <div className="relative z-10">
             <div className="flex items-center gap-2 text-purple-400 font-bold text-[10px] uppercase tracking-widest mb-2">
               <Zap size={14} className="fill-purple-400" /> Pacote Viralizar
