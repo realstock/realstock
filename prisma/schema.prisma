@@ -64,6 +64,8 @@ model User {
   metaPortfolioBoostedUntil   DateTime?  @map("meta_portfolio_boosted_until")
   metaPortfolioAdId           String?    @map("meta_portfolio_ad_id")
   metaPortfolioCampaignId     String?    @map("meta_portfolio_campaign_id")
+  portfolioVideoUrl           String?    @map("portfolio_video_url")
+  portfolioVideoPaidAt        DateTime?  @map("portfolio_video_paid_at")
   offers                      Offer[]                @relation("BuyerOffers")
   properties                  Property[]
   financialTransactions       FinancialTransaction[]

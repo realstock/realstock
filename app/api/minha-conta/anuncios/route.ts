@@ -82,7 +82,15 @@ export async function GET() {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { portfolioBoostedUntil: true, googlePortfolioBoostedUntil: true, metaPortfolioBoostedUntil: true },
+      select: { 
+        portfolioBoostedUntil: true, 
+        googlePortfolioBoostedUntil: true, 
+        metaPortfolioBoostedUntil: true,
+        portfolioVideoUrl: true,
+        portfolioVideoPaidAt: true,
+        companyLogo: true,
+        logoBoostedUntil: true
+      },
     });
 
     return NextResponse.json({
@@ -94,6 +102,10 @@ export async function GET() {
       portfolioBoostedUntil: user?.portfolioBoostedUntil,
       googlePortfolioBoostedUntil: user?.googlePortfolioBoostedUntil,
       metaPortfolioBoostedUntil: user?.metaPortfolioBoostedUntil,
+      portfolioVideoUrl: user?.portfolioVideoUrl,
+      portfolioVideoPaidAt: user?.portfolioVideoPaidAt,
+      companyLogo: user?.companyLogo,
+      logoBoostedUntil: user?.logoBoostedUntil
     });
   } catch (error: any) {
     console.error("MINHA CONTA ANUNCIOS ERROR:", error);

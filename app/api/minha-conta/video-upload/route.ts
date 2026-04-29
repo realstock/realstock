@@ -81,21 +81,33 @@ export async function POST(req: Request) {
       .from("property-images")
       .getPublicUrl(filePath);
 
-    // 3. Atualizar Imóvel e Criar Transação Financeira
+    // 3. Atualizar Imóvel ou Usuário e Criar Transação Financeira
+    const updateAction = Number(propertyId) === 0 
+      ? prisma.user.update({
+          where: { id: userId },
+          data: {
+            portfolioVideoUrl: publicUrlData.publicUrl,
+            portfolioVideoPaidAt: new Date(),
+          },
+        })
+      : prisma.property.update({
+          where: { id: Number(propertyId), ownerId: userId },
+          data: {
+            reelsVideoUrl: publicUrlData.publicUrl,
+            reelsVideoPaidAt: new Date(),
+          },
+        });
+
     await prisma.$transaction([
-      prisma.property.update({
-        where: { id: propertyId, ownerId: userId },
-        data: {
-          reelsVideoUrl: publicUrlData.publicUrl,
-          reelsVideoPaidAt: new Date(),
-        },
-      }),
+      updateAction,
       prisma.financialTransaction.create({
         data: {
           type: "REVENUE",
           category: "REELS_VIDEO",
           amount: finalFeeValue,
-          description: `Taxa de Criação/Incorporação Reels - Imóvel ${propertyId}`,
+          description: Number(propertyId) === 0 
+            ? `Taxa de Criação/Incorporação Reels - Portfólio`
+            : `Taxa de Criação/Incorporação Reels - Imóvel ${propertyId}`,
           referenceId: finalOrderID,
           userId: userId,
         },

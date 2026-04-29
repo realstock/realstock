@@ -34,6 +34,7 @@ export default function MeusAnunciosPage() {
   const [portfolioBoostedUntil, setPortfolioBoostedUntil] = useState<string | null>(null);
   const [googlePortfolioBoostedUntil, setGooglePortfolioBoostedUntil] = useState<string | null>(null);
   const [metaPortfolioBoostedUntil, setMetaPortfolioBoostedUntil] = useState<string | null>(null);
+  const [portfolioVideoUrl, setPortfolioVideoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -68,6 +69,7 @@ export default function MeusAnunciosPage() {
       setPortfolioBoostedUntil(data.portfolioBoostedUntil || null);
       setGooglePortfolioBoostedUntil(data.googlePortfolioBoostedUntil || null);
       setMetaPortfolioBoostedUntil(data.metaPortfolioBoostedUntil || null);
+      setPortfolioVideoUrl(data.portfolioVideoUrl || null);
       setLogoActiveUntil(data.logoBoostedUntil || null);
       setUserAvatar(data.companyLogo || null);
     } catch (err: any) {
@@ -256,25 +258,34 @@ export default function MeusAnunciosPage() {
                               Facebook
                             </Link>
                           </div>
-                          <button
-                            onClick={() => {
-                              setSelectedPropertyForVideo({
-                                id: 0,
-                                title: "Meu Portfólio",
-                                city: "RealStock",
-                                state: "Pro",
-                                price: 0,
-                                images: properties
-                                  .filter(p => p.images && p.images.length > 0)
-                                  .flatMap(p => p.images || [])
-                                  .slice(0, 12) // Máximo 12 imagens para o vídeo do portfólio
-                              });
-                              setIsVideoModalOpen(true);
-                            }}
-                            className="w-full flex items-center justify-center gap-2 rounded-xl border border-sky-500/20 bg-sky-500/5 py-2 text-[11px] font-bold text-sky-400 transition-all hover:bg-sky-500/10"
-                          >
-                            <Film size={12} /> Criar Vídeo do Portfólio (IA)
-                          </button>
+                          {portfolioVideoUrl ? (
+                            <button
+                              onClick={() => setViewingVideoUrl(portfolioVideoUrl)}
+                              className="w-full flex items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 py-2 text-[11px] font-bold text-emerald-400 transition-all hover:bg-emerald-500/10"
+                            >
+                              <Film size={12} /> Ver Vídeo do Portfólio (IA)
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setSelectedPropertyForVideo({
+                                  id: 0,
+                                  title: "Meu Portfólio",
+                                  city: "RealStock",
+                                  state: "Pro",
+                                  price: 0,
+                                  images: properties
+                                    .filter(p => p.images && p.images.length > 0)
+                                    .map(p => p.images![0]) // Pega apenas a primeira imagem de cada imóvel
+                                    .slice(0, 12) // Máximo 12 imóveis para o vídeo do portfólio
+                                });
+                                setIsVideoModalOpen(true);
+                              }}
+                              className="w-full flex items-center justify-center gap-2 rounded-xl border border-sky-500/20 bg-sky-500/5 py-2 text-[11px] font-bold text-sky-400 transition-all hover:bg-sky-500/10"
+                            >
+                              <Film size={12} /> Criar Vídeo do Portfólio (IA)
+                            </button>
+                          )}
                         </div>
 
                         <div className="space-y-2">
