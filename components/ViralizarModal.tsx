@@ -185,7 +185,11 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
                     </div>
                     <div className="flex flex-col">
                       <span className="text-sm font-semibold text-slate-200">{s.name}</span>
-                      <span className="text-[10px] text-slate-500">R$ {Number(s.value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                      <span className="text-[10px] text-slate-500">
+                        {s.value > 0 
+                          ? `R$ ${Number(s.value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` 
+                          : "Grátis"}
+                      </span>
                     </div>
                   </div>
                   <div className="text-[10px] font-bold text-slate-500">INCLUSO</div>
