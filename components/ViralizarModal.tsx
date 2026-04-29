@@ -25,7 +25,7 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
   useEffect(() => {
     async function fetchFees() {
       try {
-        const res = await fetch("/api/minha-conta/viralizar-fees");
+        const res = await fetch(`/api/minha-conta/viralizar-fees?propertyId=${propertyId}`);
         const data = await res.json();
         if (data.success) {
           const icons: Record<string, any> = {
