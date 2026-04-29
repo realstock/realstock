@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Camera, CheckCircle2, Rocket, Globe, BarChart3, Building2, Upload, X, Wallet, TrendingUp, History, MapPin, Film } from "lucide-react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import VideoCreatorModal from "@/components/VideoCreatorModal";
+import ViralizarModal from "@/components/ViralizarModal";
 
 type PropertyItem = {
   id: number;
@@ -50,6 +51,9 @@ export default function MeusAnunciosPage() {
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [selectedPropertyForVideo, setSelectedPropertyForVideo] = useState<PropertyItem | null>(null);
   const [viewingVideoUrl, setViewingVideoUrl] = useState<string | null>(null);
+
+  const [isViralizarOpen, setIsViralizarOpen] = useState(false);
+  const [viralizarTarget, setViralizarTarget] = useState<{id: number, title: string} | null>(null);
 
   async function loadProperties() {
     try {
@@ -305,6 +309,16 @@ export default function MeusAnunciosPage() {
                           </div>
                         </div>
                       </div>
+
+                      <button 
+                        onClick={() => {
+                          setViralizarTarget({ id: 0, title: "Meu Portfólio" });
+                          setIsViralizarOpen(true);
+                        }}
+                        className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 py-3 text-sm font-black text-white shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02] active:scale-95"
+                      >
+                        <Zap size={16} className="fill-white" /> VIRALIZAR TUDO (50% OFF)
+                      </button>
                     </div>
                   </div>
                </div>
@@ -499,6 +513,16 @@ export default function MeusAnunciosPage() {
                               💎 Patrocinar Imóvel
                             </Link>
                           )}
+                          
+                          <button 
+                            onClick={() => {
+                              setViralizarTarget({ id: property.id, title: property.title });
+                              setIsViralizarOpen(true);
+                            }}
+                            className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 py-2.5 text-xs font-black text-white shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02] active:scale-95"
+                          >
+                            <Zap size={14} className="fill-white" /> VIRALIZAR (50% OFF)
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -731,6 +755,15 @@ export default function MeusAnunciosPage() {
              </div>
           </div>
         </div>
+      )}
+
+      {isViralizarOpen && viralizarTarget && (
+        <ViralizarModal 
+          isOpen={isViralizarOpen}
+          onClose={() => setIsViralizarOpen(false)}
+          propertyId={viralizarTarget.id}
+          propertyTitle={viralizarTarget.title}
+        />
       )}
     </main>
   );

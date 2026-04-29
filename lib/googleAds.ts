@@ -18,7 +18,9 @@ export async function createRealStockGoogleCampaign(
   propertyId: number,
   propertyTitle: string,
   dailyBudgetBrl: number,
-  targetUrl: string
+  targetUrl: string,
+  city?: string,
+  state?: string
 ) {
   try {
     const customer = getGoogleAdsCustomer();
@@ -82,10 +84,13 @@ export async function createRealStockGoogleCampaign(
               { text: "Lindo Imóvel Disponível", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
               { text: safeTitle, pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
               { text: "Agende sua visita na RealStock", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
+              { text: "Oportunidade de Investimento", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
+              { text: "Imóveis Exclusivos RealStock", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
             ],
             descriptions: [
-              { text: "Venha conhecer esta excelente oportunidade exclusiva da RealStock. Agende online." },
-              { text: "Opção imperdível para compra ou locação. Fale com um de nossos corretores experts." },
+              { text: "Venha conhecer esta excelente oportunidade exclusiva da RealStock. Agende online agora mesmo." },
+              { text: "Opção imperdível para compra ou locação. Fale com um de nossos corretores experts e feche negócio." },
+              { text: "Encontre os melhores imóveis da sua região com a RealStock. Facilidade e transparência." },
             ],
             path1: "imovel",
             path2: propertyId.toString().substring(0, 15),
@@ -93,6 +98,84 @@ export async function createRealStockGoogleCampaign(
           final_urls: [targetUrl],
         },
       },
+    ]);
+
+    // 5. Add Keywords
+    const keywordTexts = [
+        "comprar imovel",
+        "casa a venda",
+        "apartamento a venda",
+        propertyTitle.toLowerCase(),
+        `imovel ${propertyId}`,
+        "realstock imoveis"
+    ];
+
+    if (city) {
+        keywordTexts.push(`imovel em ${city.toLowerCase()}`);
+        keywordTexts.push(`casa em ${city.toLowerCase()}`);
+    }
+    if (state) {
+        keywordTexts.push(`imovel em ${state.toLowerCase()}`);
+    }
+
+    await customer.adGroupCriteria.create(
+        keywordTexts.map(text => ({
+            ad_group: adGroupResourceName,
+            status: enums.AdGroupCriterionStatus.ENABLED,
+            keyword: {
+                text: text.substring(0, 80),
+                match_type: enums.KeywordMatchType.PHRASE
+            }
+        }))
+    );
+
+    // 6. Add Location Targeting (State or Brazil)
+    let locationId = "2076"; // Brazil Default
+
+    if (state) {
+        const stateMap: { [key: string]: string } = {
+            "AC": "20074", "ACRE": "20074",
+            "AL": "20075", "ALAGOAS": "20075",
+            "AP": "20076", "AMAPA": "20076",
+            "AM": "20094", "AMAZONAS": "20094",
+            "BA": "20077", "BAHIA": "20077",
+            "CE": "20078", "CEARA": "20078",
+            "DF": "20080", "DISTRITO FEDERAL": "20080",
+            "ES": "20081", "ESPIRITO SANTO": "20081",
+            "GO": "20082", "GOIAS": "20082",
+            "MA": "20083", "MARANHAO": "20083",
+            "MT": "20096", "MATO GROSSO": "20096",
+            "MS": "20085", "MATO GROSSO DO SUL": "20085",
+            "MG": "20084", "MINAS GERAIS": "20084",
+            "PA": "20095", "PARA": "20095",
+            "PB": "20097", "PARAIBA": "20097",
+            "PR": "20086", "PARANA": "20086",
+            "PE": "20087", "PERNAMBUCO": "20087",
+            "PI": "20098", "PIAUI": "20098",
+            "RJ": "20088", "RIO DE JANEIRO": "20088",
+            "RN": "20099", "RIO GRANDE DO NORTE": "20099",
+            "RS": "20089", "RIO GRANDE DO SUL": "20089",
+            "RO": "20101", "RONDONIA": "20101",
+            "RR": "20102", "RORAIMA": "20102",
+            "SC": "20091", "SANTA CATARINA": "20091",
+            "SP": "20092", "SAO PAULO": "20092",
+            "SE": "20103", "SERGIPE": "20103",
+            "TO": "20104", "TOCANTINS": "20104"
+        };
+
+        const normalizedState = state.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        if (stateMap[normalizedState]) {
+            locationId = stateMap[normalizedState];
+        }
+    }
+
+    await customer.campaignCriteria.create([
+        {
+            campaign: campaignResourceName,
+            location: {
+                resource_name: `geoTargetConstants/${locationId}`
+            }
+        }
     ]);
 
     const campaignId = campaignResourceName?.split('/')[3] || "";
