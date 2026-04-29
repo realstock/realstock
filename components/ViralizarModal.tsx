@@ -98,7 +98,7 @@ export default function ViralizarModal({ isOpen, onClose, propertyId, propertyTi
       const data = await res.json();
       if (data.success && data.paypal_order_id) {
         setPaypalOrderId(data.paypal_order_id);
-        setStep("payment");
+        // Não mudamos mais o step, para manter a UI de detalhes visível com os botões do PayPal abaixo
       } else {
         alert("Erro ao preparar pagamento: " + (data.error || "Erro desconhecido"));
       }
