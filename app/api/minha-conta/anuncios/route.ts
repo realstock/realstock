@@ -89,7 +89,9 @@ export async function GET() {
         portfolioVideoUrl: true,
         portfolioVideoPaidAt: true,
         companyLogo: true,
-        logoBoostedUntil: true
+        logoBoostedUntil: true,
+        viralizarCredits: true,
+        referralCode: true
       },
     });
 
@@ -105,7 +107,9 @@ export async function GET() {
       portfolioVideoUrl: user?.portfolioVideoUrl,
       portfolioVideoPaidAt: user?.portfolioVideoPaidAt,
       companyLogo: user?.companyLogo,
-      logoBoostedUntil: user?.logoBoostedUntil
+      logoBoostedUntil: user?.logoBoostedUntil,
+      viralizarCredits: user?.viralizarCredits,
+      referralCode: user?.referralCode
     });
   } catch (error: any) {
     console.error("MINHA CONTA ANUNCIOS ERROR:", error);

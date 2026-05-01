@@ -22,10 +22,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Dados ausentes" }, { status: 400 });
     }
 
+    console.log("UPLOAD START:", { name: file.name, size: file.size, type: file.type, propertyId });
+
     let finalOrderID = orderID;
     let finalFeeValue = 0;
 
-    if (orderID && orderID !== "FREE") {
+    if (orderID === "CREDIT") {
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user || user.viralizarCredits < 1) {
+            return NextResponse.json({ success: false, error: "Saldo de créditos insuficiente" }, { status: 400 });
+        }
+        await prisma.user.update({
+            where: { id: userId },
+            data: { viralizarCredits: { decrement: 1 } }
+        });
+        finalOrderID = "CREDIT_USAGE";
+        finalFeeValue = 0;
+    } else if (orderID && orderID !== "FREE") {
         // 1. Capturar Pagamento no PayPal
         const clientId = process.env.PAYPAL_CLIENT_ID;
         const clientSecret = process.env.PAYPAL_CLIENT_SECRET;

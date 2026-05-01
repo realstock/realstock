@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
 const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET;
@@ -30,7 +31,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 401 });
     }
 
-    const { propertyId, amount } = await req.json();
+    const { propertyId } = await req.json();
+
+    // Buscar taxas no banco para garantir o valor correto
+    const isPortfolio = propertyId === 0 || propertyId === "0";
+    const services = await prisma.siteService.findMany({
+      where: { isActive: true },
+      include: { fee: true }
+    });
+
+    const viralizarServices = [
+      { keywords: ["patrocinar site", "anuncio patrocinado"], defaultValue: isPortfolio ? 0 : 50 },
+      { keywords: ["criar vídeo", "vídeo ia"], defaultValue: 0 },
+      { keywords: ["carrossel instagram", "post de anuncio"], defaultValue: isPortfolio ? 100 : 50 },
+      { keywords: ["video instagram", "reel instagram"], defaultValue: isPortfolio ? 100 : 50 },
+      { keywords: ["carrossel facebook"], defaultValue: isPortfolio ? 100 : 50 },
+      { keywords: ["video facebook", "reel facebook"], defaultValue: isPortfolio ? 100 : 50 },
+    ];
+
+    const amount = viralizarServices.reduce((acc, v) => {
+      const found = services.find(s => v.keywords.some(k => s.name.toLowerCase().includes(k)));
+      return acc + (found && found.fee ? Number(found.fee.value) : v.defaultValue);
+    }, 0) * 0.5;
 
     const accessToken = await getAccessToken();
     const response = await fetch(`${PAYPAL_API}/v2/checkout/orders`, {
@@ -63,7 +85,7 @@ export async function POST(req: NextRequest) {
       }, { status: response.status });
     }
 
-    return NextResponse.json({ success: true, paypal_order_id: data.id });
+    return NextResponse.json({ success: true, id: data.id });
   } catch (error: any) {
     console.error("PAYPAL CREATE VIRALIZAR ORDER ERROR:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

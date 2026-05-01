@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createRealStockGoogleCampaign } from "@/lib/googleAds";
+import { publishToInstagram, publishToFacebook } from "@/lib/social-publish";
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,63 +11,237 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 401 });
     }
 
-    const { propertyId, orderID } = await req.json();
+    const { propertyId, orderID, videoUrl: passedVideoUrl, platform, targetPostType } = await req.json();
+    console.log("VIRALIZAR BUNDLE START:", { propertyId, orderID, platform, targetPostType });
 
     const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!user) return NextResponse.json({ success: false, error: "Usuário não encontrado" }, { status: 404 });
 
+    const userId = user.id;
     const boostedDate = new Date();
-    boostedDate.setDate(boostedDate.getDate() + 5);
+    boostedDate.setDate(boostedDate.getDate() + 7);
 
     const sponsoredDate = new Date();
     sponsoredDate.setDate(sponsoredDate.getDate() + 30);
 
-    // 1. Google Ads & Sponsored Status
+    let images: string[] = [];
+    let title = "";
+    let city = "";
+    let state = "";
+    let dbVideoUrl = "";
+
     if (propertyId === 0) {
       // Portfolio logic
+      const properties = await prisma.property.findMany({
+        where: { ownerId: userId },
+        include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+        take: 10,
+        orderBy: { createdAt: "desc" }
+      });
+      images = properties.map(p => p.images?.[0]?.imageUrl).filter(Boolean) as string[];
+      title = "Meu Portfólio";
+      dbVideoUrl = user.portfolioVideoUrl || "";
+
       await prisma.user.update({
-        where: { id: user.id },
+        where: { id: userId },
         data: {
           portfolioBoostedUntil: boostedDate,
-          googlePortfolioBoostedUntil: boostedDate,
           portfolioVideoPaidAt: new Date()
         }
       });
-      
-      // Try to create Google Ads Campaign
-      try {
-          const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.realstock.com.br";
-          await createRealStockGoogleCampaign(0, "Portfólio RealStock", 10, baseUrl);
-      } catch(e) { console.error("Google Ads fail", e); }
-
     } else {
       // Property logic
+      const prop = await prisma.property.findUnique({
+        where: { id: propertyId },
+        include: { images: { orderBy: { sortOrder: "asc" } } }
+      });
+      if (!prop) return NextResponse.json({ success: false, error: "Imóvel não encontrado" }, { status: 404 });
+      
+      images = prop.images.map(img => img.imageUrl);
+      title = prop.title;
+      city = prop.city || "";
+      state = prop.state || "";
+      dbVideoUrl = prop.reelsVideoUrl || "";
+
       await prisma.property.update({
         where: { id: propertyId },
         data: {
           boostedUntil: boostedDate,
-          googleBoostedUntil: boostedDate,
           sponsoredUntil: sponsoredDate,
           reelsVideoPaidAt: new Date()
         }
       });
-
-      // Try to create Google Ads Campaign
-      try {
-          const prop = await prisma.property.findUnique({ where: { id: propertyId } });
-          const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.realstock.com.br";
-          const targetUrl = `${baseUrl}/imovel/${propertyId}`;
-          await createRealStockGoogleCampaign(propertyId, prop?.title || "Imóvel RealStock", 10, targetUrl, prop?.city || undefined, prop?.state || undefined);
-      } catch(e) { console.error("Google Ads fail", e); }
     }
 
-    // 2. Social Media Posts (Simulated/Background)
-    // In a real scenario, we'd trigger the IG/FB publish here.
-    // For the "Viralizar" experience, we'll mark the sessions as pending or just create them.
-    
-    // 3. Financial Transaction (Already handled in capture route, but we can add more details if needed)
+    const videoUrl = passedVideoUrl || dbVideoUrl;
+    console.log("FINAL VIDEO URL FOR SOCIAL:", videoUrl);
 
-    return NextResponse.json({ success: true });
+    const caption = `🌟 ${title}\n\nConfira as melhores oportunidades no RealStock!\n\n${city ? `📍 ${city} - ${state}\n\n` : ""}Acesse nosso site para mais detalhes!`;
+
+    // SOCIAL MEDIA PUBLICATION (REAL)
+    const results = {
+      ig_carousel: null as any,
+      ig_reels: null as any,
+      fb_carousel: null as any,
+      fb_reels: null as any
+    };
+
+    const igUserId = process.env.INSTAGRAM_IG_USER_ID;
+    const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
+    const fbPageId = process.env.FACEBOOK_PAGE_ID;
+
+    // 1. EXTRAIR PAGE ACCESS TOKEN (IGUAL AO BOTÃO FACEBOOK MANUAL)
+    let pageToken = "";
+    if (fbPageId && igToken) {
+        try {
+            const pageTokenRes = await fetch(`https://graph.facebook.com/v19.0/me/accounts?access_token=${igToken}`);
+            const pageTokenData = await pageTokenRes.json();
+            const pageInfo = pageTokenData.data?.find((p: any) => p.id === fbPageId);
+            if (pageInfo?.access_token) {
+                pageToken = pageInfo.access_token;
+                console.log("PAGE TOKEN RECUPERADO COM SUCESSO");
+            }
+        } catch (e) {
+            console.error("ERRO AO BUSCAR PAGE TOKEN:", e);
+        }
+    }
+
+    try {
+      // --- INSTAGRAM CAROUSEL ---
+      if (images.length > 0 && platform === "instagram" && targetPostType === "carousel") {
+        if (!igUserId || !igToken) throw new Error("Credenciais Instagram ausentes.");
+        console.log("Publishing IG Carousel (Manual Logic)...");
+        
+        const childrenIds = [];
+        for (const img of images.slice(0, 10)) {
+            const res = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media?image_url=${encodeURIComponent(img)}&is_carousel_item=true&access_token=${igToken}`, { method: "POST" });
+            const data = await res.json();
+            if (!res.ok || !data.id) throw new Error(data.error?.message || "Erro no item IG");
+            childrenIds.push(data.id);
+        }
+        const createRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media?media_type=CAROUSEL&children=${childrenIds.join(',')}&caption=${encodeURIComponent(caption)}&access_token=${igToken}`, { method: "POST" });
+        const createData = await createRes.json();
+        if (!createRes.ok || !createData.id) throw new Error("Erro no container IG");
+        
+        // Poll
+        let ready = false;
+        for (let i = 0; i < 30; i++) {
+            await new Promise(r => setTimeout(r, 3000));
+            const sRes = await fetch(`https://graph.facebook.com/v19.0/${createData.id}?fields=status_code&access_token=${igToken}`);
+            const sData = await sRes.json();
+            if (sData.status_code === "FINISHED") { ready = true; break; }
+        }
+        
+        const pubRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media_publish?creation_id=${createData.id}&access_token=${igToken}`, { method: "POST" });
+        const pubData = await pubRes.json();
+        if (!pubRes.ok) throw new Error(pubData.error?.message || "Erro publish IG");
+        
+        let permalink = "";
+        try {
+            const pRes = await fetch(`https://graph.facebook.com/v19.0/${pubData.id}?fields=permalink&access_token=${igToken}`);
+            const pData = await pRes.json();
+            permalink = pData.permalink || "";
+        } catch (e) { console.error("Error fetching IG permalink", e); }
+        
+        results.ig_carousel = { success: true, id: pubData.id, permalink };
+      }
+
+      // --- INSTAGRAM REELS ---
+      if (videoUrl && platform === "instagram" && targetPostType === "reels") {
+        if (!igUserId || !igToken) throw new Error("Credenciais Instagram ausentes.");
+        console.log("Publishing IG Reels (Manual Logic)...");
+
+        const createRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media?media_type=REELS&video_url=${encodeURIComponent(videoUrl)}&caption=${encodeURIComponent(caption)}&access_token=${igToken}`, { method: "POST" });
+        const createData = await createRes.json();
+        if (!createRes.ok || !createData.id) throw new Error(createData.error?.message || "Erro Reels container");
+
+        let ready = false;
+        for (let i = 0; i < 40; i++) { // 120 segundos
+            await new Promise(r => setTimeout(r, 3000));
+            const sRes = await fetch(`https://graph.facebook.com/v19.0/${createData.id}?fields=status_code&access_token=${igToken}`);
+            const sData = await sRes.json();
+            if (sData.status_code === "FINISHED") { ready = true; break; }
+        }
+        if (!ready) throw new Error("O vídeo ainda está sendo processado pelo Instagram.");
+
+        const pubRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media_publish?creation_id=${createData.id}&access_token=${igToken}`, { method: "POST" });
+        const pubData = await pubRes.json();
+        if (!pubRes.ok) throw new Error(pubData.error?.message || "Erro Reels publish");
+
+        let permalink = "";
+        try {
+            const pRes = await fetch(`https://graph.facebook.com/v19.0/${pubData.id}?fields=permalink&access_token=${igToken}`);
+            const pData = await pRes.json();
+            permalink = pData.permalink || "";
+        } catch (e) { console.error("Error fetching IG Reels permalink", e); }
+
+        results.ig_reels = { success: true, id: pubData.id, permalink };
+      }
+
+      // --- FACEBOOK CAROUSEL (FEED) ---
+      if (images.length > 0 && platform === "facebook" && targetPostType === "carousel") {
+        if (!fbPageId || !pageToken) throw new Error("Credenciais Facebook/PageToken ausentes.");
+        console.log("Publishing FB Carousel (Manual Logic)...");
+
+        const attachedMedia = [];
+        for (const img of images.slice(0, 10)) {
+            const params = new URLSearchParams();
+            params.append('url', img);
+            params.append('published', 'false');
+            params.append('access_token', pageToken);
+            const res = await fetch(`https://graph.facebook.com/v19.0/${fbPageId}/photos`, { method: "POST", body: params });
+            const data = await res.json();
+            if (data.id) attachedMedia.push({ media_fbid: data.id });
+            // Fôlego para a API do Facebook não dar erro desconhecido
+            await new Promise(r => setTimeout(r, 1500));
+        }
+        const feedParams = new URLSearchParams();
+        feedParams.append('message', caption);
+        feedParams.append('attached_media', JSON.stringify(attachedMedia));
+        feedParams.append('access_token', pageToken);
+        const pubRes = await fetch(`https://graph.facebook.com/v19.0/${fbPageId}/feed`, { method: "POST", body: feedParams });
+        const pubData = await pubRes.json();
+        if (!pubRes.ok) throw new Error(pubData.error?.message || "Erro FB Feed");
+
+        let permalink = "";
+        try {
+            const pRes = await fetch(`https://graph.facebook.com/v19.0/${pubData.id}?fields=permalink_url&access_token=${pageToken}`);
+            const pData = await pRes.json();
+            permalink = pData.permalink_url || "";
+        } catch (e) { console.error("Error fetching FB permalink", e); }
+
+        results.fb_carousel = { success: true, id: pubData.id, permalink };
+      }
+
+      // --- FACEBOOK REELS (VIDEOS) ---
+      if (videoUrl && platform === "facebook" && targetPostType === "reels") {
+        if (!fbPageId || !pageToken) throw new Error("Credenciais Facebook/PageToken ausentes.");
+        console.log("Publishing FB Reels (Manual Logic)...");
+
+        const videoParams = new URLSearchParams();
+        videoParams.append('file_url', videoUrl);
+        videoParams.append('description', caption);
+        videoParams.append('access_token', pageToken);
+        const pubRes = await fetch(`https://graph.facebook.com/v19.0/${fbPageId}/videos`, { method: "POST", body: videoParams });
+        const pubData = await pubRes.json();
+        if (!pubRes.ok) throw new Error(pubData.error?.message || "Erro FB Reels");
+
+        let permalink = "";
+        try {
+            const pRes = await fetch(`https://graph.facebook.com/v19.0/${pubData.id}?fields=permalink_url&access_token=${pageToken}`);
+            const pData = await pRes.json();
+            permalink = pData.permalink_url || "";
+        } catch (e) { console.error("Error fetching FB Reels permalink", e); }
+
+        results.fb_reels = { success: true, id: pubData.id, permalink };
+      }
+
+    } catch (socialErr: any) {
+      console.error("SOCIAL PUBLISH ERROR IN VIRALIZAR:", socialErr);
+      return NextResponse.json({ success: false, error: socialErr.message, results });
+    }
+
+    return NextResponse.json({ success: true, results });
   } catch (error: any) {
     console.error("EXECUTE VIRALIZAR BUNDLE ERROR:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

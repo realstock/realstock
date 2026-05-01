@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Camera, CheckCircle2, Rocket, Globe, BarChart3, Building2, Upload, X, Wallet, TrendingUp, History, MapPin, Film, Zap } from "lucide-react";
+import { Camera, CheckCircle2, Rocket, Globe, BarChart3, Building2, Upload, X, Wallet, TrendingUp, History, MapPin, Film, Zap, Users } from "lucide-react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import VideoCreatorModal from "@/components/VideoCreatorModal";
 import ViralizarModal from "@/components/ViralizarModal";
@@ -47,6 +47,8 @@ export default function MeusAnunciosPage() {
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [logoActiveUntil, setLogoActiveUntil] = useState<string | null>(null);
   const [investment, setInvestment] = useState<any>(null);
+  const [viralizarCredits, setViralizarCredits] = useState<number>(0);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
 
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [selectedPropertyForVideo, setSelectedPropertyForVideo] = useState<PropertyItem | null>(null);
@@ -76,6 +78,8 @@ export default function MeusAnunciosPage() {
       setPortfolioVideoUrl(data.portfolioVideoUrl || null);
       setLogoActiveUntil(data.logoBoostedUntil || null);
       setUserAvatar(data.companyLogo || null);
+      setViralizarCredits(data.viralizarCredits || 0);
+      setReferralCode(data.referralCode || null);
     } catch (err: any) {
       setError(err.message || "Erro ao carregar anúncios.");
     } finally {
@@ -95,6 +99,13 @@ export default function MeusAnunciosPage() {
     if (status === "authenticated") {
       loadProperties();
       loadInvestment();
+      
+      // Auto-abrir Viralizar se vier do e-mail
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get("viralizar") === "true") {
+         setViralizarTarget({ id: 0, title: "Meu Portfólio" });
+         setIsViralizarOpen(true);
+      }
     }
   }, [status]);
 
@@ -134,6 +145,50 @@ export default function MeusAnunciosPage() {
             {error}
           </div>
         )}
+
+        {/* QUARTEL GENERAL DE CONVITES */}
+        <div className="mb-8 overflow-hidden rounded-[32px] border border-purple-500/30 bg-slate-900/50 p-8 shadow-2xl relative backdrop-blur-xl">
+           <div className="absolute -left-12 -bottom-12 h-64 w-64 rounded-full bg-purple-500/10 blur-3xl" />
+           
+           <div className="flex flex-col lg:flex-row items-center justify-between gap-8 relative z-10">
+              <div className="flex items-center gap-6">
+                 <div className="flex h-20 w-20 items-center justify-center rounded-[24px] bg-purple-500/20 text-purple-400 shadow-inner">
+                    <Users size={40} />
+                 </div>
+                 <div>
+                    <h2 className="text-2xl font-black text-white tracking-tight uppercase italic">Expanda sua Rede</h2>
+                    <p className="text-slate-400 text-sm mt-1 max-w-sm italic">
+                       Convide corretores e ganhe **5 créditos de Viralizar** por cada novo cadastro realizado através do seu link.
+                    </p>
+                 </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center gap-6 w-full lg:w-auto">
+                 <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col items-center justify-center min-w-[140px]">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Saldo Atual</span>
+                    <span className="text-3xl font-black text-emerald-400">{viralizarCredits} <span className="text-xs text-slate-400">CUPONS</span></span>
+                 </div>
+
+                 <div className="flex-1 lg:flex-none">
+                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Seu Link de Convite</div>
+                    <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-2xl p-2 pl-4">
+                       <span className="text-xs font-mono text-purple-300 truncate max-w-[200px]">
+                          realstock.com.br/cadastro?ref={referralCode}
+                       </span>
+                       <button 
+                         onClick={() => {
+                            navigator.clipboard.writeText(`https://realstock.com.br/cadastro?ref=${referralCode}`);
+                            alert("Link copiado! Envie para seus amigos no WhatsApp.");
+                         }}
+                         className="bg-purple-500 hover:bg-purple-400 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap"
+                       >
+                          Copiar Link
+                       </button>
+                    </div>
+                 </div>
+              </div>
+           </div>
+        </div>
 
         {/* Banner de Imobiliária Parceira */}
         <div className="mb-8 overflow-hidden rounded-3xl border border-sky-500/30 bg-gradient-to-br from-sky-600/20 via-slate-900 to-slate-950 p-6 shadow-2xl relative">
@@ -767,6 +822,25 @@ export default function MeusAnunciosPage() {
           onClose={() => setIsViralizarOpen(false)}
           propertyId={viralizarTarget.id}
           propertyTitle={viralizarTarget.title}
+          propertyCity={viralizarTarget.id === 0 ? "RealStock" : properties.find(p => p.id === viralizarTarget.id)?.city}
+          propertyState={viralizarTarget.id === 0 ? "Pro" : properties.find(p => p.id === viralizarTarget.id)?.state}
+          images={viralizarTarget.id === 0 
+            ? properties
+                .filter(p => p.images && p.images.length > 0)
+                .map(p => ({ 
+                  imageUrl: p.images![0].imageUrl, 
+                  title: p.title, 
+                  city: p.city || "", 
+                  state: p.state || "" 
+                }))
+                .slice(0, 12)
+            : (properties.find(p => p.id === viralizarTarget.id)?.images || []).map(img => ({
+                ...img,
+                title: viralizarTarget.title,
+                city: properties.find(p => p.id === viralizarTarget.id)?.city || "",
+                state: properties.find(p => p.id === viralizarTarget.id)?.state || ""
+              }))
+          }
         />
       )}
     </main>

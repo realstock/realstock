@@ -51,10 +51,10 @@ function CadastroContent() {
           instagram,
           bio,
           paypalEmail,
-          country,
           state: stateName,
           city,
           avatar,
+          referralCode: searchParams.get("ref"),
         }),
       });
 

@@ -66,6 +66,14 @@ model User {
   metaPortfolioCampaignId     String?    @map("meta_portfolio_campaign_id")
   portfolioVideoUrl           String?    @map("portfolio_video_url")
   portfolioVideoPaidAt        DateTime?  @map("portfolio_video_paid_at")
+  
+  // Sistema de Indicação e Créditos
+  referrerId                  Int?       @map("referrer_id")
+  referrer                    User?      @relation("UserReferrals", fields: [referrerId], references: [id])
+  referrals                   User[]     @relation("UserReferrals")
+  viralizarCredits            Int        @default(0) @map("viralizar_credits")
+  referralCode                String?    @unique @map("referral_code")
+
   offers                      Offer[]                @relation("BuyerOffers")
   properties                  Property[]
   financialTransactions       FinancialTransaction[]

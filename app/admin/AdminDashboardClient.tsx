@@ -131,12 +131,41 @@ export default function AdminDashboardClient() {
                   href="/admin/contabilidade"
                   icon={<ChartIcon />}
                 />
+
+                <QuickAction
+                  title="Rede Viralizar"
+                  description="Acompanhe a árvore de indicações e o saldo de créditos dos corretores."
+                  href="/admin/rede"
+                  icon={<NetworkIcon />}
+                />
               </div>
             </div>
           </>
         )}
       </div>
     </main>
+  );
+}
+
+function NetworkIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-5 w-5 text-purple-400"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="16" y="16" width="6" height="6" rx="1" />
+      <rect x="2" y="16" width="6" height="6" rx="1" />
+      <rect x="9" y="2" width="6" height="6" rx="1" />
+      <path d="M12 8v8" />
+      <path d="M12 16H5" />
+      <path d="M12 16h7" />
+    </svg>
   );
 }
 

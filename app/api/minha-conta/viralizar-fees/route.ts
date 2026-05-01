@@ -21,12 +21,12 @@ export async function GET(req: Request) {
 
     // Mapear para um formato fácil de usar no modal Viralizar
     const viralizarServices = [
-      { id: "google", keywords: ["patrocinar site", "anuncio patrocinado"], defaultName: "Patrocinar Site", defaultValue: isPortfolio ? 0 : 50 },
-      { id: "video", keywords: ["criar vídeo", "vídeo ia"], defaultName: "Criar Vídeo", defaultValue: 0 },
+      { id: "sponsored", keywords: ["patrocinar site", "anuncio patrocinado"], defaultName: "Anúncio Patrocinado (Site)", defaultValue: isPortfolio ? 0 : 50 },
+      { id: "video", keywords: ["criar vídeo", "vídeo ia"], defaultName: "Criar Vídeo (IA)", defaultValue: 0 },
       { id: "ig_carousel", keywords: ["carrossel instagram", "post de anuncio"], defaultName: "Postar Carrossel Insta", defaultValue: isPortfolio ? 100 : 50 },
-      { id: "ig_reels", keywords: ["video instagram", "reel instagram", "post de anuncio"], defaultName: "Postar Vídeo Insta", defaultValue: isPortfolio ? 100 : 50 },
+      { id: "ig_reels", keywords: ["video instagram", "reel instagram", "post de anuncio"], defaultName: "Postar Reels Insta", defaultValue: isPortfolio ? 100 : 50 },
       { id: "fb_carousel", keywords: ["carrossel facebook", "post de anuncio"], defaultName: "Postar Carrossel Facebook", defaultValue: isPortfolio ? 100 : 50 },
-      { id: "fb_reels", keywords: ["video facebook", "reel facebook", "post de anuncio"], defaultName: "Postar Vídeo Facebook", defaultValue: isPortfolio ? 100 : 50 },
+      { id: "fb_reels", keywords: ["video facebook", "reel facebook", "post de anuncio"], defaultName: "Postar Reels Facebook", defaultValue: isPortfolio ? 100 : 50 },
     ];
 
     const result = viralizarServices.map(v => {
@@ -54,9 +54,14 @@ export async function GET(req: Request) {
     });
 
 
+    const totalOriginal = result.reduce((acc, curr) => acc + curr.value, 0);
+    const totalFinal = totalOriginal * 0.5;
+
     return NextResponse.json({
       success: true,
-      services: result
+      services: result,
+      totalOriginal,
+      totalFinal
     });
   } catch (error: any) {
     console.error("VIRALIZAR FEES ERROR:", error);
