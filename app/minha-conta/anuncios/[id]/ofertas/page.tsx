@@ -303,8 +303,11 @@ export default function GerenciarOfertasPage() {
               </button>
             </div>
 
-            <div className="mt-4 rounded-2xl border border-blue-400/20 bg-blue-400/10 p-4 text-sm text-blue-200">
-              Após a confirmação do pagamento, os dados do comprador serão liberados automaticamente nesta tela.
+            <div className="mt-4 rounded-2xl border border-blue-400/20 bg-blue-400/10 p-4 text-sm text-blue-200 space-y-2">
+              <p>Após a confirmação do pagamento, os dados do comprador serão liberados automaticamente nesta tela.</p>
+              <p className="font-bold border-t border-blue-400/20 pt-2 text-blue-100">
+                Esta taxa é paga apenas uma vez por anúncio. Caso a venda desta oferta não se concretize, os contatos de todas as outras ofertas deste imóvel serão liberados sem custo adicional.
+              </p>
             </div>
 
             {paypalError && (
@@ -317,53 +320,45 @@ export default function GerenciarOfertasPage() {
               <div className="mt-6 text-slate-400">Preparando pagamento...</div>
             ) : (
               <div className="mt-6">
-                <PayPalScriptProvider
-                  options={{
-                    clientId: paypalClientId,
-                    currency: "BRL",
-                    intent: "capture",
+                <PayPalButtons
+                  style={{
+                    layout: "vertical",
+                    shape: "rect",
+                    label: "paypal",
                   }}
-                >
-                  <PayPalButtons
-                    style={{
-                      layout: "vertical",
-                      shape: "rect",
-                      label: "paypal",
-                    }}
-                    createOrder={async () => {
-                      return paypalOrderId;
-                    }}
-                    onApprove={async (data) => {
-                      const res = await fetch("/api/paypal/capture-order", {
-                        method: "POST",
-                        headers: {
-                          "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                          orderID: data.orderID,
-                        }),
-                      });
+                  createOrder={async () => {
+                    return paypalOrderId;
+                  }}
+                  onApprove={async (data) => {
+                    const res = await fetch("/api/paypal/capture-order", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        orderID: data.orderID,
+                      }),
+                    });
 
-                      const result = await res.json();
+                    const result = await res.json();
 
-                      if (!res.ok || !result.success) {
-                        throw new Error(
-                          result.error || "Erro ao capturar pagamento."
-                        );
-                      }
+                    if (!res.ok || !result.success) {
+                      throw new Error(
+                        result.error || "Erro ao capturar pagamento."
+                      );
+                    }
 
-                      closePaypalModal();
-                      await loadData();
-                    }}
-                    onError={(err) => {
-                      console.error("PAYPAL MODAL ERROR:", err);
-                      setPaypalError("Erro ao processar pagamento PayPal.");
-                    }}
-                    onCancel={() => {
-                      setPaypalError("Pagamento cancelado.");
-                    }}
-                  />
-                </PayPalScriptProvider>
+                    closePaypalModal();
+                    await loadData();
+                  }}
+                  onError={(err) => {
+                    console.error("PAYPAL MODAL ERROR:", err);
+                    setPaypalError("Erro ao processar pagamento PayPal.");
+                  }}
+                  onCancel={() => {
+                    setPaypalError("Pagamento cancelado.");
+                  }}
+                />
               </div>
             )}
           </div>

@@ -368,12 +368,10 @@ export default function ViralizarModal({ isOpen, onClose, propertyTitle, propert
                 ATIVAR COMANDO VIRALIZAR <Rocket size={20} />
               </button>
             ) : (
-              <PayPalScriptProvider options={{ clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "", currency: "BRL" }}>
-                <PayPalButtons style={{ layout: "vertical", shape: "rect" }} createOrder={async () => paypalOrderId} onApprove={async (data) => {
-                  setActiveOrderID(data.orderID);
-                  setStep("ready");
-                }} />
-              </PayPalScriptProvider>
+              <PayPalButtons style={{ layout: "vertical", shape: "rect" }} createOrder={async () => paypalOrderId} onApprove={async (data) => {
+                setActiveOrderID(data.orderID);
+                setStep("ready");
+              }} />
             )}
           </div>
         )}
