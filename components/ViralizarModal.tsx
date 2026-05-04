@@ -189,14 +189,26 @@ export default function ViralizarModal({ isOpen, onClose, propertyTitle, propert
         const dH = (img.height * (dW / img.width));
         ctx.drawImage(img, (width - dW) / 2, (height - dH) / 2, dW, dH);
 
-        ctx.fillStyle = "rgba(0,0,0,0.8)"; // Slightly darker for better readability
-        ctx.fillRect(0, height - 240, width, 240);
+        // Fundo Gradiente Premium (mais alto para acomodar mais linhas)
+        const gradient = ctx.createLinearGradient(0, height, 0, height - 450);
+        gradient.addColorStop(0, "rgba(0,0,0,0.98)");
+        gradient.addColorStop(0.5, "rgba(0,0,0,0.7)");
+        gradient.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, height - 450, width, 450);
         
+        // Configuração de Sombra para o Texto
+        ctx.shadowColor = "rgba(0,0,0,0.9)";
+        ctx.shadowBlur = 15;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 4;
+
         ctx.fillStyle = "white";
         ctx.font = "bold 44px sans-serif";
         ctx.textAlign = "center";
         
-        const maxWidth = width - 80;
+        // Margem de 120px de cada lado para evitar bordas
+        const maxWidth = width - 240; 
         const words = propertyTitle.toUpperCase().split(' ');
         let line = '';
         const lines = [];
@@ -204,8 +216,7 @@ export default function ViralizarModal({ isOpen, onClose, propertyTitle, propert
         for (let n = 0; n < words.length; n++) {
             const testLine = line + words[n] + ' ';
             const metrics = ctx.measureText(testLine);
-            const testWidth = metrics.width;
-            if (testWidth > maxWidth && n > 0) {
+            if (metrics.width > maxWidth && n > 0) {
                 lines.push(line);
                 line = words[n] + ' ';
             } else {
@@ -214,17 +225,23 @@ export default function ViralizarModal({ isOpen, onClose, propertyTitle, propert
         }
         lines.push(line);
 
-        // Render lines from bottom to top or fixed position
-        const lineHeight = 52;
-        const startY = height - 120 - ((lines.length - 1) * lineHeight / 2);
+        const lineHeight = 56;
+        // Posição inicial bem mais alta (280px do fundo) para não bater na localização
+        const startY = height - 280 - ((lines.length - 1) * lineHeight);
         
         lines.forEach((l, i) => {
             ctx.fillText(l.trim(), width / 2, startY + (i * lineHeight));
         });
 
+        // Localização com estilo diferenciado e bem na base
+        ctx.shadowBlur = 5;
         ctx.fillStyle = "#38bdf8";
-        ctx.font = "bold 32px sans-serif";
-        ctx.fillText(`${propertyCity || ''} - ${propertyState || ''}`.toUpperCase(), width / 2, height - 50);
+        ctx.font = "bold 34px sans-serif";
+        ctx.fillText(`${propertyCity || ''} - ${propertyState || ''}`.toUpperCase(), width / 2, height - 80);
+        
+        // Reset shadow for next frame
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
 
         await new Promise(resolve => requestAnimationFrame(resolve));
     }
