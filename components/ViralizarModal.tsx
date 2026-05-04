@@ -352,7 +352,7 @@ export default function ViralizarModal({ isOpen, onClose, propertyTitle, propert
                   </div>
                   <div className="flex justify-between items-center pt-4 mt-2 border-t border-white/5">
                      <span className="text-sm font-black text-white uppercase italic">Total do Investimento</span>
-                     <span className="text-4xl font-black text-white">R$ {(appliedCoupon === "Leo10" ? 0 : (fees?.totalFinal || 0)).toFixed(2)}</span>
+                     <span className="text-4xl font-black text-white">R$ {(fees?.totalFinal || 0).toFixed(2)}</span>
                   </div>
                </div>
             </div>
