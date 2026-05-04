@@ -63,6 +63,52 @@ export async function GET() {
       });
     }
 
+    // REELS IG
+    const existingIgReels = await prisma.instagramPreviewSession.findFirst({
+      where: { listingId: propId, postType: "reels" }
+    });
+    if (!existingIgReels) {
+      await prisma.instagramPreviewSession.create({
+        data: {
+          listingId: propId,
+          postType: "reels",
+          status: "PUBLISHED",
+          validationReport: { permalink: "https://instagram.com" },
+          publishedMediaId: "MANUAL_FIX_REELS",
+          allImageUrls: [],
+          selectedImages: []
+        }
+      });
+    } else {
+      await prisma.instagramPreviewSession.update({
+        where: { id: existingIgReels.id },
+        data: { status: "PUBLISHED", validationReport: { permalink: "https://instagram.com" } }
+      });
+    }
+
+    // REELS FB
+    const existingFbReels = await prisma.facebookFeedSession.findFirst({
+      where: { listingId: propId, postType: "reels" }
+    });
+    if (!existingFbReels) {
+      await prisma.facebookFeedSession.create({
+        data: {
+          listingId: propId,
+          postType: "reels",
+          status: "PUBLISHED",
+          validationReport: { permalink: "https://facebook.com" },
+          publishedPostId: "MANUAL_FIX_REELS",
+          allImageUrls: [],
+          selectedImages: []
+        }
+      });
+    } else {
+      await prisma.facebookFeedSession.update({
+        where: { id: existingFbReels.id },
+        data: { status: "PUBLISHED", validationReport: { permalink: "https://facebook.com" } }
+      });
+    }
+
     return NextResponse.json({ success: true, message: "Banco de dados do Imóvel 37 corrigido com sucesso! Agora o botão Ver Post deve aparecer." });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
