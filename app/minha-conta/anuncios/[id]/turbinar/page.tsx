@@ -260,6 +260,15 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                         </button>
                     )}
                   </div>
+                  {selectedPermalink && (
+                    <a 
+                      href={selectedPermalink} 
+                      target="_blank" 
+                      className="mt-2 inline-flex items-center gap-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest hover:text-indigo-300 transition-all"
+                    >
+                      <Globe size={12} /> Ver Post Original
+                    </a>
+                  )}
                 </div>
 
                 {/* Orçamento (Barra de Rolagem) */}
@@ -334,7 +343,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                     onClick={startPaypalCheckout}
                     className="w-full rounded-2xl bg-gradient-to-r from-indigo-500 to-blue-500 px-6 py-4 text-center font-bold text-white transition hover:opacity-90 shadow-lg shadow-indigo-500/20"
                   >
-                    Turbinar
+                    {selectedSession ? "Turbinar Agora" : "Postar e Turbinar"}
                   </button>
               ) : !isBoosting && paypalOrderId ? (
                 <PayPalScriptProvider

@@ -151,7 +151,8 @@ export async function POST(req: NextRequest) {
                 listingId: propertyId,
                 publishedMediaId: pubData.id,
                 status: "PUBLISHED",
-                postType: "carousel"
+                postType: "carousel",
+                validationReport: { permalink }
             }
         });
         if (propertyId !== 0) {
@@ -199,7 +200,8 @@ export async function POST(req: NextRequest) {
                 listingId: propertyId,
                 publishedMediaId: pubData.id,
                 status: "PUBLISHED",
-                postType: "reels"
+                postType: "reels",
+                validationReport: { permalink }
             }
         });
         if (propertyId !== 0) {
@@ -250,7 +252,8 @@ export async function POST(req: NextRequest) {
                 listingId: propertyId,
                 publishedPostId: pubData.id,
                 status: "PUBLISHED",
-                postType: "carousel"
+                postType: "carousel",
+                validationReport: { permalink }
             }
         });
       }
@@ -283,7 +286,8 @@ export async function POST(req: NextRequest) {
                 listingId: propertyId,
                 publishedPostId: pubData.id,
                 status: "PUBLISHED",
-                postType: "reels"
+                postType: "reels",
+                validationReport: { permalink }
             }
         });
       }
