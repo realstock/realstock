@@ -94,6 +94,13 @@ export default function AdminDashboardClient() {
                 />
 
                 <QuickAction
+                  title="Central de Créditos"
+                  description="Distribua créditos e crie cupons de desconto."
+                  href="/admin/creditos"
+                  icon={<GemIcon />}
+                />
+
+                <QuickAction
                   title="Patrocínios Ativos"
                   description="Visualize e gerencie os imóveis com patrocínio Premium Global em andamento."
                   href="/admin/patrocinados"

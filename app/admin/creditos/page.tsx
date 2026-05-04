@@ -121,8 +121,9 @@ export default function GestaoCreditosAdmin() {
   if (loading) return <div className="p-8 text-center text-white">Carregando...</div>;
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto text-slate-200">
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <main className="min-h-screen bg-slate-950 text-white">
+      <div className="p-4 lg:p-8 max-w-7xl mx-auto">
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-white italic tracking-tighter uppercase mb-2 flex items-center gap-3">
             <Coins className="text-emerald-400" size={32} /> Central de Créditos
@@ -318,6 +319,6 @@ export default function GestaoCreditosAdmin() {
           </table>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
