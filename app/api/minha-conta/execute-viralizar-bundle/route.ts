@@ -152,7 +152,9 @@ export async function POST(req: NextRequest) {
                 publishedMediaId: pubData.id,
                 status: "PUBLISHED",
                 postType: "carousel",
-                validationReport: { permalink }
+                validationReport: { permalink },
+                allImageUrls: [],
+                selectedImages: []
             }
         });
         if (propertyId !== 0) {
@@ -201,7 +203,9 @@ export async function POST(req: NextRequest) {
                 publishedMediaId: pubData.id,
                 status: "PUBLISHED",
                 postType: "reels",
-                validationReport: { permalink }
+                validationReport: { permalink },
+                allImageUrls: [],
+                selectedImages: []
             }
         });
         if (propertyId !== 0) {
@@ -253,7 +257,9 @@ export async function POST(req: NextRequest) {
                 publishedPostId: pubData.id,
                 status: "PUBLISHED",
                 postType: "carousel",
-                validationReport: { permalink }
+                validationReport: { permalink },
+                allImageUrls: [],
+                selectedImages: []
             }
         });
       }
@@ -287,7 +293,9 @@ export async function POST(req: NextRequest) {
                 publishedPostId: pubData.id,
                 status: "PUBLISHED",
                 postType: "reels",
-                validationReport: { permalink }
+                validationReport: { permalink },
+                allImageUrls: [],
+                selectedImages: []
             }
         });
       }
