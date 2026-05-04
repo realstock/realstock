@@ -176,6 +176,15 @@ export async function GET(
                     activeDays: goSession.budgetDays
                 };
             }
+        } else {
+            insights.google = {
+                clicks: 0,
+                impressions: 0,
+                ctr: "0.0",
+                cpc: "R$ 0,00",
+                budget: budget.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+                activeDays: goSession.budgetDays
+            };
         }
     }
 
