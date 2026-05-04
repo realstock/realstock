@@ -144,6 +144,22 @@ export async function POST(req: NextRequest) {
         } catch (e) { console.error("Error fetching IG permalink", e); }
         
         results.ig_carousel = { success: true, id: pubData.id, permalink };
+
+        // SALVAR NO BANCO PARA O TURBINAR ENCONTRAR
+        await prisma.instagramPreviewSession.create({
+            data: {
+                listingId: propertyId,
+                publishedMediaId: pubData.id,
+                status: "PUBLISHED",
+                postType: "carousel"
+            }
+        });
+        if (propertyId !== 0) {
+            await prisma.property.update({
+                where: { id: propertyId },
+                data: { instagramMediaId: pubData.id }
+            });
+        }
       }
 
       // --- INSTAGRAM REELS ---
@@ -176,6 +192,22 @@ export async function POST(req: NextRequest) {
         } catch (e) { console.error("Error fetching IG Reels permalink", e); }
 
         results.ig_reels = { success: true, id: pubData.id, permalink };
+
+        // SALVAR NO BANCO PARA O TURBINAR ENCONTRAR
+        await prisma.instagramPreviewSession.create({
+            data: {
+                listingId: propertyId,
+                publishedMediaId: pubData.id,
+                status: "PUBLISHED",
+                postType: "reels"
+            }
+        });
+        if (propertyId !== 0) {
+            await prisma.property.update({
+                where: { id: propertyId },
+                data: { instagramMediaId: pubData.id }
+            });
+        }
       }
 
       // --- FACEBOOK CAROUSEL (FEED) ---
@@ -211,6 +243,16 @@ export async function POST(req: NextRequest) {
         } catch (e) { console.error("Error fetching FB permalink", e); }
 
         results.fb_carousel = { success: true, id: pubData.id, permalink };
+
+        // SALVAR NO BANCO PARA O TURBINAR ENCONTRAR
+        await prisma.facebookFeedSession.create({
+            data: {
+                listingId: propertyId,
+                publishedPostId: pubData.id,
+                status: "PUBLISHED",
+                postType: "carousel"
+            }
+        });
       }
 
       // --- FACEBOOK REELS (VIDEOS) ---
@@ -234,6 +276,16 @@ export async function POST(req: NextRequest) {
         } catch (e) { console.error("Error fetching FB Reels permalink", e); }
 
         results.fb_reels = { success: true, id: pubData.id, permalink };
+
+        // SALVAR NO BANCO PARA O TURBINAR ENCONTRAR
+        await prisma.facebookFeedSession.create({
+            data: {
+                listingId: propertyId,
+                publishedPostId: pubData.id,
+                status: "PUBLISHED",
+                postType: "reels"
+            }
+        });
       }
 
     } catch (socialErr: any) {
