@@ -58,6 +58,22 @@ export default function InstagramPublisherPage() {
       setProperty(data.property);
       setService(data.service);
       setPublishedSessions(data.publishedSessions || []);
+
+      // Sincronização de legado: Se o imóvel já tem ID mas não tem sessão, vamos considerar como publicado
+      if (data.property.facebookPostId && (!data.publishedSessions || data.publishedSessions.length === 0)) {
+        setPublishedSessions([{ 
+          postType: "carousel", 
+          validationReport: { permalink: data.property.facebookPermalink || "#" } 
+        }]);
+      }
+      
+      // Sincronização de legado: Se o imóvel já tem ID mas não tem sessão, vamos considerar como publicado
+      if (data.property.instagramMediaId && (!data.publishedSessions || data.publishedSessions.length === 0)) {
+        setPublishedSessions([{ 
+          postType: "carousel", 
+          validationReport: { permalink: data.property.instagramPermalink || "#" } 
+        }]);
+      }
     } catch (err: any) {
       setError(err.message || "Erro ao carregar detalhes do anúncio.");
     } finally {
@@ -269,9 +285,9 @@ export default function InstagramPublisherPage() {
               )}
 
                {!isPublishing && !paypalOrderId ? (
-                 publishedSessions.find(s => s.postType === postType) ? (
+                 (publishedSessions.find(s => s.postType === postType) || (postType === 'carousel' && property.instagramMediaId)) ? (
                     <a 
-                      href={publishedSessions.find(s => s.postType === postType)?.validationReport?.permalink || "#"} 
+                      href={publishedSessions.find(s => s.postType === postType)?.validationReport?.permalink || property.instagramPermalink || "#"} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="w-full block rounded-2xl bg-white/10 border border-white/10 px-6 py-4 text-center font-bold text-white transition hover:bg-white/20"
