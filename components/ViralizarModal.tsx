@@ -206,34 +206,43 @@ export default function ViralizarModal({ isOpen, onClose, propertyTitle, propert
         ctx.fillStyle = "white";
         ctx.font = "bold 44px sans-serif";
         ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
         
-        // Margem de 120px de cada lado para evitar bordas
-        const maxWidth = width - 240; 
+        const maxWidth = width - 200; 
         const words = propertyTitle.toUpperCase().split(' ');
-        let line = '';
-        const lines = [];
+        let lines = [];
+        let currentLine = '';
         
         for (let n = 0; n < words.length; n++) {
-            const testLine = line + words[n] + ' ';
+            const testLine = currentLine + words[n] + ' ';
             const metrics = ctx.measureText(testLine);
             if (metrics.width > maxWidth && n > 0) {
-                lines.push(line);
-                line = words[n] + ' ';
+                lines.push(currentLine.trim());
+                currentLine = words[n] + ' ';
             } else {
-                line = testLine;
+                currentLine = testLine;
             }
         }
-        lines.push(line);
+        lines.push(currentLine.trim());
 
-        const lineHeight = 56;
-        // Posição inicial bem mais alta (280px do fundo) para não bater na localização
-        const startY = height - 280 - ((lines.length - 1) * lineHeight);
+        // REGRA: Mínimo de 2 linhas (se houver mais de uma palavra)
+        if (lines.length === 1 && words.length > 1) {
+            const mid = Math.floor(words.length / 2);
+            lines = [
+                words.slice(0, mid).join(' '),
+                words.slice(mid).join(' ')
+            ];
+        }
+
+        const lineHeight = 58;
+        const totalHeight = lines.length * lineHeight;
+        const startY = height - 280 - (totalHeight / 2);
         
         lines.forEach((l, i) => {
-            ctx.fillText(l.trim(), width / 2, startY + (i * lineHeight));
+            ctx.fillText(l, width / 2, startY + (i * lineHeight));
         });
 
-        // Localização com estilo diferenciado e bem na base
+        // Localização
         ctx.shadowBlur = 5;
         ctx.fillStyle = "#38bdf8";
         ctx.font = "bold 34px sans-serif";
