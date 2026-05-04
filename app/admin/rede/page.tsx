@@ -27,6 +27,7 @@ export default function AdminNetworkPage() {
   // Estados do Modal de E-mail
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [sending, setSending] = useState(false);
+  const [channel, setChannel] = useState<"email" | "whatsapp" | "both">("both");
   const [emailSubject, setEmailSubject] = useState("Você Ganhou um Presente de R$ 625,00! 🎁");
   const [emailHtml, setEmailHtml] = useState(`
 <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background: white; border-radius: 24px; overflow: hidden; color: #334155;">
@@ -68,7 +69,7 @@ export default function AdminNetworkPage() {
       const res = await fetch("/api/admin/broadcast-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject: emailSubject, htmlContent: emailHtml })
+        body: JSON.stringify({ subject: emailSubject, htmlContent: emailHtml, channel })
       });
       const data = await res.json();
       if (data.success) {
@@ -158,9 +159,9 @@ export default function AdminNetworkPage() {
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
            <div className="w-full max-w-4xl bg-slate-900 border border-white/10 rounded-[40px] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
               <div className="p-8 border-b border-white/5 flex justify-between items-center bg-slate-950">
-                 <div>
+                  <div>
                     <h2 className="text-2xl font-black uppercase italic tracking-tight">Comunicar Rede</h2>
-                    <p className="text-slate-500 text-xs mt-1 uppercase tracking-widest font-bold">Enviar e-mail para todos os corretores ativos</p>
+                    <p className="text-slate-500 text-xs mt-1 uppercase tracking-widest font-bold">Enviar comunicado para todos os corretores ativos</p>
                  </div>
                  <button onClick={() => setIsEmailModalOpen(false)} className="text-slate-500 hover:text-white transition-colors">
                     <X size={32} />
@@ -168,15 +169,40 @@ export default function AdminNetworkPage() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-8 space-y-6">
-                 <div>
-                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Assunto do E-mail</label>
-                    <input 
-                      type="text" 
-                      value={emailSubject}
-                      onChange={(e) => setEmailSubject(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold outline-none focus:border-purple-500 transition-all"
-                    />
-                 </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 ml-1">Canal de Envio</label>
+                        <div className="flex bg-white/5 border border-white/10 rounded-2xl p-1 gap-1">
+                            <button 
+                                onClick={() => setChannel("email")}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${channel === 'email' ? 'bg-white text-slate-950 shadow-lg' : 'text-slate-500 hover:text-white'}`}
+                            >
+                                <Mail size={14} /> E-mail
+                            </button>
+                            <button 
+                                onClick={() => setChannel("whatsapp")}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${channel === 'whatsapp' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-500 hover:text-white'}`}
+                            >
+                                <Send size={14} /> WhatsApp
+                            </button>
+                            <button 
+                                onClick={() => setChannel("both")}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${channel === 'both' ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20' : 'text-slate-500 hover:text-white'}`}
+                            >
+                                <Users size={14} /> Ambos
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 ml-1">Assunto do Comunicado</label>
+                        <input 
+                            type="text" 
+                            value={emailSubject}
+                            onChange={(e) => setEmailSubject(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-3 text-white font-bold outline-none focus:border-purple-500 transition-all"
+                        />
+                    </div>
+                  </div>
 
                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* EDITOR */}
@@ -212,11 +238,11 @@ export default function AdminNetworkPage() {
                     Cancelar
                  </button>
                  <button 
-                   onClick={handleSendEmail}
-                   disabled={sending}
-                   className="bg-purple-500 hover:bg-purple-400 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-purple-500/20 flex items-center gap-3 disabled:opacity-50"
-                 >
-                    {sending ? "Enviando..." : "Disparar para toda a Rede"} <Send size={18} />
+                    onClick={handleSendEmail}
+                    disabled={sending}
+                    className={`px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl flex items-center gap-3 disabled:opacity-50 ${channel === 'whatsapp' ? 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20' : 'bg-purple-500 hover:bg-purple-400 shadow-purple-500/20'} text-white`}
+                  >
+                    {sending ? "Enviando..." : `Disparar via ${channel === 'both' ? 'Multicanal' : channel.toUpperCase()}`} <Send size={18} />
                  </button>
               </div>
            </div>

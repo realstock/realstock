@@ -13,7 +13,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 403 });
     }
 
-    const { subject, htmlContent } = await req.json();
+    const { subject, htmlContent, channel = "both" } = await req.json();
 
     if (!subject || !htmlContent) {
       return NextResponse.json({ success: false, error: "Assunto e conteúdo são obrigatórios" }, { status: 400 });
@@ -42,8 +42,8 @@ export async function POST(req: Request) {
           .replace(/\[REF_LINK\]/g, `https://realstock.com.br/cadastro?ref=${user.referralCode || ""}`);
 
         return sendNotification({
-          toEmail: user.email,
-          toPhone: user.phone,
+          toEmail: (channel === "email" || channel === "both") ? user.email : undefined,
+          toPhone: (channel === "whatsapp" || channel === "both") ? user.phone : undefined,
           subject: subject,
           text: personalText,
           html: personalHtml,
