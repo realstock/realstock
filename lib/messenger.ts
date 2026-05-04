@@ -36,19 +36,28 @@ export async function sendNotification(payload: MessagePayload) {
   if (toPhone && whatsappUrl) {
     try {
       // Limpar o número (manter apenas dígitos)
-      const cleanPhone = toPhone.replace(/\D/g, "");
+      let cleanPhone = toPhone.replace(/\D/g, "");
       
-      // Implementação genérica compatível com Evolution API, Z-API, etc.
+      // Garantir que tenha o código do país (Brasil 55) se tiver 11 dígitos
+      if (cleanPhone.length === 11) cleanPhone = "55" + cleanPhone;
+
+      // Implementação específica para Evolution API v1/v2
       const response = await fetch(whatsappUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "apikey": whatsappToken || "", // Padrão Evolution API
-          "Authorization": `Bearer ${whatsappToken}`, // Padrão genérico
+          "apikey": whatsappToken || "",
         },
         body: JSON.stringify({
           number: cleanPhone,
-          message: `*${subject}*\n\n${text}`,
+          options: {
+            delay: 1200,
+            presence: "composing",
+            linkPreview: false
+          },
+          textMessage: {
+            text: `*${subject}*\n\n${text}`
+          }
         }),
       });
 
