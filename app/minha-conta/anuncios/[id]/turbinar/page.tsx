@@ -235,39 +235,52 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
 
                 {/* Formato */}
                 <div className="mt-6 border-t border-white/10 pt-4">
-                  <h3 className="text-sm font-bold text-white mb-3">Formato do Impulsionamento</h3>
-                  <div className="flex p-1 bg-slate-900 rounded-xl border border-white/5 w-fit mb-6">
-                    {hasCarousel && (
-                        <button 
-                            onClick={() => {
-                                setPostType("carousel");
-                                setPaypalOrderId(null);
-                            }}
-                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${postType === 'carousel' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
+                  <h3 className="text-sm font-bold text-white mb-3">
+                    {platform === "google" ? "Destino do Impulsionamento" : "Formato do Impulsionamento"}
+                  </h3>
+                  
+                  {platform === "google" ? (
+                    <div className="flex p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20 w-full mb-6">
+                      <span className="text-[11px] text-emerald-300 font-medium">
+                        Rede de Pesquisa Google. O tráfego será direcionado diretamente para a página deste imóvel no seu site.
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex p-1 bg-slate-900 rounded-xl border border-white/5 w-fit mb-6">
+                        {hasCarousel && (
+                            <button 
+                                onClick={() => {
+                                    setPostType("carousel");
+                                    setPaypalOrderId(null);
+                                }}
+                                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${postType === 'carousel' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                Carrossel
+                            </button>
+                        )}
+                        {hasReels && (
+                            <button 
+                                onClick={() => {
+                                    setPostType("reels");
+                                    setPaypalOrderId(null);
+                                }}
+                                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${postType === 'reels' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                Reels IA
+                            </button>
+                        )}
+                      </div>
+                      {selectedPermalink && (
+                        <a 
+                          href={selectedPermalink} 
+                          target="_blank" 
+                          className="mt-2 inline-flex items-center gap-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest hover:text-indigo-300 transition-all"
                         >
-                            Carrossel
-                        </button>
-                    )}
-                    {hasReels && (
-                        <button 
-                            onClick={() => {
-                                setPostType("reels");
-                                setPaypalOrderId(null);
-                            }}
-                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${postType === 'reels' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
-                        >
-                            Reels IA
-                        </button>
-                    )}
-                  </div>
-                  {selectedPermalink && (
-                    <a 
-                      href={selectedPermalink} 
-                      target="_blank" 
-                      className="mt-2 inline-flex items-center gap-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest hover:text-indigo-300 transition-all"
-                    >
-                      <Globe size={12} /> Ver Post Original
-                    </a>
+                          <Globe size={12} /> Ver Post Original
+                        </a>
+                      )}
+                    </>
                   )}
                 </div>
 
