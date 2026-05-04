@@ -21,7 +21,6 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
   const [igSessions, setIgSessions] = useState<any[]>([]);
   const [fbSessions, setFbSessions] = useState<any[]>([]);
   const [postType, setPostType] = useState<"carousel" | "reels">("carousel");
-  const [postType, setPostType] = useState<"carousel" | "reels">("carousel");
   const [userRole, setUserRole] = useState<string>("USER");
   const [turbinarCredits, setTurbinarCredits] = useState<number>(0);
   const [couponCode, setCouponCode] = useState("");
