@@ -21,6 +21,11 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
   const [igSessions, setIgSessions] = useState<any[]>([]);
   const [fbSessions, setFbSessions] = useState<any[]>([]);
   const [postType, setPostType] = useState<"carousel" | "reels">("carousel");
+  const [postType, setPostType] = useState<"carousel" | "reels">("carousel");
+  const [userRole, setUserRole] = useState<string>("USER");
+  const [turbinarCredits, setTurbinarCredits] = useState<number>(0);
+  const [couponCode, setCouponCode] = useState("");
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
   
   // Slider state
   const [dailyBudget, setDailyBudget] = useState<number>(20); // Default R$ 20/day
@@ -63,10 +68,15 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
     try {
       setLoading(true);
       setError("");
-      const res = await fetch(`/api/minha-conta/anuncios/${id}/turbinar`);
-      const data = await res.json();
+      const [pageRes, infoRes] = await Promise.all([
+        fetch(`/api/minha-conta/anuncios/${id}/turbinar`),
+        fetch(`/api/minha-conta/turbinar-info`)
+      ]);
+      
+      const data = await pageRes.json();
+      const infoData = await infoRes.json();
 
-      if (!res.ok || !data.success) {
+      if (!pageRes.ok || !data.success) {
         throw new Error(data.error || "Erro ao carregar detalhes do anúncio.");
       }
 
@@ -74,6 +84,11 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
       setService(data.service);
       setIgSessions(data.igSessions || []);
       setFbSessions(data.fbSessions || []);
+      
+      if (infoData.success) {
+        setUserRole(infoData.role);
+        setTurbinarCredits(infoData.turbinarCredits);
+      }
 
       // Selecionar postType automaticamente se carrossel não estiver disponível
       const availableSessions = platform === "facebook" ? data.fbSessions : data.igSessions;
@@ -117,9 +132,42 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
 
       setPaypalOrderId(data.paypal_order_id);
     } catch (err: any) {
-      setPaypalError(err.message || "Erro interno.");
+      setPaypalError(err.message || "Erro de conexão ao iniciar PayPal.");
     }
   }
+
+  const executeTurbinar = async (orderID: string) => {
+    setIsBoosting(true);
+    setPaypalError("");
+    try {
+      const captureUrl = platform === "google" 
+          ? "/api/paypal/capture-google-order" 
+          : "/api/paypal/capture-boost-order";
+          
+      const res = await fetch(captureUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          orderID, 
+          propertyId: id, 
+          dailyBudget, 
+          platform, 
+          postType 
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) throw new Error(result.error || "Falha ao finalizar");
+      setSuccessMsg(`Sua campanha foi criada com sucesso e está em análise pelo ${platform === 'google' ? 'Google' : 'Meta'}. Logo seus leads começarão a chegar!`);
+      // Update turbinar credits locally if used
+      if (orderID === "CREDIT") {
+        setTurbinarCredits(c => Math.max(0, c - 1));
+      }
+    } catch (err: any) {
+      setPaypalError(err.message || "Ocorreu um erro ao processar o turbinamento.");
+    } finally {
+      setIsBoosting(false);
+    }
+  };
 
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
@@ -351,58 +399,99 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                   </div>
               )}
 
-              {!isBoosting && !paypalOrderId ? (
-                  <button
-                    onClick={startPaypalCheckout}
-                    className="w-full rounded-2xl bg-gradient-to-r from-indigo-500 to-blue-500 px-6 py-4 text-center font-bold text-white transition hover:opacity-90 shadow-lg shadow-indigo-500/20"
-                  >
-                    {selectedSession ? "Turbinar Agora" : "Postar e Turbinar"}
-                  </button>
-              ) : !isBoosting && paypalOrderId ? (
-                <PayPalScriptProvider
-                  options={{
-                    clientId: paypalClientId,
-                    currency: "BRL",
-                    intent: "capture",
-                  }}
-                >
-                  <PayPalButtons
-                    style={{ layout: "vertical", shape: "rect", label: "pay" }}
-                    createOrder={async () => paypalOrderId}
-                    onApprove={async (data) => {
-                      setIsBoosting(true);
-                      try {
-                        const captureUrl = platform === "google" 
-                           ? "/api/paypal/capture-google-order" 
-                           : "/api/paypal/capture-boost-order";
-                           
-                        const res = await fetch(captureUrl, {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ 
-                            orderID: data.orderID, 
-                            propertyId: id, 
-                            dailyBudget, 
-                            platform, 
-                            postType 
-                          }),
-                        });
-                        const result = await res.json();
-                        if (!res.ok || !result.success) throw new Error(result.error || "Falha ao finalizar");
-                        setSuccessMsg(`Sua campanha foi criada com sucesso e está em análise pelo ${platform === 'google' ? 'Google' : 'Meta'}. Logo seus leads começarão a chegar!`);
-                      } catch (err: any) {
-                        setPaypalError(err.message || "Ocorreu um erro ao processar o turbinamento.");
-                      } finally {
-                        setIsBoosting(false);
-                      }
-                    }}
-                    onCancel={() => {
-                      setPaypalError("");
-                      setPaypalOrderId(null);
-                    }}
-                  />
-                </PayPalScriptProvider>
-              ) : null}
+              {!isBoosting && (
+                <>
+                  {/* CAMPO DE CUPOM */}
+                  <div className="mb-6 flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="CUPOM DE DESCONTO"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                      className="flex-1 bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 uppercase"
+                    />
+                    <button 
+                      onClick={async () => {
+                        if (!couponCode) return;
+                        setApplyingCoupon(true);
+                        try {
+                          const res = await fetch("/api/minha-conta/redeem-coupon", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ code: couponCode, serviceType: "TURBINAR" })
+                          });
+                          const data = await res.json();
+                          if (data.success) {
+                            setTurbinarCredits(c => c + 1);
+                            setCouponCode("");
+                            alert("Cupom aplicado! Você ganhou 1 crédito para turbinar.");
+                          } else {
+                            alert(data.error);
+                          }
+                        } catch(e: any) {
+                          alert(e.message);
+                        } finally {
+                          setApplyingCoupon(false);
+                        }
+                      }}
+                      disabled={applyingCoupon}
+                      className="bg-indigo-500 hover:bg-indigo-400 px-6 rounded-xl text-[10px] font-black text-white uppercase tracking-widest transition-all disabled:opacity-50"
+                    >
+                      {applyingCoupon ? "..." : "APLICAR"}
+                    </button>
+                  </div>
+
+                  {/* SALDO DE CRÉDITOS */}
+                  {turbinarCredits > 0 && userRole !== "ADMIN" && (
+                    <div className="mb-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
+                      <div>
+                        <div className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Saldo de Cupons</div>
+                        <div className="text-xl font-black text-white">{turbinarCredits} CRÉDITOS</div>
+                      </div>
+                      <button 
+                        onClick={() => executeTurbinar("CREDIT")}
+                        className="bg-emerald-500 hover:bg-emerald-400 px-6 py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest transition-all"
+                      >
+                        USAR 1 CRÉDITO
+                      </button>
+                    </div>
+                  )}
+
+                  {userRole === "ADMIN" ? (
+                    <button 
+                      onClick={() => executeTurbinar("ADMIN_FREE")}
+                      className="w-full rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 py-4 font-black text-white shadow-xl shadow-emerald-500/20 hover:scale-[1.02] transition-all active:scale-95 flex items-center justify-center gap-3"
+                    >
+                      ATIVAR (GRÁTIS - ADMIN) <Rocket size={20} />
+                    </button>
+                  ) : !paypalOrderId ? (
+                    <button
+                      onClick={startPaypalCheckout}
+                      className="w-full rounded-2xl bg-gradient-to-r from-indigo-500 to-blue-500 px-6 py-4 text-center font-bold text-white transition hover:opacity-90 shadow-lg shadow-indigo-500/20"
+                    >
+                      {selectedSession ? "Turbinar Agora" : "Postar e Turbinar"}
+                    </button>
+                  ) : (
+                    <PayPalScriptProvider
+                      options={{
+                        clientId: paypalClientId,
+                        currency: "BRL",
+                        intent: "capture",
+                      }}
+                    >
+                      <PayPalButtons
+                        style={{ layout: "vertical", shape: "rect", label: "pay" }}
+                        createOrder={async () => paypalOrderId}
+                        onApprove={async (data) => executeTurbinar(data.orderID)}
+                        onCancel={() => {
+                          setPaypalError("");
+                          setPaypalOrderId(null);
+                        }}
+                      />
+                    </PayPalScriptProvider>
+                  )}
+                </>
+              )}
 
               <div className="mt-6 space-y-4">
                   <div className="bg-slate-900/50 p-3 rounded-lg border border-white/5 flex items-center gap-3">

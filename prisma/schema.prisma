@@ -72,6 +72,7 @@ model User {
   referrer                    User?      @relation("UserReferrals", fields: [referrerId], references: [id])
   referrals                   User[]     @relation("UserReferrals")
   viralizarCredits            Int        @default(0) @map("viralizar_credits")
+  turbinarCredits             Int        @default(0) @map("turbinar_credits")
   referralCode                String?    @unique @map("referral_code")
 
   offers                      Offer[]                @relation("BuyerOffers")
@@ -333,4 +334,16 @@ model MetaAdsSession {
   updatedAt  DateTime @updatedAt
 
   @@map("meta_ads_sessions")
+}
+
+model Coupon {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  serviceType  String   @map("service_type") // "VIRALIZAR" ou "TURBINAR"
+  maxUses      Int      @default(1) @map("max_uses")
+  currentUses  Int      @default(0) @map("current_uses")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("coupons")
 }

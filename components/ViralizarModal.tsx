@@ -26,7 +26,7 @@ export default function ViralizarModal({ isOpen, onClose, propertyTitle, propert
   } | null>(null);
   const [activeOrderID, setActiveOrderID] = useState<string | null>(null);
   const [coupon, setCoupon] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [userCredits, setUserCredits] = useState<number>(0);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -367,17 +367,33 @@ export default function ViralizarModal({ isOpen, onClose, propertyTitle, propert
                 className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-xs font-bold uppercase tracking-widest focus:border-purple-500 outline-none transition-all"
               />
               <button 
-                onClick={() => {
-                  if (coupon.toUpperCase() === "LEO10") {
-                    setAppliedCoupon("Leo10");
-                    alert("CUPOM APLICADO: 100% DE DESCONTO!");
-                  } else {
-                    alert("CUPOM INVÁLIDO");
+                onClick={async () => {
+                  if (!coupon) return;
+                  setApplyingCoupon(true);
+                  try {
+                    const res = await fetch("/api/minha-conta/redeem-coupon", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ code: coupon, serviceType: "VIRALIZAR" })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                      setUserCredits(c => c + 1);
+                      setCoupon("");
+                      alert("Cupom aplicado! Você ganhou 1 crédito para o Míssil.");
+                    } else {
+                      alert(data.error);
+                    }
+                  } catch(e: any) {
+                    alert(e.message);
+                  } finally {
+                    setApplyingCoupon(false);
                   }
                 }}
-                className="bg-white/10 hover:bg-white/20 px-6 py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest transition-all"
+                disabled={applyingCoupon}
+                className="bg-white/10 hover:bg-white/20 px-6 py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest transition-all disabled:opacity-50"
               >
-                APLICAR
+                {applyingCoupon ? "..." : "APLICAR"}
               </button>
             </div>
 
@@ -400,17 +416,7 @@ export default function ViralizarModal({ isOpen, onClose, propertyTitle, propert
               </div>
             )}
 
-            {appliedCoupon === "Leo10" ? (
-              <button 
-                onClick={() => {
-                  setActiveOrderID("FREE");
-                  setStep("ready");
-                }}
-                className="w-full rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 py-5 font-black text-white shadow-xl shadow-emerald-500/20 hover:scale-[1.02] transition-all active:scale-95 flex items-center justify-center gap-3"
-              >
-                ATIVAR COMANDO (GRÁTIS) <Rocket size={20} />
-              </button>
-            ) : !paypalOrderId ? (
+            {!paypalOrderId ? (
               <button onClick={async () => {
                 const res = await fetch("/api/paypal/create-viralizar-order", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ propertyId }) });
                 const data = await res.json();

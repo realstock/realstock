@@ -33,65 +33,80 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Parâmetros inválidos." }, { status: 400 });
     }
 
-    // 1. CAPTURA ORDEM NO PAYPAL
-    const accessToken = await getPayPalAccessToken();
-    const base = process.env.PAYPAL_API_BASE!;
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!user) return NextResponse.json({ success: false, error: "Usuário não encontrado." }, { status: 404 });
 
-    const captureRes = await fetch(`${base}/v2/checkout/orders/${orderID}/capture`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-    });
+    // 1. CAPTURA ORDEM NO PAYPAL OU IGNORA SE FOR CREDITO
+    let isFree = false;
 
-    const captureData = await captureRes.json();
+    if (orderID === "ADMIN_FREE") {
+      if (user.role !== "ADMIN") {
+        return NextResponse.json({ success: false, error: "Acesso restrito." }, { status: 403 });
+      }
+      isFree = true;
+    } else if (orderID === "CREDIT") {
+      if (user.turbinarCredits < 1) {
+        return NextResponse.json({ success: false, error: "Créditos insuficientes." }, { status: 400 });
+      }
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { turbinarCredits: { decrement: 1 } }
+      });
+      isFree = true;
+    } else {
+      const accessToken = await getPayPalAccessToken();
+      const base = process.env.PAYPAL_API_BASE!;
 
-    if (!captureRes.ok) {
-      console.error("PAYPAL GOOGLE CAPTURE ERROR:", captureData);
-      return NextResponse.json({ success: false, error: captureData.message || "Falha ao processar pagamento" }, { status: 400 });
-    }
+      const captureRes = await fetch(`${base}/v2/checkout/orders/${orderID}/capture`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      });
 
-    if (captureData.status !== "COMPLETED") {
-      return NextResponse.json({ success: false, error: "Pagamento não concluído. Status: " + captureData.status }, { status: 400 });
-    }
+      const captureData = await captureRes.json();
 
-    // Accounting Logic
-    try {
-        const captureInfo = captureData.purchase_units?.[0]?.payments?.captures?.[0];
-        if (captureInfo && captureInfo.seller_receivable_breakdown) {
-            const grossAmount = parseFloat(captureInfo.seller_receivable_breakdown.gross_amount.value);
-            const feeAmount = parseFloat(captureInfo.seller_receivable_breakdown.paypal_fee.value);
+      if (!captureRes.ok) {
+        console.error("PAYPAL GOOGLE CAPTURE ERROR:", captureData);
+        return NextResponse.json({ success: false, error: captureData.message || "Falha ao processar pagamento" }, { status: 400 });
+      }
 
-            await prisma.financialTransaction.createMany({
-                data: [
-                    {
-                        type: "REVENUE",
-                        category: "ADS_BOOST",
-                        amount: grossAmount,
-                        description: `Impulsionamento Google Ads (Imóvel #${propertyId})`,
-                        referenceId: orderID,
-                    },
-                    {
-                        type: "EXPENSE",
-                        category: "PAYPAL_FEE",
-                        amount: feeAmount,
-                        description: `Tarifa PayPal (Boost Google)`,
-                        referenceId: orderID,
-                    }
-                ]
-            });
-        }
-    } catch (finErr) {
-        console.error("FINANCE LOGGING ERROR:", finErr);
+      if (captureData.status !== "COMPLETED") {
+        return NextResponse.json({ success: false, error: "Pagamento não concluído. Status: " + captureData.status }, { status: 400 });
+      }
+
+      // Accounting Logic
+      try {
+          const captureInfo = captureData.purchase_units?.[0]?.payments?.captures?.[0];
+          if (captureInfo && captureInfo.seller_receivable_breakdown) {
+              const grossAmount = parseFloat(captureInfo.seller_receivable_breakdown.gross_amount.value);
+              const feeAmount = parseFloat(captureInfo.seller_receivable_breakdown.paypal_fee.value);
+
+              await prisma.financialTransaction.createMany({
+                  data: [
+                      {
+                          type: "REVENUE",
+                          category: "GOOGLE_ADS",
+                          amount: grossAmount,
+                          description: `Impulsionamento Google Ads (Imóvel #${propertyId})`,
+                          referenceId: orderID,
+                          userId: user.id
+                      },
+                      {
+                          type: "EXPENSE",
+                          category: "PAYPAL_FEE",
+                          amount: feeAmount,
+                          description: `Tarifa PayPal (Google Ads)`,
+                          referenceId: orderID,
+                          userId: user.id
+                      }
+                  ]
+              });
+          }
+      } catch (finErr) {
+          console.error("FINANCE LOGGING ERROR:", finErr);
+      }
     }
 
     // 2. TRUE GOOGLE ADS API
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
-
-    if (!user) {
-        return NextResponse.json({ success: false, error: "Usuário não encontrado." }, { status: 404 });
-    }
-
     let baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.realstock.com.br";
     if (baseUrl.includes("localhost") || baseUrl.includes("192.168") || baseUrl.includes("127.0.0.1")) {
         baseUrl = "https://www.realstock.com.br";

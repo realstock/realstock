@@ -33,50 +33,75 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Parâmetros inválidos." }, { status: 400 });
     }
 
-    // Capture payment
-    const accessToken = await getPayPalAccessToken();
-    const base = process.env.PAYPAL_API_BASE!;
-    const captureRes = await fetch(`${base}/v2/checkout/orders/${orderID}/capture`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
     });
-    const captureData = await captureRes.json();
-    if (captureData.status !== "COMPLETED") {
-      return NextResponse.json({ success: false, error: "Pagamento não concluído." }, { status: 400 });
+
+    if (!user) {
+        return NextResponse.json({ success: false, error: "Usuário não encontrado." }, { status: 404 });
     }
 
-    // Accounting Logic
-    try {
-        const captureInfo = captureData.purchase_units?.[0]?.payments?.captures?.[0];
-        if (captureInfo && captureInfo.seller_receivable_breakdown) {
-            const grossAmount = parseFloat(captureInfo.seller_receivable_breakdown.gross_amount.value);
-            const feeAmount = parseFloat(captureInfo.seller_receivable_breakdown.paypal_fee.value);
+    // Capture payment or handle special orders
+    let isFree = false;
 
-            await prisma.financialTransaction.createMany({
-                data: [
-                    {
-                        type: "REVENUE",
-                        category: "ADS_BOOST",
-                        amount: grossAmount,
-                        description: `Impulsionamento Meta Ads (Imóvel #${propertyId})`,
-                        referenceId: orderID,
-                    },
-                    {
-                        type: "EXPENSE",
-                        category: "PAYPAL_FEE",
-                        amount: feeAmount,
-                        description: `Tarifa PayPal (Boost Meta)`,
-                        referenceId: orderID,
-                    }
-                ]
-            });
-        }
-    } catch (finErr) {
-        console.error("FINANCE LOGGING ERROR:", finErr);
+    if (orderID === "ADMIN_FREE") {
+      if (user.role !== "ADMIN") {
+        return NextResponse.json({ success: false, error: "Acesso restrito." }, { status: 403 });
+      }
+      isFree = true;
+    } else if (orderID === "CREDIT") {
+      if (user.turbinarCredits < 1) {
+        return NextResponse.json({ success: false, error: "Créditos insuficientes." }, { status: 400 });
+      }
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { turbinarCredits: { decrement: 1 } }
+      });
+      isFree = true;
+    } else {
+      const accessToken = await getPayPalAccessToken();
+      const base = process.env.PAYPAL_API_BASE!;
+      const captureRes = await fetch(`${base}/v2/checkout/orders/${orderID}/capture`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }
+      });
+      const captureData = await captureRes.json();
+      if (captureData.status !== "COMPLETED") {
+        return NextResponse.json({ success: false, error: "Pagamento não concluído." }, { status: 400 });
+      }
+
+      // Accounting Logic
+      try {
+          const captureInfo = captureData.purchase_units?.[0]?.payments?.captures?.[0];
+          if (captureInfo && captureInfo.seller_receivable_breakdown) {
+              const grossAmount = parseFloat(captureInfo.seller_receivable_breakdown.gross_amount.value);
+              const feeAmount = parseFloat(captureInfo.seller_receivable_breakdown.paypal_fee.value);
+
+              await prisma.financialTransaction.createMany({
+                  data: [
+                      {
+                          type: "REVENUE",
+                          category: "ADS_BOOST",
+                          amount: grossAmount,
+                          description: platform === "google" ? "Impulsionamento Google Ads" : `Impulsionamento Meta Ads (${platform})`,
+                          referenceId: captureInfo.id,
+                          userId: user.id
+                      },
+                      {
+                          type: "EXPENSE",
+                          category: "PAYPAL_FEE",
+                          amount: feeAmount,
+                          description: `Tarifa PayPal (Boost ${platform})`,
+                          referenceId: captureInfo.id,
+                          userId: user.id
+                      }
+                  ]
+              });
+          }
+      } catch (finErr) {
+          console.error("FINANCE LOGGING ERROR:", finErr);
+      }
     }
-
-    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-    if (!user) return NextResponse.json({ success: false, error: "Usuário não encontrado." }, { status: 404 });
 
     let property: any = null;
     if (Number(propertyId) !== 0) {
