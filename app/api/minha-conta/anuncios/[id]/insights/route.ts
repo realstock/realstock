@@ -171,7 +171,7 @@ export async function GET(
                     clicks: adsData.clicks,
                     impressions: adsData.impressions,
                     ctr: adsData.ctr,
-                    cpc: adsData.cpc,
+                    cpc: Number(adsData.cpc).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
                     budget: budget.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
                     activeDays: goSession.budgetDays
                 };

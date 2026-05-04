@@ -225,7 +225,7 @@ export async function getGoogleAdsCampaignInsights(campaignId: string) {
     const result = await customer.query(query);
 
     if (result && result.length > 0) {
-      const metrics = result[0].metrics as any;
+      const metrics = result[0].metrics || {};
       
       return {
         success: true,
@@ -239,7 +239,17 @@ export async function getGoogleAdsCampaignInsights(campaignId: string) {
       };
     }
 
-    return { success: false, error: "Campanha não encontrada" };
+    // Se a campanha é muito recente, a API do Google pode retornar vazio. 
+    // Retornamos 0 em vez de erro para não esconder o painel.
+    return { 
+        success: true, 
+        clicks: 0, 
+        impressions: 0, 
+        ctr: "0.00", 
+        cost: 0, 
+        cpc: 0, 
+        status: "ACTIVE" 
+    };
   } catch (err: any) {
     console.error("Google Ads API Analytics Error:", err);
     return { success: false, error: err.message };
