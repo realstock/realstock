@@ -55,24 +55,26 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         try {
             const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
             if (igToken) {
-              const baseRes = await fetch(`https://graph.facebook.com/v19.0/${mediaIdToQuery}?fields=like_count,comments_count,updated_at&access_token=${igToken}`);
+              const baseRes = await fetch(`https://graph.facebook.com/v19.0/${mediaIdToQuery}?fields=like_count,comments_count,timestamp&access_token=${igToken}`);
               const baseData = await baseRes.json();
               
               if (baseData && !baseData.error) {
-                  // Tentar buscar métricas abrangentes
-                  const insRes = await fetch(`https://graph.facebook.com/v19.0/${mediaIdToQuery}/insights?metric=impressions,reach,video_views,plays,shares&access_token=${igToken}`);
-                  const insData = await insRes.json();
-
                   let impressions = 0, reach = 0, shares = 0;
-                  if (insData && insData.data) {
-                      for (const m of insData.data) {
-                          if (m.name === 'impressions' || m.name === 'video_views' || m.name === 'plays') {
-                              impressions = m.values[0]?.value || impressions;
+                  try {
+                      // Tentar buscar métricas abrangentes
+                      const insRes = await fetch(`https://graph.facebook.com/v19.0/${mediaIdToQuery}/insights?metric=impressions,reach,video_views,plays,shares&access_token=${igToken}`);
+                      const insData = await insRes.json();
+
+                      if (insData && insData.data) {
+                          for (const m of insData.data) {
+                              if (m.name === 'impressions' || m.name === 'video_views' || m.name === 'plays') {
+                                  impressions = m.values[0]?.value || impressions;
+                              }
+                              if (m.name === 'reach') reach = m.values[0]?.value || 0;
+                              if (m.name === 'shares') shares = m.values[0]?.value || 0;
                           }
-                          if (m.name === 'reach') reach = m.values[0]?.value || 0;
-                          if (m.name === 'shares') shares = m.values[0]?.value || 0;
                       }
-                  }
+                  } catch(e) { console.error("IG Insights Metric Error:", e); }
 
                   insights.instagram = {
                       likes: baseData.like_count || 0,
@@ -80,8 +82,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                       views: impressions,
                       reach, 
                       shares,
-                      publishedDate: baseData.updated_at || igSession?.updatedAt
+                      publishedDate: baseData.timestamp || igSession?.updatedAt
                   };
+              } else {
+                  console.error("IG GRAPH API ERROR:", baseData.error);
+                  insights.instagram = { likes: 0, comments: 0, views: 0, reach: 0, shares: 0, publishedDate: igSession?.updatedAt };
               }
             }
         } catch(e) { console.error("IG ANALYTICS ERROR", e); }
@@ -101,28 +106,43 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                 const pageInfo = pageTokenData.data?.find((p: any) => p.id === pageId);
 
                 if (pageInfo && pageInfo.access_token) {
-                    const res = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}?fields=shares,comments.summary(total_count),likes.summary(total_count),insights.metric(post_impressions)&access_token=${pageInfo.access_token}`);
-                    const data = await res.json();
+                    const basicRes = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}?fields=shares,comments.summary(total_count),likes.summary(total_count)&access_token=${pageInfo.access_token}`);
+                    const basicData = await basicRes.json();
                     
-                    if (data && !data.error) {
+                    if (basicData && !basicData.error) {
                         let impressions = 0;
-                        if (data.insights && data.insights.data) {
-                            for (const m of data.insights.data) {
-                                if (m.name === 'post_impressions' && m.values?.[0]) impressions = m.values[0].value;
+                        try {
+                            const insRes = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}/insights?metric=post_impressions&access_token=${pageInfo.access_token}`);
+                            const insData = await insRes.json();
+                            if (insData && insData.data && !insData.error) {
+                                for (const m of insData.data) {
+                                    if (m.name === 'post_impressions' && m.values?.[0]) impressions = m.values[0].value;
+                                }
+                            } else if (insData.error) {
+                                const vidRes = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}/insights?metric=post_video_views&access_token=${pageInfo.access_token}`);
+                                const vidData = await vidRes.json();
+                                if (vidData && vidData.data && !vidData.error) {
+                                    for (const m of vidData.data) {
+                                        if (m.name === 'post_video_views' && m.values?.[0]) impressions = m.values[0].value;
+                                    }
+                                }
                             }
-                        }
+                        } catch(e) {}
                     
                         insights.facebook = {
-                            likes: data.likes?.summary?.total_count || 0,
-                            comments: data.comments?.summary?.total_count || 0,
-                            shares: data.shares?.count || 0,
+                            likes: basicData.likes?.summary?.total_count || 0,
+                            comments: basicData.comments?.summary?.total_count || 0,
+                            shares: basicData.shares?.count || 0,
                             impressions,
                             publishedDate: fbSession.updatedAt
                         };
+                    } else {
+                        console.error("FACEBOOK GRAPH API ERROR:", basicData.error);
+                        insights.facebook = { likes: 0, comments: 0, shares: 0, impressions: 0, publishedDate: fbSession.updatedAt };
                     }
                 }
             }
-        } catch(e) {}
+        } catch(e) { console.error("FACEBOOK ORGANIC EXCEPTION:", e); }
     }
 
     // 3. META ADS (PAID) INSIGHTS

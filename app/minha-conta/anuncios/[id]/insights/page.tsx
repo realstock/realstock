@@ -132,40 +132,75 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-                    {/* ORGANIC INSIGHTS (INSTAGRAM/FACEBOOK POST) */}
-                    <div className="rounded-3xl bg-gradient-to-br from-slate-800/50 to-slate-900 border border-emerald-500/20 p-6 shadow-xl relative overflow-hidden">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="bg-emerald-500/20 p-2 rounded-xl">
-                                    <Users size={20} className="text-emerald-400" />
-                                </div>
-                                <h2 className="text-xl font-bold">Resumo Orgânico</h2>
+                    {/* INSTAGRAM ORGANIC */}
+                    <div className="rounded-3xl bg-gradient-to-br from-slate-800/50 to-slate-900 border border-fuchsia-500/20 p-6 shadow-xl relative overflow-hidden">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="bg-fuchsia-500/20 p-2 rounded-xl">
+                                <Heart size={20} className="text-fuchsia-400" />
                             </div>
-                            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-                                Estas visualizações ocorreram de forma gratuita no Instagram e Facebook da RealStock através de buscadores e compartilhamentos.
-                            </p>
+                            <h2 className="text-xl font-bold">Instagram</h2>
+                        </div>
+                        <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+                            Interações orgânicas vindas diretamente da página do Instagram da RealStock.
+                        </p>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-emerald-500/10 p-4 rounded-2xl backdrop-blur-sm border border-emerald-500/10 col-span-2 flex items-center justify-between">
-                                    <div>
-                                        <Eye className="text-emerald-400 mb-1" size={20} />
-                                        <div className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">Views Gratuitas</div>
-                                    </div>
-                                    <div className="text-3xl font-black text-white">
-                                        {((insights.instagram?.views || 0) + (insights.facebook?.impressions || 0)).toLocaleString('pt-BR')}
-                                    </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-fuchsia-500/10 p-4 rounded-2xl backdrop-blur-sm border border-fuchsia-500/10 col-span-2 flex items-center justify-between">
+                                <div>
+                                    <Eye className="text-fuchsia-400 mb-1" size={20} />
+                                    <div className="text-[10px] font-bold text-fuchsia-300 uppercase tracking-wider">Views / Reach</div>
                                 </div>
-                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-                                    <Heart className="text-emerald-400 mb-2" size={16} />
-                                    <div className="text-xl font-black">{ (insights.instagram?.likes || 0) + (insights.facebook?.likes || 0) }</div>
-                                    <div className="text-[9px] font-bold text-slate-500 uppercase">Likes</div>
+                                <div className="text-3xl font-black text-white">
+                                    {(insights.instagram?.views || 0).toLocaleString('pt-BR')}
                                 </div>
-                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-                                    <MessageCircle className="text-emerald-400 mb-2" size={16} />
-                                    <div className="text-xl font-black">{ (insights.instagram?.comments || 0) + (insights.facebook?.comments || 0) }</div>
-                                    <div className="text-[9px] font-bold text-slate-500 uppercase">Comments</div>
-                                </div>
+                            </div>
+                            <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
+                                <Heart className="text-fuchsia-400 mb-2" size={16} />
+                                <div className="text-xl font-black">{insights.instagram?.likes || 0}</div>
+                                <div className="text-[9px] font-bold text-slate-500 uppercase">Likes</div>
+                            </div>
+                            <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
+                                <MessageCircle className="text-fuchsia-400 mb-2" size={16} />
+                                <div className="text-xl font-black">{insights.instagram?.comments || 0}</div>
+                                <div className="text-[9px] font-bold text-slate-500 uppercase">Comments</div>
                             </div>
                         </div>
+                    </div>
+
+                    {/* FACEBOOK ORGANIC */}
+                    <div className="rounded-3xl bg-gradient-to-br from-slate-800/50 to-slate-900 border border-blue-500/20 p-6 shadow-xl relative overflow-hidden">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="bg-blue-500/20 p-2 rounded-xl">
+                                <Users size={20} className="text-blue-400" />
+                            </div>
+                            <h2 className="text-xl font-bold">Facebook</h2>
+                        </div>
+                        <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+                            Interações orgânicas vindas diretamente da página do Facebook da RealStock.
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-blue-500/10 p-4 rounded-2xl backdrop-blur-sm border border-blue-500/10 col-span-2 flex items-center justify-between">
+                                <div>
+                                    <Eye className="text-blue-400 mb-1" size={20} />
+                                    <div className="text-[10px] font-bold text-blue-300 uppercase tracking-wider">Views Gratuitas</div>
+                                </div>
+                                <div className="text-3xl font-black text-white">
+                                    {(insights.facebook?.impressions || 0).toLocaleString('pt-BR')}
+                                </div>
+                            </div>
+                            <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
+                                <Heart className="text-blue-400 mb-2" size={16} />
+                                <div className="text-xl font-black">{insights.facebook?.likes || 0}</div>
+                                <div className="text-[9px] font-bold text-slate-500 uppercase">Likes</div>
+                            </div>
+                            <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
+                                <MessageCircle className="text-blue-400 mb-2" size={16} />
+                                <div className="text-xl font-black">{insights.facebook?.comments || 0}</div>
+                                <div className="text-[9px] font-bold text-slate-500 uppercase">Comments</div>
+                            </div>
+                        </div>
+                    </div>
 
                     {/* PAID INSIGHTS (META ADS) */}
                     {insights.metaAds && (

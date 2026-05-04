@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Users, UserPlus, TrendingUp, Search, Network, ChevronRight, ChevronDown, ChevronLeft, User as UserIcon, Mail, Send, X } from "lucide-react";
+import { Users, UserPlus, TrendingUp, Search, Network, ChevronRight, ChevronDown, ChevronLeft, User as UserIcon, Mail, Send, X, Coins } from "lucide-react";
 
 interface NetworkUser {
   id: number;
@@ -28,26 +28,34 @@ export default function AdminNetworkPage() {
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [channel, setChannel] = useState<"email" | "whatsapp" | "both">("both");
-  const [emailSubject, setEmailSubject] = useState("Você Ganhou um Presente de R$ 625,00! 🎁");
+  const [emailSubject, setEmailSubject] = useState("RealStock: Seus Créditos de Divulgação Viral foram Ativados 🚀");
   const [emailHtml, setEmailHtml] = useState(`
-<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background: white; border-radius: 24px; overflow: hidden; color: #334155;">
-  <div style="background: #020617; padding: 40px; text-align: center;">
-    <h2 style="color: white; font-size: 28px; font-weight: 900; margin-bottom: 10px; text-transform: uppercase; font-style: italic;">Você Ganhou um Presente de R$ 625,00! 🎁</h2>
-    <p style="color: #94a3b8; font-size: 16px;">Marketing Viral RealStock</p>
+<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; border-radius: 24px; overflow: hidden; color: #1e293b; border: 1px solid #e2e8f0;">
+  <div style="background: #0f172a; padding: 40px; text-align: center;">
+    <h2 style="color: white; font-size: 24px; font-weight: 800; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Expansão RealStock</h2>
   </div>
-  <div style="padding: 40px;">
-    <p style="font-size: 18px; font-weight: bold;">Olá, [NOME]!</p>
-    <p>O RealStock acaba de lançar o <b>Comando Viralizar</b>, e creditamos agora na sua conta <b>5 CUPONS GRATUITOS</b>.</p>
-    <p style="background: #f8fafc; padding: 20px; border-left: 4px solid #10b981; margin: 20px 0; font-weight: bold;">
-      Este serviço publica automaticamente no Instagram e Facebook oficiais da RealStock e deixa seu anúncio pronto para o Google e Meta Ads.
-    </p>
-    <p>Ganhe +5 cupons para cada colega que se cadastrar pelo seu link:</p>
-    <div style="background: #f1f5f9; padding: 15px; border-radius: 12px; text-align: center; font-family: monospace; font-weight: bold; color: #4f46e5; margin-bottom: 30px;">
+  <div style="padding: 40px; background: white;">
+    <p style="font-size: 16px; font-weight: 600;">Olá, [NOME]!</p>
+    <p style="line-height: 1.6;">Informamos que sua conta na RealStock acaba de receber um upgrade com o novo sistema <b>Viralizar</b>.</p>
+    
+    <div style="background: #f1f5f9; padding: 25px; border-radius: 16px; margin: 25px 0; border: 1px solid #e2e8f0;">
+      <p style="margin: 0; font-size: 14px; color: #64748b; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Benefício Liberado:</p>
+      <p style="margin: 10px 0 0 0; font-size: 20px; font-weight: 900; color: #4f46e5;">5 CUPONS DE DIVULGAÇÃO GRATUITA</p>
+    </div>
+
+    <p style="line-height: 1.6;">Este bônus permite que você publique seus anúncios automaticamente nos perfis oficiais da RealStock, otimizando seu alcance para Google e Meta Ads com apenas um clique.</p>
+    
+    <p style="font-size: 14px; color: #64748b; margin-top: 30px;">Seu link único de convite para ganhar mais cupons:</p>
+    <div style="background: #f8fafc; padding: 15px; border-radius: 12px; text-align: center; font-family: monospace; font-weight: bold; color: #0f172a; border: 1px dashed #cbd5e1; margin-bottom: 30px;">
       [REF_LINK]
     </div>
+
     <div style="text-align: center;">
-      <a href="https://realstock.com.br/minha-conta/anuncios?viralizar=true" style="background: #0f172a; color: white; padding: 18px 35px; border-radius: 16px; text-decoration: none; font-weight: 900; text-transform: uppercase; display: inline-block; white-space: nowrap; font-size: 14px;">Usar Meus Créditos Agora 🚀</a>
+      <a href="https://realstock.com.br/minha-conta/anuncios?viralizar=true" style="background: #4f46e5; color: white; padding: 18px 35px; border-radius: 14px; text-decoration: none; font-weight: 800; display: inline-block; white-space: nowrap; font-size: 14px; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">ACESSAR MEUS CRÉDITOS</a>
     </div>
+  </div>
+  <div style="padding: 20px; text-align: center; font-size: 11px; color: #94a3b8;">
+    RealStock © 2026 - Tecnologia para o Mercado Imobiliário
   </div>
 </div>
   `);
@@ -120,12 +128,19 @@ export default function AdminNetworkPage() {
           </div>
           
           <div className="flex gap-4 items-center">
-             <button 
-               onClick={() => setIsEmailModalOpen(true)}
-               className="bg-white text-slate-950 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-purple-400 hover:text-white transition-all shadow-xl shadow-white/5"
-             >
-                <Send size={16} /> Comunicar Rede
-             </button>
+              <button 
+                onClick={() => setIsEmailModalOpen(true)}
+                className="bg-white text-slate-950 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-purple-400 hover:text-white transition-all shadow-xl shadow-white/5"
+              >
+                 <Send size={16} /> Comunicar Rede
+              </button>
+
+              <Link 
+                href="/admin/creditos"
+                className="bg-emerald-500 text-slate-950 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-emerald-400 transition-all shadow-xl shadow-emerald-500/10"
+              >
+                 <Coins size={16} /> Distribuir Créditos
+              </Link>
 
              <div className="bg-slate-900 border border-white/5 p-4 rounded-2xl flex flex-col min-w-[120px]">
                 <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Total Usuários</span>

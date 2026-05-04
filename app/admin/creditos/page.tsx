@@ -319,6 +319,7 @@ export default function GestaoCreditosAdmin() {
           </table>
         </div>
       </div>
-    </main>
+    </div>
+  </main>
   );
 }
