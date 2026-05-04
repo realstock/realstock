@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
-import { Rocket, Target, CalendarDays, Wallet, Volume2, VolumeX, X } from "lucide-react";
+import { Rocket, Target, CalendarDays, Wallet, Volume2, VolumeX, X, Globe } from "lucide-react";
 
 export default function TurbinarPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
