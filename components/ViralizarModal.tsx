@@ -189,13 +189,38 @@ export default function ViralizarModal({ isOpen, onClose, propertyTitle, propert
         const dH = (img.height * (dW / img.width));
         ctx.drawImage(img, (width - dW) / 2, (height - dH) / 2, dW, dH);
 
-        ctx.fillStyle = "rgba(0,0,0,0.75)";
-        ctx.fillRect(0, height - 200, width, 200);
+        ctx.fillStyle = "rgba(0,0,0,0.8)"; // Slightly darker for better readability
+        ctx.fillRect(0, height - 240, width, 240);
         
         ctx.fillStyle = "white";
         ctx.font = "bold 44px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(propertyTitle.toUpperCase(), width / 2, height - 110);
+        
+        const maxWidth = width - 80;
+        const words = propertyTitle.toUpperCase().split(' ');
+        let line = '';
+        const lines = [];
+        
+        for (let n = 0; n < words.length; n++) {
+            const testLine = line + words[n] + ' ';
+            const metrics = ctx.measureText(testLine);
+            const testWidth = metrics.width;
+            if (testWidth > maxWidth && n > 0) {
+                lines.push(line);
+                line = words[n] + ' ';
+            } else {
+                line = testLine;
+            }
+        }
+        lines.push(line);
+
+        // Render lines from bottom to top or fixed position
+        const lineHeight = 52;
+        const startY = height - 120 - ((lines.length - 1) * lineHeight / 2);
+        
+        lines.forEach((l, i) => {
+            ctx.fillText(l.trim(), width / 2, startY + (i * lineHeight));
+        });
 
         ctx.fillStyle = "#38bdf8";
         ctx.font = "bold 32px sans-serif";
