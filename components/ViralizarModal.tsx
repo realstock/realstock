@@ -135,7 +135,7 @@ export default function ViralizarModal({ isOpen, onClose, propertyTitle, propert
     } catch (e) { addLog("Aviso: Áudio bypass."); }
 
     const mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm';
-    const recorder = new MediaRecorder(finalStream, { mimeType, videoBitsPerSecond: 1500000 });
+    const recorder = new MediaRecorder(finalStream, { mimeType, videoBitsPerSecond: 1000000 }); // 1.0 Mbps for smaller file
     mediaRecorderRef.current = recorder;
 
     recorder.ondataavailable = (e) => { 
@@ -167,9 +167,9 @@ export default function ViralizarModal({ isOpen, onClose, propertyTitle, propert
     recorder.start(1000);
     await new Promise(r => setTimeout(r, 1000));
 
-    const targetTotalDuration = 60;
-    const durationPerImage = Math.min(targetTotalDuration / loadedImages.length, 7.0);
-    const totalFrames = (loadedImages.length * durationPerImage) * 30;
+    const targetTotalDuration = 30; // Reduced to 30s for performance and upload limits
+    const durationPerImage = Math.min(targetTotalDuration / loadedImages.slice(0, 10).length, 4.0);
+    const totalFrames = (loadedImages.slice(0, 10).length * durationPerImage) * 30;
 
     for (let frame = 0; frame < totalFrames; frame++) {
         const currentTime = frame / 30;
