@@ -21,25 +21,31 @@ export async function POST(req: Request) {
 
     // Buscar todos os usuários
     const users = await prisma.user.findMany({
-      select: { email: true, name: true, referralCode: true }
+      select: { email: true, name: true, referralCode: true, phone: true }
     });
 
-    console.log(`Iniciando disparo para ${users.length} usuários.`);
+    console.log(`Iniciando disparo para ${users.length} usuários via Engine de Mensageria.`);
 
-    // Enviar e-mails em lote (usando Resend ou similar)
-    // Para cada usuário, precisamos injetar o código de indicação dele se houver tags de substituição
+    const { sendNotification } = require("@/lib/messenger");
+
     const results = await Promise.all(
       users.map(async (user) => {
-        // Substituir variáveis no template
+        const personalText = htmlContent
+          .replace(/<[^>]*>/g, '') // Stripping HTML for WhatsApp
+          .replace(/\[NOME\]/g, user.name)
+          .replace(/\[CODIGO\]/g, user.referralCode || "REALSTOCK-PRO")
+          .replace(/\[REF_LINK\]/g, `https://realstock.com.br/cadastro?ref=${user.referralCode || ""}`);
+
         const personalHtml = htmlContent
           .replace(/\[NOME\]/g, user.name)
           .replace(/\[CODIGO\]/g, user.referralCode || "REALSTOCK-PRO")
           .replace(/\[REF_LINK\]/g, `https://realstock.com.br/cadastro?ref=${user.referralCode || ""}`);
 
-        return resend.emails.send({
-          from: "RealStock <contato@realstock.com.br>",
-          to: user.email,
+        return sendNotification({
+          toEmail: user.email,
+          toPhone: user.phone,
           subject: subject,
+          text: personalText,
           html: personalHtml,
         });
       })
@@ -47,7 +53,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ 
       success: true, 
-      message: `${users.length} e-mails enviados com sucesso.`,
+      message: `${users.length} notificações processadas com sucesso (E-mail + WhatsApp).`,
       results 
     });
 

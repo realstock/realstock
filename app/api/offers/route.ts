@@ -87,27 +87,34 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    if (property.owner?.email) {
+    if (property.owner?.email || property.owner?.phone) {
       try {
-        await sendEmail({
-          to: property.owner.email,
-          subject: `Parabéns, seu anúncio: ${property.title} acaba de receber uma oferta`,
+        const { sendNotification } = require("@/lib/messenger");
+        const messageText = `Olá ${property.owner.name}! Você acabou de receber uma nova proposta de R$ ${offerPrice.toLocaleString('pt-BR')} para o imóvel: ${property.title}.\n\nAcesse seu painel na RealStock para ver os detalhes.`;
+
+        await sendNotification({
+          toEmail: property.owner.email,
+          toPhone: property.owner.phone,
+          subject: `Nova Proposta: ${property.title}`,
+          text: messageText,
           html: getOfferEmailTemplate(property.title, property.id),
         });
 
         // Também salva na caixa de entrada interna (banco de dados)
-        await prisma.emailMessage.create({
-          data: {
-            sender: "RealStock <contato@realstock.com.br>",
-            recipient: property.owner.email,
-            subject: `Parabéns, seu anúncio: ${property.title} acaba de receber uma oferta`,
-            htmlBody: getOfferEmailTemplate(property.title, property.id),
-            direction: "OUTBOUND",
-            status: "UNREAD",
-          },
-        });
-      } catch (emailError) {
-        console.error("EMAIL OFFER ERROR:", emailError);
+        if (property.owner.email) {
+          await prisma.emailMessage.create({
+            data: {
+              sender: "RealStock <contato@realstock.com.br>",
+              recipient: property.owner.email,
+              subject: `Parabéns, seu anúncio: ${property.title} acaba de receber uma oferta`,
+              htmlBody: getOfferEmailTemplate(property.title, property.id),
+              direction: "OUTBOUND",
+              status: "UNREAD",
+            },
+          });
+        }
+      } catch (notifError) {
+        console.error("NOTIFICATION OFFER ERROR:", notifError);
       }
     }
 
