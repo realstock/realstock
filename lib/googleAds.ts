@@ -74,7 +74,7 @@ export async function createRealStockGoogleCampaign(
     const adGroupResourceName = adGroupRes.results[0].resource_name;
 
     // 4. Create Ad
-    const safeTitle = propertyTitle.length > 30 ? propertyTitle.substring(0, 27) + "..." : propertyTitle;
+    const safeTitle = propertyTitle.replace(/[\[\]\?\!]/g, "").substring(0, 30);
     
     await customer.adGroupAds.create([
       {
@@ -83,16 +83,20 @@ export async function createRealStockGoogleCampaign(
         ad: {
           responsive_search_ad: {
             headlines: [
-              { text: "Lindo Imóvel Disponível", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
               { text: safeTitle, pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
+              { text: "Lindo Imóvel Disponível", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
               { text: "Agende sua visita na RealStock", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
               { text: "Oportunidade de Investimento", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
               { text: "Imóveis Exclusivos RealStock", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
+              { text: "Melhor Preço da Região", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
+              { text: "Pronto para Morar ou Investir", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
+              { text: "Confira Fotos e Detalhes", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
             ],
             descriptions: [
               { text: "Venha conhecer esta excelente oportunidade exclusiva da RealStock. Agende online agora mesmo." },
               { text: "Opção imperdível para compra ou locação. Fale com um de nossos corretores experts e feche negócio." },
               { text: "Encontre os melhores imóveis da sua região com a RealStock. Facilidade e transparência." },
+              { text: "Aproveite as melhores condições do mercado imobiliário. Visite nosso portal e saiba mais detalhes." },
             ],
             path1: "imovel",
             path2: propertyId.toString().substring(0, 15),
@@ -116,18 +120,27 @@ export async function createRealStockGoogleCampaign(
     }
     if (propertyType) {
         keywordTexts.push(propertyType.toLowerCase());
+        keywordTexts.push(`${propertyType.toLowerCase()} a venda`);
     }
 
     if (state) {
         keywordTexts.push(`imovel em ${state.toLowerCase()}`);
+        keywordTexts.push(`casa em ${state.toLowerCase()}`);
     }
 
+    // Sanitização rigorosa de keywords (remover caracteres especiais proibidos pelo Google)
+    const sanitizedKeywords = Array.from(new Set(
+        keywordTexts
+            .map(t => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").trim())
+            .filter(t => t.length > 2 && t.length < 80)
+    ));
+
     await customer.adGroupCriteria.create(
-        keywordTexts.map(text => ({
+        sanitizedKeywords.map(text => ({
             ad_group: adGroupResourceName,
             status: enums.AdGroupCriterionStatus.ENABLED,
             keyword: {
-                text: text.substring(0, 80),
+                text: text,
                 match_type: enums.KeywordMatchType.PHRASE
             }
         }))
