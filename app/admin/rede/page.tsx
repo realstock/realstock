@@ -23,39 +23,38 @@ export default function AdminNetworkPage() {
   const [users, setUsers] = useState<NetworkUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(new Set());
   
   // Estados do Modal de E-mail
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [channel, setChannel] = useState<"email" | "whatsapp" | "both">("both");
-  const [emailSubject, setEmailSubject] = useState("RealStock: Seus Créditos de Divulgação Viral foram Ativados 🚀");
+  const [emailSubject, setEmailSubject] = useState("Você ganhou Créditos de Divulgação Viral na RealStock! 🚀");
   const [emailHtml, setEmailHtml] = useState(`
 <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; border-radius: 24px; overflow: hidden; color: #1e293b; border: 1px solid #e2e8f0;">
-  <div style="background: #0f172a; padding: 40px; text-align: center;">
-    <h2 style="color: white; font-size: 24px; font-weight: 800; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Expansão RealStock</h2>
-  </div>
+  <img src="https://realstock.com.br/images/viralizar_banner_premium.png" alt="RealStock Viralizar" style="width: 100%; height: auto; display: block;">
   <div style="padding: 40px; background: white;">
     <p style="font-size: 16px; font-weight: 600;">Olá, [NOME]!</p>
-    <p style="line-height: 1.6;">Informamos que sua conta na RealStock acaba de receber um upgrade com o novo sistema <b>Viralizar</b>.</p>
+    <p style="line-height: 1.6;">Temos o prazer de informar que sua conta acaba de receber <b>Créditos de Viralização</b>. 🚀</p>
     
     <div style="background: #f1f5f9; padding: 25px; border-radius: 16px; margin: 25px 0; border: 1px solid #e2e8f0;">
-      <p style="margin: 0; font-size: 14px; color: #64748b; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Benefício Liberado:</p>
-      <p style="margin: 10px 0 0 0; font-size: 20px; font-weight: 900; color: #4f46e5;">5 CUPONS DE DIVULGAÇÃO GRATUITA</p>
+      <p style="margin: 0; font-size: 14px; color: #64748b; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Ação Necessária:</p>
+      <p style="margin: 10px 0 0 0; font-size: 18px; font-weight: 900; color: #4f46e5;">CLIQUE NO BOTÃO "VIRALIZAR" NOS SEUS ANÚNCIOS</p>
     </div>
 
-    <p style="line-height: 1.6;">Este bônus permite que você publique seus anúncios automaticamente nos perfis oficiais da RealStock, otimizando seu alcance para Google e Meta Ads com apenas um clique.</p>
+    <p style="line-height: 1.6;">Acesse agora o seu painel de anúncios para ativar a divulgação automática e aumentar o alcance dos seus imóveis:</p>
     
-    <p style="font-size: 14px; color: #64748b; margin-top: 30px;">Seu link único de convite para ganhar mais cupons:</p>
-    <div style="background: #f8fafc; padding: 15px; border-radius: 12px; text-align: center; font-family: monospace; font-weight: bold; color: #0f172a; border: 1px dashed #cbd5e1; margin-bottom: 30px;">
-      [REF_LINK]
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="[ANUNCIOS_LINK]" style="background: #4f46e5; color: white; padding: 18px 35px; border-radius: 14px; text-decoration: none; font-weight: 800; display: inline-block; font-size: 14px; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">ACESSAR MEUS ANÚNCIOS</a>
     </div>
 
-    <div style="text-align: center;">
-      <a href="https://realstock.com.br/minha-conta/anuncios?viralizar=true" style="background: #4f46e5; color: white; padding: 18px 35px; border-radius: 14px; text-decoration: none; font-weight: 800; display: inline-block; white-space: nowrap; font-size: 14px; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">ACESSAR MEUS CRÉDITOS</a>
-    </div>
+    <p style="font-size: 14px; color: #64748b; margin-top: 30px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+      Seu link de convite para ganhar mais créditos:<br>
+      <small style="font-family: monospace;">[REF_LINK]</small>
+    </p>
   </div>
   <div style="padding: 20px; text-align: center; font-size: 11px; color: #94a3b8;">
-    RealStock © 2026 - Tecnologia para o Mercado Imobiliário
+    RealStock © 2026 - Onde a rede se encontra
   </div>
 </div>
   `);
@@ -69,15 +68,40 @@ export default function AdminNetworkPage() {
       });
   }, []);
 
+  const handleSelectAll = () => {
+    if (selectedUserIds.size === users.length) {
+      setSelectedUserIds(new Set());
+    } else {
+      setSelectedUserIds(new Set(users.map(u => u.id)));
+    }
+  };
+
+  const handleSelectUser = (id: number) => {
+    const newSelected = new Set(selectedUserIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedUserIds(newSelected);
+  };
+
   const handleSendEmail = async () => {
-    if (!confirm(`Deseja disparar este e-mail para todos os ${users.length} usuários?`)) return;
+    const targets = selectedUserIds.size > 0 ? Array.from(selectedUserIds) : users.map(u => u.id);
+    
+    if (!confirm(`Deseja disparar este comunicado para os ${targets.length} usuários selecionados?`)) return;
     
     setSending(true);
     try {
       const res = await fetch("/api/admin/broadcast-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject: emailSubject, htmlContent: emailHtml, channel })
+        body: JSON.stringify({ 
+          subject: emailSubject, 
+          htmlContent: emailHtml, 
+          channel,
+          userIds: targets 
+        })
       });
       const data = await res.json();
       if (data.success) {
@@ -156,14 +180,33 @@ export default function AdminNetworkPage() {
         <div className="grid grid-cols-1 gap-8">
           {/* VISUALIZAÇÃO DA REDE */}
           <div className="bg-slate-900/50 border border-white/5 rounded-[40px] p-8 backdrop-blur-xl">
-             <h2 className="text-xl font-black mb-8 uppercase italic flex items-center gap-3">
-               <Users className="text-purple-500" /> Estrutura de Indicações
-             </h2>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                <h2 className="text-xl font-black uppercase italic flex items-center gap-3">
+                  <Users className="text-purple-500" /> Estrutura de Indicações
+                </h2>
+                <div className="flex items-center gap-4">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    {selectedUserIds.size} selecionados
+                  </span>
+                  <button 
+                    onClick={handleSelectAll}
+                    className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-slate-950 transition-all"
+                  >
+                    {selectedUserIds.size === users.length ? "Desmarcar Todos" : "Selecionar Todos"}
+                  </button>
+                </div>
+              </div>
              
              <div className="space-y-4">
-                {tree.map(node => (
-                   <TreeNode key={node.id} node={node} level={0} />
-                ))}
+                 {tree.map(node => (
+                    <TreeNode 
+                      key={node.id} 
+                      node={node} 
+                      level={0} 
+                      selectedIds={selectedUserIds}
+                      onSelect={handleSelectUser}
+                    />
+                 ))}
              </div>
           </div>
         </div>
@@ -267,7 +310,17 @@ export default function AdminNetworkPage() {
   );
 }
 
-function TreeNode({ node, level }: { node: any; level: number }) {
+function TreeNode({ 
+  node, 
+  level, 
+  selectedIds, 
+  onSelect 
+}: { 
+  node: any; 
+  level: number; 
+  selectedIds: Set<number>; 
+  onSelect: (id: number) => void 
+}) {
   const [isOpen, setIsOpen] = useState(true);
   const hasChildren = node.children && node.children.length > 0;
 
@@ -302,6 +355,15 @@ function TreeNode({ node, level }: { node: any; level: number }) {
         }`}
         style={{ marginLeft: `${level * 32}px` }}
       >
+        <div 
+          onClick={() => onSelect(node.id)}
+          className={`h-5 w-5 rounded-md border-2 cursor-pointer flex items-center justify-center transition-all ${
+            selectedIds.has(node.id) ? 'bg-purple-500 border-purple-500' : 'bg-transparent border-white/20 hover:border-white/40'
+          }`}
+        >
+          {selectedIds.has(node.id) && <div className="w-2 h-2 bg-white rounded-sm" />}
+        </div>
+
         <button 
           onClick={() => setIsOpen(!isOpen)} 
           className={`flex items-center justify-center h-6 w-6 rounded-full bg-slate-800 border border-white/10 transition-colors hover:bg-purple-500 ${hasChildren ? 'opacity-100' : 'opacity-0 cursor-default'}`}
@@ -334,7 +396,13 @@ function TreeNode({ node, level }: { node: any; level: number }) {
       {isOpen && hasChildren && (
         <div className="mt-2 space-y-2">
           {node.children.map((child: any) => (
-            <TreeNode key={child.id} node={child} level={level + 1} />
+            <TreeNode 
+              key={child.id} 
+              node={child} 
+              level={level + 1} 
+              selectedIds={selectedIds}
+              onSelect={onSelect}
+            />
           ))}
         </div>
       )}

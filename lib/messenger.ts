@@ -6,6 +6,7 @@ interface MessagePayload {
   subject: string;
   text: string;
   html?: string;
+  mediaUrl?: string;
 }
 
 /**
@@ -35,30 +36,30 @@ export async function sendNotification(payload: MessagePayload) {
 
   if (toPhone && whatsappUrl) {
     try {
-      // Limpar o número (manter apenas dígitos)
       let cleanPhone = toPhone.replace(/\D/g, "");
-      
-      // Garantir que tenha o código do país (Brasil 55) se tiver 11 dígitos
       if (cleanPhone.length === 11) cleanPhone = "55" + cleanPhone;
 
-      // Implementação específica para Evolution API v1/v2
-      const response = await fetch(whatsappUrl, {
+      const endpoint = payload.mediaUrl ? whatsappUrl.replace("sendText", "sendMedia") : whatsappUrl;
+      
+      const body: any = {
+        number: cleanPhone,
+      };
+
+      if (payload.mediaUrl) {
+        body.media = payload.mediaUrl;
+        body.caption = `*${subject}*\n\n${text}`;
+        body.mediaType = "image";
+      } else {
+        body.text = `*${subject}*\n\n${text}`;
+      }
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "apikey": whatsappToken || "",
         },
-        body: JSON.stringify({
-          number: cleanPhone,
-          options: {
-            delay: 1200,
-            presence: "composing",
-            linkPreview: false
-          },
-          textMessage: {
-            text: `*${subject}*\n\n${text}`
-          }
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();

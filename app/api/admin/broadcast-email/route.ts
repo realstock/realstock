@@ -13,14 +13,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 403 });
     }
 
-    const { subject, htmlContent, channel = "both" } = await req.json();
+    const { subject, htmlContent, channel = "both", userIds = [] } = await req.json();
 
     if (!subject || !htmlContent) {
       return NextResponse.json({ success: false, error: "Assunto e conteúdo são obrigatórios" }, { status: 400 });
     }
 
-    // Buscar todos os usuários
+    // Buscar usuários (todos ou apenas os selecionados)
     const users = await prisma.user.findMany({
+      where: userIds && userIds.length > 0 ? { id: { in: userIds } } : {},
       select: { email: true, name: true, referralCode: true, phone: true }
     });
 
@@ -30,16 +31,22 @@ export async function POST(req: Request) {
 
     const results = await Promise.all(
       users.map(async (user) => {
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://realstock.com.br";
+
         const personalText = htmlContent
-          .replace(/<[^>]*>/g, '') // Stripping HTML for WhatsApp
+          .replace(/<[^>]*>/g, '') 
           .replace(/\[NOME\]/g, user.name)
           .replace(/\[CODIGO\]/g, user.referralCode || "REALSTOCK-PRO")
-          .replace(/\[REF_LINK\]/g, `https://realstock.com.br/cadastro?ref=${user.referralCode || ""}`);
+          .replace(/\[REF_LINK\]/g, `${siteUrl}/cadastro?ref=${user.referralCode || ""}`)
+          .replace(/\[DASHBOARD_LINK\]/g, `${siteUrl}/minha-conta`)
+          .replace(/\[ANUNCIOS_LINK\]/g, `${siteUrl}/minha-conta/anuncios`);
 
         const personalHtml = htmlContent
           .replace(/\[NOME\]/g, user.name)
           .replace(/\[CODIGO\]/g, user.referralCode || "REALSTOCK-PRO")
-          .replace(/\[REF_LINK\]/g, `https://realstock.com.br/cadastro?ref=${user.referralCode || ""}`);
+          .replace(/\[REF_LINK\]/g, `${siteUrl}/cadastro?ref=${user.referralCode || ""}`)
+          .replace(/\[DASHBOARD_LINK\]/g, `${siteUrl}/minha-conta`)
+          .replace(/\[ANUNCIOS_LINK\]/g, `${siteUrl}/minha-conta/anuncios`);
 
         return sendNotification({
           toEmail: (channel === "email" || channel === "both") ? user.email : undefined,
