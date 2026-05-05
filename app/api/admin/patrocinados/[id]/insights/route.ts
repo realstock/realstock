@@ -62,12 +62,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                   let impressions = 0, reach = 0, shares = 0;
                   try {
                       // Tentar buscar métricas abrangentes
-                      const insRes = await fetch(`https://graph.facebook.com/v19.0/${mediaIdToQuery}/insights?metric=impressions,reach,video_views,plays,shares&access_token=${igToken}`);
+                      const insRes = await fetch(`https://graph.facebook.com/v19.0/${mediaIdToQuery}/insights?metric=views,reach,shares&access_token=${igToken}`);
                       const insData = await insRes.json();
 
                       if (insData && insData.data) {
                           for (const m of insData.data) {
-                              if (m.name === 'impressions' || m.name === 'video_views' || m.name === 'plays') {
+                              if (m.name === 'views') {
                                   impressions = m.values[0]?.value || impressions;
                               }
                               if (m.name === 'reach') reach = m.values[0]?.value || 0;
