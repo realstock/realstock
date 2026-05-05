@@ -73,6 +73,10 @@ export async function GET(
                 const baseData = await baseRes.json();
                 
                 if (baseData && !baseData.error) {
+                    let postType = item.type;
+                    if (baseData.media_type === 'VIDEO') postType = 'reels';
+                    else if (baseData.media_type === 'CAROUSEL_ALBUM') postType = 'carousel';
+
                     let views = 0, reach = 0, shares = 0;
                     try {
                         const insRes = await fetch(`https://graph.facebook.com/v19.0/${item.id}/insights?metric=views,reach,shares,saved&access_token=${igToken}`);
@@ -88,7 +92,7 @@ export async function GET(
                     } catch(e) { console.error("IG Insights Metric Error:", e); }
 
                     instagramPosts.push({
-                        type: item.type,
+                        type: postType,
                         likes: baseData.like_count || 0,
                         comments: baseData.comments_count || 0,
                         views,
@@ -141,6 +145,12 @@ export async function GET(
                                     const vidData = await vidRes.json();
                                     if (vidData && vidData.data && !vidData.error) {
                                         views = vidData.data.find((m:any) => m.name === 'post_video_views')?.values[0]?.value || 0;
+                                    } else if (vidData.error) {
+                                        const unqRes = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}/insights?metric=post_impressions_unique&access_token=${pageInfo.access_token}`);
+                                        const unqData = await unqRes.json();
+                                        if (unqData && unqData.data && !unqData.error) {
+                                            views = unqData.data.find((m:any) => m.name === 'post_impressions_unique')?.values[0]?.value || 0;
+                                        }
                                     }
                                 }
                             } catch(e) {}
