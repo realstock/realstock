@@ -123,14 +123,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                                     for (const m of insData.data) {
                                         if (m.name === 'post_impressions' && m.values?.[0]) views = m.values[0].value;
                                     }
-                                } else if (insData.error) {
+                                } 
+                                
+                                if (insData.error || views === 0) {
                                     const vidRes = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}/insights?metric=post_video_views&access_token=${pageInfo.access_token}`);
                                     const vidData = await vidRes.json();
                                     if (vidData && vidData.data && !vidData.error) {
                                         for (const m of vidData.data) {
                                             if (m.name === 'post_video_views' && m.values?.[0]) views = m.values[0].value;
                                         }
-                                    } else if (vidData.error) {
+                                    } 
+                                    
+                                    if (vidData?.error || views === 0) {
                                         const unqRes = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}/insights?metric=post_impressions_unique&access_token=${pageInfo.access_token}`);
                                         const unqData = await unqRes.json();
                                         if (unqData && unqData.data && !unqData.error) {

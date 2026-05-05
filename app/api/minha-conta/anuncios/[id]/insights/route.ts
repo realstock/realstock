@@ -140,12 +140,16 @@ export async function GET(
                                 const insData = await insRes.json();
                                 if (insData && insData.data && !insData.error) {
                                     views = insData.data.find((m:any) => m.name === 'post_impressions')?.values[0]?.value || 0;
-                                } else if (insData.error) {
+                                } 
+                                
+                                if (insData.error || views === 0) {
                                     const vidRes = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}/insights?metric=post_video_views&access_token=${pageInfo.access_token}`);
                                     const vidData = await vidRes.json();
                                     if (vidData && vidData.data && !vidData.error) {
                                         views = vidData.data.find((m:any) => m.name === 'post_video_views')?.values[0]?.value || 0;
-                                    } else if (vidData.error) {
+                                    } 
+                                    
+                                    if (vidData?.error || views === 0) {
                                         const unqRes = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}/insights?metric=post_impressions_unique&access_token=${pageInfo.access_token}`);
                                         const unqData = await unqRes.json();
                                         if (unqData && unqData.data && !unqData.error) {
