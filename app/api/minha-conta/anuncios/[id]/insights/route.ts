@@ -33,84 +33,68 @@ export async function GET(
       return NextResponse.json({ success: false, error: "Anúncio não encontrado" }, { status: 404 });
     }
 
-    const fbSession = await prisma.facebookFeedSession.findFirst({
+    // 2. INSTAGRAM ORGANIC INSIGHTS
+    const igSessions = await prisma.instagramPreviewSession.findMany({
         where: { listingId: propertyId, status: "PUBLISHED" },
         orderBy: { createdAt: "desc" },
     });
+    
+    const igMediaIds = igSessions.map(s => ({ id: s.publishedMediaId, type: s.postType }));
+    if (property.instagramMediaId && !igMediaIds.find(i => i.id === property.instagramMediaId)) {
+        igMediaIds.push({ id: property.instagramMediaId, type: 'carousel' });
+    }
 
-    const goSession = await prisma.googleAdsSession.findFirst({
-        where: { listingId: propertyId, status: { contains: "ACTIVE" } },
-        orderBy: { createdAt: 'desc' }
+    const instagramPosts: any[] = [];
+    for (const item of igMediaIds) {
+        if (!item.id) continue;
+        try {
+            const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
+            if (igToken) {
+                const baseRes = await fetch(`https://graph.facebook.com/v19.0/${item.id}?fields=like_count,comments_count,timestamp&access_token=${igToken}`);
+                const baseData = await baseRes.json();
+                
+                if (baseData && !baseData.error) {
+                    let views = 0, reach = 0, shares = 0;
+                    try {
+                        const insRes = await fetch(`https://graph.facebook.com/v19.0/${item.id}/insights?metric=views,reach,shares,saved&access_token=${igToken}`);
+                        const insData = await insRes.json();
+                        if (insData && insData.data) {
+                            for (const m of insData.data) {
+                                const val = m.values?.[0]?.value || 0;
+                                if (m.name === 'views') views += val;
+                                if (m.name === 'reach') reach = val;
+                                if (m.name === 'shares') shares = val;
+                            }
+                        }
+                    } catch(e) { console.error("IG Insights Metric Error:", e); }
+
+                    instagramPosts.push({
+                        type: item.type,
+                        likes: baseData.like_count || 0,
+                        comments: baseData.comments_count || 0,
+                        views,
+                        reach,
+                        shares,
+                        publishedDate: baseData.timestamp
+                    });
+                }
+            }
+        } catch(e) { console.error("IG ORGANIC ERROR", e); }
+    }
+    insights.instagram = { posts: instagramPosts };
+
+    // FACEBOOK ORGANIC INSIGHTS
+    const fbSessions = await prisma.facebookFeedSession.findMany({
+        where: { listingId: propertyId, status: "PUBLISHED" },
+        orderBy: { createdAt: "desc" },
     });
 
     const isBoosted = !!(property.metaBoostedUntil && new Date(property.metaBoostedUntil) > new Date()) || 
                       !!(property.googleBoostedUntil && new Date(property.googleBoostedUntil) > new Date()) ||
-                      !!property.instagramMediaId || !!fbSession;
+                      !!property.instagramMediaId || fbSessions.length > 0;
 
-    const meSession = await prisma.metaAdsSession.findFirst({
-        where: { listingId: propertyId },
-        orderBy: { createdAt: 'desc' }
-    });
-    const metaSessionStatus = meSession?.status || null;
-
-    const insights = {
-        metaAds: null as any,
-        instagram: null as any,
-        facebook: null as any,
-        google: null as any
-    };
-
-    // 2. INSTAGRAM ORGANIC INSIGHTS (Priority: Direct Link)
-    const mediaIdToQuery = property.instagramMediaId;
-    const igSessionFallback = !mediaIdToQuery ? await prisma.instagramPreviewSession.findFirst({
-        where: { listingId: propertyId, status: "PUBLISHED" },
-        orderBy: { createdAt: "desc" },
-    }) : null;
-
-    const finalMediaId = mediaIdToQuery || igSessionFallback?.publishedMediaId;
-
-    if (finalMediaId) {
-        try {
-            const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
-            if (igToken) {
-              const baseRes = await fetch(`https://graph.facebook.com/v19.0/${finalMediaId}?fields=like_count,comments_count,timestamp&access_token=${igToken}`);
-              const baseData = await baseRes.json();
-              
-              if (baseData && !baseData.error) {
-                  let impressions = 0, reach = 0, shares = 0;
-                  try {
-                      const insRes = await fetch(`https://graph.facebook.com/v19.0/${finalMediaId}/insights?metric=views,reach,shares,saved&access_token=${igToken}`);
-                      const insData = await insRes.json();
-                      if (insData && insData.data) {
-                          for (const m of insData.data) {
-                              const val = m.values?.[0]?.value || 0;
-                              if (m.name === 'views') {
-                                  impressions += val;
-                              }
-                              if (m.name === 'reach') reach = val;
-                              if (m.name === 'shares') shares = val;
-                          }
-                      }
-                  } catch(e) { console.error("IG Insights Metric Error:", e); }
-
-                  insights.instagram = {
-                      likes: baseData.like_count || 0,
-                      comments: baseData.comments_count || 0,
-                      views: impressions,
-                      reach, 
-                      shares,
-                      publishedDate: baseData.timestamp || igSessionFallback?.updatedAt
-                  };
-              } else {
-                  console.error("IG GRAPH API ERROR:", baseData.error);
-                  insights.instagram = { likes: 0, comments: 0, views: 0, reach: 0, shares: 0, publishedDate: igSessionFallback?.updatedAt };
-              }
-            }
-        } catch(e) { console.error("IG ORGANIC ERROR", e); }
-    }
-
-    // FACEBOOK ORGANIC INSIGHTS
-    if (fbSession && fbSession.publishedPostId) {
+    const facebookPosts: any[] = [];
+    if (fbSessions.length > 0) {
         try {
             const userToken = process.env.INSTAGRAM_ACCESS_TOKEN;
             const pageId = process.env.FACEBOOK_PAGE_ID;
@@ -120,41 +104,43 @@ export async function GET(
                 const pageInfo = pageTokenData.data?.find((p: any) => p.id === pageId);
 
                 if (pageInfo && pageInfo.access_token) {
-                    const basicRes = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}?fields=shares,comments.summary(total_count),likes.summary(total_count)&access_token=${pageInfo.access_token}`);
-                    const basicData = await basicRes.json();
-                    
-                    if (basicData && !basicData.error) {
-                        let imps = 0;
-                        try {
-                            const insRes = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}/insights?metric=post_impressions&access_token=${pageInfo.access_token}`);
-                            const insData = await insRes.json();
-                            if (insData && insData.data && !insData.error) {
-                                imps = insData.data.find((m:any) => m.name === 'post_impressions')?.values[0]?.value || 0;
-                            } else if (insData.error) {
-                                // Fallback to video views if impressions is not a valid metric for Reels
-                                const vidRes = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}/insights?metric=post_video_views&access_token=${pageInfo.access_token}`);
-                                const vidData = await vidRes.json();
-                                if (vidData && vidData.data && !vidData.error) {
-                                    imps = vidData.data.find((m:any) => m.name === 'post_video_views')?.values[0]?.value || 0;
+                    for (const fbSession of fbSessions) {
+                        if (!fbSession.publishedPostId) continue;
+                        
+                        const basicRes = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}?fields=shares,comments.summary(total_count),likes.summary(total_count),updated_time&access_token=${pageInfo.access_token}`);
+                        const basicData = await basicRes.json();
+                        
+                        if (basicData && !basicData.error) {
+                            let views = 0;
+                            try {
+                                const insRes = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}/insights?metric=post_impressions&access_token=${pageInfo.access_token}`);
+                                const insData = await insRes.json();
+                                if (insData && insData.data && !insData.error) {
+                                    views = insData.data.find((m:any) => m.name === 'post_impressions')?.values[0]?.value || 0;
+                                } else if (insData.error) {
+                                    const vidRes = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}/insights?metric=post_video_views&access_token=${pageInfo.access_token}`);
+                                    const vidData = await vidRes.json();
+                                    if (vidData && vidData.data && !vidData.error) {
+                                        views = vidData.data.find((m:any) => m.name === 'post_video_views')?.values[0]?.value || 0;
+                                    }
                                 }
-                            }
-                        } catch(e) {}
+                            } catch(e) {}
 
-                        insights.facebook = {
-                            likes: basicData.likes?.summary?.total_count || 0,
-                            comments: basicData.comments?.summary?.total_count || 0,
-                            shares: basicData.shares?.count || 0,
-                            impressions: imps,
-                            publishedDate: fbSession.updatedAt
-                        };
-                    } else {
-                        console.error("FACEBOOK GRAPH API ERROR:", basicData.error);
-                        insights.facebook = { likes: 0, comments: 0, shares: 0, impressions: 0, publishedDate: fbSession.updatedAt };
+                            facebookPosts.push({
+                                type: fbSession.postType || 'carousel',
+                                likes: basicData.likes?.summary?.total_count || 0,
+                                comments: basicData.comments?.summary?.total_count || 0,
+                                shares: basicData.shares?.count || 0,
+                                views,
+                                publishedDate: basicData.updated_time || fbSession.updatedAt
+                            });
+                        }
                     }
                 }
             }
         } catch(e) { console.error("FACEBOOK ORGANIC EXCEPTION:", e); }
     }
+    insights.facebook = { posts: facebookPosts };
 
     // 3. META ADS INSIGHTS
     if (property.metaAdId) {
@@ -208,12 +194,15 @@ export async function GET(
         }
     }
 
+    const igTotalViews = insights.instagram.posts.reduce((sum: number, p: any) => sum + (p.views || 0), 0);
+    const fbTotalViews = insights.facebook.posts.reduce((sum: number, p: any) => sum + (p.views || 0), 0);
+
     return NextResponse.json({
       success: true,
       title: property.title,
       city: property.city,
       state: property.state,
-      totalImpact: (insights.instagram?.views || 0) + (insights.facebook?.impressions || 0) + (insights.metaAds?.views || 0) + (insights.google?.impressions || 0),
+      totalImpact: igTotalViews + fbTotalViews + (insights.metaAds?.views || 0) + (insights.google?.impressions || 0),
       isBoosted,
       metaSessionStatus,
       insights

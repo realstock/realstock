@@ -67,6 +67,13 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
 
     const { title, city, state, isBoosted, metaSessionStatus, insights } = data;
 
+    const igTotalViews = insights.instagram?.posts?.reduce((sum: number, p: any) => sum + (p.views || 0), 0) || 0;
+    const fbTotalViews = insights.facebook?.posts?.reduce((sum: number, p: any) => sum + (p.views || 0), 0) || 0;
+    const igTotalLikes = insights.instagram?.posts?.reduce((sum: number, p: any) => sum + (p.likes || 0), 0) || 0;
+    const fbTotalLikes = insights.facebook?.posts?.reduce((sum: number, p: any) => sum + (p.likes || 0), 0) || 0;
+    const igTotalComments = insights.instagram?.posts?.reduce((sum: number, p: any) => sum + (p.comments || 0), 0) || 0;
+    const fbTotalComments = insights.facebook?.posts?.reduce((sum: number, p: any) => sum + (p.comments || 0), 0) || 0;
+
     return (
         <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
             <div className="mx-auto max-w-5xl">
@@ -108,7 +115,7 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                     <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-3xl p-6 flex flex-col justify-center">
                         <div className="text-emerald-300 text-xs font-bold uppercase tracking-widest mb-1 font-black">Visualizações Orgânicas</div>
                         <div className="text-4xl font-black text-emerald-400">
-                            {((insights.instagram?.views || 0) + (insights.facebook?.impressions || 0)).toLocaleString('pt-BR')}
+                            {(igTotalViews + fbTotalViews).toLocaleString('pt-BR')}
                         </div>
                         <div className="text-[10px] text-emerald-500 mt-1 uppercase leading-none">Vindo do Instagram/Facebook</div>
                     </div>
@@ -124,7 +131,7 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                     <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col justify-center">
                         <div className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Engajamento</div>
                         <div className="text-4xl font-black text-white">
-                            {( (insights.instagram?.likes || 0) + (insights.instagram?.comments || 0) + (insights.metaAds?.likes || 0) + (insights.google?.clicks || 0) ).toLocaleString('pt-BR')}
+                            {( igTotalLikes + igTotalComments + fbTotalLikes + fbTotalComments + (insights.metaAds?.likes || 0) + (insights.google?.clicks || 0) ).toLocaleString('pt-BR')}
                         </div>
                         <div className="text-[10px] text-slate-500 mt-1 uppercase leading-none">Interações totais</div>
                     </div>
@@ -144,26 +151,31 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                             Interações orgânicas vindas diretamente da página do Instagram da RealStock.
                         </p>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-fuchsia-500/10 p-4 rounded-2xl backdrop-blur-sm border border-fuchsia-500/10 col-span-2 flex items-center justify-between">
-                                <div>
-                                    <Eye className="text-fuchsia-400 mb-1" size={20} />
-                                    <div className="text-[10px] font-bold text-fuchsia-300 uppercase tracking-wider">Views / Reach</div>
+                        <div className="flex flex-col gap-4">
+                            {insights.instagram?.posts?.length > 0 ? insights.instagram.posts.map((post: any, i: number) => (
+                                <div key={i} className="bg-fuchsia-500/10 p-4 rounded-2xl backdrop-blur-sm border border-fuchsia-500/10 flex flex-col gap-3">
+                                    <div className="text-xs font-bold text-fuchsia-300 uppercase tracking-wider mb-1 flex items-center gap-2">
+                                        <Eye size={14} className="text-fuchsia-400" />
+                                        {post.type === 'reels' || post.type === 'VIDEO' ? 'Reels' : 'Carrossel'}
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div>
+                                            <div className="text-2xl font-black text-white">{(post.views || 0).toLocaleString('pt-BR')}</div>
+                                            <div className="text-[9px] font-bold text-slate-500 uppercase">Views</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-2xl font-black text-white">{(post.likes || 0).toLocaleString('pt-BR')}</div>
+                                            <div className="text-[9px] font-bold text-slate-500 uppercase">Likes</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-2xl font-black text-white">{(post.comments || 0).toLocaleString('pt-BR')}</div>
+                                            <div className="text-[9px] font-bold text-slate-500 uppercase">Comments</div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="text-3xl font-black text-white">
-                                    {(insights.instagram?.views || 0).toLocaleString('pt-BR')}
-                                </div>
-                            </div>
-                            <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-                                <Heart className="text-fuchsia-400 mb-2" size={16} />
-                                <div className="text-xl font-black">{insights.instagram?.likes || 0}</div>
-                                <div className="text-[9px] font-bold text-slate-500 uppercase">Likes</div>
-                            </div>
-                            <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-                                <MessageCircle className="text-fuchsia-400 mb-2" size={16} />
-                                <div className="text-xl font-black">{insights.instagram?.comments || 0}</div>
-                                <div className="text-[9px] font-bold text-slate-500 uppercase">Comments</div>
-                            </div>
+                            )) : (
+                                <div className="text-sm text-slate-500 italic">Nenhum post encontrado.</div>
+                            )}
                         </div>
                     </div>
 
@@ -179,26 +191,31 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                             Interações orgânicas vindas diretamente da página do Facebook da RealStock.
                         </p>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-blue-500/10 p-4 rounded-2xl backdrop-blur-sm border border-blue-500/10 col-span-2 flex items-center justify-between">
-                                <div>
-                                    <Eye className="text-blue-400 mb-1" size={20} />
-                                    <div className="text-[10px] font-bold text-blue-300 uppercase tracking-wider">Views Gratuitas</div>
+                        <div className="flex flex-col gap-4">
+                            {insights.facebook?.posts?.length > 0 ? insights.facebook.posts.map((post: any, i: number) => (
+                                <div key={i} className="bg-blue-500/10 p-4 rounded-2xl backdrop-blur-sm border border-blue-500/10 flex flex-col gap-3">
+                                    <div className="text-xs font-bold text-blue-300 uppercase tracking-wider mb-1 flex items-center gap-2">
+                                        <Eye size={14} className="text-blue-400" />
+                                        {post.type === 'reels' || post.type === 'VIDEO' ? 'Reels' : 'Carrossel'}
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div>
+                                            <div className="text-2xl font-black text-white">{(post.views || 0).toLocaleString('pt-BR')}</div>
+                                            <div className="text-[9px] font-bold text-slate-500 uppercase">Views</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-2xl font-black text-white">{(post.likes || 0).toLocaleString('pt-BR')}</div>
+                                            <div className="text-[9px] font-bold text-slate-500 uppercase">Likes</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-2xl font-black text-white">{(post.comments || 0).toLocaleString('pt-BR')}</div>
+                                            <div className="text-[9px] font-bold text-slate-500 uppercase">Comments</div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="text-3xl font-black text-white">
-                                    {(insights.facebook?.impressions || 0).toLocaleString('pt-BR')}
-                                </div>
-                            </div>
-                            <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-                                <Heart className="text-blue-400 mb-2" size={16} />
-                                <div className="text-xl font-black">{insights.facebook?.likes || 0}</div>
-                                <div className="text-[9px] font-bold text-slate-500 uppercase">Likes</div>
-                            </div>
-                            <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-                                <MessageCircle className="text-blue-400 mb-2" size={16} />
-                                <div className="text-xl font-black">{insights.facebook?.comments || 0}</div>
-                                <div className="text-[9px] font-bold text-slate-500 uppercase">Comments</div>
-                            </div>
+                            )) : (
+                                <div className="text-sm text-slate-500 italic">Nenhum post encontrado.</div>
+                            )}
                         </div>
                     </div>
 
