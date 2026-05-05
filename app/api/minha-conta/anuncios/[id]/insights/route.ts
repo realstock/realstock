@@ -33,6 +33,25 @@ export async function GET(
       return NextResponse.json({ success: false, error: "Anúncio não encontrado" }, { status: 404 });
     }
 
+    // Get other sessions
+    const goSession = await prisma.googleAdsSession.findFirst({
+        where: { listingId: propertyId, status: { contains: "ACTIVE" } },
+        orderBy: { createdAt: 'desc' }
+    });
+
+    const meSession = await prisma.metaAdsSession.findFirst({
+        where: { listingId: propertyId },
+        orderBy: { createdAt: 'desc' }
+    });
+    const metaSessionStatus = meSession?.status || null;
+
+    const insights: any = {
+        metaAds: null,
+        instagram: null,
+        facebook: null,
+        google: null
+    };
+
     // 2. INSTAGRAM ORGANIC INSIGHTS
     const igSessions = await prisma.instagramPreviewSession.findMany({
         where: { listingId: propertyId, status: "PUBLISHED" },
