@@ -204,7 +204,7 @@ export async function GET(
     }
 
     // 4. GOOGLE ADS INSIGHTS
-    if (goSession && property.googleBoostedUntil && new Date(property.googleBoostedUntil) > new Date()) {
+    if (goSession) {
         const budget = Number(goSession.budget);
         if (goSession.campaignId && !goSession.campaignId.includes("MOCK")) {
             const adsData = await getGoogleAdsCampaignInsights(goSession.campaignId);
