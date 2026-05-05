@@ -29,6 +29,7 @@ export async function createRealStockGoogleCampaign(
 
     // 1. Create Budget (dailyBudgetBrl in micro-reais)
     const microAmount = Math.floor(dailyBudgetBrl * 1000000);
+    console.log(`[GoogleAds] Creating budget: ${microAmount} micros`);
 
     const budgetRes = await customer.campaignBudgets.create([
       {
@@ -40,6 +41,7 @@ export async function createRealStockGoogleCampaign(
     const budgetResourceName = budgetRes.results[0].resource_name;
 
     // 2. Create Campaign
+    console.log(`[GoogleAds] Creating campaign linked to budget: ${budgetResourceName}`);
     const campaignRes = await customer.campaigns.create([
       {
         name: `Campanha Imóvel - ${propertyId} - ${Date.now()}`,
@@ -61,42 +63,65 @@ export async function createRealStockGoogleCampaign(
     const campaignResourceName = campaignRes.results[0].resource_name;
 
     // 3. Create AdGroup
-    const groupName = `Grupo - ${propertyTitle}`.substring(0, 255);
+    console.log(`[GoogleAds] Creating ad group for campaign: ${campaignResourceName}`);
+    const groupName = `Grupo - ${propertyTitle}`.substring(0, 255).replace(/[\[\]]/g, "");
     const adGroupRes = await customer.adGroups.create([
       {
         campaign: campaignResourceName,
         name: groupName,
         type: enums.AdGroupType.SEARCH_STANDARD,
         status: enums.AdGroupStatus.ENABLED,
-        cpc_bid_micros: 2000000 // R$ 2.00 por clique de teto
+        cpc_bid_micros: 5000000 // Aumentado para R$ 5.00 por clique de teto para ganhar leilão
       },
     ]);
     const adGroupResourceName = adGroupRes.results[0].resource_name;
 
-    // 4. Create Ad
-    const safeTitle = propertyTitle.replace(/[\[\]\?\!]/g, "").substring(0, 30);
-    
+    const sanitizeAdText = (text: string, maxLen: number) => {
+        return text
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^\w\s]/gi, "")
+            .trim()
+            .substring(0, maxLen);
+    };
+
+    const adTitle = sanitizeAdText(propertyTitle, 30) || "Imovel Imperdivel";
+    const adCategory = category ? sanitizeAdText(category, 30) : null;
+    const adType = propertyType ? sanitizeAdText(propertyType, 30) : null;
+    const adCity = city ? sanitizeAdText(city, 30) : null;
+
+    const headlines: any[] = [
+        { text: adTitle, pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
+    ];
+
+    if (adCategory) headlines.push({ text: adCategory, pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+    if (adType) headlines.push({ text: adType, pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+    if (adCity) headlines.push({ text: `Imovel em ${adCity}`, pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+
+    // Adicionar variações para maximizar a nota de qualidade (Ad Strength)
+    headlines.push({ text: "Comprar Imovel", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+    headlines.push({ text: "Imovel a Venda", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+    headlines.push({ text: "Melhores Imoveis", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+    headlines.push({ text: "RealStock Imoveis", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+    headlines.push({ text: "Oportunidade de Compra", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+    headlines.push({ text: "Sua Casa Nova Aqui", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+    headlines.push({ text: "Investimento Seguro", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+    headlines.push({ text: "Agende sua Visita", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+    headlines.push({ text: "Preco Imperdivel", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+    headlines.push({ text: "Lindo Imovel", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+
     await customer.adGroupAds.create([
       {
         ad_group: adGroupResourceName,
         status: enums.AdGroupAdStatus.ENABLED,
         ad: {
           responsive_search_ad: {
-            headlines: [
-              { text: safeTitle, pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
-              { text: "Lindo Imóvel Disponível", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
-              { text: "Agende sua visita na RealStock", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
-              { text: "Oportunidade de Investimento", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
-              { text: "Imóveis Exclusivos RealStock", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
-              { text: "Melhor Preço da Região", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
-              { text: "Pronto para Morar ou Investir", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
-              { text: "Confira Fotos e Detalhes", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
-            ],
+            headlines: headlines.slice(0, 15), 
             descriptions: [
-              { text: "Venha conhecer esta excelente oportunidade exclusiva da RealStock. Agende online agora mesmo." },
-              { text: "Opção imperdível para compra ou locação. Fale com um de nossos corretores experts e feche negócio." },
-              { text: "Encontre os melhores imóveis da sua região com a RealStock. Facilidade e transparência." },
-              { text: "Aproveite as melhores condições do mercado imobiliário. Visite nosso portal e saiba mais detalhes." },
+              { text: "Conheca esta excelente oportunidade exclusiva da RealStock" },
+              { text: "Opcao imperdivel para compra e investimento imobiliario" },
+              { text: "Encontre os melhores imoveis da sua regiao com a RealStock" },
+              { text: "Aproveite as melhores condicoes do mercado Visite nosso portal e saiba mais detalhes" },
             ],
             path1: "imovel",
             path2: propertyId.toString().substring(0, 15),
@@ -106,7 +131,46 @@ export async function createRealStockGoogleCampaign(
       },
     ]);
 
-    // 5. Add Keywords
+    // 5. Add Sitelinks (Attempt to find similar properties)
+    try {
+        const { prisma } = require("./prisma");
+        const similarProps = await prisma.property.findMany({
+            where: {
+                city: city || undefined,
+                id: { not: propertyId },
+                status: "PUBLISHED"
+            },
+            take: 4,
+            select: { id: true, title: true }
+        });
+
+        if (similarProps.length > 0) {
+            console.log(`[GoogleAds] Found ${similarProps.length} similar properties for sitelinks.`);
+            const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.realstock.com.br";
+            
+            const assetOps = similarProps.map((p: any) => ({
+                sitelink_asset: {
+                    link_text: sanitizeAdText(p.title, 25) || "Ver Outro Imovel",
+                    description1: "Confira este imovel no portal",
+                    description2: "Veja fotos e detalhes agora",
+                },
+                final_urls: [`${baseUrl}/imovel/${p.id}`]
+            }));
+
+            const assetRes = await customer.assets.create(assetOps);
+            const assetResourceNames = assetRes.results.map((r: any) => r.resource_name);
+
+            await customer.campaignAssets.create(assetResourceNames.map((arn: string) => ({
+                campaign: campaignResourceName,
+                asset: arn,
+                field_type: enums.AssetFieldType.SITELINK
+            })));
+        }
+    } catch (sitelinkErr) {
+        console.error("[GoogleAds] Sitelink auto-creation failed (non-critical):", sitelinkErr);
+    }
+
+    // 6. Add Keywords
     const keywordTexts = [
         "comprar imovel",
         propertyTitle.toLowerCase(),

@@ -4,6 +4,9 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getGoogleAdsCampaignInsights } from "@/lib/googleAds";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: pubId } = await params;
@@ -22,13 +25,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     const goSession = await prisma.googleAdsSession.findFirst({
-        where: { listingId: propertyId, status: { contains: "ACTIVE" } },
+        where: { listingId: -2, status: { contains: "ACTIVE" } },
         orderBy: { createdAt: 'desc' }
     });
 
-    const isBoosted = (property.googleBoostedUntil && new Date(property.googleBoostedUntil) > new Date()) || 
-                      (property.metaBoostedUntil && new Date(property.metaBoostedUntil) > new Date()) || 
-                      !!property.instagramMediaId;
+    const isBoosted = (pub.googleBoostedUntil && new Date(pub.googleBoostedUntil) > new Date()) || 
+                      (pub.metaBoostedUntil && new Date(pub.metaBoostedUntil) > new Date()) || 
+                      !!pub.instagramMediaId;
 
     const insights = {
         metaAds: null as any,
@@ -39,13 +42,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // 2. INSTAGRAM ORGANIC INSIGHTS
     const igSessions = await prisma.instagramPreviewSession.findMany({
-        where: { listingId: propertyId, status: "PUBLISHED" },
+        where: { listingId: -2, status: "PUBLISHED" },
         orderBy: { createdAt: "desc" },
     });
     
     const igMediaIds = igSessions.map(s => ({ id: s.publishedMediaId, type: s.postType }));
-    if (property.instagramMediaId && !igMediaIds.find(i => i.id === property.instagramMediaId)) {
-        igMediaIds.push({ id: property.instagramMediaId, type: 'carousel' });
+    if (pub.instagramMediaId && !igMediaIds.find(i => i.id === pub.instagramMediaId)) {
+        igMediaIds.push({ id: pub.instagramMediaId, type: 'carousel' });
     }
 
     const instagramPosts: any[] = [];
@@ -93,7 +96,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // FACEBOOK ORGANIC INSIGHTS
     const fbSessions = await prisma.facebookFeedSession.findMany({
-        where: { listingId: propertyId, status: "PUBLISHED" },
+        where: { listingId: -2, status: "PUBLISHED" },
         orderBy: { createdAt: "desc" },
     });
 
@@ -163,11 +166,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     insights.facebook = { posts: facebookPosts };
 
     // 3. META ADS INSIGHTS
-    if (property.metaAdId) {
+    if (pub.metaAdId) {
         try {
             const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
             if (igToken) {
-                const adInsRes = await fetch(`https://graph.facebook.com/v19.0/${property.metaAdId}/insights?fields=impressions,clicks,reach,spend,actions&access_token=${igToken}`);
+                const adInsRes = await fetch(`https://graph.facebook.com/v19.0/${pub.metaAdId}/insights?fields=impressions,clicks,reach,spend,actions&access_token=${igToken}`);
                 const adInsData = await adInsRes.json();
                 if (adInsData.data && adInsData.data[0]) {
                     const stats = adInsData.data[0];
@@ -188,7 +191,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     // 4. GOOGLE ADS INSIGHTS
-    if (goSession && property.googleBoostedUntil && new Date(property.googleBoostedUntil) > new Date()) {
+    if (goSession && pub.googleBoostedUntil && new Date(pub.googleBoostedUntil) > new Date()) {
         const budget = Number(goSession.budget);
         if (goSession.campaignId && !goSession.campaignId.includes("MOCK")) {
             const adsData = await getGoogleAdsCampaignInsights(goSession.campaignId);
@@ -218,13 +221,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const fbTotalViews = insights.facebook.posts.reduce((sum: number, p: any) => sum + (p.views || 0), 0);
 
     let metaSessionStatus = null;
-    if (property.metaBoostedUntil && new Date(property.metaBoostedUntil) > new Date()) {
+    if (pub.metaBoostedUntil && new Date(pub.metaBoostedUntil) > new Date()) {
          metaSessionStatus = "ACTIVE";
     }
 
     return NextResponse.json({
       success: true,
-      title: property.name,
+      title: pub.name,
       totalImpact: igTotalViews + fbTotalViews + (insights.metaAds?.views || 0) + (insights.google?.impressions || 0),
       isBoosted,
       metaSessionStatus,
