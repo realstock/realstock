@@ -54,7 +54,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         try {
             const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
             if (igToken) {
-                const baseRes = await fetch(`https://graph.facebook.com/v19.0/${item.id}?fields=like_count,comments_count,timestamp&access_token=${igToken}`);
+                const baseRes = await fetch(`https://graph.facebook.com/v19.0/${item.id}?fields=like_count,comments_count,timestamp,media_type&access_token=${igToken}`);
                 const baseData = await baseRes.json();
                 
                 if (baseData && !baseData.error) {
