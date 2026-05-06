@@ -222,6 +222,14 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                                             <div className="text-[9px] font-bold text-slate-500 uppercase">Comments</div>
                                         </div>
                                     </div>
+                                    <Link 
+                                        href={`/imovel/${id}`}
+                                        target="_blank"
+                                        className="mt-2 w-full bg-fuchsia-500/20 hover:bg-fuchsia-500/30 text-fuchsia-300 text-[10px] font-black uppercase py-2 rounded-xl border border-fuchsia-500/20 flex items-center justify-center gap-2 transition-all group"
+                                    >
+                                        <MousePointerClick size={14} className="group-hover:scale-110 transition-transform" />
+                                        Acessar Página do Imóvel
+                                    </Link>
                                 </div>
                             )) : (
                                 <div className="text-sm text-slate-500 italic">Nenhum post encontrado.</div>
@@ -262,6 +270,14 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                                             <div className="text-[9px] font-bold text-slate-500 uppercase">Comments</div>
                                         </div>
                                     </div>
+                                    <Link 
+                                        href={`/imovel/${id}`}
+                                        target="_blank"
+                                        className="mt-2 w-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-[10px] font-black uppercase py-2 rounded-xl border border-blue-500/20 flex items-center justify-center gap-2 transition-all group"
+                                    >
+                                        <MousePointerClick size={14} className="group-hover:scale-110 transition-transform" />
+                                        Acessar Página do Imóvel
+                                    </Link>
                                 </div>
                             )) : (
                                 <div className="text-sm text-slate-500 italic">Nenhum post encontrado.</div>
