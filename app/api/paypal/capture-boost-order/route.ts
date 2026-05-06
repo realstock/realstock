@@ -339,14 +339,26 @@ export async function POST(req: NextRequest) {
         form.append("name", `Criativo Boost Prop ${propertyId}`);
         const actorKey = useUserIdKey ? "instagram_user_id" : "instagram_actor_id";
         
+        // Link de destino para o botão
+        const cta = {
+            type: "LEARN_MORE",
+            value: {
+                link: propertyLink
+            }
+        };
+
         if (storySpec) {
           form.append("object_story_spec", JSON.stringify({
               [actorKey]: actor,
-              source_instagram_media_id: sourceId
+              source_instagram_media_id: sourceId,
+              template_data: {
+                  call_to_action: cta
+              }
           }));
         } else {
           form.append(actorKey, actor);
           form.append("source_instagram_media_id", sourceId);
+          form.append("call_to_action", JSON.stringify(cta));
         }
         form.append("access_token", igToken);
         const res = await fetch(`${BASE_GRAPH}/${adAccountId}/adcreatives`, { method: "POST", body: form });
@@ -383,6 +395,12 @@ export async function POST(req: NextRequest) {
         const facebookForm = new URLSearchParams();
         facebookForm.append("name", `Criativo Boost Prop ${propertyId}`);
         facebookForm.append("object_story_id", sourceId);
+        facebookForm.append("call_to_action", JSON.stringify({
+            type: "LEARN_MORE",
+            value: {
+                link: propertyLink
+            }
+        }));
         facebookForm.append("access_token", igToken);
         const fbRes = await fetch(`${BASE_GRAPH}/${adAccountId}/adcreatives`, { method: "POST", body: facebookForm });
         creativeData = await fbRes.json();
