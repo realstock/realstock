@@ -13,7 +13,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 403 });
     }
 
-    const { subject, htmlContent, channel = "both", userIds = [] } = await req.json();
+    const { subject, htmlContent, channel = "both", userIds = [], mediaUrl = null } = await req.json();
 
     if (!subject || !htmlContent) {
       return NextResponse.json({ success: false, error: "Assunto e conteúdo são obrigatórios" }, { status: 400 });
@@ -31,10 +31,16 @@ export async function POST(req: Request) {
 
     const results = await Promise.all(
       users.map(async (user) => {
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://realstock.com.br";
+        const siteUrl = "https://www.realstock.com.br";
 
         const personalText = htmlContent
-          .replace(/<[^>]*>/g, '') 
+          .replace(/<a\s+(?:[^>]*?\s+)?href="([^"]*)"[^>]*>(.*?)<\/a>/gi, "$2 ($1)") // Converte <a> para "Texto (URL)"
+          .replace(/<br\s*\/?>/gi, "\n")
+          .replace(/<\/p>/gi, "\n")
+          .replace(/<\/div>/gi, "\n")
+          .replace(/<[^>]*>/g, "")
+          .replace(/\n\s*\n/g, "\n\n")
+          .trim()
           .replace(/\[NOME\]/g, user.name)
           .replace(/\[CODIGO\]/g, user.referralCode || "REALSTOCK-PRO")
           .replace(/\[REF_LINK\]/g, `${siteUrl}/cadastro?ref=${user.referralCode || ""}`)
@@ -54,6 +60,7 @@ export async function POST(req: Request) {
           subject: subject,
           text: personalText,
           html: personalHtml,
+          mediaUrl: (channel === "whatsapp" || channel === "both") ? mediaUrl : undefined,
         });
       })
     );

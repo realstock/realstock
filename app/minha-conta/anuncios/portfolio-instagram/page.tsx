@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { Camera, X } from "lucide-react";
+import LoadingScreen from "@/components/LoadingScreen";
 
 export default function PortfolioInstagramPage() {
   const { status } = useSession();
@@ -91,11 +92,7 @@ export default function PortfolioInstagramPage() {
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
   if (loading) {
-    return (
-      <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
-        <div className="mx-auto max-w-4xl text-slate-400">Carregando portfólio...</div>
-      </main>
-    );
+    return <LoadingScreen title="Gerador de Portfólio" subtitle="Otimizando imagens para o Instagram e Facebook..." />;
   }
 
   return (

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import LoadingScreen from "@/components/LoadingScreen";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { Globe, ArrowLeft, Loader2, Image as ImageIcon, Volume2, VolumeX, X } from "lucide-react";
 
@@ -115,11 +116,7 @@ export default function FacebookPublisherPage() {
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
   if (status === "loading" || loading) {
-    return (
-      <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
-        <div className="mx-auto max-w-4xl text-slate-400">Carregando...</div>
-      </main>
-    );
+    return <LoadingScreen title="Publicação Facebook" subtitle="Sincronizando feed com a Meta Graph API..." />;
   }
 
   return (

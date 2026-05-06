@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import LoadingScreen from "@/components/LoadingScreen";
 import PropertyLocationPicker from "@/components/PropertyLocationPicker";
 import NeighborhoodAutocomplete from "@/components/NeighborhoodAutocomplete";
 
@@ -937,13 +938,7 @@ export default function AnunciarPage() {
   }
 
   if (status === "loading") {
-    return (
-      <main className="min-h-screen bg-slate-950 text-white">
-        <section className="mx-auto max-w-7xl px-6 py-8">
-          <div className="text-slate-400">Carregando...</div>
-        </section>
-      </main>
-    );
+    return <LoadingScreen title="Carregando" subtitle="Validando sua sessão de usuário..." />;
   }
 
   if (status === "unauthenticated") {

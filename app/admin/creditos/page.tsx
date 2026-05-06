@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Coins, Ticket, CheckCircle2, User, Gift, AlertCircle, Trash2 } from "lucide-react";
 import Link from "next/link";
+import LoadingScreen from "@/components/LoadingScreen";
 
 export default function GestaoCreditosAdmin() {
   const [users, setUsers] = useState<any[]>([]);
@@ -118,7 +119,7 @@ export default function GestaoCreditosAdmin() {
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-white">Carregando...</div>;
+  if (loading) return <LoadingScreen title="Gestão de Créditos" subtitle="Acessando registros financeiros da rede..." />;
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">

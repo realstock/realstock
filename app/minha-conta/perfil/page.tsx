@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
+import LoadingScreen from "@/components/LoadingScreen";
 
 export default function PerfilPage() {
   const { status } = useSession();
@@ -107,11 +108,7 @@ export default function PerfilPage() {
   }
 
   if (loading) {
-    return (
-      <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
-        <div className="mx-auto max-w-4xl text-slate-400">Carregando perfil...</div>
-      </main>
-    );
+    return <LoadingScreen title="Meu Cadastro" subtitle="Acessando suas informações pessoais..." />;
   }
 
   return (

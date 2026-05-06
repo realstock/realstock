@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Users, UserPlus, TrendingUp, Search, Network, ChevronRight, ChevronDown, ChevronLeft, User as UserIcon, Mail, Send, X, Coins } from "lucide-react";
+import LoadingScreen from "@/components/LoadingScreen";
 
 interface NetworkUser {
   id: number;
@@ -36,21 +37,19 @@ export default function AdminNetworkPage() {
   <div style="padding: 40px; background: white;">
     <p style="font-size: 16px; font-weight: 600;">Olá, [NOME]!</p>
     <p style="line-height: 1.6;">Temos o prazer de informar que sua conta acaba de receber <b>Créditos de Viralização</b>. 🚀</p>
-    
     <div style="background: #f1f5f9; padding: 25px; border-radius: 16px; margin: 25px 0; border: 1px solid #e2e8f0;">
       <p style="margin: 0; font-size: 14px; color: #64748b; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Ação Necessária:</p>
-      <p style="margin: 10px 0 0 0; font-size: 18px; font-weight: 900; color: #4f46e5;">CLIQUE NO BOTÃO "VIRALIZAR" NOS SEUS ANÚNCIOS</p>
+      <p style="margin: 10px 0 0 0; font-size: 18px; font-weight: 900; color: #4f46e5;"><a href="[ANUNCIOS_LINK]" style="color: inherit; text-decoration: none;">CLIQUE NO BOTÃO "VIRALIZAR" NOS SEUS ANÚNCIOS</a></p>
     </div>
 
-    <p style="line-height: 1.6;">Acesse agora o seu painel de anúncios para ativar a divulgação automática e aumentar o alcance dos seus imóveis:</p>
+    <p style="line-height: 1.6;">Acesse agora o seu <a href="[ANUNCIOS_LINK]" style="color: #4f46e5; font-weight: 700; text-decoration: underline;">painel de anúncios</a> para ativar a divulgação automática e aumentar o alcance dos seus imóveis.</p>
     
     <div style="text-align: center; margin: 30px 0;">
       <a href="[ANUNCIOS_LINK]" style="background: #4f46e5; color: white; padding: 18px 35px; border-radius: 14px; text-decoration: none; font-weight: 800; display: inline-block; font-size: 14px; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">ACESSAR MEUS ANÚNCIOS</a>
     </div>
 
     <p style="font-size: 14px; color: #64748b; margin-top: 30px; border-top: 1px solid #f1f5f9; padding-top: 20px;">
-      Seu link de convite para ganhar mais créditos:<br>
-      <small style="font-family: monospace;">[REF_LINK]</small>
+      <a href="https://www.realstock.com.br/cadastro?ref=[CODIGO]" style="color: #4f46e5; text-decoration: none; font-weight: 600;">Utilize esse link para convidar novos corretores e ganhar mais créditos</a>
     </p>
   </div>
   <div style="padding: 20px; text-align: center; font-size: 11px; color: #94a3b8;">
@@ -100,7 +99,10 @@ export default function AdminNetworkPage() {
           subject: emailSubject, 
           htmlContent: emailHtml, 
           channel,
-          userIds: targets 
+          userIds: targets,
+          mediaUrl: channel === "whatsapp" || channel === "both" 
+            ? "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1000&auto=format&fit=crop" 
+            : null
         })
       });
       const data = await res.json();
@@ -128,7 +130,7 @@ export default function AdminNetworkPage() {
 
   const tree = buildTree(null); 
 
-  if (loading) return <div className="flex items-center justify-center h-screen bg-slate-950 text-white">Carregando Rede...</div>;
+  if (loading) return <LoadingScreen title="Expansão de Rede" subtitle="Mapeando árvore de crescimento e conexões..." />;
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-8 relative">

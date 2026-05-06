@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import LoadingScreen from "@/components/LoadingScreen";
 
 export default function AdminLayout({
   children,
@@ -38,11 +39,7 @@ export default function AdminLayout({
   }, [router]);
 
   if (loading) {
-    return (
-      <main className="min-h-screen bg-slate-950 p-8 text-white">
-        Carregando área administrativa...
-      </main>
-    );
+    return <LoadingScreen title="Acesso Administrativo" subtitle="Validando credenciais de segurança..." />;
   }
 
   if (!authorized) return null;

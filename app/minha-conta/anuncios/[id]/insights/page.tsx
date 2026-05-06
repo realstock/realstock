@@ -14,6 +14,7 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<any>(null);
     const [error, setError] = useState("");
+    const [progress, setProgress] = useState(0);
 
     useEffect(() => {
         if (status === "authenticated") {
@@ -21,9 +22,28 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
         }
     }, [status]);
 
+    useEffect(() => {
+        if (!loading) return;
+        
+        const interval = setInterval(() => {
+            setProgress(prev => {
+                if (prev >= 92) {
+                    clearInterval(interval);
+                    return prev;
+                }
+                // Progresso orgânico: mais rápido no começo, lento no final
+                const increment = prev < 60 ? 3 : 0.5;
+                return Math.min(prev + increment, 92);
+            });
+        }, 80);
+
+        return () => clearInterval(interval);
+    }, [loading]);
+
     async function fetchInsights() {
         try {
             setLoading(true);
+            setProgress(0);
             const res = await fetch(`/api/minha-conta/anuncios/${id}/insights`);
             const payload = await res.json();
 
@@ -31,16 +51,46 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                 throw new Error(payload.error || "Dados não encontrados.");
             }
 
-            setData(payload);
+            setProgress(100);
+            // Pequeno delay para o usuário ver o 100% antes de carregar
+            setTimeout(() => {
+                setData(payload);
+                setLoading(false);
+            }, 400);
+            
         } catch (err: any) {
             setError(err.message || "Erro de conexão.");
-        } finally {
             setLoading(false);
         }
     }
 
     if (loading) {
-        return <main className="min-h-screen bg-slate-950 px-6 py-8 text-white"><div className="mx-auto max-w-5xl text-slate-400">Carregando processamento Graph API...</div></main>;
+        return (
+            <main className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-white">
+                <div className="w-full max-w-md text-center">
+                    <div className="mb-8 flex justify-center">
+                        <div className="bg-indigo-500/20 p-4 rounded-3xl animate-pulse">
+                            <Activity className="text-indigo-400" size={48} />
+                        </div>
+                    </div>
+                    
+                    <h2 className="text-2xl font-black uppercase italic tracking-tighter mb-2">Processamento Graph API</h2>
+                    <p className="text-slate-500 text-sm font-bold uppercase tracking-widest mb-8">Sincronizando métricas em tempo real...</p>
+                    
+                    <div className="relative h-2 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner">
+                        <div 
+                            className="absolute inset-y-0 left-0 bg-gradient-to-r from-indigo-600 via-purple-500 to-indigo-400 transition-all duration-300 ease-out shadow-[0_0_20px_rgba(79,70,229,0.5)]"
+                            style={{ width: `${progress}%` }}
+                        />
+                    </div>
+                    
+                    <div className="mt-4 flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        <span className="animate-pulse">{progress < 100 ? 'Analisando dados...' : 'Finalizado!'}</span>
+                        <span className="text-indigo-400">{Math.round(progress)}%</span>
+                    </div>
+                </div>
+            </main>
+        );
     }
 
     if (error) {

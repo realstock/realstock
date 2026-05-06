@@ -14,7 +14,7 @@ interface MessagePayload {
  * Centraliza o envio de notificações via E-mail e WhatsApp
  */
 export async function sendNotification(payload: MessagePayload) {
-  const { toEmail, toPhone, subject, text, html } = payload;
+  const { toEmail, toPhone, subject, text, html, mediaUrl } = payload;
   const results: any = { email: null, whatsapp: null };
 
   // 1. Tentar enviar E-mail
@@ -48,7 +48,7 @@ export async function sendNotification(payload: MessagePayload) {
       if (payload.mediaUrl) {
         body.media = payload.mediaUrl;
         body.caption = `*${subject}*\n\n${text}`;
-        body.mediaType = "image";
+        body.mediatype = "image";
       } else {
         body.text = `*${subject}*\n\n${text}`;
       }

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Settings, Plus, Save, Trash2, X, RefreshCw, Rocket, TrendingUp, DollarSign } from "lucide-react";
+import LoadingScreen from "@/components/LoadingScreen";
 
 type FeeType = "FIXED" | "PERCENTAGE";
 
@@ -149,11 +151,7 @@ export default function TaxasServicosPage() {
   }
 
   if (loading) {
-    return (
-      <div className="p-6 text-white">
-        Carregando...
-      </div>
-    );
+    return <LoadingScreen title="Taxas e Serviços" subtitle="Acessando configurações de precificação..." />;
   }
 
   return (

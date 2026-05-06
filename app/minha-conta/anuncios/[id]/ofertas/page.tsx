@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import LoadingScreen from "@/components/LoadingScreen";
 import Link from "next/link";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 
@@ -153,11 +154,7 @@ export default function GerenciarOfertasPage() {
   }
 
   if (status === "loading" || loading) {
-    return (
-      <main className="min-h-screen bg-slate-950 text-white p-6">
-        <div className="text-slate-400">Carregando...</div>
-      </main>
-    );
+    return <LoadingScreen title="Gestão de Ofertas" subtitle="Carregando propostas para este imóvel..." />;
   }
 
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";

@@ -8,6 +8,7 @@ import { Camera, CheckCircle2, Rocket, Globe, BarChart3, Building2, Upload, X, W
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import VideoCreatorModal from "@/components/VideoCreatorModal";
 import ViralizarModal from "@/components/ViralizarModal";
+import LoadingScreen from "@/components/LoadingScreen";
 
 type PropertyItem = {
   id: number;
@@ -110,11 +111,7 @@ export default function MeusAnunciosPage() {
   }, [status]);
 
   if (loading) {
-    return (
-      <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
-        <div className="mx-auto max-w-6xl text-slate-400">Carregando dados...</div>
-      </main>
-    );
+    return <LoadingScreen title="Meus Anúncios" subtitle="Sincronizando seus imóveis e métricas..." />;
   }
 
   return (

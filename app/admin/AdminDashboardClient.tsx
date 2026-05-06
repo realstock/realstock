@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import LoadingScreen from "@/components/LoadingScreen";
 
 type DashboardData = {
   totalProperties: number;
@@ -47,9 +48,7 @@ export default function AdminDashboardClient() {
         </div>
 
         {loading ? (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-slate-400">
-            Carregando dashboard...
-          </div>
+          <LoadingScreen title="Painel de Controle" subtitle="Consolidando métricas e dados financeiros..." />
         ) : (
           <>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">

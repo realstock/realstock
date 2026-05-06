@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
+import LoadingScreen from "@/components/LoadingScreen";
 
 type OfferItem = {
   id: number;
@@ -84,11 +85,7 @@ export default function MinhasOfertasPage() {
   }
 
   if (loading) {
-    return (
-      <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
-        <div className="mx-auto max-w-6xl text-slate-400">Carregando ofertas...</div>
-      </main>
-    );
+    return <LoadingScreen title="Minhas Ofertas" subtitle="Buscando propostas e negociações recebidas..." />;
   }
 
   return (
