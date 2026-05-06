@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Rocket, Eye, Camera, ArrowRight, Sparkles } from "lucide-react";
+import LoadingScreen from "@/components/LoadingScreen";
 
 export default function AnunciosTurbinadosPage() {
     const [items, setItems] = useState<any[]>([]);
@@ -21,18 +22,11 @@ export default function AnunciosTurbinadosPage() {
     }, []);
 
     if (loading) {
-        return (
-            <div className="min-h-screen bg-black flex items-center justify-center text-white">
-                <div className="animate-pulse flex flex-col items-center gap-4">
-                    <Rocket className="text-pink-500 animate-bounce" size={48} />
-                    <p className="text-xl font-bold tracking-widest uppercase">Carregando Vitrine em Alta...</p>
-                </div>
-            </div>
-        );
+        return <LoadingScreen title="Vitrine em Alta" subtitle="Explorando anúncios... Sincronizando dados de tráfego em tempo real." />;
     }
 
     return (
-        <div className="min-h-screen bg-black text-white px-4 py-12 md:px-8">
+        <div className="min-h-screen bg-slate-950 text-white px-4 py-12 md:px-8">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-16">

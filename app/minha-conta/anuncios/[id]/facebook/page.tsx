@@ -6,7 +6,8 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import LoadingScreen from "@/components/LoadingScreen";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
-import { Globe, ArrowLeft, Loader2, Image as ImageIcon, Volume2, VolumeX, X } from "lucide-react";
+import { Globe, ArrowLeft, Loader2, Image as ImageIcon, Volume2, VolumeX, X, Video } from "lucide-react";
+import ViralizarModal from "@/components/ViralizarModal";
 
 export default function FacebookPublisherPage() {
   const { status } = useSession();
@@ -23,6 +24,7 @@ export default function FacebookPublisherPage() {
   const [postType, setPostType] = useState<"carousel" | "reels">("carousel");
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
+  const [isViralizarOpen, setIsViralizarOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -172,27 +174,43 @@ export default function FacebookPublisherPage() {
               </div>
               
               <div className="aspect-square w-full rounded-xl bg-slate-900 border border-white/10 overflow-hidden relative mb-4">
-                 {postType === "reels" && property.reelsVideoUrl ? (
-                   <div className="relative w-full h-full">
-                     <video 
-                       ref={videoRef}
-                       key={property.reelsVideoUrl}
-                       className="w-full h-full object-cover" 
-                       autoPlay 
-                       loop 
-                       muted={isMuted}
-                       playsInline 
-                     >
-                       <source src={property.reelsVideoUrl} type={property.reelsVideoUrl.endsWith('.mp4') ? 'video/mp4' : 'video/webm'} />
-                     </video>
-                     <button 
-                        onClick={() => setIsMuted(!isMuted)}
-                        className="absolute bottom-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md transition hover:bg-black/70"
-                        title={isMuted ? "Ligar som" : "Desligar som"}
-                      >
-                        {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                      </button>
-                   </div>
+                 {postType === "reels" ? (
+                    property.reelsVideoUrl ? (
+                      <div className="relative w-full h-full">
+                        <video 
+                          ref={videoRef}
+                          key={property.reelsVideoUrl}
+                          className="w-full h-full object-cover" 
+                          autoPlay 
+                          loop 
+                          muted={isMuted}
+                          playsInline 
+                        >
+                          <source src={property.reelsVideoUrl} type={property.reelsVideoUrl.endsWith('.mp4') ? 'video/mp4' : 'video/webm'} />
+                        </video>
+                        <button 
+                            onClick={() => setIsMuted(!isMuted)}
+                            className="absolute bottom-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md transition hover:bg-black/70"
+                            title={isMuted ? "Ligar som" : "Desligar som"}
+                          >
+                            {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                          </button>
+                      </div>
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-slate-900">
+                         <div className="w-16 h-16 bg-blue-500/20 text-blue-400 rounded-2xl flex items-center justify-center mb-4">
+                            <Video size={32} />
+                         </div>
+                         <h4 className="text-sm font-bold text-white mb-2">Vídeo IA não gerado</h4>
+                         <p className="text-[10px] text-slate-400 mb-6">Gere um vídeo profissional com inteligência artificial para postar no Facebook.</p>
+                         <button 
+                           onClick={() => setIsViralizarOpen(true)}
+                           className="px-6 py-2 bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-400 transition-all shadow-lg shadow-blue-500/20"
+                         >
+                           Gerar Vídeo Agora
+                         </button>
+                      </div>
+                    )
                  ) : (
                    <div className="w-full h-full relative">
                       {property.images?.map((img: any, idx: number) => (
@@ -225,31 +243,29 @@ export default function FacebookPublisherPage() {
                 {property.description || "Nenhuma descrição."}
               </div>
 
-              {property.reelsVideoUrl && (
-                <div className="mt-6 border-t border-white/10 pt-4">
-                   <h3 className="text-sm font-bold text-white mb-3">Formato da Publicação</h3>
-                   <div className="grid grid-cols-2 gap-3">
-                      <button 
-                        onClick={() => setPostType("carousel")}
-                        className={`flex flex-col items-center gap-2 rounded-xl border p-3 transition-all ${postType === 'carousel' ? 'border-blue-500 bg-blue-500/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}
-                      >
-                         <div className="text-xs font-bold uppercase text-blue-400">Carrossel</div>
-                         <div className="text-[10px] text-slate-500">
-                             {publishedSessions.find(s => s.postType === "carousel") ? "✅ Publicado" : "Álbum de Fotos"}
-                         </div>
-                      </button>
-                      <button 
-                        onClick={() => setPostType("reels")}
-                        className={`flex flex-col items-center gap-2 rounded-xl border p-3 transition-all ${postType === 'reels' ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}
-                      >
-                         <div className="text-xs font-bold uppercase text-indigo-400">Reels IA</div>
-                         <div className="text-[10px] text-slate-500">
-                             {publishedSessions.find(s => s.postType === "reels") ? "✅ Publicado" : "Vídeo Dinâmico"}
-                         </div>
-                      </button>
-                   </div>
-                </div>
-              )}
+              <div className="mt-6 border-t border-white/10 pt-4">
+                 <h3 className="text-sm font-bold text-white mb-3">Formato da Publicação</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                     <button 
+                       onClick={() => setPostType("carousel")}
+                       className={`flex flex-col items-center gap-2 rounded-xl border p-3 transition-all ${postType === 'carousel' ? 'border-blue-500 bg-blue-500/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}
+                     >
+                        <div className="text-xs font-bold uppercase text-blue-400">Carrossel</div>
+                        <div className="text-[10px] text-slate-500">
+                           {publishedSessions.find(s => s.postType === "carousel") ? "✅ Publicado" : "Álbum de Fotos"}
+                        </div>
+                     </button>
+                     <button 
+                       onClick={() => setPostType("reels")}
+                       className={`flex flex-col items-center gap-2 rounded-xl border p-3 transition-all ${postType === 'reels' ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}
+                     >
+                        <div className="text-xs font-bold text-indigo-400 uppercase">Vídeo IA</div>
+                        <div className="text-[10px] text-slate-500">
+                           {!property.reelsVideoUrl ? "Gerar vídeo primeiro" : (publishedSessions.find(s => s.postType === "reels") ? "✅ Publicado" : "Vídeo Dinâmico")}
+                        </div>
+                     </button>
+                  </div>
+              </div>
             </div>
 
             {/* Pagamento e Confirmação */}
@@ -349,6 +365,19 @@ export default function FacebookPublisherPage() {
           </div>
         )}
       </div>
+
+      <ViralizarModal 
+        isOpen={isViralizarOpen}
+        onClose={() => {
+            setIsViralizarOpen(false);
+            loadData(); // Recarregar para pegar o novo vídeo
+        }}
+        propertyId={Number(propertyId)}
+        propertyTitle={property?.title || ""}
+        propertyCity={property?.city}
+        propertyState={property?.state}
+        images={property?.images || []}
+      />
     </main>
   );
 }

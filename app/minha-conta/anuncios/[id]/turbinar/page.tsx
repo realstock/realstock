@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
-import { Rocket, Target, CalendarDays, Wallet, Volume2, VolumeX, X, Globe } from "lucide-react";
+import { Rocket, Target, CalendarDays, Wallet, Volume2, VolumeX, X, Globe, Video } from "lucide-react";
+import LoadingScreen from "@/components/LoadingScreen";
+import ViralizarModal from "@/components/ViralizarModal";
 
 export default function TurbinarPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -47,6 +49,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
   const [isBoosting, setIsBoosting] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
+  const [isViralizarOpen, setIsViralizarOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -68,7 +71,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
       setLoading(true);
       setError("");
       const [pageRes, infoRes] = await Promise.all([
-        fetch(`/api/minha-conta/anuncios/${id}/turbinar`),
+        fetch(`/api/minha-conta/anuncios/${id}/turbinar?platform=${platform}`),
         fetch(`/api/minha-conta/turbinar-info`)
       ]);
       
@@ -170,14 +173,17 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
 
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
-  const currentSessions = platform === "facebook" ? fbSessions : igSessions;
+  const currentSessions = platform === "facebook" ? fbSessions : (platform === "instagram" ? igSessions : []);
   const hasCarousel = currentSessions.some(s => s.postType === "carousel");
   const hasReels = currentSessions.some(s => s.postType === "reels");
   const selectedSession = currentSessions.find(s => s.postType === postType);
   const selectedPermalink = selectedSession?.validationReport ? (selectedSession.validationReport as any).permalink : null;
 
   if (status === "loading" || loading) {
-    return <main className="min-h-screen bg-slate-950 px-6 py-8 text-white"><div className="mx-auto max-w-4xl text-slate-400">Carregando painel de tráfego...</div></main>;
+    const subtitle = platform === "google" 
+      ? "Conectando com Google Ads..." 
+      : "Conectando com Meta Ads e Instagram...";
+    return <LoadingScreen title="Painel de Tráfego" subtitle={subtitle} />;
   }
 
   if (error) {
@@ -226,59 +232,145 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
               <div className="rounded-2xl border border-white/10 bg-white/5 p-6 h-fit">
                 <h2 className="text-xl font-semibold mb-4">Preview do Anúncio</h2>
                 
-                <div className="aspect-square w-full rounded-xl bg-slate-900 border border-white/10 overflow-hidden relative mb-4">
-                  {postType === "reels" && property.reelsVideoUrl ? (
-                    <div className="relative w-full h-full">
-                      <video 
-                        ref={videoRef}
-                        key={property.reelsVideoUrl}
-                        className="w-full h-full object-cover" 
-                        autoPlay 
-                        loop 
-                        muted={isMuted}
-                        playsInline 
-                      >
-                        <source src={property.reelsVideoUrl} type={property.reelsVideoUrl.endsWith('.mp4') ? 'video/mp4' : 'video/webm'} />
-                      </video>
-                      <button 
-                        onClick={() => setIsMuted(!isMuted)}
-                        className="absolute bottom-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md transition hover:bg-black/70"
-                        title={isMuted ? "Ligar som" : "Desligar som"}
-                      >
-                        {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                      </button>
+                <div className="mb-4">
+                  {platform === "google" ? (
+                    <div className="w-full rounded-2xl bg-white p-6 shadow-xl border border-slate-200 text-left">
+                       {/* Header: Logo + Business Name */}
+                       <div className="flex items-center gap-2 mb-3">
+                          <img 
+                            src="/images/logo_realstock_dark.png" 
+                            alt="Logo" 
+                            className="w-7 h-7 rounded-lg object-contain bg-slate-50 p-1 border border-slate-100"
+                            onError={(e) => {
+                                // Fallback se a imagem não existir
+                                (e.target as any).src = "https://www.realstock.com.br/favicon.ico";
+                            }}
+                          />
+                          <div className="flex flex-col">
+                             <span className="text-[12px] text-slate-900 font-bold leading-tight">RealStock Oficial</span>
+                             <span className="text-[11px] text-slate-500 leading-tight">https://www.realstock.com.br {' > '} imoveis {' > '} {id}</span>
+                          </div>
+                          <div className="ml-auto text-slate-400">
+                             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                          </div>
+                       </div>
+
+                       {/* Main Content */}
+                       <h3 className="text-[20px] text-[#1a0dab] font-medium hover:underline cursor-pointer mb-1 leading-tight">
+                          {property.title} | Oportunidade Exclusiva RealStock
+                       </h3>
+                       
+                       <p className="text-sm text-[#4d5156] leading-relaxed mb-3">
+                          <span className="font-bold text-[#4d5156]">Anúncio ·</span> {property.description || "Confira este excelente imóvel disponível na RealStock. Fotos exclusivas, detalhes completos e contato direto com o anunciante. Acesse agora!"}
+                       </p>
+
+                       {/* Callouts (Recursos de Frase de Destaque) */}
+                       <div className="flex flex-wrap gap-x-4 gap-y-1 mb-4 text-[13px] text-[#4d5156]">
+                          <span className="flex items-center gap-1">• Fotos Exclusivas</span>
+                          <span className="flex items-center gap-1">• Verificado pela IA</span>
+                          <span className="flex items-center gap-1">• Direto com Anunciante</span>
+                          <span className="flex items-center gap-1">• Sem Burocracia</span>
+                       </div>
+
+                       {/* Sitelinks (Links de Site) */}
+                       <div className="grid grid-cols-2 gap-4 pt-3 border-t border-slate-100">
+                          <div>
+                             <span className="text-[#1a0dab] text-[14px] font-medium hover:underline cursor-pointer block">Ver Fotos em HD</span>
+                             <span className="text-[12px] text-[#4d5156]">Explore cada detalhe do imóvel.</span>
+                          </div>
+                          <div>
+                             <span className="text-[#1a0dab] text-[14px] font-medium hover:underline cursor-pointer block">Fazer Proposta Online</span>
+                             <span className="text-[12px] text-[#4d5156]">Negocie agora pelo site oficial.</span>
+                          </div>
+                       </div>
+
+                       {/* CTA Final */}
+                       <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-100 text-[13px]">
+                          <div className="flex items-center gap-2 text-[#1a0dab] font-medium">
+                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8l4 4-4 4M8 12h7"/></svg>
+                             Acesse o site e faça sua proposta
+                          </div>
+                          <div className="text-slate-400">
+                             realstock.com.br
+                          </div>
+                       </div>
                     </div>
                   ) : (
-                    <div className="w-full h-full relative">
-                      {property.images?.map((img: any, idx: number) => (
-                        <img 
-                          key={idx}
-                          src={img.imageUrl} 
-                          alt={`Slide ${idx}`} 
-                          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${idx === currentImageIndex ? 'opacity-100' : 'opacity-0'}`} 
-                        />
-                      ))}
-                      
-                      {/* Pontos do Carrossel */}
-                      <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-20">
-                        {(property.images?.length || 0) > 1 && property.images?.map((_: any, idx: number) => (
-                          <div 
-                            key={idx} 
-                            className={`h-1 rounded-full transition-all ${idx === currentImageIndex ? 'w-4 bg-white' : 'w-1 bg-white/30'}`}
-                          />
-                        ))}
-                      </div>
+                    <div className="aspect-square w-full rounded-xl bg-slate-900 border border-white/10 overflow-hidden relative">
+                      {postType === "reels" ? (
+                        property.reelsVideoUrl ? (
+                          <div className="relative w-full h-full">
+                            <video 
+                              ref={videoRef}
+                              key={property.reelsVideoUrl}
+                              className="w-full h-full object-cover" 
+                              autoPlay 
+                              loop 
+                              muted={isMuted}
+                              playsInline 
+                            >
+                              <source src={property.reelsVideoUrl} type={property.reelsVideoUrl.endsWith('.mp4') ? 'video/mp4' : 'video/webm'} />
+                            </video>
+                            <button 
+                              onClick={() => setIsMuted(!isMuted)}
+                              className="absolute bottom-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md transition hover:bg-black/70"
+                              title={isMuted ? "Ligar som" : "Desligar som"}
+                            >
+                              {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-slate-900">
+                             <div className="w-16 h-16 bg-indigo-500/20 text-indigo-400 rounded-2xl flex items-center justify-center mb-4">
+                                <Video size={32} />
+                             </div>
+                             <h4 className="text-sm font-bold text-white mb-2">Vídeo IA não gerado</h4>
+                             <p className="text-[10px] text-slate-400 mb-6">Gere um vídeo profissional com inteligência artificial para postar como Reels.</p>
+                             <button 
+                               onClick={() => setIsViralizarOpen(true)}
+                               className="px-6 py-2 bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-400 transition-all shadow-lg shadow-indigo-500/20"
+                             >
+                               Gerar Vídeo Agora
+                             </button>
+                          </div>
+                        )
+                      ) : (
+                        <div className="w-full h-full relative">
+                          {property.images?.map((img: any, idx: number) => (
+                            <img 
+                              key={idx}
+                              src={img.imageUrl} 
+                              alt={`Slide ${idx}`} 
+                              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${idx === currentImageIndex ? 'opacity-100' : 'opacity-0'}`} 
+                            />
+                          ))}
+                          
+                          {/* Pontos do Carrossel */}
+                          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-20">
+                            {(property.images?.length || 0) > 1 && property.images?.map((_: any, idx: number) => (
+                              <div 
+                                key={idx} 
+                                className={`h-1 rounded-full transition-all ${idx === currentImageIndex ? 'w-4 bg-white' : 'w-1 bg-white/30'}`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
 
-                <div className="text-lg font-bold">{property.title}</div>
-                <div className="text-sm text-emerald-400 font-semibold mb-2">
-                  R$ {Number(property.price).toLocaleString("pt-BR")}
-                </div>
-                <div className="text-sm text-slate-300 whitespace-pre-wrap max-h-32 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/10">
-                  {property.description || "Nenhuma descrição."}
-                </div>
+                {platform !== "google" && (
+                  <>
+                    <div className="text-lg font-bold">{property.title}</div>
+                    <div className="text-sm text-emerald-400 font-semibold mb-2">
+                      R$ {Number(property.price).toLocaleString("pt-BR")}
+                    </div>
+                    <div className="text-sm text-slate-300 whitespace-pre-wrap max-h-32 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/10">
+                      {property.description || "Nenhuma descrição."}
+                    </div>
+                  </>
+                )}
 
                 {/* Formato */}
                 <div className="mt-6 border-t border-white/10 pt-4">
@@ -306,17 +398,15 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                                 Carrossel
                             </button>
                         )}
-                        {hasReels && (
-                            <button 
-                                onClick={() => {
-                                    setPostType("reels");
-                                    setPaypalOrderId(null);
-                                }}
-                                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${postType === 'reels' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
-                            >
-                                Reels IA
-                            </button>
-                        )}
+                        <button 
+                            onClick={() => {
+                                setPostType("reels");
+                                setPaypalOrderId(null);
+                            }}
+                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${postType === 'reels' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            Reels IA
+                        </button>
                       </div>
                       {selectedPermalink && (
                         <a 
@@ -468,7 +558,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                       onClick={startPaypalCheckout}
                       className="w-full rounded-2xl bg-gradient-to-r from-indigo-500 to-blue-500 px-6 py-4 text-center font-bold text-white transition hover:opacity-90 shadow-lg shadow-indigo-500/20"
                     >
-                      {selectedSession ? "Turbinar Agora" : "Postar e Turbinar"}
+                      {platform === "google" ? "Turbinar no Google" : (selectedSession ? "Turbinar Agora" : "Postar e Turbinar")}
                     </button>
                   ) : (
                     <PayPalScriptProvider
@@ -512,6 +602,19 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
           </div>
         )}
       </div>
+
+      <ViralizarModal 
+        isOpen={isViralizarOpen}
+        onClose={() => {
+            setIsViralizarOpen(false);
+            loadData(); // Recarregar para pegar o novo vídeo
+        }}
+        propertyId={Number(id)}
+        propertyTitle={property?.title || ""}
+        propertyCity={property?.city}
+        propertyState={property?.state}
+        images={property?.images || []}
+      />
     </main>
   );
 }

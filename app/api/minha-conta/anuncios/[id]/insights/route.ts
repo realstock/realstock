@@ -48,8 +48,48 @@ export async function GET(
     });
     const metaSessionStatus = meSession?.status || null;
 
+    // 1. META ADS INSIGHTS (PAID PERFORMANCE)
+    const adsSessions = await prisma.metaAdsSession.findMany({
+        where: { listingId: propertyId },
+        orderBy: { createdAt: "desc" }
+    });
+
+    let paidMetrics = { reach: 0, views: 0, clicks: 0, spend: 0 };
+    const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID;
+    const pageToken = process.env.INSTAGRAM_ACCESS_TOKEN; // Usar o token do IG que tem permissão total
+
+    if (adAccountId && pageToken) {
+        // IDs para testar (Campanha da Sessão + IDs diretos do imóvel)
+        const targetIds = [
+            property.metaAdId,
+            property.metaCampaignId,
+            ...adsSessions.map(s => s.campaignId)
+        ].filter(Boolean);
+
+        for (const tId of targetIds) {
+            try {
+                // Usar date_preset=maximum para garantir que pegamos o acumulado total
+                const adsRes = await fetch(`https://graph.facebook.com/v19.0/${tId}/insights?fields=reach,impressions,inline_link_clicks,spend&date_preset=maximum&access_token=${pageToken}`);
+                const adsData = await adsRes.json();
+                if (adsData?.data?.[0]) {
+                    const d = adsData.data[0];
+                    const r = parseInt(d.reach || "0");
+                    const v = parseInt(d.impressions || "0");
+                    const c = parseInt(d.inline_link_clicks || "0");
+                    const s = parseFloat(d.spend || "0");
+                    
+                    // Usar o maior valor encontrado para evitar duplicação se consultarmos campanha e anúncio
+                    if (r > paidMetrics.reach) paidMetrics.reach = r;
+                    if (v > paidMetrics.views) paidMetrics.views = v;
+                    if (c > paidMetrics.clicks) paidMetrics.clicks = c;
+                    if (s > paidMetrics.spend) paidMetrics.spend = s;
+                }
+            } catch (e) {}
+        }
+    }
+
     const insights: any = {
-        metaAds: null,
+        metaAds: adsSessions.length > 0 || property.metaAdId ? paidMetrics : null,
         instagram: null,
         facebook: null,
         google: null
@@ -63,7 +103,7 @@ export async function GET(
     
     const igMediaIds = igSessions.map(s => ({ id: s.publishedMediaId, type: s.postType }));
     if (property.instagramMediaId && !igMediaIds.find(i => i.id === property.instagramMediaId)) {
-        igMediaIds.push({ id: property.instagramMediaId, type: 'carousel' });
+        igMediaIds.push({ id: property.instagramMediaId, type: 'reels' });
     }
 
     const instagramPosts: any[] = [];
@@ -80,26 +120,57 @@ export async function GET(
                     if (baseData.media_type === 'VIDEO') postType = 'reels';
                     else if (baseData.media_type === 'CAROUSEL_ALBUM') postType = 'carousel';
 
-                    let views = 0, reach = 0, shares = 0;
+                    let views = 0;
+                    let reach = 0;
+                    let shares = 0;
+
                     try {
-                        const insRes = await fetch(`https://graph.facebook.com/v19.0/${item.id}/insights?metric=views,reach,shares,saved&access_token=${igToken}`);
+                        const metrics = 'views,reach,saved,total_interactions';
+                        const insRes = await fetch(`https://graph.facebook.com/v19.0/${item.id}/insights?metric=${metrics}&access_token=${igToken}`);
                         const insData = await insRes.json();
+                        
                         if (insData && insData.data) {
-                            for (const m of insData.data) {
-                                const val = m.values?.[0]?.value || 0;
-                                if (m.name === 'views') views += val;
-                                if (m.name === 'reach') reach = val;
-                                if (m.name === 'shares') shares = val;
+                            // Pegar o valor de 'views' (padrão 2026)
+                            const vObj = insData.data.find((m: any) => m.name === 'views');
+                            if (vObj) views = vObj.values?.[0]?.value || 0;
+                            
+                            reach = insData.data.find((m: any) => m.name === 'reach')?.values?.[0]?.value || 0;
+                        }
+
+                        // Tentar buscar o video_id oculto apenas para VIDEOS (Turbinado)
+                        if (baseData.media_type === 'VIDEO') {
+                            const vFieldsRes = await fetch(`https://graph.facebook.com/v19.0/${item.id}?fields=video_id&access_token=${igToken}`);
+                            const vFieldsData = await vFieldsRes.json();
+                            
+                            if (vFieldsData && vFieldsData.video_id) {
+                                const vId = vFieldsData.video_id;
+                                const fbVidRes = await fetch(`https://graph.facebook.com/v19.0/${vId}?fields=views,play_count,video_play_count&access_token=${igToken}`);
+                                const fbVidData = await fbVidRes.json();
+                                if (fbVidData && !fbVidData.error) {
+                                    const vTotal = Math.max(fbVidData.views || 0, fbVidData.play_count || 0, fbVidData.video_play_count || 0);
+                                    if (vTotal > views) views = vTotal;
+                                }
                             }
                         }
+
+                        // 3. Tentar buscar métricas pagas via Insights de Anúncio
+                        try {
+                            const adsRes = await fetch(`https://graph.facebook.com/v19.0/${item.id}/insights?metric=video_views,impressions&breakdowns=ad_id&access_token=${igToken}`);
+                            const adsData = await adsRes.json();
+                            if (adsData && adsData.data) {
+                                const paidViews = adsData.data.find((m: any) => m.name === 'video_views' || m.name === 'impressions')?.values?.[0]?.value || 0;
+                                if (paidViews > views) views = paidViews;
+                            }
+                        } catch(e) {}
                     } catch(e) { console.error("IG Insights Metric Error:", e); }
 
                     instagramPosts.push({
                         type: postType,
                         likes: baseData.like_count || 0,
                         comments: baseData.comments_count || 0,
-                        views,
-                        reach,
+                        // Garantir que pegamos o maior valor orgânico ou pago
+                        views: postType === 'reels' ? Math.max(views, paidMetrics.views) : Math.max(views, 0),
+                        reach: postType === 'reels' ? Math.max(reach, paidMetrics.reach) : reach,
                         shares,
                         publishedDate: baseData.timestamp
                     });
@@ -133,42 +204,67 @@ export async function GET(
                     for (const fbSession of fbSessions) {
                         if (!fbSession.publishedPostId) continue;
                         
-                        const basicRes = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}?fields=shares,comments.summary(total_count),likes.summary(total_count),updated_time&access_token=${pageInfo.access_token}`);
-                        const basicData = await basicRes.json();
+                        let fbData: any = null;
+                        let metrics: any = { views: 0, likes: 0, comments: 0, shares: 0 };
+
+                        // 1. Tentar capturar o MÍNIMO necessário para exibir o post
+                        const basicFields = ["id", "shares", "comments.summary(total_count)", "likes.summary(total_count)", "updated_time", "object_id", "views"];
                         
-                        if (basicData && !basicData.error) {
-                            let views = 0;
-                            try {
-                                const insRes = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}/insights?metric=post_impressions&access_token=${pageInfo.access_token}`);
-                                const insData = await insRes.json();
-                                if (insData && insData.data && !insData.error) {
-                                    views = insData.data.find((m:any) => m.name === 'post_impressions')?.values[0]?.value || 0;
-                                } 
-                                
-                                if (insData.error || views === 0) {
-                                    const vidRes = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}/insights?metric=post_video_views&access_token=${pageInfo.access_token}`);
-                                    const vidData = await vidRes.json();
-                                    if (vidData && vidData.data && !vidData.error) {
-                                        views = vidData.data.find((m:any) => m.name === 'post_video_views')?.values[0]?.value || 0;
-                                    } 
-                                    
-                                    if (vidData?.error || views === 0) {
-                                        const unqRes = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}/insights?metric=post_impressions_unique&access_token=${pageInfo.access_token}`);
-                                        const unqData = await unqRes.json();
-                                        if (unqData && unqData.data && !unqData.error) {
-                                            views = unqData.data.find((m:any) => m.name === 'post_impressions_unique')?.values[0]?.value || 0;
-                                        }
-                                    }
+                        // 1. Tentar capturar o MÍNIMO necessário para exibir o post
+                        try {
+                            // Tentativa 1: Completa
+                            const res1 = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}?fields=id,shares,comments.summary(total_count),likes.summary(total_count),updated_time,object_id,views&access_token=${pageInfo.access_token}`);
+                            const data1 = await res1.json();
+                            
+                            if (data1 && !data1.error) {
+                                fbData = data1;
+                            } else {
+                                // Tentativa 2: Sem campos problemáticos (shares/object_id)
+                                const res2 = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}?fields=id,likes.summary(total_count),comments.summary(total_count),updated_time,views&access_token=${pageInfo.access_token}`);
+                                const data2 = await res2.json();
+                                if (data2 && !data2.error) {
+                                    fbData = data2;
+                                } else {
+                                    // Tentativa 3: Ultra-básica (Apenas para não sumir do painel)
+                                    const res3 = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}?access_token=${pageInfo.access_token}`);
+                                    const data3 = await res3.json();
+                                    if (data3 && !data3.error) fbData = data3;
                                 }
-                            } catch(e) {}
+                            }
+
+                            if (fbData) {
+                                metrics.likes = fbData.likes?.summary?.total_count || 0;
+                                metrics.comments = fbData.comments?.summary?.total_count || 0;
+                                metrics.shares = fbData.shares?.count || 0;
+                                metrics.views = fbData.views || 0;
+                            }
+                        } catch(e) {}
+
+                        // 2. Enriquecer com métricas de INSIGHTS (Um por um para não quebrar)
+                        if (fbData) {
+                            const targetId = fbData.object_id || fbSession.publishedPostId;
+                            
+                            if (targetId !== pageId) {
+                                const metricsToTry = ['post_impressions', 'post_video_views', 'post_video_views_organic', 'post_impressions_unique'];
+                                for (const mName of metricsToTry) {
+                                    try {
+                                        const vRes = await fetch(`https://graph.facebook.com/v19.0/${targetId}/insights?metric=${mName}&access_token=${pageInfo.access_token}`);
+                                        const vData = await vRes.json();
+                                        if (vData?.data?.[0]?.values?.[0]?.value) {
+                                            const val = vData.data[0].values[0].value;
+                                            if (val > metrics.views) metrics.views = val;
+                                        }
+                                    } catch(e) {}
+                                }
+                            }
 
                             facebookPosts.push({
                                 type: fbSession.postType || 'carousel',
-                                likes: basicData.likes?.summary?.total_count || 0,
-                                comments: basicData.comments?.summary?.total_count || 0,
-                                shares: basicData.shares?.count || 0,
-                                views,
-                                publishedDate: basicData.updated_time || fbSession.updatedAt
+                                likes: metrics.likes,
+                                comments: metrics.comments,
+                                shares: metrics.shares,
+                                views: metrics.views,
+                                publishedDate: fbData.updated_time || fbSession.updatedAt
                             });
                         }
                     }

@@ -82,7 +82,9 @@ export async function GET(
         orderBy: { createdAt: "desc" }
     });
 
-    if (igSessions.length === 0 && fbSessions.length === 0 && propertyId !== 0) {
+    const platform = req.nextUrl.searchParams.get("platform");
+
+    if (igSessions.length === 0 && fbSessions.length === 0 && propertyId !== 0 && platform !== "google") {
         return NextResponse.json(
             { success: false, error: "Este anúncio não possui publicações ativas para turbinar." },
             { status: 400 }
