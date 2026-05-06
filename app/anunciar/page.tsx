@@ -942,6 +942,9 @@ export default function AnunciarPage() {
   }
 
   if (status === "unauthenticated") {
+    if (typeof window !== "undefined") {
+      router.replace(`/login?callbackUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+    }
     return null;
   }
 

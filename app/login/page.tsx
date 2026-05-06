@@ -2,11 +2,14 @@
 
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 
-export default function LoginPage() {
+function LoginContent() {
   const { status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || "/";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,9 +21,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (status === "authenticated") {
-      router.replace("/");
+      router.replace(callbackUrl);
     }
-  }, [status, router]);
+  }, [status, router, callbackUrl]);
 
   async function handleEmailLogin(e: FormEvent) {
     e.preventDefault();
@@ -40,7 +43,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.replace("/");
+    router.replace(callbackUrl);
   }
 
   return (
@@ -101,7 +104,7 @@ export default function LoginPage() {
         <button
           onClick={async () => {
             setLoadingGoogle(true);
-            await signIn("google", { callbackUrl: "/" });
+            await signIn("google", { callbackUrl });
           }}
           disabled={loadingGoogle || loadingPayPal || loadingFacebook || loadingEmail}
           className="flex w-full items-center justify-center gap-3 rounded-2xl bg-white px-4 py-3 font-semibold text-slate-900 transition hover:bg-slate-200 disabled:opacity-60 mb-3"
@@ -162,5 +165,13 @@ export default function LoginPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Carregando...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }

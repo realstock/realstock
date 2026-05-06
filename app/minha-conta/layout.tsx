@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import LoadingScreen from "@/components/LoadingScreen";
 
 export default function MinhaContaLayout({
   children,
@@ -14,16 +15,13 @@ export default function MinhaContaLayout({
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.replace("/login");
+      const currentPath = window.location.pathname + window.location.search;
+      router.replace(`/login?callbackUrl=${encodeURIComponent(currentPath)}`);
     }
   }, [status, router]);
 
   if (status === "loading") {
-    return (
-      <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
-        <div className="mx-auto max-w-6xl text-slate-400">Carregando painel...</div>
-      </main>
-    );
+    return <LoadingScreen title="Minha Conta" subtitle="Validando sua sessão de acesso..." />;
   }
 
   if (status === "unauthenticated") {
