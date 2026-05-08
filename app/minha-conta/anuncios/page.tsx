@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Camera, CheckCircle2, Rocket, Globe, BarChart3, Building2, Upload, X, Wallet, TrendingUp, History, MapPin, Film, Zap, Users } from "lucide-react";
+import { Camera, CameraOff, CheckCircle2, Rocket, Globe, BarChart3, Building2, Upload, X, Wallet, TrendingUp, History, MapPin, Film, Zap, Users } from "lucide-react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import VideoCreatorModal from "@/components/VideoCreatorModal";
 import ViralizarModal from "@/components/ViralizarModal";
@@ -18,6 +18,8 @@ type PropertyItem = {
   neighborhood?: string | null;
   price: string | number;
   images?: { imageUrl: string }[];
+  videos?: any[];
+  reelsMusicUrl?: string | null;
   boostedUntil?: string | null;
   googleBoostedUntil?: string | null;
   metaBoostedUntil?: string | null;
@@ -58,6 +60,10 @@ export default function MeusAnunciosPage() {
   const [isViralizarOpen, setIsViralizarOpen] = useState(false);
   const [viralizarTarget, setViralizarTarget] = useState<{id: number, title: string} | null>(null);
 
+  const [isMediaCheckOpen, setIsMediaCheckOpen] = useState(false);
+  const [pendingVideoProperty, setPendingVideoProperty] = useState<PropertyItem | null>(null);
+  const [mediaCheckSource, setMediaCheckSource] = useState<"create" | "viralizar">("create");
+
   async function loadProperties() {
     try {
       setLoading(true);
@@ -87,6 +93,103 @@ export default function MeusAnunciosPage() {
       setLoading(false);
     }
   }
+
+  const handleCreateVideoClick = (property: PropertyItem) => {
+    const hasVideos = (property.videos || []).length > 0;
+    const hasMusic = !!property.reelsMusicUrl;
+
+    if (!hasVideos || !hasMusic) {
+      setMediaCheckSource("create");
+      setPendingVideoProperty(property);
+      setIsMediaCheckOpen(true);
+    } else {
+      setSelectedPropertyForVideo(property);
+      setIsVideoModalOpen(true);
+    }
+  };
+
+  const handleViralizarClick = (property: PropertyItem) => {
+    const hasVideos = (property.videos || []).length > 0;
+    const hasMusic = !!property.reelsMusicUrl;
+
+    if (!hasVideos || !hasMusic) {
+      setMediaCheckSource("viralizar");
+      setPendingVideoProperty(property);
+      setIsMediaCheckOpen(true);
+    } else {
+      setViralizarTarget({ id: property.id, title: property.title });
+      setIsViralizarOpen(true);
+    }
+  };
+
+  // Componente para gerenciar a miniatura com tratamento de erro
+  const PropertyThumbnail = ({ property }: { property: PropertyItem }) => {
+    const [imageError, setImageError] = useState(false);
+    const [videoError, setVideoError] = useState(false);
+
+    // Prioridades: 1. Vídeo IA pronto, 2. Foto (se não falhar), 3. Vídeo real (se não falhar), 4. Placeholder
+    const reelsUrl = property.reelsVideoUrl && property.reelsVideoUrl.trim() !== "" ? property.reelsVideoUrl : null;
+    const imageUrl = property.images && property.images.length > 0 && property.images[0].imageUrl && property.images[0].imageUrl.trim() !== "" && !imageError ? property.images[0].imageUrl : null;
+    const rawVideoUrl = property.videos && property.videos.length > 0 && property.videos[0].videoUrl && property.videos[0].videoUrl.trim() !== "" && !videoError ? property.videos[0].videoUrl : null;
+
+    return (
+      <div className="relative h-40 w-52 shrink-0 overflow-hidden rounded-2xl bg-slate-900 shadow-2xl ring-1 ring-white/10">
+        {reelsUrl ? (
+          <video
+            src={reelsUrl}
+            className="h-full w-full object-cover"
+            muted
+            playsInline
+            onMouseOver={(e) => (e.target as HTMLVideoElement).play()}
+            onMouseOut={(e) => {
+              const v = e.target as HTMLVideoElement;
+              v.pause();
+              v.currentTime = 0;
+            }}
+          />
+        ) : imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={property.title}
+            onError={() => {
+                console.warn(`Falha ao carregar imagem do imóvel ${property.id}`);
+                setImageError(true);
+            }}
+            className="h-full w-full object-cover transition-transform duration-500 hover:scale-110"
+          />
+        ) : rawVideoUrl ? (
+          <video
+            src={rawVideoUrl}
+            className="h-full w-full object-cover"
+            muted
+            playsInline
+            onError={() => {
+                console.warn(`Falha ao carregar vídeo do imóvel ${property.id}`);
+                setVideoError(true);
+            }}
+            onMouseOver={(e) => (e.target as HTMLVideoElement).play()}
+            onMouseOut={(e) => {
+              const v = e.target as HTMLVideoElement;
+              v.pause();
+              v.currentTime = 0;
+            }}
+          />
+        ) : (
+          <div className="flex h-full w-full flex-col items-center justify-center bg-slate-800 text-slate-600">
+            <CameraOff size={24} />
+            <span className="mt-2 text-[10px] font-bold uppercase tracking-tighter">Sem Mídia</span>
+          </div>
+        )}
+        
+        {(reelsUrl || rawVideoUrl) && (
+          <div className="absolute bottom-2 right-2 rounded-lg bg-black/60 p-1.5 backdrop-blur-md flex items-center gap-1">
+            <Film size={12} className="text-white" />
+            {reelsUrl && <div className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   async function loadInvestment() {
     try {
@@ -406,19 +509,7 @@ export default function MeusAnunciosPage() {
                 )}
                 <div className="flex flex-wrap items-start justify-between gap-4 mt-2">
                   <div className="flex gap-4">
-                    <div className="h-24 w-32 overflow-hidden rounded-xl border border-white/10 bg-slate-900">
-                      {property.images?.[0]?.imageUrl ? (
-                        <img
-                          src={property.images[0].imageUrl}
-                          alt={property.title}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-xs text-slate-500">
-                          Sem foto
-                        </div>
-                      )}
-                    </div>
+                    <PropertyThumbnail property={property} />
 
                     <div>
                       <div className="text-lg font-semibold">
@@ -521,19 +612,25 @@ export default function MeusAnunciosPage() {
                           </div>
                           
                           {property.reelsVideoUrl ? (
-                            <button
-                              onClick={() => setViewingVideoUrl(property.reelsVideoUrl!)}
-                              className="w-full flex items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 py-2.5 text-xs font-bold text-emerald-400 transition-all hover:bg-emerald-500/10"
-                            >
-                              <Film size={14} />
-                              Ver Vídeo IA
-                            </button>
+                            <div className="space-y-2">
+                              <button
+                                onClick={() => setViewingVideoUrl(property.reelsVideoUrl!)}
+                                className="w-full flex items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 py-2.5 text-xs font-bold text-emerald-400 transition-all hover:bg-emerald-500/10"
+                              >
+                                <Film size={14} />
+                                Ver Vídeo IA
+                              </button>
+                              <button
+                                onClick={() => handleCreateVideoClick(property)}
+                                className="w-full flex items-center justify-center gap-2 rounded-xl border border-sky-500/10 bg-white/5 py-2 text-[10px] font-bold text-slate-400 transition-all hover:bg-white/10 hover:text-white group"
+                              >
+                                <Zap size={12} className="group-hover:fill-sky-400 group-hover:text-sky-400 transition-all" />
+                                Recriar Vídeo IA
+                              </button>
+                            </div>
                           ) : (
                             <button
-                              onClick={() => {
-                                setSelectedPropertyForVideo(property);
-                                setIsVideoModalOpen(true);
-                              }}
+                              onClick={() => handleCreateVideoClick(property)}
                               className="w-full flex items-center justify-center gap-2 rounded-xl border border-sky-500/20 bg-sky-500/5 py-2.5 text-xs font-bold text-sky-400 transition-all hover:bg-sky-500/10"
                             >
                               <Film size={14} />
@@ -571,10 +668,7 @@ export default function MeusAnunciosPage() {
                           )}
                           
                           <button 
-                            onClick={() => {
-                              setViralizarTarget({ id: property.id, title: property.title });
-                              setIsViralizarOpen(true);
-                            }}
+                            onClick={() => handleViralizarClick(property)}
                             className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 py-2.5 text-xs font-black text-white shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02] active:scale-95"
                           >
                             <Zap size={14} className="fill-white" /> VIRALIZAR (50% OFF)
@@ -583,9 +677,10 @@ export default function MeusAnunciosPage() {
                       </div>
                     </div>
                   </div>
+                  </div>
                 </div>
-              </div>
-            )})}
+              );
+            })}
           </div>
         )}
 
@@ -776,6 +871,8 @@ export default function MeusAnunciosPage() {
           propertyState={selectedPropertyForVideo.state}
           propertyId={selectedPropertyForVideo.id}
           images={selectedPropertyForVideo.images || []}
+          videos={selectedPropertyForVideo.videos || []}
+          reelsMusicUrl={selectedPropertyForVideo.reelsMusicUrl}
           onSuccess={(videoUrl) => {
             setProperties(prev => prev.map(p => 
               p.id === selectedPropertyForVideo.id ? { ...p, reelsVideoUrl: videoUrl } : p
@@ -838,7 +935,62 @@ export default function MeusAnunciosPage() {
                 state: properties.find(p => p.id === viralizarTarget.id)?.state || ""
               }))
           }
+          videos={viralizarTarget.id === 0 
+            ? [] 
+            : (properties.find(p => p.id === viralizarTarget.id)?.videos || [])}
+          reelsMusicUrl={viralizarTarget.id === 0 
+            ? null 
+            : properties.find(p => p.id === viralizarTarget.id)?.reelsMusicUrl}
+          reelsVideoUrl={viralizarTarget.id === 0
+            ? null
+            : properties.find(p => p.id === viralizarTarget.id)?.reelsVideoUrl}
         />
+      )}
+
+      {/* MODAL DE CHECAGEM DE MÍDIA */}
+      {isMediaCheckOpen && pendingVideoProperty && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-6 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-[32px] border border-white/10 bg-slate-900 p-8 shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-500/10 text-sky-400">
+              <Film size={32} />
+            </div>
+            
+            <h3 className="mb-2 text-xl font-bold text-white">Qualidade do Vídeo</h3>
+            <p className="mb-8 text-sm leading-relaxed text-slate-400">
+              O seu anúncio não tem vídeos e áudio para produção do vídeo cadastrados. Deseja incluir mídias reais para um resultado mais profissional ou prefere criar com as fotos atuais?
+            </p>
+
+            <div className="flex flex-col gap-3">
+              <Link
+                href={`/anunciar?edit=${pendingVideoProperty.id}`}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-sky-500 py-4 text-sm font-black text-white transition-all hover:bg-sky-400 hover:scale-[1.02] active:scale-95"
+              >
+                SIM, QUERO INCLUIR
+              </Link>
+              <button
+                onClick={() => {
+                  if (mediaCheckSource === "create") {
+                    setSelectedPropertyForVideo(pendingVideoProperty);
+                    setIsVideoModalOpen(true);
+                  } else {
+                    setViralizarTarget({ id: pendingVideoProperty.id, title: pendingVideoProperty.title });
+                    setIsViralizarOpen(true);
+                  }
+                  setIsMediaCheckOpen(false);
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white/5 border border-white/10 py-4 text-sm font-black text-slate-300 transition-all hover:bg-white/10 hover:text-white"
+              >
+                NÃO, USAR FOTOS E MÚSICA PADRÃO
+              </button>
+              <button
+                onClick={() => setIsMediaCheckOpen(false)}
+                className="mt-2 text-xs font-bold text-slate-500 hover:text-slate-400 underline underline-offset-4"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

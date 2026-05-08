@@ -11,7 +11,7 @@ type Suggestion = {
 type Props = {
   value: string;
   onChange: (val: string) => void;
-  onSelectCoordinates?: (coords: { latitude: number; longitude: number }) => void;
+  onSelectCoordinates?: (coords: { latitude: number; longitude: number; zoomLevel?: number }) => void;
   city: string;
   stateName: string;
 };
@@ -70,6 +70,7 @@ export default function NeighborhoodAutocomplete({
       onSelectCoordinates({
         latitude: parseFloat(suggestion.lat),
         longitude: parseFloat(suggestion.lon),
+        zoomLevel: 3000,
       });
     }
   }

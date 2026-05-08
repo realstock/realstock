@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
-const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_FILE_SIZE_BYTES = 200 * 1024 * 1024; // 200 MB para vídeos e áudios
 
 function sanitizeFileName(name: string) {
   return name
@@ -43,19 +43,22 @@ export async function POST(req: Request) {
       );
     }
 
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-    if (!allowedTypes.includes(file.type)) {
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
+    const isAudio = file.type.startsWith("audio/");
+
+    if (!isImage && !isVideo && !isAudio) {
       return NextResponse.json(
-        { success: false, error: "Formato inválido. Use JPG, PNG ou WEBP." },
+        { success: false, error: "Formato inválido. Use Imagens, Vídeos ou Áudios (MP3/WAV)." },
         { status: 400 }
       );
     }
 
-    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+    if (file.size > MAX_FILE_SIZE_BYTES) {
       return NextResponse.json(
         {
           success: false,
-          error: "Arquivo muito grande. Cada imagem deve ter no máximo 5 MB.",
+          error: "Arquivo muito grande. O limite máximo é de 100 MB.",
         },
         { status: 400 }
       );

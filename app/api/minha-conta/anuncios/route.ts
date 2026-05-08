@@ -33,6 +33,11 @@ export async function GET() {
             sortOrder: "asc",
           },
         },
+        videos: {
+          orderBy: {
+            sortOrder: "asc",
+          },
+        },
         offers: {
           orderBy: {
             createdAt: "desc",

@@ -95,8 +95,11 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
       // Selecionar postType automaticamente se carrossel não estiver disponível
       const availableSessions = platform === "facebook" ? data.fbSessions : data.igSessions;
       if (availableSessions && availableSessions.length > 0) {
-          const hasCarousel = availableSessions.some((s: any) => s.postType === "carousel");
-          if (!hasCarousel) setPostType("reels");
+          const hasCarouselSession = availableSessions.some((s: any) => {
+              const type = s.postType?.toLowerCase();
+              return type === "carousel" || (type !== "reels" && type !== "video");
+          });
+          if (!hasCarouselSession) setPostType("reels");
       }
     } catch (err: any) {
       setError(err.message || "Erro de conexão.");
@@ -174,9 +177,10 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
   const currentSessions = platform === "facebook" ? fbSessions : (platform === "instagram" ? igSessions : []);
-  const hasCarousel = currentSessions.some(s => s.postType === "carousel");
-  const hasReels = currentSessions.some(s => s.postType === "reels");
-  const selectedSession = currentSessions.find(s => s.postType === postType);
+  const hasCarousel = property?.images && property.images.length > 0;
+  const hasReels = !!property?.reelsVideoUrl;
+  
+  const selectedSession = currentSessions.find(s => s.postType?.toLowerCase() === postType);
   const selectedPermalink = selectedSession?.validationReport ? (selectedSession.validationReport as any).permalink : null;
 
   if (status === "loading" || loading) {
@@ -398,15 +402,17 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                                 Carrossel
                             </button>
                         )}
-                        <button 
-                            onClick={() => {
-                                setPostType("reels");
-                                setPaypalOrderId(null);
-                            }}
-                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${postType === 'reels' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
-                        >
-                            Reels IA
-                        </button>
+                        {hasReels && (
+                            <button 
+                                onClick={() => {
+                                    setPostType("reels");
+                                    setPaypalOrderId(null);
+                                }}
+                                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${postType === 'reels' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                Reels IA
+                            </button>
+                        )}
                       </div>
                       {selectedPermalink && (
                         <a 

@@ -68,16 +68,14 @@ export async function GET(
 
     const igSessions = await prisma.instagramPreviewSession.findMany({
         where: {
-            listingId: propertyId,
-            status: "PUBLISHED"
+            listingId: propertyId
         },
         orderBy: { createdAt: "desc" }
     });
 
     const fbSessions = await prisma.facebookFeedSession.findMany({
         where: {
-            listingId: propertyId,
-            status: "PUBLISHED"
+            listingId: propertyId
         },
         orderBy: { createdAt: "desc" }
     });

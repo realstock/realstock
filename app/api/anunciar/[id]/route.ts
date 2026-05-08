@@ -17,6 +17,9 @@ export async function GET(
         images: {
           orderBy: { sortOrder: "asc" },
         },
+        videos: {
+          orderBy: { sortOrder: "asc" },
+        },
       },
     });
 
@@ -59,65 +62,76 @@ export async function PUT(
       );
     }
 
-    await prisma.propertyImage.deleteMany({
-      where: { propertyId },
-    });
+    // Usar transação para garantir que ou salva tudo ou não apaga nada
+    const property = await prisma.$transaction(async (tx) => {
+      await tx.propertyImage.deleteMany({
+        where: { propertyId },
+      });
+      await tx.propertyVideo.deleteMany({
+        where: { propertyId },
+      });
 
-    const property = await prisma.property.update({
-      where: { id: propertyId },
-      data: {
-        category: String(body.category || "").trim() || null,
-        propertyType: String(body.property_type || "").trim() || null,
-        title,
-        description,
-        price,
-        legalStatus: String(body.legal_status || "").trim(),
-        area: String(body.area_total || "").trim(),
-        areaBuilt: String(body.area_built || "").trim() || null,
-        bedrooms: body.bedrooms ? Number(body.bedrooms) : null,
-        bathrooms: body.bathrooms ? Number(body.bathrooms) : null,
-        parkingSpaces: body.parking_spaces ? Number(body.parking_spaces) : null,
-        suites: body.suites ? Number(body.suites) : null,
-        furnished: Boolean(body.furnished),
-        condominium: Boolean(body.condominium),
-        condominiumFee: body.condominium_fee
-          ? Number(body.condominium_fee)
-          : null,
-        acceptsFinancing: Boolean(body.accepts_financing),
-        frontSea: Boolean(body.front_sea),
-        pool: Boolean(body.pool),
+      return await tx.property.update({
+        where: { id: propertyId },
+        data: {
+          category: String(body.category || "").trim() || null,
+          propertyType: String(body.property_type || "").trim() || null,
+          title,
+          description,
+          price,
+          legalStatus: String(body.legal_status || "").trim(),
+          area: String(body.area_total || "").trim(),
+          areaBuilt: String(body.area_built || "").trim() || null,
+          bedrooms: body.bedrooms ? Number(body.bedrooms) : null,
+          bathrooms: body.bathrooms ? Number(body.bathrooms) : null,
+          parkingSpaces: body.parking_spaces ? Number(body.parking_spaces) : null,
+          suites: body.suites ? Number(body.suites) : null,
+          furnished: Boolean(body.furnished),
+          condominium: Boolean(body.condominium),
+          condominiumFee: body.condominium_fee
+            ? Number(body.condominium_fee)
+            : null,
+          acceptsFinancing: Boolean(body.accepts_financing),
+          frontSea: Boolean(body.front_sea),
+          pool: Boolean(body.pool),
 
-        country: String(body.country || "").trim() || null,
-        state: String(body.state || "").trim() || null,
-        city: String(body.city || "").trim(),
-        neighborhood: String(body.neighborhood || "").trim() || null,
-        street: String(body.street || "").trim() || null,
-        addressNumber: String(body.address_number || "").trim() || null,
-        zipCode: String(body.zip_code || "").trim() || null,
+          country: String(body.country || "").trim() || null,
+          state: String(body.state || "").trim() || null,
+          city: String(body.city || "").trim(),
+          neighborhood: String(body.neighborhood || "").trim() || null,
+          street: String(body.street || "").trim() || null,
+          addressNumber: String(body.address_number || "").trim() || null,
+          zipCode: String(body.zip_code || "").trim() || null,
 
-        googleMapsLink: String(body.google_maps_link || "").trim() || null,
-        googleMapsThumbnail:
-          String(body.google_maps_thumbnail || "").trim() || null,
+          googleMapsLink: String(body.google_maps_link || "").trim() || null,
+          googleMapsThumbnail:
+            String(body.google_maps_thumbnail || "").trim() || null,
 
-        youtubeLink: String(body.youtube_link || "").trim() || null,
-        youtubeThumbnail: String(body.youtube_thumbnail || "").trim() || null,
+          youtubeLink: String(body.youtube_link || "").trim() || null,
+          youtubeThumbnail: String(body.youtube_thumbnail || "").trim() || null,
+          topographyPoints: String(body.topography_points || "").trim() || null,
+          latitude: Number(body.latitude),
+          longitude: Number(body.longitude),
+          reelsMusicUrl: body.reels_music_url || null,
 
-        topographyPoints:
-          String(body.topography_points || "").trim() || null,
-
-        latitude: Number(body.latitude),
-        longitude: Number(body.longitude),
-
-        images: {
-          create: (body.images || []).map((imageUrl: string, index: number) => ({
-            imageUrl,
-            sortOrder: index,
-          })),
+          images: {
+            create: (body.images || []).map((imageUrl: string, index: number) => ({
+              imageUrl,
+              sortOrder: index,
+            })),
+          },
+          videos: {
+            create: (body.videos || []).map((videoUrl: string, index: number) => ({
+              videoUrl,
+              sortOrder: index,
+            })),
+          },
         },
-      },
-      include: {
-        images: true,
-      },
+        include: {
+          images: true,
+          videos: true,
+        },
+      });
     });
 
     return NextResponse.json({

@@ -11,11 +11,69 @@ interface VideoCreatorModalProps {
   propertyCity?: string | null;
   propertyState?: string | null;
   images: { imageUrl: string, title?: string; city?: string; state?: string }[];
+  videos?: { videoUrl: string }[];
+  reelsMusicUrl?: string | null;
   propertyId: number;
   onSuccess?: (videoUrl: string) => void;
 }
 
-export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, propertyCity, propertyState, images, propertyId, onSuccess }: VideoCreatorModalProps) {
+function renderOverlays(ctx: CanvasRenderingContext2D, width: number, height: number, title: string, city?: string | null, state?: string | null) {
+  // Overlay de Gradiente
+  const grad = ctx.createLinearGradient(0, height * 0.6, 0, height);
+  grad.addColorStop(0, "transparent");
+  grad.addColorStop(1, "rgba(0,0,0,0.9)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, height * 0.6, width, height * 0.4);
+
+  // Texto: Título
+  const displayTitle = title.toUpperCase();
+  ctx.fillStyle = "white";
+  ctx.font = "bold 44px Inter, sans-serif";
+  ctx.shadowColor = "rgba(0,0,0,0.5)";
+  ctx.shadowBlur = 10;
+  ctx.textAlign = "center";
+  
+  const words = displayTitle.split(" ");
+  let titleY = height - 240;
+  if (words.length > 3) {
+      ctx.fillText(words.slice(0, 3).join(" "), width / 2, titleY);
+      ctx.fillText(words.slice(3).join(" "), width / 2, titleY + 55);
+      titleY += 55;
+  } else {
+      ctx.fillText(displayTitle, width / 2, titleY);
+  }
+
+  // Texto: Cidade e Estado
+  const locationText = [city, state].filter(Boolean).join(" • ");
+  if (locationText) {
+      ctx.fillStyle = "#94a3b8"; // slate-400
+      ctx.font = "32px Inter, sans-serif";
+      ctx.fillText(locationText.toUpperCase(), width / 2, titleY + 60);
+  }
+
+  // Linha decorativa
+  ctx.fillStyle = "#38bdf8";
+  ctx.fillRect(width / 2 - 120, titleY + 90, 240, 4);
+
+  // Desenhar site/footer
+  ctx.fillStyle = "rgba(255,255,255,0.7)";
+  ctx.font = "500 24px Inter, sans-serif";
+  ctx.shadowBlur = 0;
+  ctx.fillText("WWW.REALSTOCK.COM.BR", width / 2, height - 60);
+}
+
+export default function VideoCreatorModal({ 
+  isOpen, 
+  onClose, 
+  propertyTitle, 
+  propertyCity, 
+  propertyState, 
+  images, 
+  videos = [],
+  reelsMusicUrl,
+  propertyId, 
+  onSuccess 
+}: VideoCreatorModalProps) {
   const [step, setStep] = useState<"preview" | "generating" | "result">("preview");
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -33,6 +91,7 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
   const [includeMusic, setIncludeMusic] = useState(true);
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
+  const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
 
   const toggleAudioPreview = async () => {
     try {
@@ -40,10 +99,11 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
         audioPreviewRef.current?.pause();
         setIsPlayingPreview(false);
       } else {
-        const LOCAL_MUSIC_URL = "/music/trend-hype.mp3"; 
+        const LOCAL_MUSIC_URL = reelsMusicUrl || "/music/trend-hype.mp3"; 
         
         if (!audioPreviewRef.current) {
           audioPreviewRef.current = new Audio(LOCAL_MUSIC_URL);
+          audioPreviewRef.current.crossOrigin = "anonymous";
           audioPreviewRef.current.loop = true;
         }
         
@@ -55,9 +115,13 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
           await audioContextRef.current.resume();
         }
 
-        await audioPreviewRef.current.play();
-        setIsPlayingPreview(true);
-        setIncludeMusic(true);
+        try {
+          await audioPreviewRef.current.play();
+          setIsPlayingPreview(true);
+          setIncludeMusic(true);
+        } catch (playErr) {
+          console.warn("Reprodução de áudio abortada ou bloqueada.");
+        }
       }
     } catch (err) {
       console.error("Erro ao tocar prévia:", err);
@@ -68,18 +132,26 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
   // Carrossel de prévia automática
   useEffect(() => {
     if (isOpen && step === "preview") {
+      const hasVideos = videos && videos.length > 0;
+      
+      // Se tiver vídeos, o onEnded do player já cuida da troca
+      if (hasVideos) return;
+
       const interval = setInterval(() => {
         setCurrentImageIndex((prev) => (prev + 1) % images.length);
       }, 3000);
       return () => clearInterval(interval);
     }
-  }, [isOpen, step, images.length]);
+  }, [isOpen, step, images.length, videos]);
 
   if (!isOpen) return null;
 
   async function handleGenerateVideo() {
-    if (isPlayingPreview) {
-      audioPreviewRef.current?.pause();
+    if (isPlayingPreview || audioPreviewRef.current) {
+      if (audioPreviewRef.current) {
+        audioPreviewRef.current.pause();
+        audioPreviewRef.current.currentTime = 0;
+      }
       setIsPlayingPreview(false);
     }
     setStep("generating");
@@ -97,27 +169,43 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
     canvas.height = height;
     const ctx = canvas.getContext("2d")!;
 
-    // 1. Pre-load de todas as imagens
+    // 1. Pre-load de todas as mídias
     const loadedImages: HTMLImageElement[] = [];
+    const loadedVideos: HTMLVideoElement[] = [];
+
+    // Carregar Vídeos se houver
+    if (videos && videos.length > 0) {
+        for (let i = 0; i < videos.length; i++) {
+            setProgress(Math.round(((i + 1) / (videos.length + images.length)) * 20));
+            const vid = document.createElement("video");
+            vid.src = videos[i].videoUrl;
+            vid.crossOrigin = "anonymous";
+            vid.muted = true;
+            vid.playsInline = true;
+            await new Promise((resolve) => {
+                vid.onloadeddata = () => resolve(null);
+                vid.onerror = () => resolve(null);
+                // Timeout de segurança
+                setTimeout(resolve, 5000);
+            });
+            loadedVideos.push(vid);
+        }
+    }
+
+    // Carregar Imagens
     for (let i = 0; i < images.length; i++) {
-        setProgress(Math.round(((i + 1) / images.length) * 20)); // Primeiros 20% para o carregamento
+        setProgress(Math.round(((loadedVideos.length + i + 1) / (loadedVideos.length + images.length)) * 20));
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.src = images[i].imageUrl;
         await new Promise((resolve) => {
-            img.onload = () => {
-                loadedImages.push(img);
-                resolve(null);
-            };
-            img.onerror = () => {
-                console.error("Erro ao carregar imagem:", images[i].imageUrl);
-                resolve(null);
-            };
+            img.onload = () => { loadedImages.push(img); resolve(null); };
+            img.onerror = () => resolve(null);
         });
     }
 
-    if (loadedImages.length === 0) {
-        alert("Não foi possível carregar as imagens do anúncio.");
+    if (loadedImages.length === 0 && loadedVideos.length === 0) {
+        alert("Não foi possível carregar as mídias do anúncio.");
         setStep("preview");
         return;
     }
@@ -132,49 +220,57 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
           audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
         }
         
-        const LOCAL_MUSIC_URL = "/music/trend-hype.mp3"; 
+        const LOCAL_MUSIC_URL = reelsMusicUrl || "/music/trend-hype.mp3"; 
 
         const audio = new Audio(LOCAL_MUSIC_URL);
+        audio.crossOrigin = "anonymous";
         audio.loop = true;
         recordingAudioRef.current = audio;
         
         await new Promise((resolve) => {
           audio.oncanplaythrough = resolve;
+          audio.onloadedmetadata = resolve;
           setTimeout(resolve, 3000);
         });
 
         const source = audioContextRef.current.createMediaElementSource(audio);
-        const gainNode = audioContextRef.current.createGain();
-        gainNode.gain.value = 0.8;
-        
         const destination = audioContextRef.current.createMediaStreamDestination();
+        const gainNode = audioContextRef.current.createGain();
         
+        gainNode.gain.value = 1.0; // Volume total para a gravação
         source.connect(gainNode);
         gainNode.connect(destination);
         
-        const silenceGain = audioContextRef.current.createGain();
-        silenceGain.gain.value = 0;
-        gainNode.connect(silenceGain);
-        silenceGain.connect(audioContextRef.current.destination);
+        // Output quase mudo para monitoramento
+        const outputGain = audioContextRef.current.createGain();
+        outputGain.gain.value = 0.01;
+        gainNode.connect(outputGain);
+        outputGain.connect(audioContextRef.current.destination);
 
-        const audioTrack = destination.stream.getAudioTracks()[0];
-        if (audioTrack) {
+        const audioTracks = destination.stream.getAudioTracks();
+        if (audioTracks.length > 0) {
           finalStream = new MediaStream([
             ...stream.getVideoTracks(),
-            audioTrack
+            audioTracks[0]
           ]);
         }
         
-        await audio.play();
+        try {
+          await audio.play();
+        } catch (err) {
+          console.warn("Áudio da gravação não pôde ser iniciado:", err);
+        }
       } catch (err) {
         console.warn("Erro ao configurar áudio:", err);
       }
     }
 
     // 1.8 Seleção de codec simplificada para máxima compatibilidade
-    const mimeType = MediaRecorder.isTypeSupported('video/mp4') 
-      ? 'video/mp4' 
-      : 'video/webm';
+    const mimeType = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1') 
+      ? 'video/mp4;codecs=avc1' 
+      : MediaRecorder.isTypeSupported('video/mp4')
+        ? 'video/mp4'
+        : 'video/webm';
     
     console.log("Iniciando gravação com MimeType:", mimeType);
 
@@ -188,115 +284,154 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
       if (e.data.size > 0) chunksRef.current.push(e.data);
     };
 
+    let stopFired = false;
     recorder.onstop = () => {
+      if (stopFired) return;
+      stopFired = true;
       console.log("Gravação finalizada. Total de chunks:", chunksRef.current.length);
-      setStep("result");
-      setProgress(100);
-      finalStream.getTracks().forEach(t => t.stop());
+      
+      // Parar ABSOLUTAMENTE todo o áudio de fundo
       if (recordingAudioRef.current) {
-        recordingAudioRef.current.pause();
-        recordingAudioRef.current.currentTime = 0;
-        recordingAudioRef.current = null;
+        try {
+            recordingAudioRef.current.pause();
+            recordingAudioRef.current.currentTime = 0;
+            recordingAudioRef.current = null;
+        } catch (e) {}
       }
+      if (audioPreviewRef.current) {
+        try {
+            audioPreviewRef.current.pause();
+            audioPreviewRef.current.currentTime = 0;
+        } catch (e) {}
+      }
+      if (audioContextRef.current) {
+        try {
+            audioContextRef.current.close();
+            audioContextRef.current = null;
+        } catch (e) {}
+      }
+
       const blob = new Blob(chunksRef.current, { type: mimeType });
       setVideoBlob(blob);
       setVideoUrl(URL.createObjectURL(blob));
+      setStep("result");
+      setProgress(100);
     };
 
-    // Renderizar o PRIMEIRO QUADRO antes de começar o recorder (ajuda o Safari)
+    // Warm-up para o Safari: Renderizar quadro inicial com overlays
     ctx.fillStyle = "#020617";
     ctx.fillRect(0, 0, width, height);
-    if (loadedImages[0]) {
-      ctx.drawImage(loadedImages[0], 0, 0, width, height);
+    if (loadedVideos[0]) {
+        const vid = loadedVideos[0];
+        const scale = Math.max(width / vid.videoWidth, height / vid.videoHeight);
+        const dW = vid.videoWidth * scale;
+        const dH = vid.videoHeight * scale;
+        ctx.drawImage(vid, (width - dW) / 2, (height - dH) / 2, dW, dH);
+    } else if (loadedImages[0]) {
+        const img = loadedImages[0];
+        const scale = Math.max(width / img.width, height / img.height);
+        const dW = img.width * scale;
+        const dH = img.height * scale;
+        ctx.drawImage(img, (width - dW) / 2, (height - dH) / 2, dW, dH);
     }
+    renderOverlays(ctx, width, height, propertyTitle, propertyCity, propertyState);
     
-    // Pequena espera antes de começar de fato
-    await new Promise(r => setTimeout(r, 100));
-    recorder.start(1000);
+    // Espera explícita para o Safari estabilizar o stream
+    await new Promise(r => setTimeout(r, 500));
+    recorder.start(200); // Chunks menores ajudam na estabilidade no Safari
+    await new Promise(r => setTimeout(r, 200));
 
     // 2. Lógica de renderização frame-a-frame otimizada
-    const targetTotalDuration = 60; // Máximo de 60 segundos para Reels/Ads
-    const durationPerImage = Math.min(targetTotalDuration / loadedImages.length, 7.0); // Dividindo o tempo total pelas fotos, máximo 7s cada
-    const totalDuration = loadedImages.length * durationPerImage;
+    const targetTotalDuration = 60; // Máximo de 60 segundos
     const fps = 30;
-    const totalFrames = totalDuration * fps;
+    
+    // Prioridade para vídeos se houver
+    if (loadedVideos.length > 0) {
+        for (let vIndex = 0; vIndex < loadedVideos.length; vIndex++) {
+            const vid = loadedVideos[vIndex];
+            const duration = Math.min(vid.duration, 10); // Máximo 10s por clipe
+            const framesInVideo = duration * fps;
+            
+            vid.currentTime = 0;
+            await new Promise(r => setTimeout(r, 100)); // Buffer
 
-    for (let frame = 0; frame < totalFrames; frame++) {
-      const currentTime = frame / fps;
-      const imageIndex = Math.floor(currentTime / durationPerImage);
-      const imageProgress = (currentTime % durationPerImage) / durationPerImage;
-      
-      setProgress(20 + Math.round((frame / totalFrames) * 80));
+            for (let f = 0; f < framesInVideo; f++) {
+                // Ajuste de progresso para chegar perto de 100
+                setProgress(20 + Math.round(((vIndex * framesInVideo + f) / (loadedVideos.length * framesInVideo)) * 79));
+                
+                vid.currentTime = f / fps;
+                // Esperar o vídeo buscar o frame
+                await new Promise(resolve => {
+                    const onSeeked = () => {
+                        vid.removeEventListener('seeked', onSeeked);
+                        resolve(null);
+                    };
+                    vid.addEventListener('seeked', onSeeked);
+                    setTimeout(resolve, 50); // Fallback
+                });
 
-      const img = loadedImages[imageIndex];
-      if (!img) continue;
+                ctx.fillStyle = "#020617";
+                ctx.fillRect(0, 0, width, height);
 
-      // Limpar canvas
-      ctx.fillStyle = "#020617";
-      ctx.fillRect(0, 0, width, height);
+                // Desenhar vídeo
+                const vW = vid.videoWidth;
+                const vH = vid.videoHeight;
+                const scale = Math.max(width / vW, height / vH);
+                const dW = vW * scale;
+                const dH = vH * scale;
+                ctx.drawImage(vid, (width - dW) / 2, (height - dH) / 2, dW, dH);
 
-      // Efeito de Zoom (Ken Burns)
-      const scale = 1 + imageProgress * 0.15;
-      const drawWidth = width * scale;
-      const drawHeight = (img.height * (drawWidth / img.width));
-      const offsetX = (width - drawWidth) / 2;
-      const offsetY = (height - drawHeight) / 2;
+                // Overlay e Textos
+                renderOverlays(ctx, width, height, propertyTitle, propertyCity, propertyState);
+                
+                await new Promise(resolve => requestAnimationFrame(resolve));
+            }
+        }
+    } else {
+        const durationPerImage = Math.min(targetTotalDuration / loadedImages.length, 7.0);
+        const totalDuration = loadedImages.length * durationPerImage;
+        const totalFrames = totalDuration * fps;
 
-      ctx.save();
-      ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
-      ctx.restore();
+        for (let frame = 0; frame < totalFrames; frame++) {
+            const currentTime = frame / fps;
+            const imageIndex = Math.floor(currentTime / durationPerImage);
+            const imageProgress = (currentTime % durationPerImage) / durationPerImage;
+            
+            setProgress(20 + Math.round((frame / totalFrames) * 80));
 
-      // Overlay de Gradiente
-      const grad = ctx.createLinearGradient(0, height * 0.6, 0, height);
-      grad.addColorStop(0, "transparent");
-      grad.addColorStop(1, "rgba(0,0,0,0.9)");
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, height * 0.6, width, height * 0.4);
+            const img = loadedImages[imageIndex];
+            if (!img) continue;
 
-      // Texto: Título dinâmico (usa o do imóvel se for portfólio, senão o título geral)
-      const displayTitle = (images[imageIndex]?.title || propertyTitle).toUpperCase();
-      const displayCity = images[imageIndex]?.city || propertyCity;
-      const displayState = images[imageIndex]?.state || propertyState;
+            ctx.fillStyle = "#020617";
+            ctx.fillRect(0, 0, width, height);
 
-      ctx.fillStyle = "white";
-      ctx.font = "bold 44px Inter, sans-serif";
-      ctx.shadowColor = "rgba(0,0,0,0.5)";
-      ctx.shadowBlur = 10;
-      ctx.textAlign = "center";
-      
-      const words = displayTitle.split(" ");
-      let titleY = height - 240;
-      if (words.length > 3) {
-          ctx.fillText(words.slice(0, 3).join(" "), width / 2, titleY);
-          ctx.fillText(words.slice(3).join(" "), width / 2, titleY + 55);
-          titleY += 55;
-      } else {
-          ctx.fillText(displayTitle, width / 2, titleY);
-      }
+            const scale = 1 + imageProgress * 0.15;
+            const dW = width * scale;
+            const dH = (img.height * (dW / img.width));
+            ctx.drawImage(img, (width - dW) / 2, (height - dH) / 2, dW, dH);
 
-      // Texto: Cidade e Estado dinâmico
-      const locationText = [displayCity, displayState].filter(Boolean).join(" • ");
-      if (locationText) {
-          ctx.fillStyle = "#94a3b8"; // slate-400
-          ctx.font = "32px Inter, sans-serif";
-          ctx.fillText(locationText.toUpperCase(), width / 2, titleY + 60);
-      }
-
-      // Linha decorativa
-      ctx.fillStyle = "#38bdf8";
-      ctx.fillRect(width / 2 - 120, titleY + 90, 240, 4);
-
-      // Desenhar site/footer
-      ctx.fillStyle = "rgba(255,255,255,0.7)";
-      ctx.font = "500 24px Inter, sans-serif";
-      ctx.fillText("WWW.REALSTOCK.COM.BR", width / 2, height - 60);
-
-      // Sincronizar com a gravação
-      await new Promise(resolve => requestAnimationFrame(resolve));
+            renderOverlays(ctx, width, height, propertyTitle, propertyCity, propertyState);
+            
+            await new Promise(resolve => requestAnimationFrame(resolve));
+        }
     }
 
-    recorder.stop();
-    // Limpeza de áudio será feita pelo browser ou por referência se necessário
+    if (recorder.state === "recording") {
+        recorder.stop();
+    }
+    
+    // Fail-safe: Se o onstop não disparar em 3 segundos, força a finalização
+    setTimeout(() => {
+        if (!stopFired) {
+            console.log("Failsafe: Forçando finalização do vídeo...");
+            recorder.dispatchEvent(new Event("stop"));
+        }
+    }, 3000);
+
+    setProgress(100);
+    
+    // Limpeza de trilhas
+    finalStream.getTracks().forEach(t => t.stop());
     if (audioContextRef.current) {
       audioContextRef.current.close();
       audioContextRef.current = null;
@@ -318,11 +453,33 @@ export default function VideoCreatorModal({ isOpen, onClose, propertyTitle, prop
           <div className="relative flex aspect-[9/16] items-center justify-center bg-slate-900 lg:aspect-auto lg:h-[600px]">
             {step === "preview" && (
               <div className="relative h-full w-full overflow-hidden">
-                <img 
-                  src={images[currentImageIndex]?.imageUrl} 
-                  className="h-full w-full object-cover transition-all duration-1000 scale-105"
-                  alt="Preview"
-                />
+                {videos && videos.length > 0 ? (
+                  <video 
+                    ref={videoPreviewRef}
+                    src={videos[currentImageIndex % videos.length]?.videoUrl}
+                    autoPlay
+                    muted
+                    className="h-full w-full object-cover transition-opacity duration-300"
+                    onEnded={async () => {
+                        const nextIdx = (currentImageIndex + 1) % videos.length;
+                        setCurrentImageIndex(nextIdx);
+                        if (videoPreviewRef.current) {
+                            try {
+                                videoPreviewRef.current.src = videos[nextIdx].videoUrl;
+                                await videoPreviewRef.current.play();
+                            } catch (e) {
+                                console.warn("Troca de vídeo na prévia abortada.");
+                            }
+                        }
+                    }}
+                  />
+                ) : (
+                  <img 
+                    src={images[currentImageIndex]?.imageUrl} 
+                    className="h-full w-full object-cover transition-all duration-1000 scale-105"
+                    alt="Preview"
+                  />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                 <div className="absolute bottom-12 left-0 w-full px-6 text-center">
                   <h3 className="text-xl font-bold uppercase tracking-tight">{propertyTitle}</h3>

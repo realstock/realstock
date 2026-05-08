@@ -11,10 +11,64 @@ interface ViralizarModalProps {
   propertyCity?: string | null;
   propertyState?: string | null;
   images: { imageUrl: string, title?: string; city?: string; state?: string }[];
+  videos?: { videoUrl: string }[];
+  reelsMusicUrl?: string | null;
+  reelsVideoUrl?: string | null;
   propertyId: number;
 }
 
-export default function ViralizarModal({ isOpen, onClose, propertyTitle, propertyCity, propertyState, images, propertyId }: ViralizarModalProps) {
+function renderOverlays(ctx: CanvasRenderingContext2D, width: number, height: number, title: string, city?: string | null, state?: string | null) {
+  // Overlay de Gradiente
+  const grad = ctx.createLinearGradient(0, height * 0.6, 0, height);
+  grad.addColorStop(0, "transparent");
+  grad.addColorStop(1, "rgba(0,0,0,0.9)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, height * 0.6, width, height * 0.4);
+
+  // Texto: Título
+  const displayTitle = title.toUpperCase();
+  ctx.fillStyle = "white";
+  ctx.font = "bold 44px sans-serif";
+  ctx.shadowColor = "rgba(0,0,0,0.5)";
+  ctx.shadowBlur = 10;
+  ctx.textAlign = "center";
+  
+  const words = displayTitle.split(" ");
+  let titleY = height - 240;
+  if (words.length > 3) {
+      ctx.fillText(words.slice(0, 3).join(" "), width / 2, titleY);
+      ctx.fillText(words.slice(3).join(" "), width / 2, titleY + 55);
+      titleY += 55;
+  } else {
+      ctx.fillText(displayTitle, width / 2, titleY);
+  }
+
+  // Texto: Cidade e Estado
+  const locationText = [city, state].filter(Boolean).join(" • ");
+  if (locationText) {
+      ctx.fillStyle = "#38bdf8"; // sky-400
+      ctx.font = "bold 32px sans-serif";
+      ctx.fillText(locationText.toUpperCase(), width / 2, titleY + 60);
+  }
+
+  // Linha decorativa
+  ctx.fillStyle = "#38bdf8";
+  ctx.fillRect(width / 2 - 120, titleY + 90, 240, 4);
+}
+
+export default function ViralizarModal(props: ViralizarModalProps) {
+  const { 
+    isOpen, 
+    onClose, 
+    propertyTitle, 
+    propertyCity, 
+    propertyState, 
+    images, 
+    videos = [],
+    reelsMusicUrl,
+    propertyId 
+  } = props;
+  
   const [step, setStep] = useState<"details" | "ready" | "executing" | "success">("details");
   const [progress, setProgress] = useState(0);
   const [currentAction, setCurrentAction] = useState("Aguardando...");
@@ -76,17 +130,50 @@ export default function ViralizarModal({ isOpen, onClose, propertyTitle, propert
     }
   }, [isOpen, propertyId]);
 
-  async function handleLaunch() {
+  async function handleStartViralizar() {
     if (!activeOrderID) return;
     setStep("executing");
     addLog("Comando de lançamento recebido. Calibrando motor...");
     
+    // NOVO: Verificar e Limpar postagens anteriores antes de começar
+    try {
+        addLog("Verificando integridade de postagens anteriores...");
+        const resDelete = await fetch(`/api/minha-conta/anuncios/${propertyId}/posts`, { method: "DELETE" });
+        const dataDelete = await resDelete.json();
+        
+        if (dataDelete.success && dataDelete.deletedCount > 0) {
+            addLog(`Sincronização concluída: ${dataDelete.deletedCount} registros antigos removidos.`);
+        } else {
+            addLog("Nenhuma postagem anterior encontrada. Caminho livre!");
+        }
+    } catch (e) {
+        console.error("Erro ao sincronizar posts:", e);
+        addLog("Aviso: Falha na sincronização inicial, prosseguindo com cautela...");
+    }
+
     setTimeout(() => {
-        startVideoPipeline(activeOrderID);
+        startVideoPipeline();
     }, 1500);
   }
 
-  async function startVideoPipeline(orderID: string) {
+  async function startVideoPipeline() {
+    if (props.reelsVideoUrl) {
+        addLog("Vídeo IA já detectado no anúncio. Utilizando versão existente...");
+        setStep("executing");
+        setProgress(100);
+        
+        await new Promise(r => setTimeout(r, 1500));
+        
+        try {
+            const response = await fetch(props.reelsVideoUrl);
+            const blob = await response.blob();
+            finishBundle(blob, activeOrderID || "CREDIT"); 
+            return;
+        } catch (e) {
+            addLog("Aviso: Não foi possível carregar o vídeo existente. Gerando um novo...");
+        }
+    }
+
     updateTaskStatus('payment', 'success');
     updateTaskStatus('video', 'loading');
     setCurrentAction("Renderizando Reels...");
@@ -104,8 +191,28 @@ export default function ViralizarModal({ isOpen, onClose, propertyTitle, propert
     canvas.height = height;
     const ctx = canvas.getContext("2d")!;
 
-    // Pre-load
+    // 1. Pre-load de todas as mídias
     const loadedImages: HTMLImageElement[] = [];
+    const loadedVideos: HTMLVideoElement[] = [];
+
+    // Carregar Vídeos
+    if (videos && videos.length > 0) {
+        for (let i = 0; i < videos.length; i++) {
+            const vid = document.createElement("video");
+            vid.src = videos[i].videoUrl;
+            vid.crossOrigin = "anonymous";
+            vid.muted = true;
+            vid.playsInline = true;
+            await new Promise((resolve) => {
+                vid.onloadeddata = () => resolve(null);
+                vid.onerror = () => resolve(null);
+                setTimeout(resolve, 5000);
+            });
+            loadedVideos.push(vid);
+        }
+    }
+
+    // Carregar Imagens
     for (let i = 0; i < images.length; i++) {
         const img = new Image();
         img.crossOrigin = "anonymous";
@@ -122,20 +229,51 @@ export default function ViralizarModal({ isOpen, onClose, propertyTitle, propert
     // Áudio
     try {
         if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const audio = new Audio("/music/trend-hype.mp3");
+        if (audioContextRef.current.state === 'suspended') await audioContextRef.current.resume();
+
+        const audio = new Audio(reelsMusicUrl || "/music/trend-hype.mp3");
+        audio.crossOrigin = "anonymous";
         audio.loop = true;
         recordingAudioRef.current = audio;
-        await new Promise(resolve => { audio.oncanplaythrough = resolve; setTimeout(resolve, 2000); });
+        await new Promise(resolve => { 
+            audio.oncanplaythrough = resolve; 
+            audio.onloadedmetadata = resolve;
+            setTimeout(resolve, 3000); 
+        });
+        
         const source = audioContextRef.current.createMediaElementSource(audio);
         const destination = audioContextRef.current.createMediaStreamDestination();
-        source.connect(destination);
-        const audioTrack = destination.stream.getAudioTracks()[0];
-        if (audioTrack) finalStream = new MediaStream([...stream.getVideoTracks(), audioTrack]);
-        await audio.play();
-    } catch (e) { addLog("Aviso: Áudio bypass."); }
+        const gainNode = audioContextRef.current.createGain();
+        gainNode.gain.value = 1.0;
 
-    const mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm';
-    const recorder = new MediaRecorder(finalStream, { mimeType, videoBitsPerSecond: 1000000 }); // 1.0 Mbps for smaller file
+        source.connect(gainNode);
+        gainNode.connect(destination);
+        
+        // Output quase mudo para monitoramento
+        const outGain = audioContextRef.current.createGain();
+        outGain.gain.value = 0.01;
+        gainNode.connect(outGain);
+        outGain.connect(audioContextRef.current.destination);
+
+        const aTracks = destination.stream.getAudioTracks();
+        if (aTracks.length > 0) {
+            addLog("Trilha de áudio capturada com sucesso.");
+            finalStream = new MediaStream([...stream.getVideoTracks(), aTracks[0]]);
+        }
+        
+        try {
+            await audio.play();
+        } catch (playErr) {
+            addLog("Aviso: Playback de áudio contido.");
+        }
+    } catch (e) { addLog("Aviso: Erro na captura de áudio."); }
+
+    const mimeType = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1') 
+        ? 'video/mp4;codecs=avc1' 
+        : MediaRecorder.isTypeSupported('video/mp4') 
+            ? 'video/mp4' 
+            : 'video/webm';
+    const recorder = new MediaRecorder(finalStream, { mimeType, videoBitsPerSecond: 1000000 }); 
     mediaRecorderRef.current = recorder;
 
     recorder.ondataavailable = (e) => { 
@@ -149,115 +287,126 @@ export default function ViralizarModal({ isOpen, onClose, propertyTitle, propert
     recorder.onstop = async () => {
         if (stopFired) return;
         stopFired = true;
+
+        if (recordingAudioRef.current) {
+            try {
+                recordingAudioRef.current.pause();
+                recordingAudioRef.current.currentTime = 0;
+                recordingAudioRef.current = null;
+            } catch (e) {}
+        }
+        if (audioContextRef.current) {
+            try {
+                audioContextRef.current.close();
+                audioContextRef.current = null;
+            } catch (e) {}
+        }
+
         addLog(`Captura concluída. Total: ${chunksRef.current.length} pedaços.`);
         const blob = new Blob(chunksRef.current, { type: mimeType });
-        if (blob.size === 0) {
+        if (blob.size < 100) {
             alert("Erro: O navegador não capturou dados de vídeo. Tente novamente.");
             setStep("ready");
             return;
         }
-        finishBundle(blob, orderID);
+        finishBundle(blob, activeOrderID || "CREDIT");
     };
 
+    // Warm-up para o Safari
     ctx.fillStyle = "#020617";
     ctx.fillRect(0, 0, width, height);
-    if (loadedImages[0]) ctx.drawImage(loadedImages[0], 0, 0, width, height);
-    
-    addLog("Iniciando gravação...");
-    recorder.start(1000);
-    await new Promise(r => setTimeout(r, 1000));
-
-    const targetTotalDuration = 30; // Reduced to 30s for performance and upload limits
-    const durationPerImage = Math.min(targetTotalDuration / loadedImages.slice(0, 10).length, 4.0);
-    const totalFrames = (loadedImages.slice(0, 10).length * durationPerImage) * 30;
-
-    for (let frame = 0; frame < totalFrames; frame++) {
-        const currentTime = frame / 30;
-        const imageIndex = Math.floor(currentTime / durationPerImage);
-        const imageProgress = (currentTime % durationPerImage) / durationPerImage;
-        
-        setProgress(Math.round((frame / totalFrames) * 100));
-
-        const img = loadedImages[imageIndex];
-        if (!img) continue;
-
-        ctx.fillStyle = "#020617";
-        ctx.fillRect(0, 0, width, height);
-
-        const scale = 1 + imageProgress * 0.15;
-        const dW = width * scale;
-        const dH = (img.height * (dW / img.width));
+    if (loadedVideos[0]) {
+        const vid = loadedVideos[0];
+        const scale = Math.max(width / vid.videoWidth, height / vid.videoHeight);
+        const dW = vid.videoWidth * scale;
+        const dH = vid.videoHeight * scale;
+        ctx.drawImage(vid, (width - dW) / 2, (height - dH) / 2, dW, dH);
+    } else if (loadedImages[0]) {
+        const img = loadedImages[0];
+        const scale = Math.max(width / img.width, height / img.height);
+        const dW = img.width * scale;
+        const dH = img.height * scale;
         ctx.drawImage(img, (width - dW) / 2, (height - dH) / 2, dW, dH);
+    }
+    renderOverlays(ctx, width, height, propertyTitle, propertyCity, propertyState);
+    
+    addLog("Sincronizando gravador...");
+    await new Promise(r => setTimeout(r, 500));
+    recorder.start(200); 
+    await new Promise(r => setTimeout(r, 200));
 
-        // Fundo Gradiente Premium (mais alto para acomodar mais linhas)
-        const gradient = ctx.createLinearGradient(0, height, 0, height - 450);
-        gradient.addColorStop(0, "rgba(0,0,0,0.98)");
-        gradient.addColorStop(0.5, "rgba(0,0,0,0.7)");
-        gradient.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, height - 450, width, 450);
-        
-        // Configuração de Sombra para o Texto
-        ctx.shadowColor = "rgba(0,0,0,0.9)";
-        ctx.shadowBlur = 15;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 4;
+    const fps = 30;
 
-        ctx.fillStyle = "white";
-        ctx.font = "bold 44px sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        
-        const maxWidth = width - 200; 
-        const words = propertyTitle.toUpperCase().split(' ');
-        let lines = [];
-        let currentLine = '';
-        
-        for (let n = 0; n < words.length; n++) {
-            const testLine = currentLine + words[n] + ' ';
-            const metrics = ctx.measureText(testLine);
-            if (metrics.width > maxWidth && n > 0) {
-                lines.push(currentLine.trim());
-                currentLine = words[n] + ' ';
-            } else {
-                currentLine = testLine;
+    // Lógica de colagem: Prioridade para Vídeos
+    if (loadedVideos.length > 0) {
+        for (let vIdx = 0; vIdx < loadedVideos.length; vIdx++) {
+            const vid = loadedVideos[vIdx];
+            const duration = Math.min(vid.duration, 8); 
+            const frames = duration * fps;
+            
+            for (let f = 0; f < frames; f++) {
+                setProgress(Math.round(((vIdx * frames + f) / (loadedVideos.length * frames)) * 95));
+                vid.currentTime = f / fps;
+                
+                await new Promise(resolve => {
+                    const onSeeked = () => { vid.removeEventListener('seeked', onSeeked); resolve(null); };
+                    vid.addEventListener('seeked', onSeeked);
+                    setTimeout(resolve, 50);
+                });
+
+                ctx.fillStyle = "#020617";
+                ctx.fillRect(0, 0, width, height);
+                const scale = Math.max(width / vid.videoWidth, height / vid.videoHeight);
+                const dW = vid.videoWidth * scale;
+                const dH = vid.videoHeight * scale;
+                ctx.drawImage(vid, (width - dW) / 2, (height - dH) / 2, dW, dH);
+
+                renderOverlays(ctx, width, height, propertyTitle, propertyCity, propertyState);
+                await new Promise(resolve => requestAnimationFrame(resolve));
             }
         }
-        lines.push(currentLine.trim());
+    } else {
+        const targetTotalDuration = 30; 
+        const durationPerImage = Math.min(targetTotalDuration / loadedImages.slice(0, 10).length, 4.0);
+        const totalFrames = (loadedImages.slice(0, 10).length * durationPerImage) * 30;
 
-        // REGRA: Mínimo de 2 linhas (se houver mais de uma palavra)
-        if (lines.length === 1 && words.length > 1) {
-            const mid = Math.floor(words.length / 2);
-            lines = [
-                words.slice(0, mid).join(' '),
-                words.slice(mid).join(' ')
-            ];
+        for (let frame = 0; frame < totalFrames; frame++) {
+            const currentTime = frame / 30;
+            const imageIndex = Math.floor(currentTime / durationPerImage);
+            const imageProgress = (currentTime % durationPerImage) / durationPerImage;
+            
+            setProgress(Math.round((frame / totalFrames) * 100));
+
+            const img = loadedImages[imageIndex];
+            if (!img) continue;
+
+            ctx.fillStyle = "#020617";
+            ctx.fillRect(0, 0, width, height);
+
+            const scale = 1 + imageProgress * 0.15;
+            const dW = width * scale;
+            const dH = (img.height * (dW / img.width));
+            ctx.drawImage(img, (width - dW) / 2, (height - dH) / 2, dW, dH);
+
+            renderOverlays(ctx, width, height, propertyTitle, propertyCity, propertyState);
+            await new Promise(resolve => requestAnimationFrame(resolve));
         }
-
-        const lineHeight = 58;
-        const totalHeight = lines.length * lineHeight;
-        const startY = height - 280 - (totalHeight / 2);
-        
-        lines.forEach((l, i) => {
-            ctx.fillText(l, width / 2, startY + (i * lineHeight));
-        });
-
-        // Localização
-        ctx.shadowBlur = 5;
-        ctx.fillStyle = "#38bdf8";
-        ctx.font = "bold 34px sans-serif";
-        ctx.fillText(`${propertyCity || ''} - ${propertyState || ''}`.toUpperCase(), width / 2, height - 80);
-        
-        // Reset shadow for next frame
-        ctx.shadowBlur = 0;
-        ctx.shadowOffsetY = 0;
-
-        await new Promise(resolve => requestAnimationFrame(resolve));
     }
 
     addLog("Processando buffer final...");
+    setProgress(100);
     await new Promise(r => setTimeout(r, 1500));
-    if (recorder.state === "recording") recorder.stop();
+    if (recorder.state === "recording") {
+        recorder.stop();
+    }
+    
+    // Fail-safe
+    setTimeout(() => {
+        if (!stopFired) {
+            console.log("Failsafe: Forçando finalização no Viralizar...");
+            recorder.dispatchEvent(new Event("stop"));
+        }
+    }, 3000);
 
     setTimeout(() => {
         if (!stopFired) {
@@ -440,11 +589,18 @@ export default function ViralizarModal({ isOpen, onClose, propertyTitle, propert
                 </div>
                 <h2 className="text-4xl font-black text-white mb-4 uppercase italic">Pagamento Confirmado!</h2>
                 <p className="text-slate-400 text-lg mb-10 italic">Clique abaixo para iniciar a geração do vídeo e as postagens automáticas.</p>
+                
+                {props.reelsVideoUrl && (
+                    <div className="mb-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-center">
+                        <p className="text-xs font-bold text-emerald-400">✨ Vídeo IA já criado e pronto para uso!</p>
+                    </div>
+                )}
+
                 <button 
-                  onClick={handleLaunch}
+                  onClick={handleStartViralizar}
                   className="w-full rounded-3xl bg-gradient-to-r from-purple-600 to-indigo-600 py-6 text-xl font-black text-white shadow-2xl shadow-purple-500/40 hover:scale-[1.02] transition-all active:scale-95 flex items-center justify-center gap-4"
                 >
-                    INICIAR LANÇAMENTO <Rocket size={28} />
+                    {props.reelsVideoUrl ? "ATIVAR PACOTE COM VÍDEO EXISTENTE" : "INICIAR LANÇAMENTO"} <Rocket size={28} />
                 </button>
             </div>
         )}
