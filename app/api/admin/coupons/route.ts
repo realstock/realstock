@@ -17,8 +17,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Acesso restrito" }, { status: 403 });
     }
 
-    const { code, serviceType, maxUses } = await req.json();
-
+    const { code, serviceType, maxUses, value } = await req.json();
+    
     if (!code || !serviceType || !maxUses) {
       return NextResponse.json({ success: false, error: "Dados incompletos" }, { status: 400 });
     }
@@ -32,6 +32,7 @@ export async function POST(req: Request) {
       data: {
         code: code.toUpperCase().trim(),
         serviceType,
+        value: serviceType === 'TURBINAR' ? Number(value) : 0,
         maxUses: Number(maxUses),
         isActive: true,
       }

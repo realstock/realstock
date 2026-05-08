@@ -72,7 +72,7 @@ model User {
   referrer                    User?      @relation("UserReferrals", fields: [referrerId], references: [id])
   referrals                   User[]     @relation("UserReferrals")
   viralizarCredits            Int        @default(0) @map("viralizar_credits")
-  turbinarCredits             Int        @default(0) @map("turbinar_credits")
+  turbinarCredits             Decimal    @default(0) @map("turbinar_credits") @db.Decimal(10, 2)
   referralCode                String?    @unique @map("referral_code")
 
   offers                      Offer[]                @relation("BuyerOffers")
@@ -128,10 +128,12 @@ model Property {
   instagramPermalink  String?         @map("instagram_permalink")
   reelsVideoUrl       String?         @map("reels_video_url")
   reelsVideoPaidAt    DateTime?       @map("reels_video_paid_at")
+  reelsMusicUrl       String?         @map("reels_music_url")
   contactFeePaidAt    DateTime?       @map("contact_fee_paid_at")
   offers              Offer[]
   owner               User            @relation(fields: [ownerId], references: [id])
   images              PropertyImage[]
+  videos              PropertyVideo[]
 
   @@map("properties")
 }
@@ -145,6 +147,17 @@ model PropertyImage {
   property   Property @relation(fields: [propertyId], references: [id])
 
   @@map("property_images")
+}
+
+model PropertyVideo {
+  id         Int      @id @default(autoincrement())
+  propertyId Int      @map("property_id")
+  videoUrl   String   @map("video_url")
+  sortOrder  Int      @default(0) @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at")
+  property   Property @relation(fields: [propertyId], references: [id])
+
+  @@map("property_videos")
 }
 
 model Offer {
@@ -340,6 +353,7 @@ model Coupon {
   id           String   @id @default(cuid())
   code         String   @unique
   serviceType  String   @map("service_type") // "VIRALIZAR" ou "TURBINAR"
+  value        Decimal  @default(0) @db.Decimal(10, 2)
   maxUses      Int      @default(1) @map("max_uses")
   currentUses  Int      @default(0) @map("current_uses")
   isActive     Boolean  @default(true) @map("is_active")

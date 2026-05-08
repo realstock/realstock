@@ -162,7 +162,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
       setSuccessMsg(`Sua campanha foi criada com sucesso e está em análise pelo ${platform === 'google' ? 'Google' : 'Meta'}. Logo seus leads começarão a chegar!`);
       // Update turbinar credits locally if used
       if (orderID === "CREDIT") {
-        setTurbinarCredits(c => Math.max(0, c - 1));
+        setTurbinarCredits(c => Math.max(0, Number(c) - siteCharge));
       }
     } catch (err: any) {
       setPaypalError(err.message || "Ocorreu um erro ao processar o turbinamento.");
@@ -511,9 +511,9 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                           });
                           const data = await res.json();
                           if (data.success) {
-                            setTurbinarCredits(c => c + 1);
+                            loadData(); // Recarregar saldo
                             setCouponCode("");
-                            alert("Cupom aplicado! Você ganhou 1 crédito para turbinar.");
+                            alert("Cupom aplicado com sucesso! Seu saldo de créditos foi atualizado.");
                           } else {
                             alert(data.error);
                           }
@@ -535,14 +535,20 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                     <div className="mb-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
                       <div>
                         <div className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Saldo de Cupons</div>
-                        <div className="text-xl font-black text-white">{turbinarCredits} CRÉDITOS</div>
+                        <div className="text-xl font-black text-white">R$ {Number(turbinarCredits).toFixed(2)}</div>
                       </div>
-                      <button 
-                        onClick={() => executeTurbinar("CREDIT")}
-                        className="bg-emerald-500 hover:bg-emerald-400 px-6 py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest transition-all"
-                      >
-                        USAR 1 CRÉDITO
-                      </button>
+                      {turbinarCredits >= siteCharge ? (
+                        <button 
+                          onClick={() => executeTurbinar("CREDIT")}
+                          className="bg-emerald-500 hover:bg-emerald-400 px-6 py-3 rounded-xl text-[10px] font-black text-white uppercase tracking-widest transition-all"
+                        >
+                          PAGAR COM SALDO
+                        </button>
+                      ) : (
+                        <div className="text-[9px] text-slate-500 font-bold uppercase text-right leading-tight max-w-[120px]">
+                           Saldo insuficiente para cobrir o total de R$ {siteCharge.toFixed(2)}
+                        </div>
+                      )}
                     </div>
                   )}
 

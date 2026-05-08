@@ -37,7 +37,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Serviço inválido" }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true, message: `Adicionado ${amount} crédito(s) para o usuário` });
+    const successMessage = serviceType === 'TURBINAR' 
+      ? `Adicionado R$ ${Number(amount).toFixed(2)} ao saldo do usuário.` 
+      : `Adicionado ${amount} crédito(s) para o usuário.`;
+
+    return NextResponse.json({ success: true, message: successMessage });
   } catch (error: any) {
     console.error("ADD CREDIT ERROR:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

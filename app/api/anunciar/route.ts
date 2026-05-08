@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
 
     const youtubeLink = String(body.youtube_link || "").trim();
     const youtubeThumbnail = String(body.youtube_thumbnail || "").trim();
+    const reelsMusicUrl = String(body.reels_music_url || "").trim();
 
     const topographyPoints = String(body.topography_points || "").trim();
 
@@ -144,6 +145,12 @@ export async function POST(req: NextRequest) {
 
     const images: string[] = Array.isArray(body.images)
       ? body.images
+          .map((item: unknown) => String(item || "").trim())
+          .filter(Boolean)
+      : [];
+
+    const videos: string[] = Array.isArray(body.videos)
+      ? body.videos
           .map((item: unknown) => String(item || "").trim())
           .filter(Boolean)
       : [];
@@ -208,6 +215,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const invalidVideo = videos.find((url) => !isValidHttpUrl(url));
+    if (invalidVideo) {
+      return NextResponse.json(
+        { success: false, error: "Um ou mais vídeos possuem URL inválida." },
+        { status: 400 }
+      );
+    }
+
     const property = await prisma.property.create({
       data: {
         ownerId,
@@ -251,6 +266,8 @@ export async function POST(req: NextRequest) {
         condominium,
         condominiumFee,
 
+        reelsMusicUrl: reelsMusicUrl || null,
+
         acceptsFinancing,
         frontSea,
         pool,
@@ -258,6 +275,12 @@ export async function POST(req: NextRequest) {
         images: {
           create: images.map((imageUrl: string, index: number) => ({
             imageUrl,
+            sortOrder: index,
+          })),
+        },
+        videos: {
+          create: videos.map((videoUrl: string, index: number) => ({
+            videoUrl,
             sortOrder: index,
           })),
         },

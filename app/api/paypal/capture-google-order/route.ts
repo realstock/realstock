@@ -39,18 +39,37 @@ export async function POST(req: NextRequest) {
     // 1. CAPTURA ORDEM NO PAYPAL OU IGNORA SE FOR CREDITO
     let isFree = false;
 
+    // Calcular o custo total esperado (Investimento + Taxa de Serviço)
+    const DURATION_DAYS = 5;
+    const totalInvestment = Number(dailyBudget) * DURATION_DAYS;
+    
+    const service = await prisma.siteService.findUnique({
+      where: { slug: "turbinar" },
+      include: { fee: true }
+    });
+
+    let feeAmount = 0;
+    if (service?.fee) {
+       if (service.fee.type === "PERCENTAGE") {
+           feeAmount = (totalInvestment * Number(service.fee.value)) / 100;
+       } else {
+           feeAmount = Number(service.fee.value);
+       }
+    }
+    const totalCharge = totalInvestment + feeAmount;
+
     if (orderID === "ADMIN_FREE") {
       if (user.role !== "ADMIN") {
         return NextResponse.json({ success: false, error: "Acesso restrito." }, { status: 403 });
       }
       isFree = true;
     } else if (orderID === "CREDIT") {
-      if (user.turbinarCredits < 1) {
-        return NextResponse.json({ success: false, error: "Créditos insuficientes." }, { status: 400 });
+      if (Number(user.turbinarCredits) < totalCharge) {
+        return NextResponse.json({ success: false, error: `Saldo insuficiente. Total necessário: R$ ${totalCharge.toFixed(2)}` }, { status: 400 });
       }
       await prisma.user.update({
         where: { id: user.id },
-        data: { turbinarCredits: { decrement: 1 } }
+        data: { turbinarCredits: { decrement: totalCharge } }
       });
       isFree = true;
     } else {

@@ -162,7 +162,7 @@ export async function GET(
                                 if (paidViews > views) views = paidViews;
                             }
                         } catch(e) {}
-                    } catch(e) { console.error("IG Insights Metric Error:", e); }
+                    } catch(e) { console.error("IG Insights Metric Error (V2-ANTIGRAVITY):", e); }
 
                     instagramPosts.push({
                         type: postType,

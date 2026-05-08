@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { X } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import PropertyLocationPicker from "@/components/PropertyLocationPicker";
 import NeighborhoodAutocomplete from "@/components/NeighborhoodAutocomplete";
@@ -295,6 +296,13 @@ export default function AnunciarPage() {
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
+  const [videos, setVideos] = useState<File[]>([]);
+  const [videoPreviews, setVideoPreviews] = useState<string[]>([]);
+  const [processingVideos, setProcessingVideos] = useState(false);
+
+  const [reelsMusic, setReelsMusic] = useState<File | null>(null);
+  const [reelsMusicPreview, setReelsMusicPreview] = useState<string>("");
+
   const [loading, setLoading] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [error, setError] = useState("");
@@ -498,6 +506,49 @@ export default function AnunciarPage() {
     }
   }
 
+  async function handleVideosChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    setError("");
+    const totalAfterAdd = videos.length + files.length;
+    if (totalAfterAdd > 10) {
+      setError("Você pode adicionar no máximo 10 clipes de vídeo.");
+      e.target.value = "";
+      return;
+    }
+
+    try {
+      setProcessingVideos(true);
+      const allowedTypes = ["video/mp4", "video/quicktime", "video/webm"];
+      
+      const processedFiles = await Promise.all(files.map(async (file) => {
+        if (!allowedTypes.includes(file.type)) {
+          throw new Error(`O arquivo "${file.name}" não é um vídeo suportado.`);
+        }
+        // No futuro, aqui podemos injetar metadados de corte se necessário
+        return file;
+      }));
+
+      setVideos(prev => [...prev, ...processedFiles]);
+      setVideoPreviews(prev => [...prev, ...processedFiles.map(f => URL.createObjectURL(f))]);
+    } catch (err: any) {
+      setError(err.message || "Erro ao processar vídeos.");
+    } finally {
+      setProcessingVideos(false);
+      e.target.value = "";
+    }
+  }
+
+  function removeVideo(index: number) {
+    setVideos(prev => prev.filter((_, i) => i !== index));
+    setVideoPreviews(prev => {
+      const urlToRemove = prev[index];
+      if (urlToRemove?.startsWith("blob:")) URL.revokeObjectURL(urlToRemove);
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
   function removeImage(index: number) {
     setImages((prev) => prev.filter((_, i) => i !== index));
     setImagePreviews((prev) => {
@@ -607,6 +658,34 @@ export default function AnunciarPage() {
       setLoading(true);
 
       const uploadedImageUrls = await uploadImagesAndGetUrls();
+      
+      // Upload de Música do Reel
+      let uploadedMusicUrl = "";
+      if (reelsMusic) {
+          const formData = new FormData();
+          formData.append("file", reelsMusic);
+          const res = await fetch("/api/upload-image", { // Usando a mesma API genérica
+              method: "POST",
+              body: formData,
+          });
+          const data = await res.json();
+          if (data.success) uploadedMusicUrl = data.imageUrl;
+      }
+
+      // Upload de Vídeos
+      const uploadedVideoUrls: string[] = [];
+      if (videos.length > 0) {
+          for (const file of videos) {
+              const formData = new FormData();
+              formData.append("file", file);
+              const res = await fetch("/api/upload-image", { // Usando a mesma API de upload genérico
+                  method: "POST",
+                  body: formData,
+              });
+              const data = await res.json();
+              if (data.success) uploadedVideoUrls.push(data.imageUrl);
+          }
+      }
 
       const payload = {
         category,
@@ -652,6 +731,8 @@ export default function AnunciarPage() {
         longitude: Number(longitude),
 
         images: uploadedImageUrls,
+        videos: uploadedVideoUrls,
+        reels_music_url: uploadedMusicUrl,
       };
 
       const res = await fetch("/api/anunciar", {
@@ -1352,6 +1433,68 @@ export default function AnunciarPage() {
                           </button>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  <Field label={`Vídeos para o Reel * (máx. 10 clipes)`}>
+                    <div className="text-[10px] text-slate-500 mb-2 font-black uppercase tracking-widest leading-tight">
+                      Dica: Selecione até 10 clipes. O sistema usará o miolo de 6s de cada um.
+                    </div>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      multiple
+                      onChange={handleVideosChange}
+                      className="block w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-slate-300"
+                    />
+                  </Field>
+
+                  <div className="text-xs text-slate-400">
+                    {videos.length}/10 clipes selecionados
+                  </div>
+
+                  {videoPreviews.length > 0 && (
+                    <div className="grid grid-cols-4 gap-2">
+                      {videoPreviews.map((video, index) => (
+                        <div
+                          key={index}
+                          className="overflow-hidden rounded-xl border border-white/10 bg-slate-900 relative aspect-video"
+                        >
+                          <video
+                            src={video}
+                            className="h-full w-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeVideo(index)}
+                            className="absolute top-1 right-1 bg-red-500/80 text-white p-1 rounded-full hover:bg-red-600"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <Field label={`Música para o Reel (Opcional - MP3/WAV)`}>
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        setReelsMusic(file);
+                        if (file) setReelsMusicPreview(URL.createObjectURL(file));
+                      }}
+                      className="block w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm text-slate-300"
+                    />
+                  </Field>
+
+                  {reelsMusicPreview && (
+                    <div className="bg-slate-900/50 p-4 rounded-2xl border border-white/5 mt-2">
+                        <div className="text-[10px] text-slate-500 mb-2 font-black uppercase tracking-widest leading-tight">
+                            Prévia da Trilha Selecionada:
+                        </div>
+                        <audio src={reelsMusicPreview} controls className="w-full h-8" />
                     </div>
                   )}
 

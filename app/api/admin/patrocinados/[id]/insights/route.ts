@@ -77,7 +77,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                                 if (m.name === 'shares') shares = m.values[0]?.value || 0;
                             }
                         }
-                    } catch(e) { console.error("IG Insights Metric Error:", e); }
+                    } catch(e) { console.error("IG Insights Metric Error (ADMIN-V2):", e); }
 
                     instagramPosts.push({
                         type: postType,

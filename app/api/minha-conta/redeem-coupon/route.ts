@@ -58,7 +58,7 @@ export async function POST(req: Request) {
       } else if (serviceType === "TURBINAR") {
         await tx.user.update({
           where: { email: session.user.email! },
-          data: { turbinarCredits: { increment: 1 } }
+          data: { turbinarCredits: { increment: Number(coupon.value) } }
         });
       }
     });

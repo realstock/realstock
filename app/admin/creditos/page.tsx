@@ -21,6 +21,7 @@ export default function GestaoCreditosAdmin() {
   // States para Criar Cupom
   const [couponCode, setCouponCode] = useState("");
   const [couponService, setCouponService] = useState("VIRALIZAR");
+  const [couponValue, setCouponValue] = useState(0); // Novo: Valor em R$
   const [maxUses, setMaxUses] = useState(1);
   const [creatingCoupon, setCreatingCoupon] = useState(false);
   const [couponSuccess, setCouponSuccess] = useState("");
@@ -100,6 +101,7 @@ export default function GestaoCreditosAdmin() {
         body: JSON.stringify({
           code: couponCode,
           serviceType: couponService,
+          value: couponService === 'TURBINAR' ? couponValue : 0,
           maxUses: maxUses
         })
       });
@@ -185,7 +187,9 @@ export default function GestaoCreditosAdmin() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Qtd de Créditos</label>
+                <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">
+                    {creditService === 'TURBINAR' ? 'Valor (R$)' : 'Qtd de Créditos'}
+                </label>
                 <input 
                   type="number" 
                   min="1"
@@ -263,6 +267,19 @@ export default function GestaoCreditosAdmin() {
                 />
               </div>
             </div>
+
+            {couponService === 'TURBINAR' && (
+               <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Valor do Cupom (R$)</label>
+                  <input 
+                    type="number" 
+                    placeholder="Ex: 180"
+                    value={couponValue}
+                    onChange={e => setCouponValue(Number(e.target.value))}
+                    className="w-full bg-slate-950 border border-white/10 rounded-xl p-3 text-sm focus:outline-none focus:border-indigo-500"
+                  />
+               </div>
+            )}
           </div>
 
           <button 
@@ -286,6 +303,7 @@ export default function GestaoCreditosAdmin() {
               <tr className="border-b border-white/10 text-slate-400 uppercase text-xs">
                 <th className="p-3">Código</th>
                 <th className="p-3">Serviço</th>
+                <th className="p-3">Valor / Qtd</th>
                 <th className="p-3">Usos</th>
                 <th className="p-3">Status</th>
                 <th className="p-3">Criado em</th>
@@ -299,6 +317,9 @@ export default function GestaoCreditosAdmin() {
                     <span className={`px-2 py-1 rounded text-xs font-bold ${c.serviceType === 'VIRALIZAR' ? 'bg-purple-500/20 text-purple-300' : 'bg-blue-500/20 text-blue-300'}`}>
                       {c.serviceType}
                     </span>
+                  </td>
+                  <td className="p-3 font-mono font-bold text-slate-300">
+                    {c.serviceType === 'TURBINAR' ? `R$ ${Number(c.value).toFixed(2)}` : '1 uso'}
                   </td>
                   <td className="p-3">{c.currentUses} / {c.maxUses}</td>
                   <td className="p-3">
