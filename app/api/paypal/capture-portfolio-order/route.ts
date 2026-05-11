@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Credenciais do Instagram não configuradas." }, { status: 500 });
     }
 
-    const caption = `🌟 Conheça nosso Portfólio de Imóveis!\n\nConfira as novidades e melhores oportunidades da RealStock!\n\nEntre em contato ou acesse nosso site para mais detalhes de cada imóvel!`;
+    const caption = `🌟 Conheça nosso Portfólio de Imóveis!\n\nConfira as novidades e melhores oportunidades da RealStock!\n\nEntre em contato ou acesse nosso site para mais detalhes de cada imóvel!\nhttps://www.realstock.com.br`;
 
     let finalMediaId = null;
 

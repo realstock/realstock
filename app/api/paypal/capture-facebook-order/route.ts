@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
         }, { status: 400 });
     }
 
-    const caption = `🏡 Novo imóvel disponível!\n\n${property.title}\n📍 ${property.city} - ${property.state}\n💰 R$ ${Number(property.price).toLocaleString("pt-BR")}\n\n${property.description || ""}\n\nAcesse nosso site para mais detalhes!`;
+    const caption = `🏡 Novo imóvel disponível!\n\n${property.title}\n📍 ${property.city} - ${property.state}\n💰 R$ ${Number(property.price).toLocaleString("pt-BR")}\n\n${property.description || ""}\n\nAcesse nosso site para mais detalhes!\nhttps://www.realstock.com.br/imovel/${property.id}`;
 
     let finalPostId = null;
 

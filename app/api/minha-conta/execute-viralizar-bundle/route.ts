@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
     const videoUrl = passedVideoUrl || dbVideoUrl;
     console.log("FINAL VIDEO URL FOR SOCIAL:", videoUrl);
 
-    const caption = `🌟 ${title}\n\nConfira as melhores oportunidades no RealStock!\n\n${city ? `📍 ${city} - ${state}\n\n` : ""}Acesse nosso site para mais detalhes!`;
+    const caption = `🌟 ${title}\n\nConfira as melhores oportunidades no RealStock!\n\n${city ? `📍 ${city} - ${state}\n\n` : ""}Acesse nosso site para mais detalhes!${propertyId !== 0 ? `\nhttps://www.realstock.com.br/imovel/${propertyId}` : "\nhttps://www.realstock.com.br"}`;
 
     // SOCIAL MEDIA PUBLICATION (REAL)
     const results = {
