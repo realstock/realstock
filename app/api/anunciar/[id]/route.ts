@@ -176,6 +176,7 @@ export async function DELETE(
     }
 
     // Cascade deletion manually
+    await prisma.propertyVideo.deleteMany({ where: { propertyId } });
     await prisma.propertyImage.deleteMany({ where: { propertyId } });
     
     // Deletar ofertas e pagamentos precisa ser feito caso existam
