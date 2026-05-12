@@ -549,28 +549,33 @@ function EditarAnuncioContent() {
         files.map(async (file) => {
            const type = file.type.toLowerCase();
            const name = file.name.toLowerCase();
-           
-           // Se for HEIC/HEIF, converte para JPEG primeiro
-           if (type === "image/heic" || type === "image/heif" || name.endsWith(".heic") || name.endsWith(".heif")) {
-              try {
-                setStatusMessage(`Convertendo foto Apple: ${name}...`);
-                // Import dinâmico para evitar erro de SSR (window is not defined)
-                const heic2any = (await import("heic2any")).default;
-                const convertedBlob = await heic2any({
-                  blob: file,
-                  toType: "image/jpeg",
-                  quality: 0.8
-                });
-                const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
-                const convertedFile = new File([blob], name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
-                return compressImageToMax500KB(convertedFile);
-              } catch (e) {
-                console.error("Erro ao converter HEIC:", e);
-                return file; // Fallback para o original se falhar
-              }
+           const isHeic = type === "image/heic" || type === "image/heif" || name.endsWith(".heic") || name.endsWith(".heif");
+
+           try {
+             // Tenta comprimir direto. No Safari isso vai funcionar para HEIC nativamente!
+             return await compressImageToMax500KB(file);
+           } catch (error) {
+             // Se falhou e for HEIC, aí sim tentamos converter (para o Chrome, por exemplo)
+             if (isHeic) {
+               try {
+                 setStatusMessage(`Convertendo foto Apple: ${name}...`);
+                 const heic2any = (await import("heic2any")).default;
+                 const convertedBlob = await heic2any({
+                   blob: file,
+                   toType: "image/jpeg",
+                   quality: 0.8
+                 });
+                 const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+                 const convertedFile = new File([blob], name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
+                 return await compressImageToMax500KB(convertedFile);
+               } catch (convError) {
+                 console.error("Erro na conversão HEIC:", convError);
+                 return file; // Fallback final
+               }
+             }
+             console.error("Erro ao processar imagem:", error);
+             return file;
            }
-           
-           return compressImageToMax500KB(file);
         })
       );
 
