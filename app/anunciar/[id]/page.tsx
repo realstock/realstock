@@ -544,14 +544,32 @@ function EditarAnuncioContent() {
         );
       }
 
-      // Comprime as fotos para no máximo 500KB (exceto HEIC porque o navegador não consegue desenhar no canvas)
+      // Comprime as fotos para no máximo 500KB
       const processedFiles = await Promise.all(
-        files.map((file) => {
+        files.map(async (file) => {
            const type = file.type.toLowerCase();
            const name = file.name.toLowerCase();
+           
+           // Se for HEIC/HEIF, converte para JPEG primeiro
            if (type === "image/heic" || type === "image/heif" || name.endsWith(".heic") || name.endsWith(".heif")) {
-              return file; // Retorna HEIC original sem comprimir
+              try {
+                setStatusMessage(`Convertendo foto Apple: ${name}...`);
+                // Import dinâmico para evitar erro de SSR (window is not defined)
+                const heic2any = (await import("heic2any")).default;
+                const convertedBlob = await heic2any({
+                  blob: file,
+                  toType: "image/jpeg",
+                  quality: 0.8
+                });
+                const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+                const convertedFile = new File([blob], name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
+                return compressImageToMax500KB(convertedFile);
+              } catch (e) {
+                console.error("Erro ao converter HEIC:", e);
+                return file; // Fallback para o original se falhar
+              }
            }
+           
            return compressImageToMax500KB(file);
         })
       );
