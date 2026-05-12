@@ -113,19 +113,11 @@ export default function AnunciosTurbinadosPage() {
                                             </div>
                                             <div className="flex gap-6">
                                                 <div className="flex flex-col">
-                                                    <span className="text-[9px] font-bold text-white/50 uppercase tracking-tighter leading-none">{activeTab === 'instagram' ? 'Meta Ads' : 'Google Ads'}</span>
+                                                    <span className="text-[9px] font-bold text-white/50 uppercase tracking-tighter leading-none">Visualizações Totais</span>
                                                     <span className="text-xl font-black text-white flex items-center gap-1.5 leading-none">
-                                                        {(item.paidViews || 0).toLocaleString()} <Rocket size={14} className={activeTab === 'instagram' ? "text-pink-400" : "text-[#4285F4]"} />
+                                                        {(item.views || 0).toLocaleString()} <Rocket size={14} className={activeTab === 'instagram' ? "text-pink-400" : "text-[#4285F4]"} />
                                                     </span>
                                                 </div>
-                                                {activeTab === 'instagram' && (
-                                                <div className="flex flex-col">
-                                                    <span className="text-[9px] font-bold text-white/50 uppercase tracking-tighter leading-none">Orgânico</span>
-                                                    <span className="text-xl font-black text-white flex items-center gap-1.5 leading-none">
-                                                        {(item.organicViews || 0).toLocaleString()} <Eye size={16} className="text-indigo-400" />
-                                                    </span>
-                                                </div>
-                                                )}
                                             </div>
 
                                             {/* Tooltip Persuasivo de IA */}
@@ -137,7 +129,7 @@ export default function AnunciosTurbinadosPage() {
                                                     <span className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">Impacto Inteligente</span>
                                                 </div>
                                                 <p className="text-[11px] text-slate-300 leading-relaxed font-medium">
-                                                    Achou pouco? Estas <span className="text-white font-bold">{(item.paidViews + item.organicViews).toLocaleString()}</span> pessoas são <span className="text-indigo-300">clientes qualificados</span> selecionados pela nossa IA. Não buscamos quantidade, buscamos os compradores que dão resultado!
+                                                    Este impacto representa <span className="text-white font-bold">{(item.views || 0).toLocaleString()}</span> pessoas que são <span className="text-indigo-300">clientes qualificados</span> selecionados pela nossa IA. Não buscamos apenas números, buscamos os compradores certos!
                                                 </p>
                                                 <div className="absolute top-full left-6 w-3 h-3 bg-slate-900 border-r border-b border-indigo-500/30 rotate-45 -mt-1.5"></div>
                                             </div>
