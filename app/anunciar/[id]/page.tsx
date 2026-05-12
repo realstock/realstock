@@ -549,7 +549,9 @@ function EditarAnuncioContent() {
 
       setNewImages((prev) => [...prev, ...newItems]);
     } catch (err: any) {
-      setError(err.message || "Erro ao processar as imagens.");
+      const msg = err.message || "Erro ao processar as imagens.";
+      setError(msg);
+      alert(msg);
     } finally {
       setUploadingImages(false);
       e.target.value = "";
