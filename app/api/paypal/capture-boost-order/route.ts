@@ -365,34 +365,29 @@ export async function POST(req: NextRequest) {
        NOVA LÓGICA: IMPULSIONAMENTO 100% NATIVO OU DARK POST
        ============================================================== */
     
-    let isOrganicBoost = false;
-
-    const buildCreative = async (actor: string, storySpec: boolean = false, useUserIdKey: boolean = false) => {
+    const buildCreative = async (actor: string, storySpec: boolean = true, useUserIdKey: boolean = false) => {
         const form = new URLSearchParams();
         form.append("name", `Criativo Boost Prop ${propertyId}`);
         const actorKey = useUserIdKey ? "instagram_user_id" : "instagram_actor_id";
         
-        // Link de destino para o botão
+        // Link de destino para o botão (Call to Action)
         const cta = {
             type: "LEARN_MORE",
             value: {
                 link: propertyLink
             }
         };
+ 
+        // Para Instagram, o segredo do botão aparecer é usar o object_story_spec
+        // com o template_data configurado corretamente.
+        form.append("object_story_spec", JSON.stringify({
+            [actorKey]: actor,
+            source_instagram_media_id: sourceId,
+            template_data: {
+                call_to_action: cta
+            }
+        }));
 
-        if (storySpec) {
-          form.append("object_story_spec", JSON.stringify({
-              [actorKey]: actor,
-              source_instagram_media_id: sourceId,
-              template_data: {
-                  call_to_action: cta
-              }
-          }));
-        } else {
-          form.append(actorKey, actor);
-          form.append("source_instagram_media_id", sourceId);
-          form.append("call_to_action", JSON.stringify(cta));
-        }
         form.append("access_token", igToken);
         const res = await fetch(`${BASE_GRAPH}/${adAccountId}/adcreatives`, { method: "POST", body: form });
         return res.json();
