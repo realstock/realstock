@@ -9,8 +9,8 @@ export const metadata = {
   title: "RealStock",
   description: "Marketplace de imóveis com negociação em tempo real",
   icons: {
-    icon: "/favicon.svg",
-    apple: "/favicon.svg",
+    icon: "/icon.png",
+    apple: "/apple-icon.png",
   },
   verification: {
     google: "LJnsmiNMwhnZfSojznS3i0CBulwp4oaOOImxZ_SKjNE",
