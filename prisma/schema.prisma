@@ -67,6 +67,13 @@ model User {
   portfolioVideoUrl           String?    @map("portfolio_video_url")
   portfolioVideoPaidAt        DateTime?  @map("portfolio_video_paid_at")
   
+  // TikTok Integration
+  tiktok                      String?
+  tiktokId                    String?    @map("tiktok_id")
+  tiktokAccessToken           String?    @map("tiktok_access_token")
+  tiktokRefreshToken          String?    @map("tiktok_refresh_token")
+  tiktokTokenExpiresAt        DateTime?  @map("tiktok_token_expires_at")
+  
   // Sistema de Indicação e Créditos
   referrerId                  Int?       @map("referrer_id")
   referrer                    User?      @relation("UserReferrals", fields: [referrerId], references: [id])
