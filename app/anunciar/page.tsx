@@ -860,8 +860,8 @@ function AnunciarFormContent() {
       return;
     }
 
-    if (images.length === 0) {
-      setError("Adicione pelo menos uma imagem.");
+    if (images.length === 0 && existingImageUrls.length === 0 && videos.length === 0 && existingVideoUrls.length === 0) {
+      setError("Adicione pelo menos uma mídia (foto ou vídeo).");
       return;
     }
 
