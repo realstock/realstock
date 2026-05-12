@@ -352,17 +352,27 @@ export default function VideoCreatorModal({
         
         for (let vIndex = 0; vIndex < loadedVideos.length; vIndex++) {
             const vid = loadedVideos[vIndex];
-            const duration = Math.min(vid.duration, maxDurationPerClip); // Corta matematicamente pra caber nos 59s
-            const framesInVideo = duration * fps;
+            const clipDuration = Math.min(vid.duration, maxDurationPerClip); 
+            const framesInVideo = clipDuration * fps;
             
-            vid.currentTime = 0;
-            await new Promise(r => setTimeout(r, 100)); // Buffer
+            // LOGICA DO MIOLO: Centralizar o corte para evitar o início preto
+            let startTime = 0;
+            if (vid.duration > clipDuration) {
+                startTime = (vid.duration - clipDuration) / 2;
+            }
+            // Garantia anti-preto: pular pelo menos 0.5s do início se houver margem
+            if (vid.duration > (startTime + clipDuration + 0.5)) {
+                startTime += 0.5;
+            }
+
+            vid.currentTime = startTime;
+            await new Promise(r => setTimeout(r, 150)); // Buffer para estabilizar 
 
             for (let f = 0; f < framesInVideo; f++) {
-                // Ajuste de progresso para chegar perto de 100
+                // Ajuste de progresso 
                 setProgress(20 + Math.round(((vIndex * framesInVideo + f) / (loadedVideos.length * framesInVideo)) * 79));
                 
-                vid.currentTime = f / fps;
+                vid.currentTime = startTime + (f / fps);
                 // Esperar o vídeo buscar o frame
                 await new Promise(resolve => {
                     const onSeeked = () => {

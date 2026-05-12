@@ -136,7 +136,7 @@ export default function MeusAnunciosPage() {
       <div className="relative h-40 w-52 shrink-0 overflow-hidden rounded-2xl bg-slate-900 shadow-2xl ring-1 ring-white/10">
         {reelsUrl ? (
           <video
-            src={reelsUrl}
+            src={`${reelsUrl}#t=1`}
             className="h-full w-full object-cover"
             muted
             playsInline
@@ -144,7 +144,7 @@ export default function MeusAnunciosPage() {
             onMouseOut={(e) => {
               const v = e.target as HTMLVideoElement;
               v.pause();
-              v.currentTime = 0;
+              v.currentTime = 1;
             }}
           />
         ) : imageUrl ? (
@@ -159,7 +159,7 @@ export default function MeusAnunciosPage() {
           />
         ) : rawVideoUrl ? (
           <video
-            src={rawVideoUrl}
+            src={`${rawVideoUrl}#t=1`}
             className="h-full w-full object-cover"
             muted
             playsInline
@@ -171,7 +171,7 @@ export default function MeusAnunciosPage() {
             onMouseOut={(e) => {
               const v = e.target as HTMLVideoElement;
               v.pause();
-              v.currentTime = 0;
+              v.currentTime = 1;
             }}
           />
         ) : (
@@ -349,7 +349,7 @@ export default function MeusAnunciosPage() {
                         return (
                           <div key={p.id} className="h-24 w-24 md:w-32 flex items-center justify-center overflow-hidden rounded-xl border-2 border-slate-900 bg-slate-800 shadow-md relative z-[10] hover:z-[20] transition-transform hover:scale-105" style={{ zIndex: 10 - idx }}>
                             {isVideo ? (
-                              <video src={mediaUrl} className="h-full w-full object-cover opacity-80" />
+                              <video src={`${mediaUrl}#t=1`} className="h-full w-full object-cover opacity-80" />
                             ) : mediaUrl ? (
                               <img
                                 src={mediaUrl}

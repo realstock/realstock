@@ -377,6 +377,9 @@ function EditarAnuncioContent() {
 
   const [existingImages, setExistingImages] = useState<any[]>([]);
   const [newImages, setNewImages] = useState<{id: string, file: File, preview: string}[]>([]);
+  const [isConverting, setIsConverting] = useState(false);
+  const [conversionProgress, setConversionProgress] = useState(0);
+  const [conversionCount, setConversionCount] = useState({ current: 0, total: 0 });
 
   // REELS MEDIA STATES
   const [videos, setVideos] = useState<File[]>([]);
@@ -544,52 +547,99 @@ function EditarAnuncioContent() {
         );
       }
 
-      // Comprime as fotos para no máximo 500KB
-      const processedFiles = await Promise.all(
-        files.map(async (file) => {
-           const type = file.type.toLowerCase();
-           const name = file.name.toLowerCase();
-           const isHeic = type === "image/heic" || type === "image/heif" || name.endsWith(".heic") || name.endsWith(".heif");
+      const totalFiles = files.length;
+      setConversionCount({ current: 0, total: totalFiles });
+      setIsConverting(true);
+      setConversionProgress(0);
 
+      // Comprime e processa as fotos uma por uma para mostrar o progresso
+      const processedFiles: File[] = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const name = file.name.toLowerCase();
+        const currentFileNum = i + 1;
+        
+        // Base de progresso acumulado (ex: se sao 10 fotos, cada uma é 10%)
+        const baseProgress = (i / totalFiles) * 100;
+        const progressStep = 100 / totalFiles;
+
+        setConversionCount({ current: currentFileNum, total: totalFiles });
+        setConversionProgress(Math.round(baseProgress));
+        setStatusMessage(`Processando: ${name}...`);
+
+        let currentFile = file;
+        
+        // Se for HEIC/HEIF ou sem tipo, forçamos a identificação
+        if (!currentFile.type && (name.endsWith(".heic") || name.endsWith(".heif"))) {
+           currentFile = new File([currentFile], currentFile.name, { type: "image/heic" });
+        }
+
+        const type = currentFile.type.toLowerCase();
+        const isHeic = type === "image/heic" || type === "image/heif" || name.endsWith(".heic") || name.endsWith(".heif");
+        const isSafari = navigator.vendor && navigator.vendor.indexOf('Apple') > -1 &&
+                       navigator.userAgent &&
+                       navigator.userAgent.indexOf('CriOS') == -1 &&
+
+        // Progresso dentro da foto atual
+        setConversionProgress(Math.round(baseProgress + (progressStep * 0.2)));
+
+        // Se for HEIC, usamos o servidor para converter (independente do navegador para garantir compatibilidade total)
+        if (isHeic) {
            try {
-             // Tenta comprimir direto. No Safari isso vai funcionar para HEIC nativamente!
-             return await compressImageToMax500KB(file);
-           } catch (error) {
-             // Se falhou e for HEIC, aí sim tentamos converter (para o Chrome, por exemplo)
-             if (isHeic) {
-               try {
-                 setStatusMessage(`Convertendo foto Apple: ${name}...`);
-                 const heic2any = (await import("heic2any")).default;
-                 const convertedBlob = await heic2any({
-                   blob: file,
-                   toType: "image/jpeg",
-                   quality: 0.8
-                 });
-                 const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
-                 const convertedFile = new File([blob], name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
-                 return await compressImageToMax500KB(convertedFile);
-               } catch (convError) {
-                 console.error("Erro na conversão HEIC:", convError);
-                 return file; // Fallback final
-               }
-             }
-             console.error("Erro ao processar imagem:", error);
-             return file;
-           }
-        })
-      );
+             setConversionProgress(40);
+             const formData = new FormData();
+             formData.append("file", currentFile);
 
-      const newItems = processedFiles.map(file => ({
-        id: `new-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+             const response = await fetch("/api/convert-heic", {
+                method: "POST",
+                body: formData,
+             });
+
+             if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error || "Erro na conversão do servidor");
+             }
+
+             const blob = await response.blob();
+             setConversionProgress(Math.round(baseProgress + (progressStep * 0.6)));
+             
+             currentFile = new File([blob], name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
+           } catch (e) {
+             console.error("Erro na conversão HEIC no Servidor:", e);
+           }
+        }
+
+        try {
+          const compressed = await compressImageToMax500KB(currentFile);
+          processedFiles.push(compressed);
+        } catch (error) {
+          console.error("Erro ao processar imagem:", error);
+          processedFiles.push(currentFile);
+        }
+        
+        // Foto Finalizada
+        setConversionProgress(Math.round(baseProgress + progressStep));
+        setStatusMessage(`Foto ${currentFileNum} concluída!`);
+        
+        // Pequena pausa para o usuário ler o "concluída"
+        await new Promise(r => setTimeout(r, 300));
+      }
+
+      const newItems = processedFiles.map((file, idx) => ({
+        id: `new-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 9)}`,
         file,
         preview: URL.createObjectURL(file)
       }));
 
       setNewImages((prev) => [...prev, ...newItems]);
+      setIsConverting(false);
+      setStatusMessage("");
     } catch (err: any) {
       const msg = err.message || "Erro ao processar as imagens.";
       setError(msg);
       alert(msg);
+      setIsConverting(false);
     } finally {
       setUploadingImages(false);
       e.target.value = "";
@@ -804,14 +854,9 @@ function EditarAnuncioContent() {
         try {
           // Convert base64 newImages back to Files for upload or use existing API
           // Actually, the existing API app/api/upload-image expects a File.
-          // Since newImages are base64, we need to convert them.
-          for (const base64 of newImages) {
-            const res = await fetch(base64);
-            const blob = await res.blob();
-            const file = new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" });
-            
+          for (const item of newImages) {
             const formData = new FormData();
-            formData.append("file", file);
+            formData.append("file", item.file);
             const uploadRes = await fetch("/api/upload-image", { method: "POST", body: formData });
             const data = await uploadRes.json();
             if (data.success) uploadedUrls.push(data.imageUrl);
@@ -1451,9 +1496,6 @@ function EditarAnuncioContent() {
                                                src={img.preview} 
                                                alt="" 
                                                className="h-24 w-full object-cover" 
-                                               onError={(e) => {
-                                                  e.currentTarget.src = "https://placehold.co/400x400/1e293b/475569?text=Formato+Apple";
-                                               }}
                                             />
                                             <button
                                               type="button"
@@ -1546,7 +1588,7 @@ function EditarAnuncioContent() {
                                                      <SortableItem key={url} id={url}>
                                                         <div className="overflow-hidden rounded-xl border border-purple-500/30 bg-purple-500/5">
                                                            <div className="relative h-24 bg-slate-900">
-                                                              <video src={`${url}#t=0.001`} preload="metadata" muted playsInline crossOrigin="anonymous" className="w-full h-full object-cover" />
+                                                              <video src={`${url}#t=1`} preload="metadata" muted playsInline crossOrigin="anonymous" className="w-full h-full object-cover" />
                                                               <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-purple-500 text-[8px] font-black text-white uppercase tracking-tighter">Ativo</div>
                                                            </div>
                                                            <button
@@ -1700,6 +1742,58 @@ function EditarAnuncioContent() {
             </button>
         </form>
       </section>
+
+      {/* CENTRO DE CONVERSAO PREMIUM */}
+      {isConverting && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/90 backdrop-blur-3xl">
+           <div className="w-full max-w-md p-8 text-center space-y-8 animate-in fade-in zoom-in duration-500">
+              <div className="relative mx-auto h-32 w-32">
+                 {/* Glow Effect */}
+                 <div className="absolute inset-[-20px] rounded-full bg-white/5 blur-3xl animate-pulse" />
+                 
+                 <div className="absolute inset-0 rounded-full border-4 border-white/5" />
+                 <svg className="absolute inset-0 h-full w-full -rotate-90">
+                    <circle
+                       cx="64"
+                       cy="64"
+                       r="60"
+                       stroke="currentColor"
+                       strokeWidth="4"
+                       fill="transparent"
+                       className="text-white"
+                       strokeDasharray="377"
+                       strokeDashoffset={377 - (377 * conversionProgress) / 100}
+                       style={{ transition: 'stroke-dashoffset 0.3s ease' }}
+                    />
+                 </svg>
+                 <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-black text-white italic tracking-tighter">{conversionProgress}%</span>
+                 </div>
+              </div>
+
+              <div className="space-y-2">
+                 <h3 className="text-3xl font-black text-white tracking-tighter uppercase italic leading-none">Processando Mídias</h3>
+                 <p className="text-[10px] text-white/40 font-black uppercase tracking-[0.3em]">
+                    Sincronizando Foto {conversionCount.current} de {conversionCount.total}
+                 </p>
+              </div>
+
+              <div className="relative h-1.5 w-full bg-white/5 rounded-full overflow-hidden shadow-inner">
+                 <div 
+                    className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-500 via-white to-blue-500 shadow-[0_0_20px_rgba(255,255,255,0.5)] transition-all duration-300"
+                    style={{ width: `${conversionProgress}%` }}
+                 />
+              </div>
+
+              <div className="flex items-center justify-center gap-3">
+                 <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                    {statusMessage || "Otimizando para JPG Premium"}
+                 </p>
+              </div>
+           </div>
+        </div>
+      )}
     </main>
   );
 }

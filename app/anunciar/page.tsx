@@ -412,6 +412,9 @@ function AnunciarFormContent() {
 
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [isConverting, setIsConverting] = useState(false);
+  const [conversionProgress, setConversionProgress] = useState(0);
+  const [conversionCount, setConversionCount] = useState({ current: 0, total: 0 });
 
   const [videos, setVideos] = useState<File[]>([]);
   const [videoPreviews, setVideoPreviews] = useState<string[]>([]);
@@ -703,58 +706,90 @@ function AnunciarFormContent() {
         );
       }
 
-      const processedFiles = await Promise.all(
-        files.map(async (file) => {
-           const type = file.type.toLowerCase();
-           const name = file.name.toLowerCase();
-           const isHeic = type === "image/heic" || type === "image/heif" || name.endsWith(".heic") || name.endsWith(".heif");
+      const totalFiles = files.length;
+      setConversionCount({ current: 0, total: totalFiles });
+      setIsConverting(true);
+      setConversionProgress(0);
 
+      const processedFiles: File[] = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const name = file.name.toLowerCase();
+        const currentFileNum = i + 1;
+        
+        const baseProgress = (i / totalFiles) * 100;
+        const progressStep = 100 / totalFiles;
+
+        setConversionCount({ current: currentFileNum, total: totalFiles });
+        setConversionProgress(Math.round(baseProgress));
+        setStatusMessage(`Processando: ${name}...`);
+
+        let currentFile = file;
+
+        if (!currentFile.type && (name.endsWith(".heic") || name.endsWith(".heif"))) {
+           currentFile = new File([currentFile], currentFile.name, { type: "image/heic" });
+        }
+
+        const type = currentFile.type.toLowerCase();
+        const isHeic = type === "image/heic" || type === "image/heif" || name.endsWith(".heic") || name.endsWith(".heif");
+        const isSafari = navigator.vendor && navigator.vendor.indexOf('Apple') > -1 &&
+                       navigator.userAgent &&
+                       navigator.userAgent.indexOf('CriOS') == -1 &&
+                       navigator.userAgent.indexOf('FxiOS') == -1;
+
+        setConversionProgress(Math.round(baseProgress + (progressStep * 0.2)));
+
+        if (isHeic && !isSafari) {
            try {
-              // Tenta comprimir direto (Nativo no Safari)
-              return await compressImageToMax500KB(file);
-           } catch (error) {
-              if (isHeic) {
-                 try {
-                    setStatusMessage(`Convertendo foto Apple: ${name}...`);
-                    const heic2any = (await import("heic2any")).default;
-                    const convertedBlob = await heic2any({
-                       blob: file,
-                       toType: "image/jpeg",
-                       quality: 0.8
-                    });
-                    const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
-                    const convertedFile = new File([blob], name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
-                    return await compressImageToMax500KB(convertedFile);
-                 } catch (convError) {
-                    console.error("Erro na conversão HEIC:", convError);
-                    return file;
-                 }
-              }
-              console.error("Erro ao processar imagem:", error);
-              return file;
+              setConversionProgress(Math.round(baseProgress + (progressStep * 0.4)));
+              const formData = new FormData();
+              formData.append("file", currentFile);
+
+              const response = await fetch("/api/convert-heic", {
+                 method: "POST",
+                 body: formData,
+              });
+
+              if (!response.ok) throw new Error("Erro no servidor");
+
+              const blob = await response.blob();
+              setConversionProgress(Math.round(baseProgress + (progressStep * 0.7)));
+              currentFile = new File([blob], name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
+           } catch (e) {
+              console.error("Erro na conversão HEIC no Servidor:", e);
            }
-        })
-      );
+        }
 
-      const invalidSize = processedFiles.find(
-        (file) => file.size > MAX_IMAGE_SIZE_BYTES
-      );
+        try {
+           const compressed = await compressImageToMax500KB(currentFile);
+           processedFiles.push(compressed);
+        } catch (error) {
+           console.error("Erro ao processar imagem:", error);
+           processedFiles.push(currentFile);
+        }
 
-      if (invalidSize) {
-        throw new Error(
-          `A imagem "${invalidSize.name}" ainda ficou acima de 500 KB.`
-        );
+        setConversionProgress(Math.round(baseProgress + progressStep));
+        setStatusMessage(`Foto ${currentFileNum} concluída!`);
+        await new Promise(r => setTimeout(r, 300));
       }
 
-      setImages((prev) => [...prev, ...processedFiles]);
-      setImagePreviews((prev) => [
-        ...prev,
-        ...processedFiles.map((file) => URL.createObjectURL(file)),
-      ]);
+      for (const file of processedFiles) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+           const preview = e.target?.result as string;
+           setImages((prev) => [...prev, file]);
+           setImagePreviews((prev) => [...prev, preview]);
+        };
+        reader.readAsDataURL(file);
+      }
+      setIsConverting(false);
+      setStatusMessage("");
     } catch (err: any) {
       const msg = err.message || "Erro ao processar as imagens.";
       setError(msg);
       alert(msg);
+      setIsConverting(false);
     } finally {
       setUploadingImages(false);
       e.target.value = "";
@@ -1824,9 +1859,6 @@ function AnunciarFormContent() {
                                                        src={image} 
                                                        alt="" 
                                                        className="w-full h-full object-cover" 
-                                                       onError={(e) => {
-                                                          e.currentTarget.src = "https://placehold.co/400x400/1e293b/475569?text=Formato+Apple";
-                                                       }}
                                                     />
                                                     <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-white text-[8px] font-black text-slate-900 uppercase tracking-tighter">Novo</div>
                                                  </div>
@@ -1920,7 +1952,7 @@ function AnunciarFormContent() {
                                                     <SortableItem key={url} id={url}>
                                                        <div className="overflow-hidden rounded-xl border border-purple-500/30 bg-purple-500/5">
                                                           <div className="relative h-24 bg-slate-900">
-                                                             <video src={`${url}#t=0.001`} preload="metadata" muted playsInline crossOrigin="anonymous" className="w-full h-full object-cover" />
+                                                             <video src={`${url}#t=1`} preload="metadata" muted playsInline crossOrigin="anonymous" className="w-full h-full object-cover" />
                                                              <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-purple-500 text-[8px] font-black text-white uppercase tracking-tighter">Ativo</div>
                                                           </div>
                                                           <button
@@ -2061,6 +2093,58 @@ function AnunciarFormContent() {
           </div>
         </form>
       </section>
+
+      {/* CENTRO DE CONVERSAO PREMIUM */}
+      {isConverting && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/90 backdrop-blur-3xl">
+           <div className="w-full max-w-md p-8 text-center space-y-8 animate-in fade-in zoom-in duration-500">
+              <div className="relative mx-auto h-32 w-32">
+                 {/* Glow Effect */}
+                 <div className="absolute inset-[-20px] rounded-full bg-white/5 blur-3xl animate-pulse" />
+                 
+                 <div className="absolute inset-0 rounded-full border-4 border-white/5" />
+                 <svg className="absolute inset-0 h-full w-full -rotate-90">
+                    <circle
+                       cx="64"
+                       cy="64"
+                       r="60"
+                       stroke="currentColor"
+                       strokeWidth="4"
+                       fill="transparent"
+                       className="text-white"
+                       strokeDasharray="377"
+                       strokeDashoffset={377 - (377 * conversionProgress) / 100}
+                       style={{ transition: 'stroke-dashoffset 0.3s ease' }}
+                    />
+                 </svg>
+                 <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-black text-white italic tracking-tighter">{conversionProgress}%</span>
+                 </div>
+              </div>
+
+              <div className="space-y-2">
+                 <h3 className="text-3xl font-black text-white tracking-tighter uppercase italic leading-none">Processando Mídias</h3>
+                 <p className="text-[10px] text-white/40 font-black uppercase tracking-[0.3em]">
+                    Sincronizando Foto {conversionCount.current} de {conversionCount.total}
+                 </p>
+              </div>
+
+              <div className="relative h-1.5 w-full bg-white/5 rounded-full overflow-hidden shadow-inner">
+                 <div 
+                    className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-500 via-white to-blue-500 shadow-[0_0_20px_rgba(255,255,255,0.5)] transition-all duration-300"
+                    style={{ width: `${conversionProgress}%` }}
+                 />
+              </div>
+
+              <div className="flex items-center justify-center gap-3">
+                 <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                    {statusMessage || "Otimizando para JPG Premium"}
+                 </p>
+              </div>
+           </div>
+        </div>
+      )}
     </main>
   );
 }
