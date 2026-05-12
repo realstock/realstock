@@ -342,22 +342,35 @@ export default function MeusAnunciosPage() {
                
                <div className="flex flex-wrap items-start justify-between gap-4 mt-2">
                  <div className="flex flex-col md:flex-row gap-4">
-                   <div className="flex -space-x-4 w-fit">
-                     {properties.filter(p => p.images && p.images.length > 0).slice(0, 4).map((p, idx) => (
-                       <div key={p.id} className="h-24 w-24 md:w-32 overflow-hidden rounded-xl border-2 border-slate-900 bg-slate-900 shadow-md relative z-[10] hover:z-[20] transition-transform hover:scale-105" style={{ zIndex: 10 - idx }}>
-                         <img
-                           src={p.images?.[0]?.imageUrl}
-                           alt={p.title}
-                           className="h-full w-full object-cover"
-                         />
-                       </div>
-                     ))}
-                     {properties.filter(p => p.images && p.images.length > 0).length > 4 && (
-                       <div className="h-24 w-24 md:w-32 flex items-center justify-center rounded-xl border border-white/10 bg-slate-800 text-sm font-bold shadow-md relative z-[5]" style={{ zIndex: 5 }}>
-                         +{properties.filter(p => p.images && p.images.length > 0).length - 4}
-                       </div>
-                     )}
-                   </div>
+                    <div className="flex -space-x-4 w-fit">
+                      {properties.filter(p => (p.images && p.images.length > 0) || (p.videos && p.videos.length > 0)).slice(0, 4).map((p, idx) => {
+                        const mediaUrl = p.images?.[0]?.imageUrl || p.videos?.[0]?.videoUrl;
+                        const isVideo = !p.images?.[0]?.imageUrl && p.videos?.[0]?.videoUrl;
+                        return (
+                          <div key={p.id} className="h-24 w-24 md:w-32 flex items-center justify-center overflow-hidden rounded-xl border-2 border-slate-900 bg-slate-800 shadow-md relative z-[10] hover:z-[20] transition-transform hover:scale-105" style={{ zIndex: 10 - idx }}>
+                            {isVideo ? (
+                              <video src={mediaUrl} className="h-full w-full object-cover opacity-80" />
+                            ) : mediaUrl ? (
+                              <img
+                                src={mediaUrl}
+                                alt={p.title}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.src = "https://placehold.co/400x400/1e293b/475569?text=M%C3%ADdia";
+                                }}
+                              />
+                            ) : (
+                              <div className="text-slate-600"><Camera size={24} /></div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {properties.filter(p => (p.images && p.images.length > 0) || (p.videos && p.videos.length > 0)).length > 4 && (
+                        <div className="h-24 w-24 md:w-32 flex items-center justify-center rounded-xl border border-white/10 bg-slate-800 text-sm font-bold shadow-md relative z-[5]" style={{ zIndex: 5 }}>
+                          +{properties.filter(p => (p.images && p.images.length > 0) || (p.videos && p.videos.length > 0)).length - 4}
+                        </div>
+                      )}
+                    </div>
 
                    <div className="flex flex-col justify-center">
                      <div className={`flex items-center gap-2 font-bold text-lg ${isPublishedAny ? 'text-purple-400' : 'text-pink-400'}`}>
