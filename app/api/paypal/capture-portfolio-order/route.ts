@@ -91,7 +91,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Credenciais do Instagram não configuradas." }, { status: 500 });
     }
 
-    const caption = `🌟 Conheça nosso Portfólio de Imóveis!\n\nConfira as novidades e melhores oportunidades da RealStock!\n\nEntre em contato ou acesse nosso site para mais detalhes de cada imóvel!\nhttps://www.realstock.com.br`;
+    const properties = await prisma.property.findMany({
+      where: { 
+         id: { in: selectedPropertyIds.map(Number) }
+      },
+      include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const portfolioSummary = properties.map((p, idx) => {
+        return `${idx + 1}️⃣ ${p.title.toUpperCase()}\n📍 ${p.neighborhood ? p.neighborhood + ', ' : ''}${p.city} - ${p.state}\n💰 R$ ${Number(p.price).toLocaleString("pt-BR")}`;
+    }).join("\n\n");
+
+    const caption = `🌟 CONHEÇA NOSSO PORTFÓLIO DE IMÓVEIS!\n\nConfira as melhores oportunidades da RealStock selecionadas para você:\n\n${portfolioSummary}\n\n🔗 Confira todos os detalhes e mais fotos em nosso portal:\nhttps://www.realstock.com.br\n\n#RealStock #Portfolio #ImoveisDeLuxo #Oportunidade #MercadoImobiliario\n\nwww.realstock.com.br`;
+
+    const propertiesWithImages = properties.filter(p => p.images && p.images.length > 0);
 
     let finalMediaId = null;
 
@@ -122,18 +136,6 @@ export async function POST(req: NextRequest) {
        if (!ready) return NextResponse.json({ success: false, error: "O vídeo ainda está sendo processado pelo Instagram. Tente publicar novamente em instantes." }, { status: 500 });
 
     } else {
-        const properties = await prisma.property.findMany({
-          where: { 
-             ownerId: user.id,
-             id: { in: selectedPropertyIds.map(Number) }
-          },
-          include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
-          orderBy: { createdAt: "desc" },
-        });
-
-        const propertiesWithImages = properties.filter(p => p.images && p.images.length > 0);
-
-        if (propertiesWithImages.length === 0) {
             return NextResponse.json({ success: false, error: "Nenhum anúncio com foto encontrado para o portfólio." }, { status: 400 });
         }
 

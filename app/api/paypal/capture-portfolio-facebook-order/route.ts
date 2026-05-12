@@ -123,7 +123,21 @@ export async function POST(req: NextRequest) {
         } catch(e) { console.error("Could not delete old portfolio", e); }
     }
 
-    const caption = `🌟 Conheça nosso Portfólio de Imóveis!\n\nConfira as novidades e melhores oportunidades da RealStock nas fotos abaixos 👇\n\nEntre em contato ou acesse nosso site para mais detalhes de cada imóvel!`;
+    const properties = await prisma.property.findMany({
+      where: { 
+         id: { in: selectedPropertyIds.map(Number) }
+      },
+      include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const portfolioSummary = properties.map((p, idx) => {
+        return `${idx + 1}️⃣ ${p.title.toUpperCase()}\n📍 ${p.neighborhood ? p.neighborhood + ', ' : ''}${p.city} - ${p.state}\n💰 R$ ${Number(p.price).toLocaleString("pt-BR")}`;
+    }).join("\n\n");
+
+    const caption = `🌟 CONHEÇA NOSSO PORTFÓLIO DE IMÓVEIS NO FACEBOOK!\n\nConfira as melhores oportunidades da RealStock selecionadas para você:\n\n${portfolioSummary}\n\n🔗 Confira todos os detalhes e mais fotos em nosso portal:\nhttps://www.realstock.com.br\n\n#RealStock #Portfolio #Imoveis #Facebook #Oportunidade\n\nwww.realstock.com.br`;
+
+    const propertiesWithImages = properties.filter(p => p.images && p.images.length > 0);
 
     let finalPostId = null;
 
@@ -148,18 +162,6 @@ export async function POST(req: NextRequest) {
         }
         finalPostId = videoData.id;
     } else {
-        const properties = await prisma.property.findMany({
-          where: { 
-             ownerId: user.id,
-             id: { in: selectedPropertyIds.map(Number) }
-          },
-          include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
-          orderBy: { createdAt: "desc" },
-        });
-
-        const propertiesWithImages = properties.filter(p => p.images && p.images.length > 0);
-
-        if (propertiesWithImages.length === 0) {
             return NextResponse.json({ success: false, error: "Nenhum anúncio com foto encontrado para o portfólio." }, { status: 400 });
         }
 

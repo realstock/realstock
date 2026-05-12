@@ -126,7 +126,19 @@ export async function POST(req: NextRequest) {
         }, { status: 400 });
     }
 
-    const caption = `🏡 Novo imóvel disponível!\n\n${property.title}\n📍 ${property.city} - ${property.state}\n💰 R$ ${Number(property.price).toLocaleString("pt-BR")}\n\n${property.description || ""}\n\nAcesse nosso site para mais detalhes!\nhttps://www.realstock.com.br/imovel/${property.id}`;
+    const details = [
+        property.area ? `📏 Área: ${property.area}` : null,
+        property.bedrooms ? `🛏️ Quartos: ${property.bedrooms}` : null,
+        property.suites ? `🚿 Suítes: ${property.suites}` : null,
+        property.bathrooms ? `🚽 Banheiros: ${property.bathrooms}` : null,
+        property.parkingSpaces ? `🚗 Vagas: ${property.parkingSpaces}` : null,
+        property.furnished ? "🛋️ Mobiliado" : null,
+        property.pool ? "🏊 Piscina" : null,
+        property.frontSea ? "🌊 Frente Mar" : null,
+        property.acceptsFinancing ? "🏦 Aceita Financiamento" : null,
+    ].filter(Boolean).join("\n");
+
+    const caption = `🏡 NOVO IMÓVEL DISPONÍVEL!\n\n🌟 ${property.title.toUpperCase()}\n\n📍 LOCALIZAÇÃO:\n${property.neighborhood ? property.neighborhood + ' - ' : ''}${property.city} - ${property.state}\n\n💰 VALOR: R$ ${Number(property.price).toLocaleString("pt-BR")}\n\n📋 DETALHES DO IMÓVEL:\n${details}\n\n📝 DESCRIÇÃO:\n${property.description || "Confira os detalhes deste incrível imóvel em nosso portal."}\n\n🔗 ACESSE PARA MAIS FOTOS E INFORMAÇÕES:\nhttps://www.realstock.com.br/imovel/${property.id}\n\n#RealStock #Imoveis #Oportunidade #VendaImoveis #${property.city.replace(/\s+/g, '')}\n\nwww.realstock.com.br`;
 
     let finalMediaId = null;
 

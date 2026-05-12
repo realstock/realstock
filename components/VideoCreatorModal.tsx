@@ -415,6 +415,11 @@ export default function VideoCreatorModal({
             const img = loadedImages[imageIndex];
             if (!img) continue;
 
+            const currentData = images[imageIndex];
+            const currentTitle = currentData?.title || propertyTitle;
+            const currentCity = currentData?.city || propertyCity;
+            const currentState = currentData?.state || propertyState;
+
             ctx.fillStyle = "#020617";
             ctx.fillRect(0, 0, width, height);
 
@@ -423,7 +428,7 @@ export default function VideoCreatorModal({
             const dH = (img.height * (dW / img.width));
             ctx.drawImage(img, (width - dW) / 2, (height - dH) / 2, dW, dH);
 
-            renderOverlays(ctx, width, height, propertyTitle, propertyCity, propertyState);
+            renderOverlays(ctx, width, height, currentTitle, currentCity, currentState);
             
             await new Promise(resolve => requestAnimationFrame(resolve));
         }
@@ -495,8 +500,14 @@ export default function VideoCreatorModal({
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                 <div className="absolute bottom-12 left-0 w-full px-6 text-center">
-                  <h3 className="text-xl font-bold uppercase tracking-tight">{propertyTitle}</h3>
-                  <p className="mt-2 text-sky-400 font-bold text-xs">REALSTOCK • O SEU IMÓVEL EM DESTAQUE</p>
+                  <h3 className="text-xl font-bold uppercase tracking-tight">
+                    {images[currentImageIndex]?.title || propertyTitle}
+                  </h3>
+                  <p className="mt-2 text-sky-400 font-bold text-xs">
+                    {images[currentImageIndex]?.city && images[currentImageIndex]?.state 
+                      ? `${images[currentImageIndex].city} • ${images[currentImageIndex].state}`.toUpperCase()
+                      : "REALSTOCK • O SEU IMÓVEL EM DESTAQUE"}
+                  </p>
                 </div>
               </div>
             )}
