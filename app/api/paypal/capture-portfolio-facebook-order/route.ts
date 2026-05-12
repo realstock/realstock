@@ -162,6 +162,7 @@ export async function POST(req: NextRequest) {
         }
         finalPostId = videoData.id;
     } else {
+        if (propertiesWithImages.length === 0) {
             return NextResponse.json({ success: false, error: "Nenhum anúncio com foto encontrado para o portfólio." }, { status: 400 });
         }
 

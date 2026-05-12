@@ -136,6 +136,7 @@ export async function POST(req: NextRequest) {
        if (!ready) return NextResponse.json({ success: false, error: "O vídeo ainda está sendo processado pelo Instagram. Tente publicar novamente em instantes." }, { status: 500 });
 
     } else {
+        if (propertiesWithImages.length === 0) {
             return NextResponse.json({ success: false, error: "Nenhum anúncio com foto encontrado para o portfólio." }, { status: 400 });
         }
 
