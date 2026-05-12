@@ -1241,7 +1241,15 @@ function EditarAnuncioContent() {
                                    {existingImages.map((image) => (
                                       <SortableItem key={image.id} id={image.id}>
                                          <div className="overflow-hidden rounded-xl border border-sky-500/30 bg-sky-500/5">
-                                            <img src={image.imageUrl} alt="" className="h-24 w-full object-cover" />
+                                            <img 
+                                               src={image.imageUrl} 
+                                               alt="" 
+                                               className="h-24 w-full object-cover" 
+                                               onError={(e) => {
+                                                  console.warn("Imagem ausente no servidor:", image.imageUrl);
+                                                  e.currentTarget.src = "https://placehold.co/400x400/1e293b/475569?text=Falha+na+M%C3%ADdia";
+                                               }}
+                                            />
                                             <button
                                               type="button"
                                               onClick={() => removeExistingImage(image.id)}
