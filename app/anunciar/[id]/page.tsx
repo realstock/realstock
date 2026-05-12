@@ -527,18 +527,33 @@ function EditarAnuncioContent() {
     try {
       setUploadingImages(true);
 
-      const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-      const invalidType = files.find((file) => !allowedTypes.includes(file.type));
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+      
+      const invalidType = files.find((file) => {
+         const type = file.type.toLowerCase();
+         const name = file.name.toLowerCase();
+         // Safari might correctly detect image/heic, while Chrome might have empty type but .heic extension
+         if (allowedTypes.includes(type)) return false;
+         if (name.endsWith(".heic") || name.endsWith(".heif")) return false;
+         return true; // Invalid
+      });
 
       if (invalidType) {
         throw new Error(
-          `A imagem "${invalidType.name}" tem formato inválido. Use JPG, PNG ou WEBP.`
+          `A imagem "${invalidType.name}" tem formato inválido. Use JPG, PNG, WEBP ou HEIC.`
         );
       }
 
-      // Comprime as fotos para no máximo 500KB e formata para JPG
+      // Comprime as fotos para no máximo 500KB (exceto HEIC porque o navegador não consegue desenhar no canvas)
       const processedFiles = await Promise.all(
-        files.map((file) => compressImageToMax500KB(file))
+        files.map((file) => {
+           const type = file.type.toLowerCase();
+           const name = file.name.toLowerCase();
+           if (type === "image/heic" || type === "image/heif" || name.endsWith(".heic") || name.endsWith(".heif")) {
+              return file; // Retorna HEIC original sem comprimir
+           }
+           return compressImageToMax500KB(file);
+        })
       );
 
       const newItems = processedFiles.map(file => ({
@@ -1408,8 +1423,15 @@ function EditarAnuncioContent() {
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                    {newImages.map((img, index) => (
                                       <SortableItem key={img.id} id={img.id}>
-                                         <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-900">
-                                            <img src={img.preview} alt="" className="h-24 w-full object-cover" />
+                                         <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-900 relative">
+                                            <img 
+                                               src={img.preview} 
+                                               alt="" 
+                                               className="h-24 w-full object-cover" 
+                                               onError={(e) => {
+                                                  e.currentTarget.src = "https://placehold.co/400x400/1e293b/475569?text=Formato+Apple";
+                                               }}
+                                            />
                                             <button
                                               type="button"
                                               onClick={() => removeNewImage(index)}

@@ -687,17 +687,31 @@ function AnunciarFormContent() {
     try {
       setUploadingImages(true);
 
-      const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-      const invalidType = files.find((file) => !allowedTypes.includes(file.type));
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+      
+      const invalidType = files.find((file) => {
+         const type = file.type.toLowerCase();
+         const name = file.name.toLowerCase();
+         if (allowedTypes.includes(type)) return false;
+         if (name.endsWith(".heic") || name.endsWith(".heif")) return false;
+         return true; // Invalid
+      });
 
       if (invalidType) {
         throw new Error(
-          `A imagem "${invalidType.name}" tem formato inválido. Use JPG, PNG ou WEBP.`
+          `A imagem "${invalidType.name}" tem formato inválido. Use JPG, PNG, WEBP ou HEIC.`
         );
       }
 
       const processedFiles = await Promise.all(
-        files.map((file) => compressImageToMax500KB(file))
+        files.map((file) => {
+           const type = file.type.toLowerCase();
+           const name = file.name.toLowerCase();
+           if (type === "image/heic" || type === "image/heif" || name.endsWith(".heic") || name.endsWith(".heif")) {
+              return file; // Skip compression for HEIC
+           }
+           return compressImageToMax500KB(file);
+        })
       );
 
       const invalidSize = processedFiles.find(
@@ -1784,7 +1798,14 @@ function AnunciarFormContent() {
                                            <SortableItem key={image} id={image}>
                                               <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-900">
                                                  <div className="relative h-24 bg-slate-950">
-                                                    <img src={image} alt="" className="w-full h-full object-cover" />
+                                                    <img 
+                                                       src={image} 
+                                                       alt="" 
+                                                       className="w-full h-full object-cover" 
+                                                       onError={(e) => {
+                                                          e.currentTarget.src = "https://placehold.co/400x400/1e293b/475569?text=Formato+Apple";
+                                                       }}
+                                                    />
                                                     <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-white text-[8px] font-black text-slate-900 uppercase tracking-tighter">Novo</div>
                                                  </div>
                                                  <button
