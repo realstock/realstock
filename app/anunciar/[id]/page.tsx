@@ -607,30 +607,27 @@ function EditarAnuncioContent() {
       return;
     }
 
-    console.log("🛠️ Iniciando handleSubmit. Imagens atuais:", existingImages.length, "Novas:", newImages.length);
-    setUploadingImages(true);
-
-    if (!title || !description || !price || latitude === null || longitude === null) {
-      setError("Preencha todos os campos obrigatórios e selecione a localização no mapa.");
-      setUploadingImages(false);
+    if (
+      !title ||
+      !description ||
+      !price ||
+      !country ||
+      !stateName ||
+      !city ||
+      !areaTotal ||
+      !legalStatus
+    ) {
+      setError("Preencha os campos obrigatórios.");
       return;
     }
 
-    const totalMedia = existingImages.length + newImages.length + existingVideoUrls.length + videos.length;
-    console.log("🛠️ Diagnóstico de Mídia:", {
-      existingImages: existingImages.length,
-      newImages: newImages.length,
-      existingVideos: existingVideoUrls.length,
-      newVideos: videos.length,
-      total: totalMedia
-    });
+    if (latitude === null || longitude === null) {
+      setError("Selecione a localização no mapa.");
+      return;
+    }
 
-    if (totalMedia === 0) {
-      console.warn("⚠️ Nenhuma mídia detectada!");
-      setError("Mantenha pelo menos uma imagem ou vídeo no anúncio.");
-      setUploadingImages(false);
-      // Alerta emergencial para debug online
-      window.alert(`Erro de Mídia: O sistema detectou 0 arquivos.\nFotos: ${existingImages.length}\nNovas Fotos: ${newImages.length}\nVídeos Atuais: ${existingVideoUrls.length}\nNovos Vídeos: ${videos.length}`);
+    if (existingImages.length + newImages.length === 0 && existingVideoUrls.length + videos.length === 0) {
+      setError("Mantenha pelo menos uma mídia (foto ou vídeo) no anúncio.");
       return;
     }
 
