@@ -342,14 +342,16 @@ export default function VideoCreatorModal({
     await new Promise(r => setTimeout(r, 200));
 
     // 2. Lógica de renderização frame-a-frame otimizada
-    const targetTotalDuration = 60; // Máximo de 60 segundos
+    const targetTotalDuration = 59; // Máximo de 59 segundos cravados (margem segura pro Insta)
     const fps = 30;
     
     // Prioridade para vídeos se houver
     if (loadedVideos.length > 0) {
+        const maxDurationPerClip = targetTotalDuration / loadedVideos.length;
+        
         for (let vIndex = 0; vIndex < loadedVideos.length; vIndex++) {
             const vid = loadedVideos[vIndex];
-            const duration = Math.min(vid.duration, 10); // Máximo 10s por clipe
+            const duration = Math.min(vid.duration, maxDurationPerClip); // Corta matematicamente pra caber nos 59s
             const framesInVideo = duration * fps;
             
             vid.currentTime = 0;
