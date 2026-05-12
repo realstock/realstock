@@ -422,6 +422,8 @@ function AnunciarFormContent() {
 
   const [loading, setLoading] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [statusMessage, setStatusMessage] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -871,16 +873,40 @@ function AnunciarFormContent() {
     }
 
     try {
-      setLoading(true);
+      setUploadingImages(true);
+      setUploadProgress(5);
+      setStatusMessage("Preparando arquivos...");
 
-      const uploadedImageUrls = await uploadImagesAndGetUrls();
+      const totalSteps = images.length + (reelsMusic ? 1 : 0) + videos.length + 1; // +1 for final save
+      let currentStep = 0;
+
+      const updateProgress = (msg: string) => {
+        currentStep++;
+        const pct = Math.round((currentStep / totalSteps) * 90) + 5;
+        setUploadProgress(pct);
+        setStatusMessage(msg);
+      };
+
+      // Upload de Imagens
+      const uploadedImageUrls: string[] = [];
+      if (images.length > 0) {
+        for (const image of images) {
+            updateProgress(`Enviando fotos (${uploadedImageUrls.length + 1}/${images.length})...`);
+            const formData = new FormData();
+            formData.append("file", image);
+            const uploadRes = await fetch("/api/upload-image", { method: "POST", body: formData });
+            const data = await uploadRes.json();
+            if (data.success) uploadedImageUrls.push(data.imageUrl);
+        }
+      }
       
       // Upload de Música do Reel
       let uploadedMusicUrl = "";
       if (reelsMusic) {
+          updateProgress("Enviando trilha sonora...");
           const formData = new FormData();
           formData.append("file", reelsMusic);
-          const res = await fetch("/api/upload-image", { // Usando a mesma API genérica
+          const res = await fetch("/api/upload-image", {
               method: "POST",
               body: formData,
           });
@@ -892,9 +918,10 @@ function AnunciarFormContent() {
       const uploadedVideoUrls: string[] = [];
       if (videos.length > 0) {
           for (const file of videos) {
+              updateProgress(`Enviando vídeos (${uploadedVideoUrls.length + 1}/${videos.length})...`);
               const formData = new FormData();
               formData.append("file", file);
-              const res = await fetch("/api/upload-image", { // Usando a mesma API de upload genérico
+              const res = await fetch("/api/upload-image", {
                   method: "POST",
                   body: formData,
               });
@@ -902,6 +929,8 @@ function AnunciarFormContent() {
               if (data.success) uploadedVideoUrls.push(data.imageUrl);
           }
       }
+
+      updateProgress("Finalizando publicação no banco de dados...");
 
       const payload = {
         category,
@@ -1244,6 +1273,10 @@ function AnunciarFormContent() {
       router.replace(`/login?callbackUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`);
     }
     return null;
+  }
+
+  if (uploadingImages) {
+    return <LoadingScreen title={statusMessage} subtitle={`${uploadProgress}% concluído`} />;
   }
 
   return (
