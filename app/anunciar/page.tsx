@@ -981,8 +981,11 @@ function AnunciarFormContent() {
         reels_music_url: uploadedMusicUrl || existingMusicUrl,
       };
 
-      const res = await fetch("/api/anunciar", {
-        method: "POST",
+      const endpoint = isEditing ? `/api/anunciar/${editId}` : "/api/anunciar";
+      const method = isEditing ? "PUT" : "POST";
+
+      const res = await fetch(endpoint, {
+        method,
         headers: {
           "Content-Type": "application/json",
         },
