@@ -80,6 +80,7 @@ export default function VideoCreatorModal({
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [isIncorporateLoading, setIsIncorporateLoading] = useState(false);
+  const [incorporateProgress, setIncorporateProgress] = useState(0);
   const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
   const [isPaid, setIsPaid] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -612,16 +613,38 @@ export default function VideoCreatorModal({
                               onClick={async () => {
                                 try {
                                   setIsIncorporateLoading(true);
+                                  setIncorporateProgress(0);
                                   const formData = new FormData();
                                   formData.append("file", videoBlob!, `video-${propertyId}.webm`);
                                   formData.append("orderID", "FREE");
                                   formData.append("propertyId", propertyId.toString());
 
-                                  const res = await fetch("/api/minha-conta/video-upload", { 
-                                    method: "POST", 
-                                    body: formData 
+                                  const result: any = await new Promise((resolve, reject) => {
+                                    const xhr = new XMLHttpRequest();
+                                    xhr.open("POST", "/api/minha-conta/video-upload");
+
+                                    xhr.upload.onprogress = (event) => {
+                                      if (event.lengthComputable) {
+                                        const percentage = Math.round((event.loaded * 100) / event.total);
+                                        setIncorporateProgress(percentage);
+                                      }
+                                    };
+
+                                    xhr.onload = () => {
+                                      if (xhr.status >= 200 && xhr.status < 300) {
+                                        try {
+                                          resolve(JSON.parse(xhr.responseText));
+                                        } catch (e) {
+                                          reject(new Error("Erro ao ler resposta do servidor."));
+                                        }
+                                      } else {
+                                        reject(new Error("Erro no servidor: " + xhr.statusText));
+                                      }
+                                    };
+
+                                    xhr.onerror = () => reject(new Error("Falha na rede ao tentar enviar o vídeo."));
+                                    xhr.send(formData);
                                   });
-                                  const result = await res.json();
                                   
                                   if (result.success) {
                                     setIsPaid(true);
@@ -632,13 +655,29 @@ export default function VideoCreatorModal({
                                   alert("Erro ao finalizar incorporação: " + e.message);
                                 } finally {
                                   setIsIncorporateLoading(false);
+                                  setIncorporateProgress(0);
                                 }
                               }}
                               disabled={isIncorporateLoading}
-                              className="flex items-center justify-center gap-2 rounded-2xl bg-indigo-500 py-4 font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-400 active:scale-95 disabled:opacity-50"
+                              className="relative flex items-center justify-center gap-2 overflow-hidden rounded-2xl bg-indigo-500 py-4 font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-400 active:scale-95 disabled:opacity-100"
                             >
-                              {isIncorporateLoading ? <Loader2 className="animate-spin" size={18} /> : <Film size={18} />}
-                              Incorporar ao Anúncio Agora
+                              {isIncorporateLoading ? (
+                                <>
+                                  <div 
+                                    className="absolute left-0 top-0 h-full bg-indigo-600 transition-all duration-300"
+                                    style={{ width: `${incorporateProgress}%` }}
+                                  />
+                                  <div className="relative z-10 flex items-center gap-2">
+                                    <Loader2 className="animate-spin" size={18} />
+                                    {incorporateProgress > 0 ? `Enviando para nuvem... ${incorporateProgress}%` : 'Preparando upload...'}
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <Film size={18} className="relative z-10" />
+                                  <span className="relative z-10">Incorporar ao Anúncio Agora</span>
+                                </>
+                              )}
                             </button>
                           </>
                         ) : (
