@@ -616,10 +616,21 @@ function EditarAnuncioContent() {
       return;
     }
 
-    if (existingImages.length + newImages.length === 0) {
-      console.warn("⚠️ Nenhuma imagem detectada no envio!");
-      setError("Mantenha pelo menos uma imagem no anúncio.");
+    const totalMedia = existingImages.length + newImages.length + existingVideoUrls.length + videos.length;
+    console.log("🛠️ Diagnóstico de Mídia:", {
+      existingImages: existingImages.length,
+      newImages: newImages.length,
+      existingVideos: existingVideoUrls.length,
+      newVideos: videos.length,
+      total: totalMedia
+    });
+
+    if (totalMedia === 0) {
+      console.warn("⚠️ Nenhuma mídia detectada!");
+      setError("Mantenha pelo menos uma imagem ou vídeo no anúncio.");
       setUploadingImages(false);
+      // Alerta emergencial para debug online
+      window.alert(`Erro de Mídia: O sistema detectou 0 arquivos.\nFotos: ${existingImages.length}\nNovas Fotos: ${newImages.length}\nVídeos Atuais: ${existingVideoUrls.length}\nNovos Vídeos: ${videos.length}`);
       return;
     }
 
