@@ -719,12 +719,20 @@ function EditarAnuncioContent() {
           }
       }
 
+      // Garantir que números sejam válidos
+      const safePrice = Number(String(price).replace(/\./g, "").replace(",", "."));
+      const safeLat = Number(latitude);
+      const safeLon = Number(longitude);
+
+      if (isNaN(safePrice)) throw new Error("Preço inválido. Use apenas números.");
+      if (isNaN(safeLat) || isNaN(safeLon)) throw new Error("Coordenadas geográficas inválidas.");
+
       const payload = {
         category,
         property_type: propertyType,
         title,
         description,
-        price: Number(price),
+        price: safePrice,
         legal_status: legalStatus,
         area_total: areaTotal,
         area_built: areaBuilt,
@@ -745,21 +753,20 @@ function EditarAnuncioContent() {
         street,
         address_number: addressNumber,
         zip_code: zipCode,
-        google_maps_link: buildGoogleMapsLinkFromCoords(latitude, longitude),
-        google_maps_thumbnail: buildGoogleMapsThumbnail(latitude, longitude),
+        google_maps_link: buildGoogleMapsLinkFromCoords(safeLat, safeLon),
+        google_maps_thumbnail: buildGoogleMapsThumbnail(safeLat, safeLon),
         youtube_link: youtubeLink,
         youtube_thumbnail: buildYoutubeThumbnail(youtubeLink),
         topography_points: topographyPoints.filter(Boolean).join(","),
-        latitude: Number(latitude),
-        longitude: Number(longitude),
+        latitude: safeLat,
+        longitude: safeLon,
         images: [...existingImages.map((img) => img.imageUrl), ...uploadedNewImageUrls],
         videos: uploadedVideoUrls,
         reels_music_url: uploadedMusicUrl,
       };
 
       updateProgress("Finalizando salvamento...");
-
-      console.log("📤 Enviando Payload para o servidor:", payload);
+      console.log("📤 Payload preparado:", payload);
 
       const res = await fetch(`/api/anunciar/${id}`, {
         method: "PUT",

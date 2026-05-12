@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
         // 1. Paid Views (Meta Ads)
         if (lot.metaAdId && igToken) {
             try {
-                const res = await fetch(`https://graph.facebook.com/v19.0/${lot.metaAdId}/insights?fields=impressions&access_token=${igToken}`);
+                const res = await fetch(`https://graph.facebook.com/v19.0/${lot.metaAdId}/insights?fields=impressions&date_preset=maximum&access_token=${igToken}`);
                 const data = await res.json();
                 if (data.data && data.data[0]) {
                     paidViews = Number(data.data[0].impressions || 0);
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
         const igMediaId = lot.instagramMediaId;
         if (igMediaId && igToken) {
             try {
-                const res = await fetch(`https://graph.facebook.com/v19.0/${igMediaId}/insights?metric=impressions&access_token=${igToken}`);
+                const res = await fetch(`https://graph.facebook.com/v19.0/${igMediaId}/insights?metric=impressions&date_preset=maximum&access_token=${igToken}`);
                 const data = await res.json();
                 if (data.data && data.data[0]) {
                     organicViews = data.data[0].values[0].value || 0;
@@ -99,7 +99,7 @@ export async function GET(req: NextRequest) {
         // 1. Paid Views (Meta Ads)
         if (prop.metaAdId && igToken) {
             try {
-                const res = await fetch(`https://graph.facebook.com/v19.0/${prop.metaAdId}/insights?fields=impressions&access_token=${igToken}`);
+                const res = await fetch(`https://graph.facebook.com/v19.0/${prop.metaAdId}/insights?fields=impressions&date_preset=maximum&access_token=${igToken}`);
                 const data = await res.json();
                 if (data.data && data.data[0]) {
                     paidViews = Number(data.data[0].impressions || 0);
@@ -111,7 +111,7 @@ export async function GET(req: NextRequest) {
         const igMediaId = prop.instagramMediaId;
         if (igMediaId && igToken) {
             try {
-                const res = await fetch(`https://graph.facebook.com/v19.0/${igMediaId}/insights?metric=impressions&access_token=${igToken}`);
+                const res = await fetch(`https://graph.facebook.com/v19.0/${igMediaId}/insights?metric=impressions&date_preset=maximum&access_token=${igToken}`);
                 const data = await res.json();
                 if (data.data && data.data[0]) {
                     organicViews = data.data[0].values[0].value || 0;

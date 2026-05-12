@@ -118,10 +118,10 @@ export default function PropertyLocationPicker({
           position: Cesium.Cartesian3.fromDegrees(longitude, latitude),
           billboard: {
             image: "/pin.png",
-            width: 40,
-            height: 40,
-            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-            disableDepthTestDistance: Number.POSITIVE_INFINITY,
+            verticalOrigin: 1, // VerticalOrigin.BOTTOM
+            heightReference: 1, // HeightReference.RELATIVE_TO_GROUND
+            width: 32,
+            height: 32,
           },
         });
       }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
