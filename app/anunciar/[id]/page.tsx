@@ -135,6 +135,107 @@ function SortableItem({ id, children }: { id: string | number, children: React.R
   );
 }
 
+const MAX_IMAGE_SIZE_BYTES = 500 * 1024; // 500 KB
+const MAX_DIMENSION = 1920;
+
+function loadImageFromFile(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Falha ao carregar imagem para compressão."));
+    };
+    img.src = url;
+  });
+}
+
+function canvasToBlob(
+  canvas: HTMLCanvasElement,
+  type: string,
+  quality: number
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error("Falha ao converter canvas para blob."));
+      },
+      type,
+      quality
+    );
+  });
+}
+
+async function compressImageToMax500KB(file: File): Promise<File> {
+  if (file.size <= MAX_IMAGE_SIZE_BYTES) {
+    return file;
+  }
+
+  const img = await loadImageFromFile(file);
+
+  let width = img.width;
+  let height = img.height;
+
+  if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+    const ratio = Math.min(MAX_DIMENSION / width, MAX_DIMENSION / height);
+    width = Math.round(width * ratio);
+    height = Math.round(height * ratio);
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("Não foi possível preparar a compressão da imagem.");
+  }
+
+  ctx.drawImage(img, 0, 0, width, height);
+
+  const targetType = "image/jpeg";
+  const originalBaseName = file.name.replace(/\.[^.]+$/, "");
+  let quality = 0.9;
+
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const blob = await canvasToBlob(canvas, targetType, quality);
+
+    if (blob.size <= MAX_IMAGE_SIZE_BYTES) {
+      return new File([blob], `${originalBaseName}.jpg`, {
+        type: targetType,
+        lastModified: Date.now(),
+      });
+    }
+
+    quality -= 0.1;
+  }
+
+  let resizeFactor = 0.9;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    width = Math.round(width * resizeFactor);
+    height = Math.round(height * resizeFactor);
+    canvas.width = width;
+    canvas.height = height;
+    ctx.drawImage(img, 0, 0, width, height);
+    
+    const blob = await canvasToBlob(canvas, targetType, 0.5);
+    if (blob.size <= MAX_IMAGE_SIZE_BYTES) {
+      return new File([blob], `${originalBaseName}.jpg`, {
+        type: targetType,
+        lastModified: Date.now(),
+      });
+    }
+    resizeFactor -= 0.2;
+  }
+
+  throw new Error("Não foi possível comprimir a imagem para menos de 500 KB.");
+}
+
 function EditarAnuncioContent() {
   const params = useParams();
   const router = useRouter();
@@ -275,7 +376,7 @@ function EditarAnuncioContent() {
   const [longitude, setLongitude] = useState<number | null>(null);
 
   const [existingImages, setExistingImages] = useState<any[]>([]);
-  const [newImages, setNewImages] = useState<string[]>([]);
+  const [newImages, setNewImages] = useState<{id: string, file: File, preview: string}[]>([]);
 
   // REELS MEDIA STATES
   const [videos, setVideos] = useState<File[]>([]);
@@ -314,8 +415,8 @@ function EditarAnuncioContent() {
     const { active, over } = event;
     if (active.id !== over.id) {
       setNewImages((items) => {
-        const oldIndex = items.indexOf(active.id);
-        const newIndex = items.indexOf(over.id);
+        const oldIndex = items.findIndex((i) => i.id === active.id);
+        const newIndex = items.findIndex((i) => i.id === over.id);
         return arrayMove(items, oldIndex, newIndex);
       });
     }
@@ -414,19 +515,45 @@ function EditarAnuncioContent() {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
-    const converted = await Promise.all(
-      files.map(
-        (file) =>
-          new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(String(reader.result));
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          })
-      )
-    );
+    setError("");
 
-    setNewImages((prev) => [...prev, ...converted]);
+    const totalAfterAdd = existingImages.length + newImages.length + files.length;
+    if (totalAfterAdd > 10) {
+      setError(`Você pode ter no máximo 10 fotos ativas no total.`);
+      e.target.value = "";
+      return;
+    }
+
+    try {
+      setUploadingImages(true);
+
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+      const invalidType = files.find((file) => !allowedTypes.includes(file.type));
+
+      if (invalidType) {
+        throw new Error(
+          `A imagem "${invalidType.name}" tem formato inválido. Use JPG, PNG ou WEBP.`
+        );
+      }
+
+      // Comprime as fotos para no máximo 500KB e formata para JPG
+      const processedFiles = await Promise.all(
+        files.map((file) => compressImageToMax500KB(file))
+      );
+
+      const newItems = processedFiles.map(file => ({
+        id: `new-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        file,
+        preview: URL.createObjectURL(file)
+      }));
+
+      setNewImages((prev) => [...prev, ...newItems]);
+    } catch (err: any) {
+      setError(err.message || "Erro ao processar as imagens.");
+    } finally {
+      setUploadingImages(false);
+      e.target.value = "";
+    }
   }
 
   async function handleVideosChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -674,14 +801,11 @@ function EditarAnuncioContent() {
       // 1. Upload de Imagens
       const uploadedNewImageUrls: string[] = [];
       if (newImages.length > 0) {
-          for (const image of newImages) {
+          for (const item of newImages) {
             updateProgress(`Enviando fotos (${uploadedNewImageUrls.length + 1}/${newImages.length})...`);
-            const res = await fetch(image);
-            const blob = await res.blob();
-            const file = new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" });
             
             const formData = new FormData();
-            formData.append("file", file);
+            formData.append("file", item.file);
             const uploadRes = await fetch("/api/upload-image", { method: "POST", body: formData });
             const data = await uploadRes.json();
             if (data.success) {
@@ -1278,12 +1402,12 @@ function EditarAnuncioContent() {
                        <div className="space-y-3 pt-4 border-t border-white/5">
                           <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Novas Fotos (Upload):</div>
                           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEndNewImages}>
-                             <SortableContext items={newImages} strategy={rectSortingStrategy}>
+                             <SortableContext items={newImages.map(img => img.id)} strategy={rectSortingStrategy}>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                   {newImages.map((image, index) => (
-                                      <SortableItem key={image} id={image}>
+                                   {newImages.map((img, index) => (
+                                      <SortableItem key={img.id} id={img.id}>
                                          <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-900">
-                                            <img src={image} alt="" className="h-24 w-full object-cover" />
+                                            <img src={img.preview} alt="" className="h-24 w-full object-cover" />
                                             <button
                                               type="button"
                                               onClick={() => removeNewImage(index)}
