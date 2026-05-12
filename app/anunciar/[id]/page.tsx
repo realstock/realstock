@@ -607,27 +607,19 @@ function EditarAnuncioContent() {
       return;
     }
 
-    if (
-      !title ||
-      !description ||
-      !price ||
-      !country ||
-      !stateName ||
-      !city ||
-      !areaTotal ||
-      !legalStatus
-    ) {
-      setError("Preencha os campos obrigatórios.");
-      return;
-    }
+    console.log("🛠️ Iniciando handleSubmit. Imagens atuais:", existingImages.length, "Novas:", newImages.length);
+    setUploadingImages(true);
 
-    if (latitude === null || longitude === null) {
-      setError("Selecione a localização no mapa.");
+    if (!title || !description || !price || latitude === null || longitude === null) {
+      setError("Preencha todos os campos obrigatórios e selecione a localização no mapa.");
+      setUploadingImages(false);
       return;
     }
 
     if (existingImages.length + newImages.length === 0) {
+      console.warn("⚠️ Nenhuma imagem detectada no envio!");
       setError("Mantenha pelo menos uma imagem no anúncio.");
+      setUploadingImages(false);
       return;
     }
 
