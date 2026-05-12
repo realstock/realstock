@@ -684,7 +684,11 @@ function EditarAnuncioContent() {
             formData.append("file", file);
             const uploadRes = await fetch("/api/upload-image", { method: "POST", body: formData });
             const data = await uploadRes.json();
-            if (data.success) uploadedNewImageUrls.push(data.imageUrl);
+            if (data.success) {
+              uploadedNewImageUrls.push(data.imageUrl);
+            } else {
+              throw new Error(`Falha ao enviar foto: ${data.error}`);
+            }
           }
       }
       
@@ -715,7 +719,11 @@ function EditarAnuncioContent() {
               formData.append("file", file);
               const res = await fetch("/api/upload-image", { method: "POST", body: formData });
               const data = await res.json();
-              if (data.success) uploadedVideoUrls.push(data.imageUrl);
+              if (data.success) {
+                uploadedVideoUrls.push(data.imageUrl);
+              } else {
+                throw new Error(`Falha ao enviar vídeo: ${data.error}`);
+              }
           }
       }
 

@@ -896,7 +896,11 @@ function AnunciarFormContent() {
             formData.append("file", image);
             const uploadRes = await fetch("/api/upload-image", { method: "POST", body: formData });
             const data = await uploadRes.json();
-            if (data.success) uploadedImageUrls.push(data.imageUrl);
+            if (data.success) {
+                uploadedImageUrls.push(data.imageUrl);
+            } else {
+                throw new Error(`Falha ao enviar foto: ${data.error}`);
+            }
         }
       }
       
@@ -911,7 +915,11 @@ function AnunciarFormContent() {
               body: formData,
           });
           const data = await res.json();
-          if (data.success) uploadedMusicUrl = data.imageUrl;
+          if (data.success) {
+              uploadedMusicUrl = data.imageUrl;
+          } else {
+              throw new Error(`Falha ao enviar a trilha sonora: ${data.error}`);
+          }
       }
 
       // Upload de Vídeos
@@ -926,7 +934,11 @@ function AnunciarFormContent() {
                   body: formData,
               });
               const data = await res.json();
-              if (data.success) uploadedVideoUrls.push(data.imageUrl);
+              if (data.success) {
+                  uploadedVideoUrls.push(data.imageUrl);
+              } else {
+                  throw new Error(`Falha ao enviar vídeo: ${data.error}`);
+              }
           }
       }
 
