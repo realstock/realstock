@@ -35,7 +35,7 @@ export async function GET(
     if (isPortfolio) {
       property = {
         id: 0,
-        title: "Portfólio Global RealStock",
+        title: `Portfólio de ${user.name || user.email}`,
         city: null,
         state: null,
         ownerId: user.id,
