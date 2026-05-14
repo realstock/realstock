@@ -46,12 +46,12 @@ export async function GET(req: NextRequest) {
         const igMediaId = lot.instagramMediaId;
         if (igMediaId && igToken) {
             try {
-                // Tentar primeiro as métricas de post padrão (impressions) e depois plays se for vídeo
-                const res = await fetch(`https://graph.facebook.com/v19.0/${igMediaId}/insights?metric=impressions,plays&date_preset=maximum&access_token=${igToken}`);
+                // Usando v21.0 e tentando múltiplas métricas para contornar instabilidade
+                const res = await fetch(`https://graph.facebook.com/v21.0/${igMediaId}/insights?metric=impressions,plays,video_views&date_preset=maximum&access_token=${igToken}`);
                 const data = await res.json();
                 if (data.data) {
                     const impObj = data.data.find((m: any) => m.name === 'impressions');
-                    const playsObj = data.data.find((m: any) => m.name === 'plays');
+                    const playsObj = data.data.find((m: any) => m.name === 'plays' || m.name === 'video_views');
                     organicViews = Math.max(
                         impObj?.values[0]?.value || 0,
                         playsObj?.values[0]?.value || 0
@@ -123,11 +123,11 @@ export async function GET(req: NextRequest) {
         const igMediaId = prop.instagramMediaId;
         if (igMediaId && igToken) {
             try {
-                const res = await fetch(`https://graph.facebook.com/v19.0/${igMediaId}/insights?metric=impressions,plays&date_preset=maximum&access_token=${igToken}`);
+                const res = await fetch(`https://graph.facebook.com/v21.0/${igMediaId}/insights?metric=impressions,plays,video_views&date_preset=maximum&access_token=${igToken}`);
                 const data = await res.json();
                 if (data.data) {
                     const impObj = data.data.find((m: any) => m.name === 'impressions');
-                    const playsObj = data.data.find((m: any) => m.name === 'plays');
+                    const playsObj = data.data.find((m: any) => m.name === 'plays' || m.name === 'video_views');
                     organicViews = Math.max(
                         impObj?.values[0]?.value || 0,
                         playsObj?.values[0]?.value || 0

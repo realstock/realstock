@@ -201,7 +201,8 @@ export async function GET(
         try {
             const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
             if (igToken) {
-                const baseRes = await fetch(`https://graph.facebook.com/v19.0/${item.id}?fields=like_count,comments_count,timestamp,media_type,video_id&access_token=${igToken}`);
+                // Usando v21.0 para maior estabilidade em métricas recentes
+                const baseRes = await fetch(`https://graph.facebook.com/v21.0/${item.id}?fields=like_count,comments_count,timestamp,media_type,video_id,video_play_count&access_token=${igToken}`);
                 const baseData = await baseRes.json();
                 
                 if (baseData && !baseData.error) {
@@ -213,26 +214,32 @@ export async function GET(
                     const isVideo = baseData.media_type === 'VIDEO' || !!baseData.video_id;
                     baseRecord.type = isVideo ? 'reels' : (baseData.media_type === 'CAROUSEL_ALBUM' ? 'carousel' : 'image');
 
-                    let views = 0;
+                    let views = baseData.video_play_count || 0;
                     let reach = 0;
 
-                    if (baseData.media_type === 'VIDEO' || baseData.video_id) {
+                    if (isVideo) {
                         const vId = baseData.video_id || item.id;
-                        const fbVidRes = await fetch(`https://graph.facebook.com/v19.0/${vId}?fields=views,play_count,video_play_count&access_token=${igToken}`);
+                        const fbVidRes = await fetch(`https://graph.facebook.com/v21.0/${vId}?fields=views,play_count,video_play_count&access_token=${igToken}`);
                         const fbVidData = await fbVidRes.json();
                         if (fbVidData && !fbVidData.error) {
-                            views = Math.max(fbVidData.views || 0, fbVidData.play_count || 0, fbVidData.video_play_count || 0);
+                            views = Math.max(views, fbVidData.views || 0, fbVidData.play_count || 0, fbVidData.video_play_count || 0);
                         }
                     }
 
                     try {
-                        // Para Reels/Vídeo usamos 'plays', para outros 'views' (ou 'impressions' se disponível)
-                        const metricName = isVideo ? 'plays,reach' : 'impressions,reach';
-                        const insRes = await fetch(`https://graph.facebook.com/v19.0/${item.id}/insights?metric=${metricName}&access_token=${igToken}`);
+                        // Tentar o máximo de métricas possíveis para contornar a instabilidade
+                        const metricName = isVideo ? 'plays,reach,total_interactions' : 'impressions,reach,engagement';
+                        const insRes = await fetch(`https://graph.facebook.com/v21.0/${item.id}/insights?metric=${metricName}&access_token=${igToken}`);
                         const insData = await insRes.json();
                         
                         if (insData?.data) {
-                            const vObj = insData.data.find((m: any) => m.name === 'views' || m.name === 'plays' || m.name === 'impressions');
+                            // Buscar qualquer métrica que represente visualização/alcance
+                            const vObj = insData.data.find((m: any) => 
+                                m.name === 'plays' || 
+                                m.name === 'impressions' || 
+                                m.name === 'video_views' ||
+                                m.name === 'views'
+                            );
                             if (vObj) views = Math.max(views, vObj.values?.[0]?.value || 0);
                             
                             const rObj = insData.data.find((m: any) => m.name === 'reach');
@@ -305,13 +312,14 @@ export async function GET(
 
             if (fbToken) {
                 try {
-                    const res = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}?fields=id,shares,comments.summary(total_count),likes.summary(total_count),updated_time,views&access_token=${fbToken}`);
+                    // Tentar v21.0 para Facebook também
+                    const res = await fetch(`https://graph.facebook.com/v21.0/${fbSession.publishedPostId}?fields=id,shares,comments.summary(total_count),likes.summary(total_count),updated_time,views,video_views&access_token=${fbToken}`);
                     const fbData = await res.json();
                     if (fbData && !fbData.error) {
                         baseRecord.likes = fbData.likes?.summary?.total_count || 0;
                         baseRecord.comments = fbData.comments?.summary?.total_count || 0;
                         baseRecord.shares = fbData.shares?.count || 0;
-                        baseRecord.views = fbData.views || 0;
+                        baseRecord.views = Math.max(fbData.views || 0, fbData.video_views || 0);
                         baseRecord.publishedDate = fbData.updated_time || fbSession.createdAt;
                     } else {
                         console.warn(`[Insights] FB API error for ${fbSession.publishedPostId}:`, fbData?.error?.message);
