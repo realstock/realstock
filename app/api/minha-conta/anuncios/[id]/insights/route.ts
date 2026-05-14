@@ -59,11 +59,18 @@ export async function GET(
     }
 
 
-    // Get other sessions
-    const goSession = await prisma.googleAdsSession.findFirst({
+    // Get other sessions — also fallback to listingId=0 for old portfolio campaigns
+    let goSession = await prisma.googleAdsSession.findFirst({
         where: { listingId: effectiveListingId, status: { contains: "ACTIVE" } },
         orderBy: { createdAt: 'desc' }
     });
+    // Backward compat: campaigns created before portfolio ID convention used listingId=0
+    if (!goSession && isPortfolio) {
+        goSession = await prisma.googleAdsSession.findFirst({
+            where: { listingId: 0, status: { contains: "ACTIVE" } },
+            orderBy: { createdAt: 'desc' }
+        });
+    }
 
     const meSession = await prisma.metaAdsSession.findFirst({
         where: { listingId: effectiveListingId },

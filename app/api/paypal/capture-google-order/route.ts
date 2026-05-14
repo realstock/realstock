@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createRealStockGoogleCampaign } from "@/lib/googleAds";
+import { getPortfolioListingId } from "@/lib/portfolioId";
+
 
 async function getPayPalAccessToken() {
   const base = process.env.PAYPAL_API_BASE!;
@@ -162,7 +164,7 @@ export async function POST(req: NextRequest) {
 
     await prisma.googleAdsSession.create({
       data: {
-        listingId: Number(propertyId),
+        listingId: Number(propertyId) === 0 ? getPortfolioListingId(user.id) : Number(propertyId),
         campaignId: finalCampaignId,
         adGroupId: finalAdGroupId,
         status: finalStatus,
