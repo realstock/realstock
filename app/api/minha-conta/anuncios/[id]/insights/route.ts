@@ -110,6 +110,25 @@ export async function GET(
 
     for (const item of igMediaIds) {
         if (!item.id) continue;
+
+        // Base record always added from DB data
+        const baseRecord: any = {
+            type: item.type || 'carousel',
+            likes: 0,
+            comments: 0,
+            views: 0,
+            reach: 0,
+            publishedDate: null,
+            permalink: null,
+        };
+
+        // Try to find permalink from session validationReport
+        const matchSession = igSessions.find(s => s.publishedMediaId === item.id);
+        if (matchSession?.validationReport && typeof matchSession.validationReport === 'object') {
+            baseRecord.permalink = (matchSession.validationReport as any).permalink || null;
+            baseRecord.publishedDate = matchSession.createdAt;
+        }
+
         try {
             const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
             if (igToken) {
@@ -117,10 +136,14 @@ export async function GET(
                 const baseData = await baseRes.json();
                 
                 if (baseData && !baseData.error) {
+                    baseRecord.likes = baseData.like_count || 0;
+                    baseRecord.comments = baseData.comments_count || 0;
+                    baseRecord.publishedDate = baseData.timestamp || baseRecord.publishedDate;
+                    baseRecord.type = baseData.media_type === 'VIDEO' ? 'reels' : (baseData.media_type === 'CAROUSEL_ALBUM' ? 'carousel' : 'image');
+
                     let views = 0;
                     let reach = 0;
 
-                    // Tentar métricas de Reels/Video primeiro (Mais precisas para conteúdo impulsionado)
                     if (baseData.media_type === 'VIDEO' || baseData.video_id) {
                         const vId = baseData.video_id || item.id;
                         const fbVidRes = await fetch(`https://graph.facebook.com/v19.0/${vId}?fields=views,play_count,video_play_count&access_token=${igToken}`);
@@ -130,35 +153,26 @@ export async function GET(
                         }
                     }
 
-                    // Tentar insights padrão (Organic)
                     try {
-                        const metrics = 'views,reach';
-                        const insRes = await fetch(`https://graph.facebook.com/v19.0/${item.id}/insights?metric=${metrics}&access_token=${igToken}`);
+                        const insRes = await fetch(`https://graph.facebook.com/v19.0/${item.id}/insights?metric=views,reach&access_token=${igToken}`);
                         const insData = await insRes.json();
                         if (insData?.data) {
                             const vObj = insData.data.find((m: any) => m.name === 'views');
                             if (vObj) views = Math.max(views, vObj.values?.[0]?.value || 0);
-                            
                             const rObj = insData.data.find((m: any) => m.name === 'reach');
                             if (rObj) reach = Math.max(reach, rObj.values?.[0]?.value || 0);
                         }
                     } catch(e) {}
 
-                    // Integrar com as métricas pagas se for o post principal
-                    const finalViews = Math.max(views, paidMetrics.views);
-                    const finalReach = Math.max(reach, paidMetrics.reach);
-
-                    insights.instagram.posts.push({
-                        type: baseData.media_type === 'VIDEO' ? 'reels' : (baseData.media_type === 'CAROUSEL_ALBUM' ? 'carousel' : 'image'),
-                        likes: baseData.like_count || 0,
-                        comments: baseData.comments_count || 0,
-                        views: finalViews,
-                        reach: finalReach,
-                        publishedDate: baseData.timestamp
-                    });
+                    baseRecord.views = Math.max(views, paidMetrics.views);
+                    baseRecord.reach = Math.max(reach, paidMetrics.reach);
+                } else {
+                    console.warn(`[Insights] IG API error for ${item.id}:`, baseData?.error?.message);
                 }
             }
         } catch(e) { console.error("IG ORGANIC ERROR", e); }
+
+        insights.instagram.posts.push(baseRecord);
     }
 
     // 3. FACEBOOK ORGANIC INSIGHTS
@@ -170,33 +184,39 @@ export async function GET(
     console.log(`[Insights] Found ${fbSessions.length} FB sessions for property ${propertyId}`);
 
     if (fbSessions.length > 0) {
-        try {
-            // Use the env token directly - it may already be a Page Token
-            const fbToken = process.env.INSTAGRAM_ACCESS_TOKEN;
+        const fbToken = process.env.INSTAGRAM_ACCESS_TOKEN;
+        for (const fbSession of fbSessions) {
+            if (!fbSession.publishedPostId) continue;
+
+            // Base record always added from DB
+            const baseRecord: any = {
+                type: fbSession.postType || 'carousel',
+                likes: 0,
+                comments: 0,
+                shares: 0,
+                views: 0,
+                publishedDate: fbSession.createdAt,
+                permalink: typeof fbSession.validationReport === 'object' ? (fbSession.validationReport as any)?.permalink : null,
+            };
+
             if (fbToken) {
-                for (const fbSession of fbSessions) {
-                    if (!fbSession.publishedPostId) continue;
-                    try {
-                        const res = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}?fields=id,shares,comments.summary(total_count),likes.summary(total_count),updated_time,views&access_token=${fbToken}`);
-                        const fbData = await res.json();
-                        console.log(`[Insights] FB post ${fbSession.publishedPostId}:`, JSON.stringify(fbData).substring(0, 200));
-                        
-                        if (fbData && !fbData.error) {
-                            insights.facebook.posts.push({
-                                type: fbSession.postType || 'carousel',
-                                likes: fbData.likes?.summary?.total_count || 0,
-                                comments: fbData.comments?.summary?.total_count || 0,
-                                shares: fbData.shares?.count || 0,
-                                views: fbData.views || 0,
-                                publishedDate: fbData.updated_time || fbSession.updatedAt
-                            });
-                        } else {
-                            console.error(`[Insights] FB post error:`, fbData?.error);
-                        }
-                    } catch(e) { console.error("FB POST FETCH ERROR", e); }
-                }
+                try {
+                    const res = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}?fields=id,shares,comments.summary(total_count),likes.summary(total_count),updated_time,views&access_token=${fbToken}`);
+                    const fbData = await res.json();
+                    if (fbData && !fbData.error) {
+                        baseRecord.likes = fbData.likes?.summary?.total_count || 0;
+                        baseRecord.comments = fbData.comments?.summary?.total_count || 0;
+                        baseRecord.shares = fbData.shares?.count || 0;
+                        baseRecord.views = fbData.views || 0;
+                        baseRecord.publishedDate = fbData.updated_time || fbSession.createdAt;
+                    } else {
+                        console.warn(`[Insights] FB API error for ${fbSession.publishedPostId}:`, fbData?.error?.message);
+                    }
+                } catch(e) { console.error("FB POST FETCH ERROR", e); }
             }
-        } catch(e) { console.error("FACEBOOK ORGANIC EXCEPTION:", e); }
+
+            insights.facebook.posts.push(baseRecord);
+        }
     }
 
     // 4. GOOGLE ADS INSIGHTS
