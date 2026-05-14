@@ -147,7 +147,12 @@ export async function createRealStockGoogleCampaign(
         ad: {
           responsive_search_ad: {
             headlines: headlines.slice(0, 15), 
-            descriptions: [
+            descriptions: isPortfolio ? [
+              { text: "Confira estes imoveis disponiveis na RealStock acesse o site" },
+              { text: "Encontre as melhores oportunidades do mercado imobiliario" },
+              { text: "Imoveis selecionados com qualidade e seguranca na RealStock" },
+              { text: "Acesse o site e veja fotos detalhes e contato direto agora" },
+            ] : [
               { text: "Conheca esta excelente oportunidade exclusiva da RealStock" },
               { text: "Opcao imperdivel para compra e investimento imobiliario" },
               { text: "Encontre os melhores imoveis da sua regiao com a RealStock" },

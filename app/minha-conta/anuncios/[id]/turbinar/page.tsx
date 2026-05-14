@@ -267,7 +267,11 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                        </h3>
                        
                        <p className="text-sm text-[#4d5156] leading-relaxed mb-3">
-                          <span className="font-bold text-[#4d5156]">Anúncio ·</span> {property.description || "Confira este excelente imóvel disponível na RealStock. Fotos exclusivas, detalhes completos e contato direto com o anunciante. Acesse agora!"}
+                          <span className="font-bold text-[#4d5156]">Anúncio ·</span>{" "}
+                          {id === '0'
+                            ? "Confira estes imóveis disponíveis na RealStock, acesse o site!"
+                            : (property.description || "Confira este excelente imóvel disponível na RealStock. Fotos exclusivas, detalhes completos e contato direto com o anunciante. Acesse agora!")
+                          }
                        </p>
 
                        {/* Callouts (Recursos de Frase de Destaque) */}
