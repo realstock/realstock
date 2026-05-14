@@ -28,13 +28,33 @@ export async function GET(
       return NextResponse.json({ success: false, error: "Usuário não encontrado" }, { status: 404 });
     }
 
-    const property = await prisma.property.findFirst({
-      where: { id: propertyId, ownerId: user.id },
-    });
+    const isPortfolio = propertyId === 0;
 
-    if (!property) {
-      return NextResponse.json({ success: false, error: "Anúncio não encontrado" }, { status: 404 });
+    // Para portfólio (id=0), criamos um objeto sintético com dados do usuário
+    let property: any;
+    if (isPortfolio) {
+      property = {
+        id: 0,
+        title: "Portfólio Global RealStock",
+        city: null,
+        state: null,
+        ownerId: user.id,
+        metaAdId: null,
+        metaCampaignId: null,
+        instagramMediaId: null,
+        instagramPermalink: null,
+        metaBoostedUntil: user.portfolioBoostedUntil,
+      };
+    } else {
+      property = await prisma.property.findFirst({
+        where: { id: propertyId, ownerId: user.id },
+      });
+
+      if (!property) {
+        return NextResponse.json({ success: false, error: "Anúncio não encontrado" }, { status: 404 });
+      }
     }
+
 
     // Get other sessions
     const goSession = await prisma.googleAdsSession.findFirst({
