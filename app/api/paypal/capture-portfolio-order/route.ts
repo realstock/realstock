@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getPortfolioListingId } from "@/lib/portfolioId";
 
 async function getPayPalAccessToken() {
   const base = process.env.PAYPAL_API_BASE!;
@@ -184,7 +185,7 @@ export async function POST(req: NextRequest) {
 
     await prisma.instagramPreviewSession.create({
        data: {
-         listingId: 0, // 0 = PORTFOLIO
+         listingId: getPortfolioListingId(user.id), // ex: user 5 → 900005
          status: "PUBLISHED",
          publishedMediaId: publishData.id,
          postType: postType === "reels" ? "reels" : "carousel",

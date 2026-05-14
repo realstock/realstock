@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getGoogleAdsCampaignInsights } from "@/lib/googleAds";
+import { getPortfolioListingId } from "@/lib/portfolioId";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -29,6 +30,8 @@ export async function GET(
     }
 
     const isPortfolio = propertyId === 0;
+    // For portfolio, use the user-specific listingId
+    const effectiveListingId = isPortfolio ? getPortfolioListingId(user.id) : propertyId;
 
     // Para portfólio (id=0), criamos um objeto sintético com dados do usuário
     let property: any;
@@ -58,12 +61,12 @@ export async function GET(
 
     // Get other sessions
     const goSession = await prisma.googleAdsSession.findFirst({
-        where: { listingId: propertyId, status: { contains: "ACTIVE" } },
+        where: { listingId: effectiveListingId, status: { contains: "ACTIVE" } },
         orderBy: { createdAt: 'desc' }
     });
 
     const meSession = await prisma.metaAdsSession.findFirst({
-        where: { listingId: propertyId },
+        where: { listingId: effectiveListingId },
         orderBy: { createdAt: 'desc' }
     });
     const metaSessionStatus = meSession?.status || null;
@@ -75,7 +78,7 @@ export async function GET(
 
     if (pageToken) {
         const adsSessions = await prisma.metaAdsSession.findMany({
-            where: { listingId: propertyId },
+            where: { listingId: effectiveListingId },
         });
 
         // Coletar todos os IDs possíveis de anúncios e campanhas
@@ -118,7 +121,7 @@ export async function GET(
 
     // 2. INSTAGRAM ORGANIC INSIGHTS
     const igSessions = await prisma.instagramPreviewSession.findMany({
-        where: { listingId: propertyId, status: "PUBLISHED" },
+        where: { listingId: effectiveListingId, status: "PUBLISHED" },
         orderBy: { createdAt: "desc" },
     });
     console.log(`[Insights] Found ${igSessions.length} IG sessions for property ${propertyId}`);
@@ -205,7 +208,7 @@ export async function GET(
 
     // 3. FACEBOOK ORGANIC INSIGHTS
     const fbSessions = await prisma.facebookFeedSession.findMany({
-        where: { listingId: propertyId, status: "PUBLISHED" },
+        where: { listingId: effectiveListingId, status: "PUBLISHED" },
         orderBy: { createdAt: "desc" },
     });
 
