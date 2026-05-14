@@ -113,6 +113,8 @@ export async function GET(
         igMediaIds.push({ id: property.instagramMediaId, type: 'reels' });
     }
 
+    let graphApiAvailable = false; // Track if Graph API is responding
+
     for (const item of igMediaIds) {
         if (!item.id) continue;
 
@@ -141,6 +143,7 @@ export async function GET(
                 const baseData = await baseRes.json();
                 
                 if (baseData && !baseData.error) {
+                    graphApiAvailable = true;
                     baseRecord.likes = baseData.like_count || 0;
                     baseRecord.comments = baseData.comments_count || 0;
                     baseRecord.publishedDate = baseData.timestamp || baseRecord.publishedDate;
@@ -259,6 +262,7 @@ export async function GET(
       totalImpact,
       isBoosted: !!(property.metaBoostedUntil && new Date(property.metaBoostedUntil) > new Date()) || !!goSession || !!property.instagramMediaId,
       metaSessionStatus,
+      apiUnavailable: igMediaIds.length > 0 && !graphApiAvailable,
       insights
     });
 

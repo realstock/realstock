@@ -115,7 +115,7 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
         );
     }
 
-    const { title, city, state, isBoosted, metaSessionStatus, insights } = data;
+    const { title, city, state, isBoosted, metaSessionStatus, apiUnavailable, insights } = data;
 
     const igTotalViews = insights.instagram?.posts?.reduce((sum: number, p: any) => sum + (p.views || 0), 0) || 0;
     const fbTotalViews = insights.facebook?.posts?.reduce((sum: number, p: any) => sum + (p.views || 0), 0) || 0;
@@ -152,6 +152,19 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                         </div>
                     )}
                 </div>
+
+                {/* API UNAVAILABLE WARNING */}
+                {apiUnavailable && (
+                    <div className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-5 py-4 text-amber-300">
+                        <span className="text-2xl mt-0.5">⚠️</span>
+                        <div>
+                            <div className="font-bold text-sm">Métricas temporariamente indisponíveis</div>
+                            <div className="text-xs text-amber-400/80 mt-1 leading-relaxed">
+                                A API do Instagram/Facebook está com instabilidade no momento. As publicações foram realizadas com sucesso, mas os dados de visualizações, curtidas e comentários podem aparecer zerados enquanto o serviço estiver fora do ar. Tente novamente em alguns minutos.
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col justify-center">
