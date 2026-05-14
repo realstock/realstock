@@ -103,7 +103,12 @@ export async function GET(
     });
     console.log(`[Insights] Found ${igSessions.length} IG sessions for property ${propertyId}`);
     
-    const igMediaIds = igSessions.map(s => ({ id: s.publishedMediaId, type: s.postType }));
+    // Mostrar apenas o post mais recente de cada tipo (reels e carousel)
+    const latestReels = igSessions.find(s => s.postType === 'reels');
+    const latestCarousel = igSessions.find(s => s.postType !== 'reels');
+    const dedupedIgSessions = [latestReels, latestCarousel].filter(Boolean) as typeof igSessions;
+
+    const igMediaIds = dedupedIgSessions.map(s => ({ id: s.publishedMediaId, type: s.postType }));
     if (property.instagramMediaId && !igMediaIds.find(i => i.id === property.instagramMediaId)) {
         igMediaIds.push({ id: property.instagramMediaId, type: 'reels' });
     }
@@ -181,11 +186,16 @@ export async function GET(
         orderBy: { createdAt: "desc" },
     });
 
-    console.log(`[Insights] Found ${fbSessions.length} FB sessions for property ${propertyId}`);
+    // Mostrar apenas o post mais recente de cada tipo (reels e carousel)
+    const latestFbReels = fbSessions.find(s => s.postType === 'reels');
+    const latestFbCarousel = fbSessions.find(s => s.postType !== 'reels');
+    const dedupedFbSessions = [latestFbReels, latestFbCarousel].filter(Boolean) as typeof fbSessions;
 
-    if (fbSessions.length > 0) {
+    console.log(`[Insights] Showing ${dedupedFbSessions.length} FB sessions (deduped) for property ${propertyId}`);
+
+    if (dedupedFbSessions.length > 0) {
         const fbToken = process.env.INSTAGRAM_ACCESS_TOKEN;
-        for (const fbSession of fbSessions) {
+        for (const fbSession of dedupedFbSessions) {
             if (!fbSession.publishedPostId) continue;
 
             // Base record always added from DB
