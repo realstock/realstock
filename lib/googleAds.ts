@@ -98,26 +98,47 @@ export async function createRealStockGoogleCampaign(
     const adCategory = category ? sanitizeAdText(category, 30) : null;
     const adType = propertyType ? sanitizeAdText(propertyType, 30) : null;
     const adCity = city ? sanitizeAdText(city, 30) : null;
+    const adState = state ? sanitizeAdText(state, 10) : null;
 
-    const headlines: any[] = [
-        { text: adTitle, pinned_field: enums.ServedAssetFieldType.UNSPECIFIED },
-    ];
+    // Headlines específicos para portfólio vs imóvel individual
+    const isPortfolio = propertyId === 0;
+    const headlines: any[] = [];
 
-    if (adCategory) headlines.push({ text: adCategory, pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
-    if (adType) headlines.push({ text: adType, pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
-    if (adCity) headlines.push({ text: `Imovel em ${adCity}`, pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+    if (isPortfolio) {
+        // Título principal: RealStock
+        headlines.push({ text: "RealStock", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        // Localização dinâmica
+        const location = [adCity, adState].filter(Boolean).join(" - ");
+        if (location) {
+            headlines.push({ text: sanitizeAdText(`Imoveis em ${location}`, 30), pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        }
+        headlines.push({ text: "Acesse o site para mais detalhes", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        headlines.push({ text: "Confira nossas oportunidades", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        headlines.push({ text: "Melhores Imoveis do Brasil", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        headlines.push({ text: "Portfolio Exclusivo RealStock", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        headlines.push({ text: "Investimento Imobiliario Seguro", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        headlines.push({ text: "Encontre seu Imovel Ideal", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        headlines.push({ text: "Oportunidades Selecionadas", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        headlines.push({ text: "Compra Rapida e Segura", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        headlines.push({ text: "Imoveis a Venda Agora", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+    } else {
+        headlines.push({ text: adTitle, pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        if (adCategory) headlines.push({ text: adCategory, pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        if (adType) headlines.push({ text: adType, pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        if (adCity) headlines.push({ text: `Imovel em ${adCity}`, pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        // Variações para maximizar a nota de qualidade (Ad Strength)
+        headlines.push({ text: "Comprar Imovel", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        headlines.push({ text: "Imovel a Venda", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        headlines.push({ text: "Melhores Imoveis", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        headlines.push({ text: "RealStock Imoveis", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        headlines.push({ text: "Oportunidade de Compra", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        headlines.push({ text: "Sua Casa Nova Aqui", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        headlines.push({ text: "Investimento Seguro", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        headlines.push({ text: "Agende sua Visita", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        headlines.push({ text: "Preco Imperdivel", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+        headlines.push({ text: "Lindo Imovel", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
+    }
 
-    // Adicionar variações para maximizar a nota de qualidade (Ad Strength)
-    headlines.push({ text: "Comprar Imovel", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
-    headlines.push({ text: "Imovel a Venda", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
-    headlines.push({ text: "Melhores Imoveis", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
-    headlines.push({ text: "RealStock Imoveis", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
-    headlines.push({ text: "Oportunidade de Compra", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
-    headlines.push({ text: "Sua Casa Nova Aqui", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
-    headlines.push({ text: "Investimento Seguro", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
-    headlines.push({ text: "Agende sua Visita", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
-    headlines.push({ text: "Preco Imperdivel", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
-    headlines.push({ text: "Lindo Imovel", pinned_field: enums.ServedAssetFieldType.UNSPECIFIED });
 
     await customer.adGroupAds.create([
       {
