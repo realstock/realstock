@@ -101,6 +101,7 @@ export async function GET(
         where: { listingId: propertyId, status: "PUBLISHED" },
         orderBy: { createdAt: "desc" },
     });
+    console.log(`[Insights] Found ${igSessions.length} IG sessions for property ${propertyId}`);
     
     const igMediaIds = igSessions.map(s => ({ id: s.publishedMediaId, type: s.postType }));
     if (property.instagramMediaId && !igMediaIds.find(i => i.id === property.instagramMediaId)) {
@@ -166,34 +167,33 @@ export async function GET(
         orderBy: { createdAt: "desc" },
     });
 
+    console.log(`[Insights] Found ${fbSessions.length} FB sessions for property ${propertyId}`);
+
     if (fbSessions.length > 0) {
         try {
-            const userToken = process.env.INSTAGRAM_ACCESS_TOKEN;
-            const pageId = process.env.FACEBOOK_PAGE_ID;
-            if (userToken && pageId) {
-                const pageTokenRes = await fetch(`https://graph.facebook.com/v19.0/me/accounts?access_token=${userToken}`);
-                const pageTokenData = await pageTokenRes.json();
-                const pageInfo = pageTokenData.data?.find((p: any) => p.id === pageId);
-
-                if (pageInfo?.access_token) {
-                    for (const fbSession of fbSessions) {
-                        if (!fbSession.publishedPostId) continue;
-                        try {
-                            const res = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}?fields=id,shares,comments.summary(total_count),likes.summary(total_count),updated_time,views&access_token=${pageInfo.access_token}`);
-                            const fbData = await res.json();
-                            
-                            if (fbData && !fbData.error) {
-                                insights.facebook.posts.push({
-                                    type: fbSession.postType || 'carousel',
-                                    likes: fbData.likes?.summary?.total_count || 0,
-                                    comments: fbData.comments?.summary?.total_count || 0,
-                                    shares: fbData.shares?.count || 0,
-                                    views: fbData.views || 0,
-                                    publishedDate: fbData.updated_time || fbSession.updatedAt
-                                });
-                            }
-                        } catch(e) {}
-                    }
+            // Use the env token directly - it may already be a Page Token
+            const fbToken = process.env.INSTAGRAM_ACCESS_TOKEN;
+            if (fbToken) {
+                for (const fbSession of fbSessions) {
+                    if (!fbSession.publishedPostId) continue;
+                    try {
+                        const res = await fetch(`https://graph.facebook.com/v19.0/${fbSession.publishedPostId}?fields=id,shares,comments.summary(total_count),likes.summary(total_count),updated_time,views&access_token=${fbToken}`);
+                        const fbData = await res.json();
+                        console.log(`[Insights] FB post ${fbSession.publishedPostId}:`, JSON.stringify(fbData).substring(0, 200));
+                        
+                        if (fbData && !fbData.error) {
+                            insights.facebook.posts.push({
+                                type: fbSession.postType || 'carousel',
+                                likes: fbData.likes?.summary?.total_count || 0,
+                                comments: fbData.comments?.summary?.total_count || 0,
+                                shares: fbData.shares?.count || 0,
+                                views: fbData.views || 0,
+                                publishedDate: fbData.updated_time || fbSession.updatedAt
+                            });
+                        } else {
+                            console.error(`[Insights] FB post error:`, fbData?.error);
+                        }
+                    } catch(e) { console.error("FB POST FETCH ERROR", e); }
                 }
             }
         } catch(e) { console.error("FACEBOOK ORGANIC EXCEPTION:", e); }
