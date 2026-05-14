@@ -259,9 +259,11 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                           </div>
                        </div>
 
-                       {/* Main Content */}
                        <h3 className="text-[20px] text-[#1a0dab] font-medium hover:underline cursor-pointer mb-1 leading-tight">
-                          {property.title} | Oportunidade Exclusiva RealStock
+                          {id === '0'
+                            ? `RealStock | Confira oportunidades de imóveis em ${[property.city, property.state].filter(Boolean).join(' - ') || 'todo o Brasil'}`
+                            : `${property.title} | Oportunidade Exclusiva RealStock`
+                          }
                        </h3>
                        
                        <p className="text-sm text-[#4d5156] leading-relaxed mb-3">
