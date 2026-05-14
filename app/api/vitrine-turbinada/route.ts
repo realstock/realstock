@@ -46,12 +46,22 @@ export async function GET(req: NextRequest) {
         const igMediaId = lot.instagramMediaId;
         if (igMediaId && igToken) {
             try {
-                const res = await fetch(`https://graph.facebook.com/v19.0/${igMediaId}/insights?metric=impressions&date_preset=maximum&access_token=${igToken}`);
+                // Tentar primeiro as métricas de post padrão (impressions) e depois plays se for vídeo
+                const res = await fetch(`https://graph.facebook.com/v19.0/${igMediaId}/insights?metric=impressions,plays&date_preset=maximum&access_token=${igToken}`);
                 const data = await res.json();
-                if (data.data && data.data[0]) {
-                    organicViews = data.data[0].values[0].value || 0;
+                if (data.data) {
+                    const impObj = data.data.find((m: any) => m.name === 'impressions');
+                    const playsObj = data.data.find((m: any) => m.name === 'plays');
+                    organicViews = Math.max(
+                        impObj?.values[0]?.value || 0,
+                        playsObj?.values[0]?.value || 0
+                    );
+                } else if (data.error) {
+                    console.error(`[Vitrine] IG Insights Error for Lot ${lot.id}:`, data.error.message);
                 }
-            } catch(e) {}
+            } catch(e) {
+                console.error(`[Vitrine] Fetch failed for Lot ${lot.id}:`, e);
+            }
         }
 
         // Buscar imagem real do primeiro imóvel do lote
@@ -111,12 +121,21 @@ export async function GET(req: NextRequest) {
         const igMediaId = prop.instagramMediaId;
         if (igMediaId && igToken) {
             try {
-                const res = await fetch(`https://graph.facebook.com/v19.0/${igMediaId}/insights?metric=impressions&date_preset=maximum&access_token=${igToken}`);
+                const res = await fetch(`https://graph.facebook.com/v19.0/${igMediaId}/insights?metric=impressions,plays&date_preset=maximum&access_token=${igToken}`);
                 const data = await res.json();
-                if (data.data && data.data[0]) {
-                    organicViews = data.data[0].values[0].value || 0;
+                if (data.data) {
+                    const impObj = data.data.find((m: any) => m.name === 'impressions');
+                    const playsObj = data.data.find((m: any) => m.name === 'plays');
+                    organicViews = Math.max(
+                        impObj?.values[0]?.value || 0,
+                        playsObj?.values[0]?.value || 0
+                    );
+                } else if (data.error) {
+                    console.error(`[Vitrine] IG Insights Error for Prop ${prop.id}:`, data.error.message);
                 }
-            } catch(e) {}
+            } catch(e) {
+                console.error(`[Vitrine] Fetch failed for Prop ${prop.id}:`, e);
+            }
         }
 
         let externalLink = `/imovel/${prop.id}`;

@@ -76,7 +76,15 @@ export async function GET(
         where: { listingId: effectiveListingId },
         orderBy: { createdAt: 'desc' }
     });
-    const metaSessionStatus = meSession?.status || null;
+    // Backward compat for portfolio
+    let finalMeSession = meSession;
+    if (!finalMeSession && isPortfolio) {
+        finalMeSession = await prisma.metaAdsSession.findFirst({
+            where: { listingId: 0 },
+            orderBy: { createdAt: 'desc' }
+        });
+    }
+    const metaSessionStatus = finalMeSession?.status || null;
 
     // 1. META ADS INSIGHTS (PAID PERFORMANCE)
     let paidMetrics = { reach: 0, views: 0, clicks: 0, spend: 0 };
@@ -84,11 +92,16 @@ export async function GET(
     const pageToken = process.env.INSTAGRAM_ACCESS_TOKEN;
 
     if (pageToken) {
-        const adsSessions = await prisma.metaAdsSession.findMany({
+        // Coletar todos os IDs possíveis de anúncios e campanhas
+        let adsSessions = await prisma.metaAdsSession.findMany({
             where: { listingId: effectiveListingId },
         });
-
-        // Coletar todos os IDs possíveis de anúncios e campanhas
+        // Fallback for portfolio
+        if (adsSessions.length === 0 && isPortfolio) {
+            adsSessions = await prisma.metaAdsSession.findMany({
+                where: { listingId: 0 },
+            });
+        }
         const targetIds = new Set<string>();
         if (property.metaAdId) targetIds.add(String(property.metaAdId));
         if (property.metaCampaignId) targetIds.add(String(property.metaCampaignId));
@@ -127,10 +140,17 @@ export async function GET(
     };
 
     // 2. INSTAGRAM ORGANIC INSIGHTS
-    const igSessions = await prisma.instagramPreviewSession.findMany({
+    let igSessions = await prisma.instagramPreviewSession.findMany({
         where: { listingId: effectiveListingId, status: "PUBLISHED" },
         orderBy: { createdAt: "desc" },
     });
+    // Fallback for portfolio
+    if (igSessions.length === 0 && isPortfolio) {
+        igSessions = await prisma.instagramPreviewSession.findMany({
+            where: { listingId: 0, status: "PUBLISHED" },
+            orderBy: { createdAt: "desc" },
+        });
+    }
     console.log(`[Insights] Found ${igSessions.length} IG sessions for property ${propertyId}`);
     
     // Mostrar apenas o post mais recente de cada tipo (reels e carousel)
@@ -177,7 +197,9 @@ export async function GET(
                     baseRecord.likes = baseData.like_count || 0;
                     baseRecord.comments = baseData.comments_count || 0;
                     baseRecord.publishedDate = baseData.timestamp || baseRecord.publishedDate;
-                    baseRecord.type = baseData.media_type === 'VIDEO' ? 'reels' : (baseData.media_type === 'CAROUSEL_ALBUM' ? 'carousel' : 'image');
+                    
+                    const isVideo = baseData.media_type === 'VIDEO' || !!baseData.video_id;
+                    baseRecord.type = isVideo ? 'reels' : (baseData.media_type === 'CAROUSEL_ALBUM' ? 'carousel' : 'image');
 
                     let views = 0;
                     let reach = 0;
@@ -192,15 +214,27 @@ export async function GET(
                     }
 
                     try {
-                        const insRes = await fetch(`https://graph.facebook.com/v19.0/${item.id}/insights?metric=views,reach&access_token=${igToken}`);
+                        // Para Reels/Vídeo usamos 'plays', para outros 'views' (ou 'impressions' se disponível)
+                        const metricName = isVideo ? 'plays,reach' : 'impressions,reach';
+                        const insRes = await fetch(`https://graph.facebook.com/v19.0/${item.id}/insights?metric=${metricName}&access_token=${igToken}`);
                         const insData = await insRes.json();
+                        
                         if (insData?.data) {
-                            const vObj = insData.data.find((m: any) => m.name === 'views');
+                            const vObj = insData.data.find((m: any) => m.name === 'views' || m.name === 'plays' || m.name === 'impressions');
                             if (vObj) views = Math.max(views, vObj.values?.[0]?.value || 0);
+                            
                             const rObj = insData.data.find((m: any) => m.name === 'reach');
                             if (rObj) reach = Math.max(reach, rObj.values?.[0]?.value || 0);
+                        } else if (insData.error) {
+                            console.warn(`[Insights] Metric error for ${item.id}:`, insData.error.message);
+                            // Se der erro de permissão ou token, marcamos como indisponível
+                            if (insData.error.code === 190 || insData.error.code === 100) {
+                                graphApiAvailable = false;
+                            }
                         }
-                    } catch(e) {}
+                    } catch(e) {
+                        console.error("IG INSIGHTS METRIC FETCH ERROR", e);
+                    }
 
                     baseRecord.views = Math.max(views, paidMetrics.views);
                     baseRecord.reach = Math.max(reach, paidMetrics.reach);
@@ -214,10 +248,18 @@ export async function GET(
     }
 
     // 3. FACEBOOK ORGANIC INSIGHTS
-    const fbSessions = await prisma.facebookFeedSession.findMany({
+    let fbSessions = await prisma.facebookFeedSession.findMany({
         where: { listingId: effectiveListingId, status: "PUBLISHED" },
         orderBy: { createdAt: "desc" },
     });
+
+    // Fallback for portfolio
+    if (fbSessions.length === 0 && isPortfolio) {
+        fbSessions = await prisma.facebookFeedSession.findMany({
+            where: { listingId: 0, status: "PUBLISHED" },
+            orderBy: { createdAt: "desc" },
+        });
+    }
 
     // Mostrar apenas o post mais recente de cada tipo (reels e carousel)
     const latestFbReels = fbSessions.find(s => s.postType === 'reels');
