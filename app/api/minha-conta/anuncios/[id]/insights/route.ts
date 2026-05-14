@@ -173,8 +173,12 @@ export async function GET(
 
     let graphApiAvailable = false; // Track if Graph API is responding
 
-    for (const item of igMediaIds) {
+    for (let index = 0; index < igMediaIds.length; index++) {
+        const item = igMediaIds[index];
         if (!item.id) continue;
+
+        // Identificar se esta é a mídia principal do impulsionamento
+        const isMainBoostedMedia = item.id === property.instagramMediaId || (igMediaIds.length === 1) || (index === 0 && !property.instagramMediaId);
 
         // Base record always added from DB data
         const baseRecord: any = {
@@ -244,15 +248,17 @@ export async function GET(
                         console.error("IG INSIGHTS METRIC FETCH ERROR", e);
                     }
 
-                    baseRecord.views = Math.max(views, paidMetrics.views);
-                    baseRecord.reach = Math.max(reach, paidMetrics.reach);
-                    baseRecord.likes = Math.max(baseRecord.likes, paidMetrics.likes);
+                    baseRecord.views = Math.max(views, isMainBoostedMedia ? paidMetrics.views : 0);
+                    baseRecord.reach = Math.max(reach, isMainBoostedMedia ? paidMetrics.reach : 0);
+                    baseRecord.likes = Math.max(baseRecord.likes, isMainBoostedMedia ? paidMetrics.likes : 0);
                 } else {
                     console.warn(`[Insights] IG API error for ${item.id}:`, baseData?.error?.message);
-                    // Importante: Mesmo que a API de mídia falhe, usamos os dados do Boost se disponíveis
-                    baseRecord.views = paidMetrics.views;
-                    baseRecord.reach = paidMetrics.reach;
-                    baseRecord.likes = paidMetrics.likes;
+                    // Importante: Mesmo que a API de mídia falhe, usamos os dados do Boost se for a mídia principal
+                    if (isMainBoostedMedia) {
+                        baseRecord.views = paidMetrics.views;
+                        baseRecord.reach = paidMetrics.reach;
+                        baseRecord.likes = paidMetrics.likes;
+                    }
                 }
             }
         } catch(e) { console.error("IG ORGANIC ERROR", e); }
