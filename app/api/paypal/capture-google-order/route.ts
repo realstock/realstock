@@ -145,6 +145,7 @@ export async function POST(req: NextRequest) {
       propertyTitle,
       Number(dailyBudget),
       targetUrl,
+      DURATION_DAYS,
       property?.city || undefined,
       property?.state || undefined,
       property?.category || undefined,

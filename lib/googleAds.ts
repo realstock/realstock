@@ -19,6 +19,7 @@ export async function createRealStockGoogleCampaign(
   propertyTitle: string,
   dailyBudgetBrl: number,
   targetUrl: string,
+  durationDays: number = 5,
   city?: string,
   state?: string,
   category?: string,
@@ -26,6 +27,12 @@ export async function createRealStockGoogleCampaign(
 ) {
   try {
     const customer = getGoogleAdsCustomer();
+
+    // Calcular datas de início e término (formato YYYYMMDD exigido pelo Google)
+    const formatDate = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
+    const startDate = formatDate(new Date());
+    const endDate = formatDate(new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000));
+    console.log(`[GoogleAds] Campaign period: ${startDate} → ${endDate} (${durationDays} days)`);
 
     // 1. Create Budget (dailyBudgetBrl in micro-reais)
     const microAmount = Math.floor(dailyBudgetBrl * 1000000);
@@ -40,12 +47,14 @@ export async function createRealStockGoogleCampaign(
     ]);
     const budgetResourceName = budgetRes.results[0].resource_name;
 
-    // 2. Create Campaign
+    // 2. Create Campaign WITH explicit start/end dates to prevent budget overrun
     console.log(`[GoogleAds] Creating campaign linked to budget: ${budgetResourceName}`);
     const campaignRes = await customer.campaigns.create([
       {
         name: `Campanha Imóvel - ${propertyId} - ${Date.now()}`,
-        status: enums.CampaignStatus.ENABLED, 
+        status: enums.CampaignStatus.ENABLED,
+        start_date: startDate,
+        end_date: endDate,
         advertising_channel_type: enums.AdvertisingChannelType.SEARCH,
         network_settings: {
           target_google_search: true,
