@@ -58,6 +58,8 @@ export async function GET(req: NextRequest) {
                     );
                 } else if (data.error) {
                     console.error(`[Vitrine] IG Insights Error for Lot ${lot.id}:`, data.error.message);
+                    // Fallback: Se a API de mídia falhar, usamos os dados do Boost para não ficar zerado
+                    organicViews = paidViews;
                 }
             } catch(e) {
                 console.error(`[Vitrine] Fetch failed for Lot ${lot.id}:`, e);
@@ -132,6 +134,8 @@ export async function GET(req: NextRequest) {
                     );
                 } else if (data.error) {
                     console.error(`[Vitrine] IG Insights Error for Prop ${prop.id}:`, data.error.message);
+                    // Fallback: Se a API de mídia falhar, usamos os dados do Boost para não ficar zerado
+                    organicViews = paidViews;
                 }
             } catch(e) {
                 console.error(`[Vitrine] Fetch failed for Prop ${prop.id}:`, e);

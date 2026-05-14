@@ -87,7 +87,7 @@ export async function GET(
     const metaSessionStatus = finalMeSession?.status || null;
 
     // 1. META ADS INSIGHTS (PAID PERFORMANCE)
-    let paidMetrics = { reach: 0, views: 0, clicks: 0, spend: 0 };
+    let paidMetrics = { reach: 0, views: 0, clicks: 0, spend: 0, likes: 0 };
     const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID;
     const pageToken = process.env.INSTAGRAM_ACCESS_TOKEN;
 
@@ -109,18 +109,26 @@ export async function GET(
 
         for (const tId of targetIds) {
             try {
-                const adsRes = await fetch(`https://graph.facebook.com/v19.0/${tId}/insights?fields=reach,impressions,inline_link_clicks,spend&date_preset=maximum&access_token=${pageToken}`);
+                const adsRes = await fetch(`https://graph.facebook.com/v19.0/${tId}/insights?fields=reach,impressions,inline_link_clicks,spend,actions&date_preset=maximum&access_token=${pageToken}`);
                 const adsData = await adsRes.json();
                 
                 if (adsData?.data?.[0]) {
                     const d = adsData.data[0];
                     const r = parseInt(d.reach || "0");
                     const v = parseInt(d.impressions || "0");
-                    const c = parseInt(d.inline_link_clicks || "0");
                     const s = parseFloat(d.spend || "0");
+
+                    // Coletar cliques de diversas formas (inline ou através de ações)
+                    let c = parseInt(d.inline_link_clicks || "0");
+                    if (d.actions) {
+                        const linkClicks = d.actions.find((a: any) => a.action_type === 'link_click')?.value;
+                        if (linkClicks) c = Math.max(c, parseInt(linkClicks));
+                        
+                        // Também somar likes/comments vindos do boost para compor o engajamento
+                        const reactions = d.actions.find((a: any) => a.action_type === 'post_reaction' || a.action_type === 'like')?.value;
+                        if (reactions) paidMetrics.likes = (paidMetrics.likes || 0) + parseInt(reactions);
+                    }
                     
-                    // Somar métricas se forem de IDs diferentes (Ads vs Campaigns pode duplicar, então pegamos o maior entre eles se houver vínculo direto)
-                    // Mas para garantir que não zeramos, vamos acumular o maior valor encontrado de qualquer fonte
                     paidMetrics.reach = Math.max(paidMetrics.reach, r);
                     paidMetrics.views = Math.max(paidMetrics.views, v);
                     paidMetrics.clicks = Math.max(paidMetrics.clicks, c);
@@ -238,8 +246,13 @@ export async function GET(
 
                     baseRecord.views = Math.max(views, paidMetrics.views);
                     baseRecord.reach = Math.max(reach, paidMetrics.reach);
+                    baseRecord.likes = Math.max(baseRecord.likes, paidMetrics.likes);
                 } else {
                     console.warn(`[Insights] IG API error for ${item.id}:`, baseData?.error?.message);
+                    // Importante: Mesmo que a API de mídia falhe, usamos os dados do Boost se disponíveis
+                    baseRecord.views = paidMetrics.views;
+                    baseRecord.reach = paidMetrics.reach;
+                    baseRecord.likes = paidMetrics.likes;
                 }
             }
         } catch(e) { console.error("IG ORGANIC ERROR", e); }
