@@ -159,7 +159,9 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                         <div className="text-4xl font-black text-white">
                             {(data.totalImpact || 0).toLocaleString('pt-BR')}
                         </div>
-                        <div className="text-[10px] text-slate-500 mt-1 uppercase leading-none">Pessoas alcançadas</div>
+                        <div className="text-[10px] text-slate-500 mt-1 uppercase leading-none">
+                            Incl. {(insights.google?.impressions || 0).toLocaleString('pt-BR')} impressões Google
+                        </div>
                     </div>
 
                     <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-3xl p-6 flex flex-col justify-center">
@@ -330,6 +332,16 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-emerald-500/20 col-span-2 flex items-center justify-between">
+                                    <div>
+                                        <Eye className="text-emerald-400 mb-1" size={24} />
+                                        <div className="text-xs font-semibold text-emerald-300 uppercase tracking-wider">Impressões</div>
+                                        <div className="text-[10px] text-slate-500">Vezes que seu anúncio apareceu</div>
+                                    </div>
+                                    <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400">
+                                        {(insights.google.impressions || 0).toLocaleString('pt-BR')}
+                                    </div>
+                                </div>
                                 <div className="bg-black/30 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
                                     <Activity className="text-emerald-400 mb-2" size={20} />
                                     <div className="text-xl font-black">{insights.google.ctr}%</div>
