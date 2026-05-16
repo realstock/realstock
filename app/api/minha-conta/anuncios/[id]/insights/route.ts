@@ -219,22 +219,15 @@ export async function GET(
 
                     try {
                         // Tentar o máximo de métricas possíveis para contornar a instabilidade
-                        let metricName = 'impressions,reach,engagement';
-                        if (isVideo) metricName = 'plays,reach,total_interactions';
-                        else if (baseData.media_type === 'CAROUSEL_ALBUM') metricName = 'carousel_album_impressions,carousel_album_reach,carousel_album_engagement';
+                        // A partir da v22.0 (e v21.0 dependendo da conta), as métricas foram unificadas.
+                        // 'reach', 'views' e 'saved' funcionam para Reels e Carrossel.
+                        const metricName = 'reach,saved,views';
                         
                         const insRes = await fetch(`https://graph.facebook.com/v21.0/${item.id}/insights?metric=${metricName}&access_token=${igToken}`);
                         const insData = await insRes.json();
                         
                         if (insData?.data) {
-                            // Buscar qualquer métrica que represente visualização/alcance
-                            const vObj = insData.data.find((m: any) => 
-                                m.name === 'plays' || 
-                                m.name === 'impressions' || 
-                                m.name === 'carousel_album_impressions' ||
-                                m.name === 'video_views' ||
-                                m.name === 'views'
-                            );
+                            const vObj = insData.data.find((m: any) => m.name === 'views' || m.name === 'plays' || m.name === 'impressions' || m.name === 'carousel_album_impressions');
                             if (vObj) views = Math.max(views, vObj.values?.[0]?.value || 0);
                             
                             const rObj = insData.data.find((m: any) => m.name === 'reach' || m.name === 'carousel_album_reach');
@@ -290,7 +283,7 @@ export async function GET(
     console.log(`[Insights] Showing ${dedupedFbSessions.length} FB sessions (deduped) for property ${propertyId}`);
 
     if (dedupedFbSessions.length > 0) {
-        const fbToken = process.env.INSTAGRAM_ACCESS_TOKEN;
+        const fbToken = process.env.FACEBOOK_ACCESS_TOKEN;
         for (const fbSession of dedupedFbSessions) {
             if (!fbSession.publishedPostId) continue;
 
