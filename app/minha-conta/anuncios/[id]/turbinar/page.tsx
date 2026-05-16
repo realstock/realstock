@@ -372,7 +372,12 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
 
                 {platform !== "google" && (
                   <>
+                  <div className="flex items-center gap-2 flex-wrap">
                     <div className="text-lg font-bold">{property.title}</div>
+                    {propertyId !== 0 && (
+                       <div className="text-xs font-mono text-slate-500 bg-white/5 px-2 py-0.5 rounded border border-white/10">ID: {propertyId}</div>
+                    )}
+                  </div>
                     <div className="text-sm text-emerald-400 font-semibold mb-2">
                       R$ {Number(property.price).toLocaleString("pt-BR")}
                     </div>

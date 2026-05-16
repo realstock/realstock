@@ -143,7 +143,14 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                             <BarChart3 className="text-indigo-400" size={32} />
                             Performance do Anúncio
                         </h1>
-                        <p className="mt-1 text-slate-400 text-lg">{title}</p>
+                        <div className="mt-1 flex items-center gap-2">
+                            <p className="text-slate-400 text-lg">{title}</p>
+                            {id !== '0' && (
+                                <span className="rounded bg-white/5 border border-white/10 px-2 py-0.5 text-xs font-mono text-slate-500">
+                                    ID: {id}
+                                </span>
+                            )}
+                        </div>
                     </div>
                     {isBoosted && (
                         <div className="mt-4 md:mt-0 flex items-center gap-2 bg-indigo-500/20 text-indigo-300 px-4 py-2 rounded-full font-bold border border-indigo-500/30">
