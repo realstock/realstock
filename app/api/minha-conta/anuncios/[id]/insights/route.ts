@@ -317,15 +317,25 @@ export async function GET(
 
             if (fbToken) {
                 try {
-                    // Tentar v21.0 para Facebook também
-                    const res = await fetch(`https://graph.facebook.com/v21.0/${fbSession.publishedPostId}?fields=id,shares,comments.summary(total_count),likes.summary(total_count),updated_time,views,video_views&access_token=${fbToken}`);
+                    // Primeiro pegamos os dados básicos que funcionam para qualquer post
+                    const fields = "id,shares,comments.summary(total_count),likes.summary(total_count),updated_time";
+                    const res = await fetch(`https://graph.facebook.com/v21.0/${fbSession.publishedPostId}?fields=${fields}&access_token=${fbToken}`);
                     const fbData = await res.json();
+                    
                     if (fbData && !fbData.error) {
                         baseRecord.likes = fbData.likes?.summary?.total_count || 0;
                         baseRecord.comments = fbData.comments?.summary?.total_count || 0;
                         baseRecord.shares = fbData.shares?.count || 0;
-                        baseRecord.views = Math.max(fbData.views || 0, fbData.video_views || 0);
                         baseRecord.publishedDate = fbData.updated_time || fbSession.createdAt;
+
+                        // Tentamos pegar as views em uma chamada separada para não derrubar o resto se falhar (ex: posts de imagem não tem views)
+                        try {
+                            const vRes = await fetch(`https://graph.facebook.com/v21.0/${fbSession.publishedPostId}?fields=views&access_token=${fbToken}`);
+                            const vData = await vRes.json();
+                            if (vData && !vData.error) {
+                                baseRecord.views = vData.views || 0;
+                            }
+                        } catch(e) {}
                     } else {
                         console.warn(`[Insights] FB API error for ${fbSession.publishedPostId}:`, fbData?.error?.message);
                     }
