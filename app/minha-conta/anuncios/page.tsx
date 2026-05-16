@@ -10,6 +10,13 @@ import VideoCreatorModal from "@/components/VideoCreatorModal";
 import ViralizarModal from "@/components/ViralizarModal";
 import LoadingScreen from "@/components/LoadingScreen";
 
+// Garante que permalinks relativos do Facebook (ex: /reel/123/) virem URLs completas
+function normalizePermalink(permalink?: string | null): string {
+  if (!permalink || permalink === '#') return '#';
+  if (permalink.startsWith('http')) return permalink;
+  return `https://www.facebook.com${permalink}`;
+}
+
 type PropertyItem = {
   id: number;
   title: string;
@@ -408,13 +415,13 @@ export default function MeusAnunciosPage() {
                         </Link>
                       )}
                       {igPermalink && (
-                        <a href={igPermalink} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[140px] flex items-center justify-center gap-2 rounded-xl bg-pink-500/10 border border-pink-500/20 px-4 py-2.5 text-xs font-bold text-pink-400 transition-all hover:bg-pink-500/20">
+                        <a href={normalizePermalink(igPermalink)} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[140px] flex items-center justify-center gap-2 rounded-xl bg-pink-500/10 border border-pink-500/20 px-4 py-2.5 text-xs font-bold text-pink-400 transition-all hover:bg-pink-500/20">
                           <img src="/icones/instagram.jpg" className="w-4 h-4 rounded-sm object-cover" alt="" />
                           Ver Insta
                         </a>
                       )}
                       {fbPermalink && (
-                        <a href={fbPermalink} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[140px] flex items-center justify-center gap-2 rounded-xl bg-blue-500/10 border border-blue-500/20 px-4 py-2.5 text-xs font-bold text-blue-400 transition-all hover:bg-blue-500/20">
+                        <a href={normalizePermalink(fbPermalink)} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[140px] flex items-center justify-center gap-2 rounded-xl bg-blue-500/10 border border-blue-500/20 px-4 py-2.5 text-xs font-bold text-blue-400 transition-all hover:bg-blue-500/20">
                           <img src="/icones/facebook.jpeg" className="w-4 h-4 rounded-sm object-cover" alt="" />
                           Ver Face
                         </a>

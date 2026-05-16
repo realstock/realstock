@@ -9,6 +9,13 @@ import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { Globe, ArrowLeft, Loader2, Image as ImageIcon, Volume2, VolumeX, X, Video } from "lucide-react";
 import ViralizarModal from "@/components/ViralizarModal";
 
+// Garante que permalinks relativos do Facebook (ex: /reel/123/) virem URLs completas
+function normalizePermalink(permalink?: string | null): string {
+  if (!permalink || permalink === '#') return '#';
+  if (permalink.startsWith('http')) return permalink;
+  return `https://www.facebook.com${permalink}`;
+}
+
 export default function FacebookPublisherPage() {
   const { status } = useSession();
   const router = useRouter();
@@ -300,7 +307,7 @@ export default function FacebookPublisherPage() {
                {!isPublishing && !paypalOrderId ? (
                  (publishedSessions.find(s => s.postType === postType) || (postType === 'carousel' && property.facebookPostId)) ? (
                     <a 
-                      href={publishedSessions.find(s => s.postType === postType)?.validationReport?.permalink || property.facebookPermalink || "#"} 
+                      href={normalizePermalink(publishedSessions.find(s => s.postType === postType)?.validationReport?.permalink || property.facebookPermalink)} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="w-full block rounded-2xl bg-white/10 border border-white/10 px-6 py-4 text-center font-bold text-white transition hover:bg-white/20"
