@@ -219,7 +219,10 @@ export async function GET(
 
                     try {
                         // Tentar o máximo de métricas possíveis para contornar a instabilidade
-                        const metricName = isVideo ? 'plays,reach,total_interactions' : 'impressions,reach,engagement';
+                        let metricName = 'impressions,reach,engagement';
+                        if (isVideo) metricName = 'plays,reach,total_interactions';
+                        else if (baseData.media_type === 'CAROUSEL_ALBUM') metricName = 'carousel_album_impressions,carousel_album_reach,carousel_album_engagement';
+                        
                         const insRes = await fetch(`https://graph.facebook.com/v21.0/${item.id}/insights?metric=${metricName}&access_token=${igToken}`);
                         const insData = await insRes.json();
                         
@@ -228,17 +231,18 @@ export async function GET(
                             const vObj = insData.data.find((m: any) => 
                                 m.name === 'plays' || 
                                 m.name === 'impressions' || 
+                                m.name === 'carousel_album_impressions' ||
                                 m.name === 'video_views' ||
                                 m.name === 'views'
                             );
                             if (vObj) views = Math.max(views, vObj.values?.[0]?.value || 0);
                             
-                            const rObj = insData.data.find((m: any) => m.name === 'reach');
+                            const rObj = insData.data.find((m: any) => m.name === 'reach' || m.name === 'carousel_album_reach');
                             if (rObj) reach = Math.max(reach, rObj.values?.[0]?.value || 0);
                         } else if (insData.error) {
-                            console.warn(`[Insights] Metric error for ${item.id}:`, insData.error.message);
-                            // Se der erro de permissão ou token, marcamos como indisponível
-                            if (insData.error.code === 190 || insData.error.code === 100) {
+                            console.warn(`[Insights] Metric error for ${item.id} (${metricName}):`, insData.error.message);
+                            // Se der erro de permissão/token (190), marcamos como indisponível. Erro 100 é apenas parametro inválido, não tira a API do ar.
+                            if (insData.error.code === 190) {
                                 graphApiAvailable = false;
                             }
                         }
