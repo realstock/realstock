@@ -132,11 +132,17 @@ export async function POST(req: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    const portfolioSummary = properties.map((p, idx) => {
-        return `${idx + 1}️⃣ ${p.title.toUpperCase()}\n📍 ${p.neighborhood ? p.neighborhood + ', ' : ''}${p.city} - ${p.state}\n💰 R$ ${Number(p.price).toLocaleString("pt-BR")}`;
+    const portfolioSummary = properties.map((p) => {
+        const pDetails = [
+            p.area ? `Área: ${p.area}` : null,
+            p.category ? `Cat: ${p.category}` : null,
+            p.propertyType ? `Tipo: ${p.propertyType}` : null
+        ].filter(Boolean).join(" • ");
+
+        return `🌟 ${p.title.toUpperCase()}\n📍 LOCALIZAÇÃO: ${p.city} - ${p.state}\n💰 VALOR: R$ ${Number(p.price).toLocaleString("pt-BR")}\n📋 DETALHES: ${pDetails}`;
     }).join("\n\n");
 
-    const caption = `🌟 CONHEÇA NOSSO PORTFÓLIO DE IMÓVEIS NO FACEBOOK!\n\nConfira as melhores oportunidades da RealStock selecionadas para você:\n\n${portfolioSummary}\n\n🔗 Confira todos os detalhes e mais fotos em nosso portal:\nhttps://www.realstock.com.br\n\n#RealStock #Portfolio #Imoveis #Facebook #Oportunidade\n\nwww.realstock.com.br`;
+    const caption = `🌟 CONHEÇA NOSSO PORTFÓLIO DE IMÓVEIS NO FACEBOOK!\n\nConfira as melhores oportunidades da RealStock selecionadas para você:\n\n${portfolioSummary}\n\n#RealStock #Portfolio #Imoveis #Facebook #Oportunidade\n\nwww.realstock.com.br`;
 
     const propertiesWithImages = properties.filter(p => p.images && p.images.length > 0);
 

@@ -6,6 +6,30 @@ import OfferBookClient from "@/components/OfferBookClient";
 import AdSenseBanner from "@/components/AdSenseBanner";
 import PropertyGallery from "@/components/PropertyGallery";
 
+const InstagramIcon = ({ size = 24 }: { size?: number }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    className="fill-current"
+  >
+    <path d="M7.75 2C4.678 2 2 4.678 2 7.75v8.5C2 19.322 4.678 22 7.75 22h8.5C19.322 22 22 19.322 22 16.25v-8.5C22 4.678 19.322 2 16.25 2h-8.5zm0 2h8.5C18.217 4 20 5.783 20 7.75v8.5c0 1.967-1.783 3.75-3.75 3.75h-8.5C5.783 20 4 18.217 4 16.25v-8.5C4 5.783 5.783 4 7.75 4zm9.75 1.5a1 1 0 100 2 1 1 0 000-2zM12 7a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6z" />
+  </svg>
+);
+
+const FacebookIcon = ({ size = 24 }: { size?: number }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    className="fill-current"
+  >
+    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+  </svg>
+);
+
 export default async function PropertyPage({
   params,
 }: {
@@ -47,6 +71,42 @@ export default async function PropertyPage({
   if (!property) {
     notFound();
   }
+
+  // Fetch social sessions
+  const [igSessions, fbSessions] = await Promise.all([
+    prisma.instagramPreviewSession.findMany({
+      where: { listingId: propertyId, status: "PUBLISHED" },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.facebookFeedSession.findMany({
+      where: { listingId: propertyId, status: "PUBLISHED" },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  const socialLinks = [
+    {
+      name: "Instagram",
+      links: [
+        { type: "Reels", permalink: (igSessions.find(s => s.postType === "reels")?.validationReport as any)?.permalink },
+        { type: "Carrossel", permalink: (igSessions.find(s => s.postType !== "reels")?.validationReport as any)?.permalink },
+      ].filter(l => l.permalink)
+    },
+    {
+      name: "Facebook",
+      links: [
+        { type: "Reels", permalink: (fbSessions.find(s => s.postType === "reels")?.validationReport as any)?.permalink },
+        { type: "Carrossel", permalink: (fbSessions.find(s => s.postType !== "reels")?.validationReport as any)?.permalink },
+      ].filter(l => {
+          if (!l.permalink) return false;
+          // Prepend domain for relative FB reels links
+          if (l.permalink.startsWith('/')) {
+              l.permalink = `https://www.facebook.com${l.permalink}`;
+          }
+          return true;
+      })
+    }
+  ].filter(p => p.links.length > 0);
 
   const offers = property.offers.map((offer) => ({
     id: offer.id,
@@ -179,6 +239,58 @@ export default async function PropertyPage({
               <div className="mt-3 text-sm font-medium text-white">
                 {addressLine || "Endereço não informado."}
               </div>
+            </div>
+
+            {/* Redes Sociais */}
+            <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
+              <h2 className="text-xl font-bold">Confira esse anúncio nas redes sociais</h2>
+              
+              {socialLinks.length > 0 ? (
+                <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                  {socialLinks.map((platform) => (
+                    <div key={platform.name} className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-slate-900/50 p-4">
+                      <div className="flex items-center gap-3">
+                        {platform.name === 'Instagram' ? (
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-500 text-white">
+                            <InstagramIcon size={18} />
+                          </div>
+                        ) : (
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
+                            <FacebookIcon size={18} />
+                          </div>
+                        )}
+                        <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                          {platform.name}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {platform.links.map((link) => (
+                          <a
+                            key={`${platform.name}-${link.type}`}
+                            href={link.permalink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-white/10 hover:scale-[1.02]"
+                          >
+                            <span className="opacity-70">{link.type}</span>
+                            <div className="h-1 w-1 rounded-full bg-white/30" />
+                            <span className="text-xs text-blue-400">Ver post</span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-5 flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/5 p-8 text-center">
+                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white/5 text-slate-500">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  </div>
+                  <p className="text-sm text-slate-400 max-w-[280px]">
+                    O anunciante ainda não publicou este anúncio nas redes sociais.
+                  </p>
+                </div>
+              )}
             </div>
 
             {property.googleMapsThumbnail || property.googleMapsLink ? (

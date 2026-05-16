@@ -26,7 +26,7 @@ function renderOverlays(ctx: CanvasRenderingContext2D, width: number, height: nu
   ctx.fillRect(0, height * 0.6, width, height * 0.4);
 
   // Texto: Título
-  const displayTitle = title.toUpperCase();
+  const displayTitle = title === "Meu Portfólio Premium" ? "Imóveis em Destaque" : title.toUpperCase();
   ctx.fillStyle = "white";
   ctx.font = "bold 44px sans-serif";
   ctx.shadowColor = "rgba(0,0,0,0.5)";
@@ -44,16 +44,21 @@ function renderOverlays(ctx: CanvasRenderingContext2D, width: number, height: nu
   }
 
   // Texto: Cidade e Estado
-  const locationText = [city, state].filter(Boolean).join(" • ");
+  const locationText = [city, state].filter(Boolean).join(" - ");
   if (locationText) {
       ctx.fillStyle = "#38bdf8"; // sky-400
       ctx.font = "bold 32px sans-serif";
       ctx.fillText(locationText.toUpperCase(), width / 2, titleY + 60);
   }
 
+  // Texto: Website (Rodapé do vídeo)
+  ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+  ctx.font = "bold 24px sans-serif";
+  ctx.fillText("www.realstock.com.br", width / 2, titleY + 115);
+
   // Linha decorativa
   ctx.fillStyle = "#38bdf8";
-  ctx.fillRect(width / 2 - 120, titleY + 90, 240, 4);
+  ctx.fillRect(width / 2 - 120, titleY + 80, 240, 2);
 }
 
 export default function ViralizarModal(props: ViralizarModalProps) {

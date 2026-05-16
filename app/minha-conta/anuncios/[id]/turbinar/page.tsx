@@ -316,7 +316,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                               className="w-full h-full object-cover" 
                               autoPlay 
                               loop 
-                              muted={isMuted}
+                              muted
                               playsInline 
                             >
                               <source src={property.reelsVideoUrl} type={property.reelsVideoUrl.endsWith('.mp4') ? 'video/mp4' : 'video/webm'} />
@@ -374,8 +374,8 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                   <>
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="text-lg font-bold">{property.title}</div>
-                    {propertyId !== 0 && (
-                       <div className="text-xs font-mono text-slate-500 bg-white/5 px-2 py-0.5 rounded border border-white/10">ID: {propertyId}</div>
+                    {id !== "0" && (
+                       <div className="text-xs font-mono text-slate-500 bg-white/5 px-2 py-0.5 rounded border border-white/10">ID: {id}</div>
                     )}
                   </div>
                     <div className="text-sm text-emerald-400 font-semibold mb-2">

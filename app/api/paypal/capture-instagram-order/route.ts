@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
         property.acceptsFinancing ? "🏦 Aceita Financiamento" : null,
     ].filter(Boolean).join("\n");
 
-    const caption = `🏡 NOVO IMÓVEL DISPONÍVEL!\n\n🌟 ${property.title.toUpperCase()}\n\n📍 LOCALIZAÇÃO:\n${property.neighborhood ? property.neighborhood + ' - ' : ''}${property.city} - ${property.state}\n\n💰 VALOR: R$ ${Number(property.price).toLocaleString("pt-BR")}\n\n📋 DETALHES DO IMÓVEL:\n${details}\n\n📝 DESCRIÇÃO:\n${property.description || "Confira os detalhes deste incrível imóvel em nosso portal."}\n\n🔗 ACESSE PARA MAIS FOTOS E INFORMAÇÕES:\nhttps://www.realstock.com.br/imovel/${property.id}\n\n#RealStock #Imoveis #Oportunidade #VendaImoveis #${property.city.replace(/\s+/g, '')}\n\nwww.realstock.com.br`;
+    const caption = `🌟 ${property.title.toUpperCase()}\n\n📍 LOCALIZAÇÃO: ${property.city} - ${property.state}\n💰 VALOR: R$ ${Number(property.price).toLocaleString("pt-BR")}\n\n📋 DETALHES DO IMÓVEL:\n${details}\n\n📝 DESCRIÇÃO:\n${property.description || "Confira os detalhes deste incrível imóvel em nosso portal."}\n\n#RealStock #Imoveis #Oportunidade #VendaImoveis #${property.city.replace(/\s+/g, '')}\n\nwww.realstock.com.br`;
 
     let finalMediaId = null;
 

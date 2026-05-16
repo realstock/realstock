@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
-import { Camera, X } from "lucide-react";
+import { Camera, X, Video, Volume2, VolumeX } from "lucide-react";
+import LoadingScreen from "@/components/LoadingScreen";
+import ViralizarModal from "@/components/ViralizarModal";
 
 export default function PortfolioFacebookPage() {
   const { status } = useSession();
@@ -25,6 +27,8 @@ export default function PortfolioFacebookPage() {
   const [publishedSessions, setPublishedSessions] = useState<any[]>([]);
   const [portfolioVideoUrl, setPortfolioVideoUrl] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isViralizarOpen, setIsViralizarOpen] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
 
   useEffect(() => {
     if (selectedIds.length <= 1 || postType === "reels") return;
@@ -96,11 +100,7 @@ export default function PortfolioFacebookPage() {
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
   if (status === "loading" || loading) {
-    return (
-      <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
-        <div className="mx-auto max-w-4xl text-slate-400">Carregando portfólio...</div>
-      </main>
-    );
+    return <LoadingScreen title="Portfólio Facebook" subtitle="Carregando seus anúncios..." />;
   }
 
   return (
@@ -147,15 +147,39 @@ export default function PortfolioFacebookPage() {
               <h2 className="text-xl font-semibold mb-4">Preview do Post</h2>
               
               <div className="aspect-square w-full rounded-xl bg-slate-900 border border-white/10 overflow-hidden relative mb-6">
-                {postType === "reels" && portfolioVideoUrl ? (
-                   <video 
-                     src={portfolioVideoUrl} 
-                     className="w-full h-full object-cover" 
-                     autoPlay 
-                     loop 
-                     muted 
-                     playsInline 
-                   />
+                {postType === "reels" ? (
+                   portfolioVideoUrl ? (
+                     <div className="relative w-full h-full">
+                       <video 
+                         src={portfolioVideoUrl} 
+                         className="w-full h-full object-cover" 
+                         autoPlay 
+                         loop 
+                         muted
+                         playsInline 
+                       />
+                       <button 
+                          onClick={() => setIsMuted(!isMuted)}
+                          className="absolute bottom-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md transition hover:bg-black/70"
+                        >
+                          {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                        </button>
+                     </div>
+                   ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-slate-900">
+                       <div className="w-16 h-16 bg-indigo-500/20 text-indigo-400 rounded-2xl flex items-center justify-center mb-4">
+                          <Video size={32} />
+                       </div>
+                       <h4 className="text-sm font-bold text-white mb-2">Vídeo do Portfólio não gerado</h4>
+                       <p className="text-[10px] text-slate-400 mb-6">Crie um vídeo dinâmico com todos os seus imóveis em destaque.</p>
+                       <button 
+                         onClick={() => setIsViralizarOpen(true)}
+                         className="px-6 py-2 bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-400 transition-all shadow-lg shadow-indigo-500/20"
+                       >
+                         Gerar Vídeo Agora
+                       </button>
+                    </div>
+                   )
                 ) : (
                   <div className="w-full h-full relative">
                     {selectedIds.length > 0 ? (
@@ -202,15 +226,14 @@ export default function PortfolioFacebookPage() {
                        </div>
                     </button>
                     <button 
-                      onClick={() => setPostType("reels")}
-                      disabled={!portfolioVideoUrl}
-                      className={`flex flex-col items-center gap-2 rounded-xl border p-3 transition-all ${!portfolioVideoUrl ? 'opacity-40 grayscale cursor-not-allowed' : ''} ${postType === 'reels' ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}
-                    >
-                       <div className="text-xs font-bold text-indigo-400 uppercase">Vídeo IA</div>
-                       <div className="text-[10px] text-slate-500">
-                          {!portfolioVideoUrl ? "Gere o vídeo primeiro" : (publishedSessions.find(s => s.postType === "reels") ? "✅ Publicado" : "Vídeo Dinâmico")}
-                       </div>
-                    </button>
+                       onClick={() => setPostType("reels")}
+                       className={`flex flex-col items-center gap-2 rounded-xl border p-3 transition-all ${postType === 'reels' ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/10 bg-white/5 hover:border-white/20'}`}
+                     >
+                        <div className="text-xs font-bold text-indigo-400 uppercase">Vídeo IA</div>
+                        <div className="text-[10px] text-slate-500">
+                           {!portfolioVideoUrl ? "Gerar vídeo primeiro" : (publishedSessions.find(s => s.postType === "reels") ? "✅ Publicado" : "Vídeo Dinâmico")}
+                        </div>
+                     </button>
                  </div>
               </div>
 
@@ -316,6 +339,17 @@ export default function PortfolioFacebookPage() {
           </div>
         )}
       </div>
+
+      <ViralizarModal 
+        isOpen={isViralizarOpen}
+        onClose={() => {
+            setIsViralizarOpen(false);
+            loadData(); // Recarregar para pegar o novo vídeo do portfólio
+        }}
+        propertyId={0} // ID 0 indica modo Portfólio no nosso sistema
+        propertyTitle="Meu Portfólio Premium"
+        images={properties.slice(0, 10).map(p => ({ imageUrl: p.images[0].imageUrl }))}
+      />
     </main>
   );
 }

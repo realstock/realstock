@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Camera, CameraOff, CheckCircle2, Rocket, Globe, BarChart3, Building2, Upload, X, Wallet, TrendingUp, History, MapPin, Film, Zap, Users } from "lucide-react";
+import { Camera, CameraOff, CheckCircle2, Rocket, Globe, BarChart3, Building2, Upload, X, Wallet, TrendingUp, History, MapPin, Film, Zap, Users, Volume2, VolumeX } from "lucide-react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import VideoCreatorModal from "@/components/VideoCreatorModal";
 import ViralizarModal from "@/components/ViralizarModal";
@@ -63,6 +63,7 @@ export default function MeusAnunciosPage() {
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [selectedPropertyForVideo, setSelectedPropertyForVideo] = useState<PropertyItem | null>(null);
   const [viewingVideoUrl, setViewingVideoUrl] = useState<string | null>(null);
+  const [isMuted, setIsMuted] = useState(true);
 
   const [isViralizarOpen, setIsViralizarOpen] = useState(false);
   const [viralizarTarget, setViralizarTarget] = useState<{id: number, title: string} | null>(null);
@@ -912,15 +913,23 @@ export default function MeusAnunciosPage() {
                <X size={24} />
              </button>
              
-             <div className="aspect-[9/16] w-full overflow-hidden rounded-[28px] bg-slate-900">
+             <div className="aspect-[9/16] w-full overflow-hidden rounded-[28px] bg-slate-900 relative">
                 <video 
                   key={viewingVideoUrl}
                   src={viewingVideoUrl} 
                   className="h-full w-full object-cover" 
                   controls 
                   autoPlay
+                  muted
                   playsInline
                 />
+                <button 
+                  onClick={() => setIsMuted(!isMuted)}
+                  className="absolute bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md transition hover:bg-black/70 border border-white/10"
+                  title={isMuted ? "Ativar som" : "Desativar som"}
+                >
+                  {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
+                </button>
              </div>
              
              <div className="p-6 text-center">
