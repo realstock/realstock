@@ -317,18 +317,26 @@ export async function GET(
 
             if (fbToken) {
                 try {
-                    // Primeiro pegamos os dados básicos que funcionam para qualquer post
-                    const fields = "id,shares,comments.summary(total_count),likes.summary(total_count),updated_time";
+                    // Somente campos garantidos para todos (Post e Vídeo)
+                    const fields = "id,comments.summary(total_count),likes.summary(total_count),updated_time";
                     const res = await fetch(`https://graph.facebook.com/v21.0/${fbSession.publishedPostId}?fields=${fields}&access_token=${fbToken}`);
                     const fbData = await res.json();
                     
                     if (fbData && !fbData.error) {
                         baseRecord.likes = fbData.likes?.summary?.total_count || 0;
                         baseRecord.comments = fbData.comments?.summary?.total_count || 0;
-                        baseRecord.shares = fbData.shares?.count || 0;
                         baseRecord.publishedDate = fbData.updated_time || fbSession.createdAt;
 
-                        // Tentamos pegar as views em uma chamada separada para não derrubar o resto se falhar (ex: posts de imagem não tem views)
+                        // Tentamos pegar as shares separadamente
+                        try {
+                            const sRes = await fetch(`https://graph.facebook.com/v21.0/${fbSession.publishedPostId}?fields=shares&access_token=${fbToken}`);
+                            const sData = await sRes.json();
+                            if (sData?.shares?.count) {
+                                baseRecord.shares = sData.shares.count;
+                            }
+                        } catch(e) {}
+
+                        // Tentamos pegar as views separadamente
                         try {
                             const vRes = await fetch(`https://graph.facebook.com/v21.0/${fbSession.publishedPostId}?fields=views&access_token=${fbToken}`);
                             const vData = await vRes.json();
