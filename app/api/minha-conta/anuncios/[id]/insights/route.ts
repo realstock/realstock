@@ -202,7 +202,7 @@ export async function GET(
             const igToken = process.env.INSTAGRAM_ACCESS_TOKEN;
             if (igToken) {
                 // Usando v21.0 para maior estabilidade em métricas recentes
-                const baseRes = await fetch(`https://graph.facebook.com/v21.0/${item.id}?fields=like_count,comments_count,timestamp,media_type,video_id,video_play_count&access_token=${igToken}`);
+                const baseRes = await fetch(`https://graph.facebook.com/v21.0/${item.id}?fields=like_count,comments_count,timestamp,media_type&access_token=${igToken}`);
                 const baseData = await baseRes.json();
                 
                 if (baseData && !baseData.error) {
@@ -211,20 +211,11 @@ export async function GET(
                     baseRecord.comments = baseData.comments_count || 0;
                     baseRecord.publishedDate = baseData.timestamp || baseRecord.publishedDate;
                     
-                    const isVideo = baseData.media_type === 'VIDEO' || !!baseData.video_id;
+                    const isVideo = baseData.media_type === 'VIDEO';
                     baseRecord.type = isVideo ? 'reels' : (baseData.media_type === 'CAROUSEL_ALBUM' ? 'carousel' : 'image');
 
-                    let views = baseData.video_play_count || 0;
+                    let views = 0;
                     let reach = 0;
-
-                    if (isVideo) {
-                        const vId = baseData.video_id || item.id;
-                        const fbVidRes = await fetch(`https://graph.facebook.com/v21.0/${vId}?fields=views,play_count,video_play_count&access_token=${igToken}`);
-                        const fbVidData = await fbVidRes.json();
-                        if (fbVidData && !fbVidData.error) {
-                            views = Math.max(views, fbVidData.views || 0, fbVidData.play_count || 0, fbVidData.video_play_count || 0);
-                        }
-                    }
 
                     try {
                         // Tentar o máximo de métricas possíveis para contornar a instabilidade

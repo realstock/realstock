@@ -48,7 +48,10 @@ export async function GET(req: NextRequest) {
     if (lastIgSession?.publishedMediaId) {
         try {
             const mediaRes = await fetch(`https://graph.facebook.com/v19.0/${lastIgSession.publishedMediaId}?fields=id,like_count,comments_count,media_type&access_token=${token}`);
-            results.igMediaTest = await mediaRes.json();
+            results.igMediaTest_v19 = await mediaRes.json();
+            
+            const mediaRes21 = await fetch(`https://graph.facebook.com/v21.0/${lastIgSession.publishedMediaId}?fields=like_count,comments_count,timestamp,media_type,video_id,video_play_count&access_token=${token}`);
+            results.igMediaTest_v21 = await mediaRes21.json();
         } catch(e: any) { results.igMediaTest = { error: e.message }; }
     } else {
         results.igMediaTest = { note: "Nenhuma sessão IG publicada encontrada" };
