@@ -340,8 +340,19 @@ export async function GET(
                         try {
                             const vRes = await fetch(`https://graph.facebook.com/v21.0/${fbSession.publishedPostId}?fields=views&access_token=${fbToken}`);
                             const vData = await vRes.json();
-                            if (vData && !vData.error) {
+                            if (vData && !vData.error && vData.views !== undefined) {
                                 baseRecord.views = vData.views || 0;
+                            } else {
+                                // Fallback para insights se o campo direto falhar (comum em carrossel/imagem)
+                                // Tentamos as métricas de impressões que o FB costuma chamar de "Visualizações" no painel profissional
+                                const insRes = await fetch(`https://graph.facebook.com/v21.0/${fbSession.publishedPostId}/insights?metric=post_impressions,post_video_views&period=lifetime&access_token=${fbToken}`);
+                                const insData = await insRes.json();
+                                if (insData?.data) {
+                                    const imp = insData.data.find((m: any) => m.name === 'post_impressions' || m.name === 'post_video_views');
+                                    if (imp?.values?.[0]?.value) {
+                                        baseRecord.views = Math.max(baseRecord.views, imp.values[0].value);
+                                    }
+                                }
                             }
                         } catch(e) {}
                     } else {
