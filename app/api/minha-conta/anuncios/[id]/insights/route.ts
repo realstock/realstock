@@ -283,7 +283,24 @@ export async function GET(
     console.log(`[Insights] Showing ${dedupedFbSessions.length} FB sessions (deduped) for property ${propertyId}`);
 
     if (dedupedFbSessions.length > 0) {
-        const fbToken = process.env.FACEBOOK_ACCESS_TOKEN;
+        const userToken = process.env.INSTAGRAM_ACCESS_TOKEN;
+        const pageId = process.env.FACEBOOK_PAGE_ID;
+        let fbToken = process.env.FACEBOOK_ACCESS_TOKEN;
+
+        // Se não temos o token da página direto no ENV, tentamos obter via User Token (troca de token)
+        if (!fbToken && userToken && pageId) {
+            try {
+                const pageRes = await fetch(`https://graph.facebook.com/v21.0/me/accounts?access_token=${userToken}`);
+                const pageData = await pageRes.json();
+                const pageInfo = pageData.data?.find((p: any) => p.id === pageId);
+                if (pageInfo?.access_token) {
+                    fbToken = pageInfo.access_token;
+                }
+            } catch (e) {
+                console.error("[Insights] Falha ao trocar token de usuário por token de página:", e);
+            }
+        }
+
         for (const fbSession of dedupedFbSessions) {
             if (!fbSession.publishedPostId) continue;
 
