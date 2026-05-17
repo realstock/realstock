@@ -386,7 +386,7 @@ export default function MeusAnunciosPage() {
                <div className="flex flex-wrap items-start justify-between gap-4 mt-2">
                  <div className="flex flex-col md:flex-row gap-4">
                     <div className="flex -space-x-4 w-fit">
-                      {properties.filter(p => (p.images && p.images.length > 0) || (p.videos && p.videos.length > 0)).slice(0, 4).map((p, idx) => {
+                      {properties.filter(p => !p.sold && ((p.images && p.images.length > 0) || (p.videos && p.videos.length > 0))).slice(0, 4).map((p, idx) => {
                         const mediaUrl = p.images?.[0]?.imageUrl || p.videos?.[0]?.videoUrl;
                         const isVideo = !p.images?.[0]?.imageUrl && p.videos?.[0]?.videoUrl;
                         return (
@@ -408,9 +408,9 @@ export default function MeusAnunciosPage() {
                           </div>
                         );
                       })}
-                      {properties.filter(p => (p.images && p.images.length > 0) || (p.videos && p.videos.length > 0)).length > 4 && (
+                      {properties.filter(p => !p.sold && ((p.images && p.images.length > 0) || (p.videos && p.videos.length > 0))).length > 4 && (
                         <div className="h-24 w-24 md:w-32 flex items-center justify-center rounded-xl border border-white/10 bg-slate-800 text-sm font-bold shadow-md relative z-[5]" style={{ zIndex: 5 }}>
-                          +{properties.filter(p => (p.images && p.images.length > 0) || (p.videos && p.videos.length > 0)).length - 4}
+                          +{properties.filter(p => !p.sold && ((p.images && p.images.length > 0) || (p.videos && p.videos.length > 0))).length - 4}
                         </div>
                       )}
                     </div>
