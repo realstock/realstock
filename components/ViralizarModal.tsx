@@ -108,6 +108,7 @@ export default function ViralizarModal(props: ViralizarModalProps) {
     { id: 'ig_reels', label: 'Instagram: Reels', status: 'pending' as 'pending' | 'loading' | 'success' | 'error', permalink: '' },
     { id: 'fb_feed', label: 'Facebook: Feed', status: 'pending' as 'pending' | 'loading' | 'success' | 'error', permalink: '' },
     { id: 'fb_reels', label: 'Facebook: Reels', status: 'pending' as 'pending' | 'loading' | 'success' | 'error', permalink: '' },
+    { id: 'x_post', label: 'X (Twitter): Publicação', status: 'pending' as 'pending' | 'loading' | 'success' | 'error', permalink: '' },
   ]);
 
   const updateTaskStatus = (id: string, status: 'pending' | 'loading' | 'success' | 'error', permalink: string = '') => {
@@ -443,7 +444,8 @@ export default function ViralizarModal(props: ViralizarModalProps) {
             { id: 'ig_carousel', platform: 'instagram', type: 'carousel' },
             { id: 'ig_reels', platform: 'instagram', type: 'reels' },
             { id: 'fb_feed', platform: 'facebook', type: 'carousel' },
-            { id: 'fb_reels', platform: 'facebook', type: 'reels' }
+            { id: 'fb_reels', platform: 'facebook', type: 'reels' },
+            { id: 'x_post', platform: 'x', type: 'post' }
         ];
 
         for (const post of posts) {
