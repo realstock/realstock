@@ -446,10 +446,7 @@ export async function POST(req: NextRequest) {
                 transcodedFile = await transcodeIfNeeded(tempFile);
 
                 console.log("Uploading native video to X in bundle for reels...");
-                const mediaId = await client.v1.uploadMedia(transcodedFile, {
-                  mimeType: 'video/mp4',
-                  target: 'tweet_video'
-                });
+                const mediaId = await client.v1.uploadMedia(transcodedFile);
 
                 if (mediaId) {
                   console.log(`Video uploaded (ID: ${mediaId}), starting processing status check loop in bundle...`);
