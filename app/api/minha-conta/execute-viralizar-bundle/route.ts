@@ -3,6 +3,20 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { publishToInstagram, publishToFacebook } from "@/lib/social-publish";
+import fs from "fs";
+import path from "path";
+import os from "os";
+
+async function downloadToTempFile(url: string): Promise<string> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Falha ao baixar arquivo de mídia: ${response.statusText}`);
+  const buffer = await response.arrayBuffer();
+  const tempDir = os.tmpdir();
+  const ext = url.split('.').pop()?.split('?')[0] || 'jpg';
+  const tempFilePath = path.join(tempDir, `x-media-${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`);
+  fs.writeFileSync(tempFilePath, Buffer.from(buffer));
+  return tempFilePath;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -321,9 +335,13 @@ export async function POST(req: NextRequest) {
               accessSecret: process.env.X_ACCESS_TOKEN_SECRET,
             });
 
+            let baseDomain = process.env.NEXT_PUBLIC_SITE_URL || "https://www.realstock.com.br";
+            if (baseDomain.includes("localhost")) {
+              baseDomain = "https://www.realstock.com.br";
+            }
             const siteLink = propertyId !== 0 
-              ? `${process.env.NEXT_PUBLIC_SITE_URL || "https://realstock.com.br"}/imovel/${propertyId}`
-              : `${process.env.NEXT_PUBLIC_SITE_URL || "https://realstock.com.br"}/minha-conta/anuncios`;
+              ? `${baseDomain}/imovel/${propertyId}`
+              : `${baseDomain}/minha-conta/anuncios`;
               
             const maxDescLength = 280 - siteLink.length - 6;
             
@@ -343,15 +361,59 @@ export async function POST(req: NextRequest) {
             
             const tweetText = `${descSnippet}\n\n${siteLink}`;
             
+            // Fazer upload de imagens (carrossel) ou vídeo (reels) dependendo de targetPostType selecionado
+            const mediaIds: string[] = [];
+
+            if (targetPostType === "reels" && videoUrl) {
+              let tempFile = "";
+              try {
+                console.log("Uploading native video to X in bundle for reels...");
+                tempFile = await downloadToTempFile(videoUrl);
+                const mediaId = await client.v1.uploadMedia(tempFile, {
+                  mimeType: 'video/mp4',
+                  target: 'tweet_video'
+                });
+                if (mediaId) mediaIds.push(mediaId);
+              } catch (uploadErr) {
+                console.error("X Video upload error in bundle:", uploadErr);
+              } finally {
+                if (tempFile && fs.existsSync(tempFile)) {
+                  fs.unlinkSync(tempFile);
+                }
+              }
+            } else if (targetPostType === "carousel" && images && images.length > 0) {
+              const imagesToUpload = images.slice(0, 4); // X permite no máximo 4 imagens por tweet
+              for (const imgUrl of imagesToUpload) {
+                let tempFile = "";
+                try {
+                  console.log("Uploading native image to X in bundle for carousel:", imgUrl);
+                  tempFile = await downloadToTempFile(imgUrl);
+                  const mediaId = await client.v1.uploadMedia(tempFile);
+                  if (mediaId) mediaIds.push(mediaId);
+                } catch (uploadErr) {
+                  console.error("X Image upload error in bundle:", uploadErr);
+                } finally {
+                  if (tempFile && fs.existsSync(tempFile)) {
+                    fs.unlinkSync(tempFile);
+                  }
+                }
+              }
+            }
+
             const rwClient = client.readWrite;
-            const tweet = await rwClient.v2.tweet(tweetText);
+            const tweetOptions: any = {};
+            if (mediaIds.length > 0) {
+              tweetOptions.media = { media_ids: mediaIds };
+            }
+
+            const tweet = await rwClient.v2.tweet(tweetText, tweetOptions);
             if (tweet && tweet.data && tweet.data.id) {
               statusId = tweet.data.id;
               permalink = `https://x.com/i/status/${tweet.data.id}`;
-              console.log("X VIRALIZAR TWEET PUBLISHED SUCCESSFULLY:", permalink);
+              console.log("X VIRALIZAR TWEET WITH MEDIA PUBLISHED SUCCESSFULLY:", permalink);
             }
           } catch (tweetErr) {
-            console.error("X VIRALIZAR REAL TWEET ERROR (FALLING BACK TO SIMULATED SUCCESS):", tweetErr);
+            console.error("X VIRALIZAR REAL TWEET WITH MEDIA ERROR (FALLING BACK TO TEXT-ONLY TWEET OR SIMULATION):", tweetErr);
           }
         }
         

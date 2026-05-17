@@ -107,7 +107,11 @@ export async function POST(req: NextRequest) {
           accessSecret: process.env.X_ACCESS_TOKEN_SECRET,
         });
 
-        const tweetText = `🏡 Confira nossa seleção de imóveis exclusivos no RealStock!\n\nVeja o portfólio completo em nosso site:\n${process.env.NEXT_PUBLIC_SITE_URL || "https://realstock.com.br"}/minha-conta/anuncios`;
+        let baseDomain = process.env.NEXT_PUBLIC_SITE_URL || "https://www.realstock.com.br";
+        if (baseDomain.includes("localhost")) {
+          baseDomain = "https://www.realstock.com.br";
+        }
+        const tweetText = `🏡 Confira nossa seleção de imóveis exclusivos no RealStock!\n\nVeja o portfólio completo em nosso site:\n${baseDomain}/minha-conta/anuncios`;
         
         const rwClient = client.readWrite;
         const tweet = await rwClient.v2.tweet(tweetText);
