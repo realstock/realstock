@@ -532,6 +532,23 @@ export async function POST(req: NextRequest) {
         } else {
           results.x_post = { success: true, id: statusId, permalink };
         }
+
+        // Criar transação financeira para o "Turbine no X" encontrar a publicação do Míssil
+        try {
+          await prisma.financialTransaction.create({
+            data: {
+              type: "REVENUE",
+              category: "POSTS",
+              amount: 0,
+              description: `Publicação de Imóvel #${propertyId} (X/Twitter) [Format: ${targetPostType || 'carousel'}] [Permalink: ${permalink}]`,
+              userId: userId,
+              referenceId: orderID || "VIRALIZAR"
+            }
+          });
+          console.log("X VIRALIZAR TRANSACTION CREATED FOR TURBINAR TO FIND:", permalink);
+        } catch (txErr) {
+          console.error("Erro ao criar transação para X no Míssil:", txErr);
+        }
       }
 
     } catch (socialErr: any) {

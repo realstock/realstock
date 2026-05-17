@@ -294,6 +294,23 @@ export async function POST(req: NextRequest) {
           statusId = tweet.data.id;
           permalink = `https://x.com/i/status/${tweet.data.id}`;
           console.log("X TWEET WITH MEDIA PUBLISHED SUCCESSFULLY:", permalink);
+
+          // Atualizar transação financeira com o link real do Tweet
+          try {
+            await prisma.financialTransaction.updateMany({
+              where: {
+                userId: user.id,
+                category: "POSTS",
+                referenceId: orderID,
+                description: { contains: `Publicação de Imóvel #${propertyId} (X/Twitter)` }
+              },
+              data: {
+                description: `Publicação de Imóvel #${propertyId} (X/Twitter) [Format: ${postType}] [Permalink: ${permalink}]`
+              }
+            });
+          } catch (updateErr) {
+            console.error("Erro ao atualizar transação com permalink do X:", updateErr);
+          }
         }
       } catch (tweetErr) {
         console.error("X REAL TWEET WITH MEDIA ERROR (FALLING BACK TO TEXT-ONLY TWEET OR SIMULATION):", tweetErr);

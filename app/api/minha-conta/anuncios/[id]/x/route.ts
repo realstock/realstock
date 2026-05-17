@@ -95,17 +95,23 @@ export async function GET(
       }
     });
 
+    const getPermalink = (tx: any) => {
+      if (!tx || !tx.description) return "https://x.com/i/status/1789123456789";
+      const match = tx.description.match(/\[Permalink:\s*(https?:\/\/[^\]]+)\]/);
+      return match ? match[1] : "https://x.com/i/status/1789123456789";
+    };
+
     const publishedSessions = [];
     if (carouselTransaction) {
       publishedSessions.push({
         postType: "carousel",
-        validationReport: { permalink: "https://x.com/i/status/1789123456789" }
+        validationReport: { permalink: getPermalink(carouselTransaction) }
       });
     }
     if (reelsTransaction) {
       publishedSessions.push({
         postType: "reels",
-        validationReport: { permalink: "https://x.com/i/status/1789123456789" }
+        validationReport: { permalink: getPermalink(reelsTransaction) }
       });
     }
 
