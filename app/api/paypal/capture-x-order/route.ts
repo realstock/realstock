@@ -19,10 +19,6 @@ async function downloadToTempFile(url: string): Promise<string> {
 }
 
 async function transcodeIfNeeded(inputPath: string): Promise<string> {
-  if (inputPath.endsWith(".mp4")) {
-    return inputPath;
-  }
-  
   let activeFfmpeg = "";
   try {
     const dynamicRequire = eval("require");
@@ -53,7 +49,7 @@ async function transcodeIfNeeded(inputPath: string): Promise<string> {
   const outputPath = inputPath.replace(/\.[^/.]+$/, "") + "-transcoded.mp4";
   try {
     console.log(`Executing transcoding using ${activeFfmpeg}...`);
-    execSync(`"${activeFfmpeg}" -y -i "${inputPath}" -c:v libx264 -preset superfast -pix_fmt yuv420p -c:a aac -movflags +faststart "${outputPath}"`, { stdio: 'ignore' });
+    execSync(`"${activeFfmpeg}" -y -i "${inputPath}" -r 30 -c:v libx264 -preset superfast -pix_fmt yuv420p -c:a aac -map 0:v:0 -map 0:a? -movflags +faststart "${outputPath}"`, { stdio: 'ignore' });
     return outputPath;
   } catch (err) {
     console.error("Transcoding failed:", err);
@@ -224,7 +220,7 @@ export async function POST(req: NextRequest) {
             transcodedFile = await transcodeIfNeeded(tempFile);
 
             console.log("Uploading native video to X for reels...");
-            const mediaId = await client.v1.uploadMedia(transcodedFile, { mimeType: 'video/mp4' });
+            const mediaId = await client.v1.uploadMedia(transcodedFile, { mimeType: 'video/mp4', target: 'tweet' });
 
             if (mediaId) {
               console.log(`Video uploaded (ID: ${mediaId}), starting processing status check loop...`);
