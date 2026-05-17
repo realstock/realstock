@@ -69,28 +69,45 @@ export async function GET(
       );
     }
 
-    // Verificar se já existe uma transação financeira para essa postagem individual no X
-    const postTransaction = await prisma.financialTransaction.findFirst({
+    // Verificar transação para Foto e Texto (carousel)
+    const carouselTransaction = await prisma.financialTransaction.findFirst({
       where: {
         userId: user.id,
         category: "POSTS",
         description: {
           contains: `Publicação de Imóvel #${propertyId} (X/Twitter)`,
+        },
+        OR: [
+          { description: { contains: "[Format: carousel]" } },
+          { description: { not: { contains: "[Format: reels]" } } } // Fallback retrocompatível
+        ]
+      }
+    });
+
+    // Verificar transação para Vídeo IA (reels)
+    const reelsTransaction = await prisma.financialTransaction.findFirst({
+      where: {
+        userId: user.id,
+        category: "POSTS",
+        description: {
+          contains: `Publicação de Imóvel #${propertyId} (X/Twitter) [Format: reels]`,
         }
       }
     });
 
-    // Se houver transação de pagamento, consideramos como publicado no X
-    const publishedSessions = postTransaction ? [
-      {
+    const publishedSessions = [];
+    if (carouselTransaction) {
+      publishedSessions.push({
         postType: "carousel",
         validationReport: { permalink: "https://x.com/realstock/status/1789123456789" }
-      },
-      {
+      });
+    }
+    if (reelsTransaction) {
+      publishedSessions.push({
         postType: "reels",
         validationReport: { permalink: "https://x.com/realstock/status/1789123456789" }
-      }
-    ] : [];
+      });
+    }
 
     return NextResponse.json({
       success: true,

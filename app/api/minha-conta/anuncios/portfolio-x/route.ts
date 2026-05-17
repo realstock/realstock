@@ -70,29 +70,47 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Verificar se já existe uma transação financeira para essa postagem de portfólio no X
-    const portfolioTransaction = await prisma.financialTransaction.findFirst({
+    // Verificar transação para Portfólio Foto e Texto (carousel)
+    const carouselTransaction = await prisma.financialTransaction.findFirst({
       where: {
         userId: user.id,
         category: "POSTS",
         description: {
           contains: "Publicação de Portfólio no X (Twitter)",
+        },
+        OR: [
+          { description: { contains: "[Format: carousel]" } },
+          { description: { not: { contains: "[Format: reels]" } } } // Fallback retrocompatível
+        ]
+      }
+    });
+
+    // Verificar transação para Portfólio Vídeo IA (reels)
+    const reelsTransaction = await prisma.financialTransaction.findFirst({
+      where: {
+        userId: user.id,
+        category: "POSTS",
+        description: {
+          contains: "Publicação de Portfólio no X (Twitter) [Format: reels]",
         }
       }
     });
 
-    const xPosts = portfolioTransaction ? [
-      {
+    const xPosts = [];
+    if (carouselTransaction) {
+      xPosts.push({
         listingId: 0,
         postType: "carousel",
         validationReport: { permalink: "https://x.com/realstock/status/1789123456789" }
-      },
-      {
+      });
+    }
+    if (reelsTransaction) {
+      xPosts.push({
         listingId: 0,
         postType: "reels",
         validationReport: { permalink: "https://x.com/realstock/status/1789123456789" }
-      }
-    ] : [];
+      });
+    }
 
     return NextResponse.json({
       success: true,

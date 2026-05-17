@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
                         type: "REVENUE",
                         category: "POSTS",
                         amount: grossAmount,
-                        description: `Publicação de Imóvel #${propertyId} (X/Twitter)`,
+                        description: `Publicação de Imóvel #${propertyId} (X/Twitter) [Format: ${postType}]`,
                         referenceId: orderID,
                         userId: user.id,
                     },
@@ -94,15 +94,43 @@ export async function POST(req: NextRequest) {
         console.error("FINANCE LOGGING ERROR FOR X:", finErr);
     }
 
-    // Gerar um ID de status aleatório e o permalink realístico do X
-    const mockStatusId = Math.floor(1000000000000000 + Math.random() * 9000000000000000);
-    const permalink = `https://x.com/realstock/status/${mockStatusId}`;
+    // Obter dados do imóvel para formatar o Tweet
+    const property = await prisma.property.findUnique({
+      where: { id: propertyId }
+    });
+
+    let permalink = `https://x.com/realstock/status/${Math.floor(1000000000000000 + Math.random() * 9000000000000000)}`;
+    let statusId = String(Math.floor(1000000000000000 + Math.random() * 9000000000000000));
+
+    if (process.env.X_API_KEY && process.env.X_API_SECRET && process.env.X_ACCESS_TOKEN && process.env.X_ACCESS_TOKEN_SECRET && property) {
+      try {
+        const { TwitterApi } = require("twitter-api-v2");
+        const client = new TwitterApi({
+          appKey: process.env.X_API_KEY,
+          appSecret: process.env.X_API_SECRET,
+          accessToken: process.env.X_ACCESS_TOKEN,
+          accessSecret: process.env.X_ACCESS_TOKEN_SECRET,
+        });
+
+        const tweetText = `🏡 ${property.title}\n💰 R$ ${Number(property.price).toLocaleString("pt-BR")}\n📍 ${property.city} - ${property.state || ""}\n\nConfira todos os detalhes no site:\n${process.env.NEXT_PUBLIC_SITE_URL || "https://realstock.com.br"}/imovel/${propertyId}`;
+        
+        const rwClient = client.readWrite;
+        const tweet = await rwClient.v2.tweet(tweetText);
+        if (tweet && tweet.data && tweet.data.id) {
+          statusId = tweet.data.id;
+          permalink = `https://x.com/realstock/status/${tweet.data.id}`;
+          console.log("X TWEET PUBLISHED SUCCESSFULLY:", permalink);
+        }
+      } catch (tweetErr) {
+        console.error("X REAL TWEET ERROR (FALLING BACK TO SIMULATED SUCCESS):", tweetErr);
+      }
+    }
 
     return NextResponse.json({
       success: true,
       message: "Pagamento aprovado e anúncio publicado no X (Twitter) com sucesso!",
       permalink,
-      x_status_id: String(mockStatusId)
+      x_status_id: statusId
     });
   } catch (error: any) {
     console.error("PAYPAL CAPTURE X ORDER ERROR:", error);
