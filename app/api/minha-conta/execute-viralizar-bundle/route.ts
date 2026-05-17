@@ -142,7 +142,9 @@ export async function POST(req: NextRequest) {
       ig_reels: null as any,
       fb_carousel: null as any,
       fb_reels: null as any,
-      x_post: null as any
+      x_post: null as any,
+      x_carousel: null as any,
+      x_reels: null as any
     };
 
     const igUserId = process.env.INSTAGRAM_IG_USER_ID;
@@ -523,7 +525,13 @@ export async function POST(req: NextRequest) {
         }
         
         console.log("X (TWITTER) POST SUCCESS:", permalink);
-        results.x_post = { success: true, id: statusId, permalink };
+        if (targetPostType === "carousel") {
+          results.x_carousel = { success: true, id: statusId, permalink };
+        } else if (targetPostType === "reels") {
+          results.x_reels = { success: true, id: statusId, permalink };
+        } else {
+          results.x_post = { success: true, id: statusId, permalink };
+        }
       }
 
     } catch (socialErr: any) {
@@ -531,7 +539,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: socialErr.message, results });
     }
 
-    return NextResponse.json({ success: true, results });
+    let rootPermalink = "";
+    if (results.ig_carousel?.permalink) rootPermalink = results.ig_carousel.permalink;
+    else if (results.ig_reels?.permalink) rootPermalink = results.ig_reels.permalink;
+    else if (results.fb_carousel?.permalink) rootPermalink = results.fb_carousel.permalink;
+    else if (results.fb_reels?.permalink) rootPermalink = results.fb_reels.permalink;
+    else if (results.x_post?.permalink) rootPermalink = results.x_post.permalink;
+    else if (results.x_carousel?.permalink) rootPermalink = results.x_carousel.permalink;
+    else if (results.x_reels?.permalink) rootPermalink = results.x_reels.permalink;
+
+    return NextResponse.json({ success: true, results, permalink: rootPermalink });
   } catch (error: any) {
     console.error("EXECUTE VIRALIZAR BUNDLE ERROR:", error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

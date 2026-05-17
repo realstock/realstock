@@ -47,6 +47,8 @@ export async function POST(req: NextRequest) {
       { keywords: ["video instagram", "reel instagram"], defaultValue: isPortfolio ? 100 : 50 },
       { keywords: ["carrossel facebook"], defaultValue: isPortfolio ? 100 : 50 },
       { keywords: ["video facebook", "reel facebook"], defaultValue: isPortfolio ? 100 : 50 },
+      { keywords: ["carrossel x", "carrossel twitter"], defaultValue: isPortfolio ? 100 : 50 },
+      { keywords: ["video x", "reel x", "video twitter", "reel twitter"], defaultValue: isPortfolio ? 100 : 50 },
     ];
 
     const amount = viralizarServices.reduce((acc, v) => {
