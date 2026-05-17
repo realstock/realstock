@@ -473,11 +473,15 @@ export default function ViralizarModal(props: ViralizarModalProps) {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/95 p-4 backdrop-blur-xl overflow-y-auto">
+      <button 
+        onClick={onClose} 
+        className="fixed right-6 top-6 z-[10000] rounded-full bg-white/5 border border-white/10 p-3 text-slate-300 hover:bg-white/15 hover:text-white transition-all shadow-lg backdrop-blur-md hover:scale-105 active:scale-95"
+        title="Fechar"
+      >
+        <X size={24} />
+      </button>
+
       <div className="relative w-full max-w-5xl rounded-[40px] border border-white/10 bg-slate-900 p-8 shadow-2xl overflow-y-auto max-h-[95vh] scrollbar-hide">
-        
-        <button onClick={onClose} className="absolute right-8 top-8 z-50 rounded-full bg-white/5 p-2 text-slate-400 hover:bg-white/10 hover:text-white transition-all">
-          <X size={24} />
-        </button>
 
         {/* TELAS CONDICIONAIS */}
         {step === "details" && (
