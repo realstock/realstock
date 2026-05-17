@@ -24,12 +24,25 @@ async function transcodeIfNeeded(inputPath: string): Promise<string> {
     return inputPath;
   }
   
-  const ffmpegPaths = ["/opt/homebrew/bin/ffmpeg", "/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg"];
   let activeFfmpeg = "";
-  for (const p of ffmpegPaths) {
-    if (fs.existsSync(p)) {
-      activeFfmpeg = p;
-      break;
+  try {
+    const dynamicRequire = eval("require");
+    const ffmpegInstaller = dynamicRequire("@ffmpeg-installer/ffmpeg");
+    if (ffmpegInstaller && ffmpegInstaller.path && fs.existsSync(ffmpegInstaller.path)) {
+      console.log(`Using @ffmpeg-installer static binary: ${ffmpegInstaller.path}`);
+      activeFfmpeg = ffmpegInstaller.path;
+    }
+  } catch (installerErr) {
+    console.warn("Could not load @ffmpeg-installer/ffmpeg, trying system paths:", installerErr);
+  }
+
+  if (!activeFfmpeg) {
+    const ffmpegPaths = ["/opt/homebrew/bin/ffmpeg", "/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg"];
+    for (const p of ffmpegPaths) {
+      if (fs.existsSync(p)) {
+        activeFfmpeg = p;
+        break;
+      }
     }
   }
   
