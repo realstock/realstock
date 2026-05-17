@@ -476,6 +476,9 @@ export default function MeusAnunciosPage() {
                             <Link href="/minha-conta/anuncios/portfolio-facebook" className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-2 text-[11px] font-bold text-white transition-all hover:bg-white/10">
                               Facebook
                             </Link>
+                            <Link href="/minha-conta/anuncios/portfolio-x" className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-2 text-[11px] font-bold text-white transition-all hover:bg-white/10">
+                              X (Twitter)
+                            </Link>
                           </div>
                           {portfolioVideoUrl ? (
                             <button
@@ -685,6 +688,13 @@ export default function MeusAnunciosPage() {
                             >
                               <img src="/icones/facebook.jpeg" className="w-4 h-4 rounded-sm object-cover" alt="" />
                               Face
+                            </Link>
+                            <Link
+                              href={`/minha-conta/anuncios/${property.id}/x`}
+                              className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-slate-500/20 bg-slate-500/5 py-2.5 text-xs font-bold text-slate-300 transition-all hover:bg-slate-500/10"
+                            >
+                              <svg className="w-3.5 h-3.5 fill-slate-300" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                              X
                             </Link>
                           </div>
                           
