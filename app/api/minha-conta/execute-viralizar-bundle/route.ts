@@ -368,7 +368,7 @@ export async function POST(req: NextRequest) {
         // Simular processamento ultra robusto com delay de api
         await new Promise(r => setTimeout(r, 1500));
 
-        let permalink = `https://x.com/i/status/${Math.floor(1000000000000000 + Math.random() * 9000000000000000)}`;
+        let permalink = "https://x.com/_RealStock_";
         let statusId = String(Math.floor(1000000000000000 + Math.random() * 9000000000000000));
 
         if (process.env.X_API_KEY && process.env.X_API_SECRET && process.env.X_ACCESS_TOKEN && process.env.X_ACCESS_TOKEN_SECRET) {
