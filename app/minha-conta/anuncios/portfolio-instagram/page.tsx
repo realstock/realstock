@@ -146,12 +146,19 @@ export default function PortfolioInstagramPage() {
                    portfolioVideoUrl ? (
                      <div className="relative w-full h-full">
                        <video 
-                         src={portfolioVideoUrl} 
+                         ref={(el) => {
+                           if (el) {
+                             el.muted = true;
+                             el.play().catch(e => console.log("Autoplay failed:", e));
+                           }
+                         }}
+                         src={portfolioVideoUrl ? `/api/proxy-video?url=${encodeURIComponent(portfolioVideoUrl)}#t=0.001` : undefined} 
                          className="w-full h-full object-cover" 
                          autoPlay 
                          loop 
-                         muted={isMuted}
+                         muted
                          playsInline 
+                         preload="auto"
                        />
                        <button 
                           onClick={() => setIsMuted(!isMuted)}

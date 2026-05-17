@@ -59,6 +59,13 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
   }, [isMuted]);
 
   useEffect(() => {
+    if (postType === "reels" && videoRef.current) {
+      videoRef.current.muted = true;
+      videoRef.current.play().catch(e => console.log("Autoplay failed:", e));
+    }
+  }, [postType, property?.reelsVideoUrl]);
+
+  useEffect(() => {
     if (!property?.images || property.images.length <= 1 || postType === "reels") return;
     const interval = setInterval(() => {
       setCurrentImageIndex((prev) => (prev + 1) % property.images.length);
@@ -318,8 +325,9 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                               loop 
                               muted
                               playsInline 
+                              preload="auto"
                             >
-                              <source src={property.reelsVideoUrl} type={property.reelsVideoUrl.endsWith('.mp4') ? 'video/mp4' : 'video/webm'} />
+                              <source src={property.reelsVideoUrl ? `/api/proxy-video?url=${encodeURIComponent(property.reelsVideoUrl)}#t=0.001` : undefined} type={property.reelsVideoUrl.includes('.mp4') ? 'video/mp4' : 'video/webm'} />
                             </video>
                             <button 
                               onClick={() => setIsMuted(!isMuted)}

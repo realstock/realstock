@@ -64,6 +64,7 @@ export default function MeusAnunciosPage() {
   const [selectedPropertyForVideo, setSelectedPropertyForVideo] = useState<PropertyItem | null>(null);
   const [viewingVideoUrl, setViewingVideoUrl] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(true);
+  const [playerError, setPlayerError] = useState<string | null>(null);
 
   const [isViralizarOpen, setIsViralizarOpen] = useState(false);
   const [viralizarTarget, setViralizarTarget] = useState<{id: number, title: string} | null>(null);
@@ -907,7 +908,10 @@ export default function MeusAnunciosPage() {
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
           <div className="relative w-full max-w-sm rounded-[32px] border border-white/20 bg-slate-950 p-1 shadow-2xl overflow-hidden">
              <button 
-               onClick={() => setViewingVideoUrl(null)}
+               onClick={() => {
+                 setViewingVideoUrl(null);
+                 setPlayerError(null);
+               }}
                className="absolute top-4 right-4 z-50 rounded-full bg-black/50 p-2 text-white/70 hover:text-white transition-colors backdrop-blur-md"
              >
                <X size={24} />
@@ -916,12 +920,26 @@ export default function MeusAnunciosPage() {
              <div className="aspect-[9/16] w-full overflow-hidden rounded-[28px] bg-slate-900 relative">
                 <video 
                   key={viewingVideoUrl}
-                  src={viewingVideoUrl} 
+                  ref={(el) => {
+                    if (el) {
+                      el.muted = true;
+                      el.play().catch(e => {
+                        console.log("Autoplay failed:", e);
+                        setPlayerError(`Autoplay: ${e.message || String(e)}`);
+                      });
+                    }
+                  }}
+                  onError={(e) => {
+                    const mediaError = (e.target as HTMLVideoElement).error;
+                    setPlayerError(mediaError ? `MediaError (Code ${mediaError.code}): ${mediaError.message || 'Decoder or format error'}` : "Unknown media error");
+                  }}
+                  src={viewingVideoUrl ? `/api/proxy-video?url=${encodeURIComponent(viewingVideoUrl)}#t=0.001` : undefined} 
                   className="h-full w-full object-cover" 
                   controls 
                   autoPlay
                   muted
                   playsInline
+                  preload="auto"
                 />
                 <button 
                   onClick={() => setIsMuted(!isMuted)}
@@ -934,6 +952,11 @@ export default function MeusAnunciosPage() {
              
              <div className="p-6 text-center">
                 <p className="text-xs text-slate-500 font-medium">Este vídeo está incorporado ao seu anúncio e pronto para ser postado no Instagram.</p>
+                {playerError && (
+                  <div className="mt-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-[10px] font-mono text-red-400">
+                    Erro no player: {playerError}
+                  </div>
+                )}
              </div>
           </div>
         </div>
