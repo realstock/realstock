@@ -343,23 +343,50 @@ export async function POST(req: NextRequest) {
               ? `${baseDomain}/imovel/${propertyId}`
               : `${baseDomain}/minha-conta/anuncios`;
               
-            const maxDescLength = 280 - siteLink.length - 6;
-            
-            let descSnippet = "Confira nossa seleção de imóveis exclusivos no RealStock!";
+            let tweetText = "";
+            let propertyRecord = null;
             if (propertyId !== 0) {
-              const propertyRecord = await prisma.property.findUnique({
+              propertyRecord = await prisma.property.findUnique({
                 where: { id: propertyId }
               });
-              if (propertyRecord) {
-                descSnippet = propertyRecord.description || propertyRecord.title;
+            }
+
+            if (propertyRecord) {
+              tweetText = `🏡 ${propertyRecord.title}\n`;
+              if (propertyRecord.price) {
+                tweetText += `💰 R$ ${Number(propertyRecord.price).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}\n`;
               }
+              
+              const details = [];
+              if (propertyRecord.area) details.push(`📐 ${propertyRecord.area}m²`);
+              if (propertyRecord.bedrooms) details.push(`🛏️ ${propertyRecord.bedrooms} qtos`);
+              if (propertyRecord.bathrooms) details.push(`🚿 ${propertyRecord.bathrooms} banhs`);
+              if (details.length > 0) {
+                tweetText += `${details.join(" | ")}\n`;
+              }
+              
+              if (propertyRecord.city || propertyRecord.state) {
+                const loc = [propertyRecord.city, propertyRecord.state].filter(Boolean).join(" - ");
+                tweetText += `📍 ${loc}\n`;
+              }
+              
+              tweetText += `\n`;
+              
+              const reservedLength = tweetText.length + siteLink.length + 10;
+              const maxDescLength = 280 - reservedLength;
+              
+              if (propertyRecord.description && maxDescLength > 10) {
+                let descSnippet = propertyRecord.description;
+                if (descSnippet.length > maxDescLength) {
+                  descSnippet = descSnippet.substring(0, maxDescLength - 3) + "...";
+                }
+                tweetText += `${descSnippet}\n\n`;
+              }
+            } else {
+              tweetText = `🏡 Confira nossa seleção de imóveis exclusivos no RealStock!\n\nVeja o portfólio completo em nosso site:\n\n`;
             }
             
-            if (descSnippet.length > maxDescLength) {
-              descSnippet = descSnippet.substring(0, maxDescLength - 3) + "...";
-            }
-            
-            const tweetText = `${descSnippet}\n\n${siteLink}`;
+            tweetText += `${siteLink}`;
             
             // Fazer upload de imagens (carrossel) ou vídeo (reels) dependendo de targetPostType selecionado
             const mediaIds: string[] = [];

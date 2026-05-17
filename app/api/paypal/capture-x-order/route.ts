@@ -132,14 +132,39 @@ export async function POST(req: NextRequest) {
           baseDomain = "https://www.realstock.com.br";
         }
         const siteLink = `${baseDomain}/imovel/${propertyId}`;
-        const maxDescLength = 280 - siteLink.length - 6; // Margem de segurança para quebras de linha e reticências
         
-        let descSnippet = property.description || property.title || "";
-        if (descSnippet.length > maxDescLength) {
-          descSnippet = descSnippet.substring(0, maxDescLength - 3) + "...";
+        let tweetText = `🏡 ${property.title}\n`;
+        if (property.price) {
+          tweetText += `💰 R$ ${Number(property.price).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}\n`;
         }
         
-        const tweetText = `${descSnippet}\n\n${siteLink}`;
+        const details = [];
+        if (property.area) details.push(`📐 ${property.area}m²`);
+        if (property.bedrooms) details.push(`🛏️ ${property.bedrooms} qtos`);
+        if (property.bathrooms) details.push(`🚿 ${property.bathrooms} banhs`);
+        if (details.length > 0) {
+          tweetText += `${details.join(" | ")}\n`;
+        }
+        
+        if (property.city || property.state) {
+          const loc = [property.city, property.state].filter(Boolean).join(" - ");
+          tweetText += `📍 ${loc}\n`;
+        }
+        
+        tweetText += `\n`;
+        
+        const reservedLength = tweetText.length + siteLink.length + 10;
+        const maxDescLength = 280 - reservedLength;
+        
+        if (property.description && maxDescLength > 10) {
+          let descSnippet = property.description;
+          if (descSnippet.length > maxDescLength) {
+            descSnippet = descSnippet.substring(0, maxDescLength - 3) + "...";
+          }
+          tweetText += `${descSnippet}\n\n`;
+        }
+        
+        tweetText += `${siteLink}`;
         
         // Fazer upload de imagens (carrossel) ou vídeo (reels) dependendo do postType selecionado
         const mediaIds: string[] = [];
