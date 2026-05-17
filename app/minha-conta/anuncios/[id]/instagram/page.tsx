@@ -129,6 +129,10 @@ export default function InstagramPublisherPage() {
     return <LoadingScreen title="Publicação Instagram" subtitle="Conectando com a Meta Graph API..." />;
   }
 
+  if (isPublishing) {
+    return <LoadingScreen title="Publicando no Instagram" subtitle="Processando pagamento e enviando Reels/Carrossel..." />;
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
       <div className="mx-auto max-w-4xl">
@@ -296,11 +300,7 @@ export default function InstagramPublisherPage() {
                 </div>
               )}
 
-              {isPublishing && (
-                  <div className="text-center py-6 text-pink-300 animate-pulse font-semibold">
-                      Processando pagamento e publicando no Instagram, aguarde...
-                  </div>
-              )}
+
 
                {!isPublishing && !paypalOrderId ? (
                  (publishedSessions.find(s => s.postType === postType) || (postType === 'carousel' && property.instagramMediaId)) ? (

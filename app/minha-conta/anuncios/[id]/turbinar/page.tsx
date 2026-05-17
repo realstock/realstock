@@ -197,6 +197,15 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
     return <LoadingScreen title="Painel de Tráfego" subtitle={subtitle} />;
   }
 
+  if (isBoosting) {
+    return (
+      <LoadingScreen 
+        title="Criando Campanha" 
+        subtitle={`Enviando configurações para o ${platform === 'google' ? 'Google Ads' : 'Meta Ads'}...`} 
+      />
+    );
+  }
+
   if (error) {
      return <main className="min-h-screen bg-slate-950 px-6 py-8 text-white"><div className="mx-auto max-w-4xl rounded-xl border border-red-400/20 bg-red-400/10 p-4 text-red-300">{error}</div></main>;
   }
@@ -507,11 +516,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                 </div>
               )}
 
-              {isBoosting && (
-                  <div className="text-center py-6 text-indigo-300 animate-pulse font-semibold">
-                      Processando pagamento e criando campanha, aguarde...
-                  </div>
-              )}
+
 
               {!isBoosting && (
                 <>

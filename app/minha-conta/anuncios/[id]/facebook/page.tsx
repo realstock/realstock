@@ -128,6 +128,10 @@ export default function FacebookPublisherPage() {
     return <LoadingScreen title="Publicação Facebook" subtitle="Sincronizando feed com a Meta Graph API..." />;
   }
 
+  if (isPublishing) {
+    return <LoadingScreen title="Publicando no Facebook" subtitle="Processando pagamento e enviando Reels/Carrossel..." />;
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
       <div className="mx-auto max-w-4xl">
@@ -303,11 +307,7 @@ export default function FacebookPublisherPage() {
                 </div>
               )}
 
-              {isPublishing && (
-                  <div className="text-center py-6 text-pink-300 animate-pulse font-semibold">
-                      Processando pagamento e publicando no Facebook, aguarde...
-                  </div>
-              )}
+
 
                {!isPublishing && !paypalOrderId ? (
                  (publishedSessions.find(s => s.postType === postType) || (postType === 'carousel' && property.facebookPostId)) ? (

@@ -113,6 +113,10 @@ export default function XPublisherPage() {
     return <LoadingScreen title="Publicação X (Twitter)" subtitle="Conectando com a API do X..." />;
   }
 
+  if (isPublishing) {
+    return <LoadingScreen title="Publicando no X" subtitle="Processando pagamento e enviando Reels/Carrossel..." />;
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-8 text-white bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(15,23,42,0.6),rgba(0,0,0,1))]">
       <div className="mx-auto max-w-4xl">
@@ -299,11 +303,7 @@ export default function XPublisherPage() {
                 </div>
               )}
 
-              {isPublishing && (
-                  <div className="text-center py-6 text-slate-300 animate-pulse font-semibold">
-                      Processando pagamento e enviando para o X (Twitter)...
-                  </div>
-              )}
+
 
                {!isPublishing && !paypalOrderId ? (
                   publishedSessions.find(s => s.postType === postType) ? (
