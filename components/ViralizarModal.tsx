@@ -456,7 +456,13 @@ export default function ViralizarModal(props: ViralizarModalProps) {
             const res = await fetch("/api/minha-conta/execute-viralizar-bundle", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ propertyId, orderID, platform: post.platform, targetPostType: post.type })
+                body: JSON.stringify({ 
+                    propertyId, 
+                    orderID, 
+                    platform: post.platform, 
+                    targetPostType: post.type,
+                    videoUrl: upData.videoUrl
+                })
             });
             const data = await res.json();
             if (data.success) updateTaskStatus(post.id, 'success', data.permalink);
