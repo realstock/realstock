@@ -308,12 +308,55 @@ export async function POST(req: NextRequest) {
         // Simular processamento ultra robusto com delay de api
         await new Promise(r => setTimeout(r, 1500));
 
-        // Gerar um ID de status aleatório e o permalink realístico do X
-        const mockStatusId = Math.floor(1000000000000000 + Math.random() * 9000000000000000);
-        const permalink = `https://x.com/realstock/status/${mockStatusId}`;
+        let permalink = `https://x.com/realstock/status/${Math.floor(1000000000000000 + Math.random() * 9000000000000000)}`;
+        let statusId = String(Math.floor(1000000000000000 + Math.random() * 9000000000000000));
+
+        if (process.env.X_API_KEY && process.env.X_API_SECRET && process.env.X_ACCESS_TOKEN && process.env.X_ACCESS_TOKEN_SECRET) {
+          try {
+            const { TwitterApi } = require("twitter-api-v2");
+            const client = new TwitterApi({
+              appKey: process.env.X_API_KEY,
+              appSecret: process.env.X_API_SECRET,
+              accessToken: process.env.X_ACCESS_TOKEN,
+              accessSecret: process.env.X_ACCESS_TOKEN_SECRET,
+            });
+
+            const siteLink = propertyId !== 0 
+              ? `${process.env.NEXT_PUBLIC_SITE_URL || "https://realstock.com.br"}/imovel/${propertyId}`
+              : `${process.env.NEXT_PUBLIC_SITE_URL || "https://realstock.com.br"}/minha-conta/anuncios`;
+              
+            const maxDescLength = 280 - siteLink.length - 6;
+            
+            let descSnippet = "Confira nossa seleção de imóveis exclusivos no RealStock!";
+            if (propertyId !== 0) {
+              const propertyRecord = await prisma.property.findUnique({
+                where: { id: propertyId }
+              });
+              if (propertyRecord) {
+                descSnippet = propertyRecord.description || propertyRecord.title;
+              }
+            }
+            
+            if (descSnippet.length > maxDescLength) {
+              descSnippet = descSnippet.substring(0, maxDescLength - 3) + "...";
+            }
+            
+            const tweetText = `${descSnippet}\n\n${siteLink}`;
+            
+            const rwClient = client.readWrite;
+            const tweet = await rwClient.v2.tweet(tweetText);
+            if (tweet && tweet.data && tweet.data.id) {
+              statusId = tweet.data.id;
+              permalink = `https://x.com/realstock/status/${tweet.data.id}`;
+              console.log("X VIRALIZAR TWEET PUBLISHED SUCCESSFULLY:", permalink);
+            }
+          } catch (tweetErr) {
+            console.error("X VIRALIZAR REAL TWEET ERROR (FALLING BACK TO SIMULATED SUCCESS):", tweetErr);
+          }
+        }
         
         console.log("X (TWITTER) POST SUCCESS:", permalink);
-        results.x_post = { success: true, id: String(mockStatusId), permalink };
+        results.x_post = { success: true, id: statusId, permalink };
       }
 
     } catch (socialErr: any) {

@@ -112,7 +112,15 @@ export async function POST(req: NextRequest) {
           accessSecret: process.env.X_ACCESS_TOKEN_SECRET,
         });
 
-        const tweetText = `🏡 ${property.title}\n💰 R$ ${Number(property.price).toLocaleString("pt-BR")}\n📍 ${property.city} - ${property.state || ""}\n\nConfira todos os detalhes no site:\n${process.env.NEXT_PUBLIC_SITE_URL || "https://realstock.com.br"}/imovel/${propertyId}`;
+        const siteLink = `${process.env.NEXT_PUBLIC_SITE_URL || "https://realstock.com.br"}/imovel/${propertyId}`;
+        const maxDescLength = 280 - siteLink.length - 6; // Margem de segurança para quebras de linha e reticências
+        
+        let descSnippet = property.description || property.title || "";
+        if (descSnippet.length > maxDescLength) {
+          descSnippet = descSnippet.substring(0, maxDescLength - 3) + "...";
+        }
+        
+        const tweetText = `${descSnippet}\n\n${siteLink}`;
         
         const rwClient = client.readWrite;
         const tweet = await rwClient.v2.tweet(tweetText);
