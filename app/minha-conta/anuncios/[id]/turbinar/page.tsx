@@ -15,6 +15,9 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
   const router = useRouter();
   const searchParams = useSearchParams();
   const platform = searchParams.get("platform") || "instagram";
+  const [selectedPlatform, setSelectedPlatform] = useState<string>(
+    platform === "meta" ? "instagram" : platform
+  );
 
   const [loading, setLoading] = useState(true);
   const [property, setProperty] = useState<any>(null);
@@ -100,7 +103,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
       }
 
       // Selecionar postType automaticamente se carrossel não estiver disponível
-      const availableSessions = platform === "facebook" ? data.fbSessions : data.igSessions;
+      const availableSessions = selectedPlatform === "facebook" ? data.fbSessions : data.igSessions;
       if (availableSessions && availableSessions.length > 0) {
           const hasCarouselSession = availableSessions.some((s: any) => {
               const type = s.postType?.toLowerCase();
@@ -133,7 +136,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
       const res = await fetch("/api/paypal/create-boost-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ property_id: id, total_charge: siteCharge, daily_budget: dailyBudget, platform }),
+        body: JSON.stringify({ property_id: id, total_charge: siteCharge, daily_budget: dailyBudget, platform: selectedPlatform }),
       });
 
       const data = await res.json();
@@ -152,7 +155,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
     setIsBoosting(true);
     setPaypalError("");
     try {
-      const captureUrl = platform === "google" 
+      const captureUrl = selectedPlatform === "google" 
           ? "/api/paypal/capture-google-order" 
           : "/api/paypal/capture-boost-order";
           
@@ -163,13 +166,13 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
           orderID, 
           propertyId: id, 
           dailyBudget, 
-          platform, 
+          platform: selectedPlatform, 
           postType 
         }),
       });
       const result = await res.json();
       if (!res.ok || !result.success) throw new Error(result.error || "Falha ao finalizar");
-      setSuccessMsg(`Sua campanha foi criada com sucesso e está em análise pelo ${platform === 'google' ? 'Google' : 'Meta'}. Logo seus leads começarão a chegar!`);
+      setSuccessMsg(`Sua campanha foi criada com sucesso e está em análise pelo ${selectedPlatform === 'google' ? 'Google' : 'Meta'}. Logo seus leads começarão a chegar!`);
       // Update turbinar credits locally if used
       if (orderID === "CREDIT") {
         setTurbinarCredits(c => Math.max(0, Number(c) - siteCharge));
@@ -183,7 +186,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
 
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
-  const currentSessions = platform === "facebook" ? fbSessions : (platform === "instagram" ? igSessions : []);
+  const currentSessions = selectedPlatform === "facebook" ? fbSessions : (selectedPlatform === "instagram" ? igSessions : []);
   const hasCarousel = property?.images && property.images.length > 0;
   const hasReels = !!property?.reelsVideoUrl;
   
@@ -191,7 +194,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
   const selectedPermalink = selectedSession?.validationReport ? (selectedSession.validationReport as any).permalink : null;
 
   if (status === "loading" || loading) {
-    const subtitle = platform === "google" 
+    const subtitle = selectedPlatform === "google" 
       ? "Conectando com Google Ads..." 
       : "Conectando com Meta Ads e Instagram...";
     return <LoadingScreen title="Painel de Tráfego" subtitle={subtitle} />;
@@ -201,7 +204,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
     return (
       <LoadingScreen 
         title="Criando Campanha" 
-        subtitle={`Enviando configurações para o ${platform === 'google' ? 'Google Ads' : 'Meta Ads'}...`} 
+        subtitle={`Enviando configurações para o ${selectedPlatform === 'google' ? 'Google Ads' : 'Meta Ads'}...`} 
       />
     );
   }
@@ -227,9 +230,9 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
             Turbinar Anúncio
           </h1>
           <p className="mt-3 text-lg text-slate-300">
-            {platform === "google" 
+            {selectedPlatform === "google" 
               ? "Ative uma campanha inteligente no Google Ads para buscar compradores ativos pesquisando na sua região." 
-              : `Transforme sua postagem do ${platform === "facebook" ? "Facebook" : "Instagram"} em um verdadeiro ímã de leads pela Meta Ads.`}
+              : `Transforme sua postagem do ${selectedPlatform === "facebook" ? "Facebook" : "Instagram"} em um verdadeiro ímã de leads pela Meta Ads.`}
           </p>
         </div>
 
@@ -253,7 +256,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                 <h2 className="text-xl font-semibold mb-4">Preview do Anúncio</h2>
                 
                 <div className="mb-4">
-                  {platform === "google" ? (
+                  {selectedPlatform === "google" ? (
                     <div className="w-full rounded-2xl bg-white p-6 shadow-xl border border-slate-200 text-left">
                        {/* Header: Logo + Business Name */}
                        <div className="flex items-center gap-2 mb-3">
@@ -387,7 +390,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                   )}
                 </div>
 
-                {platform !== "google" && (
+                {selectedPlatform !== "google" && (
                   <>
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="text-lg font-bold">{property.title}</div>
@@ -407,10 +410,10 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                 {/* Formato */}
                 <div className="mt-6 border-t border-white/10 pt-4">
                   <h3 className="text-sm font-bold text-white mb-3">
-                    {platform === "google" ? "Destino do Impulsionamento" : "Formato do Impulsionamento"}
+                    {selectedPlatform === "google" ? "Destino do Impulsionamento" : "Formato do Impulsionamento"}
                   </h3>
                   
-                  {platform === "google" ? (
+                  {selectedPlatform === "google" ? (
                     <div className="flex p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20 w-full mb-6">
                       <span className="text-[11px] text-emerald-300 font-medium">
                         Rede de Pesquisa Google. O tráfego será direcionado diretamente para a página deste imóvel no seu site.
@@ -418,30 +421,80 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                     </div>
                   ) : (
                     <>
-                      <div className="flex p-1 bg-slate-900 rounded-xl border border-white/5 w-fit mb-6">
-                        {hasCarousel && (
-                            <button 
-                                onClick={() => {
-                                    setPostType("carousel");
-                                    setPaypalOrderId(null);
-                                }}
-                                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${postType === 'carousel' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
-                            >
-                                Carrossel
-                            </button>
-                        )}
-                        {hasReels && (
-                            <button 
-                                onClick={() => {
-                                    setPostType("reels");
-                                    setPaypalOrderId(null);
-                                }}
-                                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${postType === 'reels' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
-                            >
-                                Reels IA
-                            </button>
-                        )}
+                      {/* Platform Choice Selector (Instagram / Facebook) */}
+                      <div className="mb-6 bg-white/5 p-4 rounded-xl border border-white/10">
+                        <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 mb-2">1. Selecione a Rede Social</div>
+                        <div className="flex p-1 bg-slate-950 rounded-xl border border-white/5 w-fit">
+                          <button 
+                            onClick={() => {
+                              setSelectedPlatform("instagram");
+                              setPaypalOrderId(null);
+                              // Auto select post type if available
+                              const availableSessions = igSessions;
+                              if (availableSessions && availableSessions.length > 0) {
+                                const hasCarouselSession = availableSessions.some((s: any) => {
+                                  const type = s.postType?.toLowerCase();
+                                  return type === "carousel" || (type !== "reels" && type !== "video");
+                                });
+                                setPostType(hasCarouselSession ? "carousel" : "reels");
+                              }
+                            }}
+                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${selectedPlatform === 'instagram' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
+                          >
+                            <img src="/icones/instagram.jpg" className="w-3.5 h-3.5 rounded-sm object-cover" alt="" />
+                            Instagram
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setSelectedPlatform("facebook");
+                              setPaypalOrderId(null);
+                              // Auto select post type if available
+                              const availableSessions = fbSessions;
+                              if (availableSessions && availableSessions.length > 0) {
+                                const hasCarouselSession = availableSessions.some((s: any) => {
+                                  const type = s.postType?.toLowerCase();
+                                  return type === "carousel" || (type !== "reels" && type !== "video");
+                                });
+                                setPostType(hasCarouselSession ? "carousel" : "reels");
+                              }
+                            }}
+                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${selectedPlatform === 'facebook' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
+                          >
+                            <img src="/icones/facebook.jpeg" className="w-3.5 h-3.5 rounded-sm object-cover" alt="" />
+                            Facebook
+                          </button>
+                        </div>
                       </div>
+
+                      {/* Format Choice Selector */}
+                      <div className="mb-6 bg-white/5 p-4 rounded-xl border border-white/10">
+                        <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 mb-2">2. Formato da Publicação</div>
+                        <div className="flex p-1 bg-slate-950 rounded-xl border border-white/5 w-fit">
+                          {hasCarousel && (
+                              <button 
+                                  onClick={() => {
+                                      setPostType("carousel");
+                                      setPaypalOrderId(null);
+                                  }}
+                                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${postType === 'carousel' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
+                              >
+                                  Carrossel
+                              </button>
+                          )}
+                          {hasReels && (
+                              <button 
+                                  onClick={() => {
+                                      setPostType("reels");
+                                      setPaypalOrderId(null);
+                                  }}
+                                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${postType === 'reels' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
+                              >
+                                  Reels IA
+                              </button>
+                          )}
+                        </div>
+                      </div>
+                      
                       {selectedPermalink && (
                         <a 
                           href={selectedPermalink} 
@@ -594,7 +647,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                       onClick={startPaypalCheckout}
                       className="w-full rounded-2xl bg-gradient-to-r from-indigo-500 to-blue-500 px-6 py-4 text-center font-bold text-white transition hover:opacity-90 shadow-lg shadow-indigo-500/20"
                     >
-                      {platform === "google" ? "Turbinar no Google" : (selectedSession ? "Turbinar Agora" : "Postar e Turbinar")}
+                      {selectedPlatform === "google" ? "Turbinar no Google" : (selectedSession ? "Turbinar Agora" : "Postar e Turbinar")}
                     </button>
                   ) : (
                     <PayPalScriptProvider

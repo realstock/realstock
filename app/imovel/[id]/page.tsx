@@ -30,6 +30,18 @@ const FacebookIcon = ({ size = 24 }: { size?: number }) => (
   </svg>
 );
 
+const TwitterIcon = ({ size = 24 }: { size?: number }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    className="fill-current"
+  >
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+  </svg>
+);
+
 export default async function PropertyPage({
   params,
 }: {
@@ -73,7 +85,7 @@ export default async function PropertyPage({
   }
 
   // Fetch social sessions
-  const [igSessions, fbSessions] = await Promise.all([
+  const [igSessions, fbSessions, xTransactions] = await Promise.all([
     prisma.instagramPreviewSession.findMany({
       where: { listingId: propertyId, status: "PUBLISHED" },
       orderBy: { createdAt: "desc" },
@@ -82,7 +94,25 @@ export default async function PropertyPage({
       where: { listingId: propertyId, status: "PUBLISHED" },
       orderBy: { createdAt: "desc" },
     }),
+    prisma.financialTransaction.findMany({
+      where: {
+        category: "POSTS",
+        description: {
+          contains: `Publicação de Imóvel #${propertyId} (X/Twitter)`,
+        }
+      },
+      orderBy: { createdAt: "desc" }
+    })
   ]);
+
+  const xReelsTx = xTransactions.find(tx => tx.description ? tx.description.includes("[Format: reels]") : false);
+  const xCarouselTx = xTransactions.find(tx => tx.description ? !tx.description.includes("[Format: reels]") : true);
+
+  const xReelsMatch = xReelsTx?.description ? xReelsTx.description.match(/\[Permalink:\s*(https?:\/\/[^\]]+)\]/) : null;
+  const xReelsPermalink = xReelsMatch ? xReelsMatch[1] : null;
+
+  const xCarouselMatch = xCarouselTx?.description ? xCarouselTx.description.match(/\[Permalink:\s*(https?:\/\/[^\]]+)\]/) : null;
+  const xCarouselPermalink = xCarouselMatch ? xCarouselMatch[1] : null;
 
   const socialLinks = [
     {
@@ -105,8 +135,15 @@ export default async function PropertyPage({
           }
           return true;
       })
+    },
+    {
+      name: "Twitter (X)",
+      links: [
+        { type: "Reels", permalink: xReelsPermalink },
+        { type: "Carrossel", permalink: xCarouselPermalink },
+      ].filter(l => l.permalink)
     }
-  ].filter(p => p.links.length > 0);
+  ];
 
   const offers = property.offers.map((offer) => ({
     id: offer.id,
@@ -255,52 +292,54 @@ export default async function PropertyPage({
             <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
               <h2 className="text-xl font-bold">Confira esse anúncio nas redes sociais</h2>
               
-              {socialLinks.length > 0 ? (
-                <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                  {socialLinks.map((platform) => (
-                    <div key={platform.name} className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-slate-900/50 p-4">
+              <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {socialLinks.map((platform) => (
+                  <div key={platform.name} className="flex flex-col justify-between gap-4 rounded-2xl border border-white/10 bg-slate-900/50 p-4">
+                    <div className="flex flex-col gap-4">
                       <div className="flex items-center gap-3">
                         {platform.name === 'Instagram' ? (
                           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-500 text-white">
                             <InstagramIcon size={18} />
                           </div>
-                        ) : (
+                        ) : platform.name === 'Facebook' ? (
                           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
                             <FacebookIcon size={18} />
+                          </div>
+                        ) : (
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-950 border border-white/15 text-white">
+                            <TwitterIcon size={14} />
                           </div>
                         )}
                         <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
                           {platform.name}
                         </span>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        {platform.links.map((link) => (
-                          <a
-                            key={`${platform.name}-${link.type}`}
-                            href={link.permalink}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-white/10 hover:scale-[1.02]"
-                          >
-                            <span className="opacity-70">{link.type}</span>
-                            <div className="h-1 w-1 rounded-full bg-white/30" />
-                            <span className="text-xs text-blue-400">Ver post</span>
-                          </a>
-                        ))}
-                      </div>
+                      
+                      {platform.links.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {platform.links.map((link) => (
+                            <a
+                              key={`${platform.name}-${link.type}`}
+                              href={link.permalink}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-white/10 hover:scale-[1.02]"
+                            >
+                              <span className="opacity-70">{link.type}</span>
+                              <div className="h-1 w-1 rounded-full bg-white/30" />
+                              <span className="text-xs text-blue-400">Ver post</span>
+                            </a>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-500 italic leading-relaxed">
+                          Esse anúncio ainda não tem postagem no {platform.name === 'Twitter (X)' ? 'X' : platform.name}.
+                        </p>
+                      )}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-5 flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/5 p-8 text-center">
-                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white/5 text-slate-500">
-                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   </div>
-                  <p className="text-sm text-slate-400 max-w-[280px]">
-                    O anunciante ainda não publicou este anúncio nas redes sociais.
-                  </p>
-                </div>
-              )}
+                ))}
+              </div>
             </div>
 
             {property.googleMapsThumbnail || property.googleMapsLink ? (

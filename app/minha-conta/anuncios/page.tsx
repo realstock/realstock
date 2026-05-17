@@ -76,6 +76,18 @@ export default function MeusAnunciosPage() {
   const [pendingVideoProperty, setPendingVideoProperty] = useState<PropertyItem | null>(null);
   const [mediaCheckSource, setMediaCheckSource] = useState<"create" | "viralizar">("create");
 
+  const [tooltipState, setTooltipState] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    text: string;
+  }>({
+    visible: false,
+    x: 0,
+    y: 0,
+    text: ""
+  });
+
   async function loadProperties() {
     try {
       setLoading(true);
@@ -565,6 +577,31 @@ export default function MeusAnunciosPage() {
                       ? 'border-pink-500/40 bg-gradient-to-r from-pink-500/5 to-orange-500/5' 
                       : 'border-white/10 bg-white/5'
                 } p-5 relative overflow-hidden`}
+                onMouseEnter={(e) => {
+                  if (!isPublished && !property.sold) {
+                    setTooltipState({
+                      visible: true,
+                      x: e.clientX,
+                      y: e.clientY,
+                      text: "✨ vc ainda nao viralizou esse anuncio, clique no botão viralizar e publique ele no instagram, facebook e twitter com apenas um clique e 50% de desconto"
+                    });
+                  }
+                }}
+                onMouseMove={(e) => {
+                  if (!isPublished && !property.sold) {
+                    setTooltipState(prev => ({
+                      ...prev,
+                      x: e.clientX,
+                      y: e.clientY
+                    }));
+                  }
+                }}
+                onMouseLeave={() => {
+                  setTooltipState(prev => ({
+                    ...prev,
+                    visible: false
+                  }));
+                }}
               >
                 {property.sold ? (
                   <div className="absolute top-0 right-0 bg-gradient-to-l from-emerald-500 to-teal-500 text-white text-[10px] font-black px-4 py-1.5 rounded-bl-xl shadow-lg flex items-center gap-1.5 uppercase tracking-wider animate-pulse">
@@ -579,7 +616,45 @@ export default function MeusAnunciosPage() {
                 )}
                 <div className="flex flex-wrap items-start justify-between gap-4 mt-2">
                   <div className="flex gap-4">
-                    <PropertyThumbnail property={property} />
+                    <div className="flex flex-col gap-3 w-52 shrink-0">
+                      <PropertyThumbnail property={property} />
+                      <button 
+                        onClick={() => handleViralizarClick(property)}
+                        className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 py-3 text-xs font-black text-white shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02] active:scale-95"
+                        onMouseEnter={(e) => {
+                          if (isPublished) {
+                            e.stopPropagation();
+                            setTooltipState({
+                              visible: true,
+                              x: e.clientX,
+                              y: e.clientY,
+                              text: "✨ Se vc alterou o anúncio, adicionou videos e fotos novas, criou um video ia novo viralize ele novamente"
+                            });
+                          }
+                        }}
+                        onMouseMove={(e) => {
+                          if (isPublished) {
+                            e.stopPropagation();
+                            setTooltipState(prev => ({
+                              ...prev,
+                              x: e.clientX,
+                              y: e.clientY
+                            }));
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (isPublished) {
+                            e.stopPropagation();
+                            setTooltipState(prev => ({
+                              ...prev,
+                              visible: false
+                            }));
+                          }
+                        }}
+                      >
+                        <Zap size={14} className="fill-white animate-pulse" /> {isPublished ? "VIRALIZAR NOVAMENTE" : "VIRALIZAR (50% OFF)"}
+                      </button>
+                    </div>
 
                     <div>
                       <div className="text-lg font-semibold">
@@ -671,95 +746,202 @@ export default function MeusAnunciosPage() {
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {/* Redes Sociais */}
-                        <div className="space-y-2">
-                          <div className="flex gap-2">
-                            <Link
-                              href={`/minha-conta/anuncios/${property.id}/instagram`}
-                              className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-pink-500/20 bg-pink-500/5 py-2.5 text-xs font-bold text-pink-400 transition-all hover:bg-pink-500/10"
-                            >
-                              <img src="/icones/instagram.jpg" className="w-4 h-4 rounded-sm object-cover" alt="" />
-                              Insta
-                            </Link>
-                            <Link
-                              href={`/minha-conta/anuncios/${property.id}/facebook`}
-                              className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-blue-500/20 bg-blue-500/5 py-2.5 text-xs font-bold text-blue-400 transition-all hover:bg-blue-500/10"
-                            >
-                              <img src="/icones/facebook.jpeg" className="w-4 h-4 rounded-sm object-cover" alt="" />
-                              Face
-                            </Link>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                        {/* 1. POSTAR / VER POST */}
+                        <div 
+                          className="space-y-3 bg-white/[0.02] border border-white/5 p-3 rounded-xl flex flex-col justify-between"
+                          onMouseEnter={(e) => {
+                            e.stopPropagation();
+                            setTooltipState({
+                              visible: true,
+                              x: e.clientX,
+                              y: e.clientY,
+                              text: isPublished 
+                                ? "✨ clique nos botões abaixo para conferir suas postagens das redes sociais" 
+                                : "✨ Escolha a rede social e faça sua postagem"
+                            });
+                          }}
+                          onMouseMove={(e) => {
+                            e.stopPropagation();
+                            setTooltipState(prev => ({
+                              ...prev,
+                              x: e.clientX,
+                              y: e.clientY
+                            }));
+                          }}
+                          onMouseLeave={(e) => {
+                            e.stopPropagation();
+                            setTooltipState(prev => ({
+                              ...prev,
+                              visible: false
+                            }));
+                          }}
+                        >
+                          <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 flex items-center gap-1.5 border-b border-white/5 pb-2">
+                            <Globe size={12} className="text-sky-400" />
+                            1. Postar / Ver Post
+                          </div>
+                          <div className="flex flex-col gap-2 flex-grow justify-end">
+                            <div className="flex gap-2">
+                              <Link
+                                href={`/minha-conta/anuncios/${property.id}/instagram`}
+                                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-pink-500/20 bg-pink-500/5 py-2 text-[11px] font-bold text-pink-400 transition-all hover:bg-pink-500/10"
+                              >
+                                <img src="/icones/instagram.jpg" className="w-3.5 h-3.5 rounded-sm object-cover" alt="" />
+                                Insta
+                              </Link>
+                              <Link
+                                href={`/minha-conta/anuncios/${property.id}/facebook`}
+                                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-blue-500/20 bg-blue-500/5 py-2 text-[11px] font-bold text-blue-400 transition-all hover:bg-blue-500/10"
+                              >
+                                <img src="/icones/facebook.jpeg" className="w-3.5 h-3.5 rounded-sm object-cover" alt="" />
+                                Face
+                              </Link>
+                            </div>
                             <Link
                               href={`/minha-conta/anuncios/${property.id}/x`}
-                              className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-slate-500/20 bg-slate-500/5 py-2.5 text-xs font-bold text-slate-300 transition-all hover:bg-slate-500/10"
+                              className="w-full flex items-center justify-center gap-2 rounded-xl border border-slate-500/20 bg-slate-500/5 py-2 text-[11px] font-bold text-slate-300 transition-all hover:bg-slate-500/10"
                             >
                               <svg className="w-3.5 h-3.5 fill-slate-300" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                              X
+                              X (Twitter)
                             </Link>
                           </div>
-                          
-                          {property.reelsVideoUrl ? (
-                            <div className="space-y-2">
-                              <button
-                                onClick={() => setViewingVideoUrl(property.reelsVideoUrl!)}
-                                className="w-full flex items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 py-2.5 text-xs font-bold text-emerald-400 transition-all hover:bg-emerald-500/10"
-                              >
-                                <Film size={14} />
-                                Ver Vídeo IA
-                              </button>
-                              <button
-                                onClick={() => handleCreateVideoClick(property)}
-                                className="w-full flex items-center justify-center gap-2 rounded-xl border border-sky-500/10 bg-white/5 py-2 text-[10px] font-bold text-slate-400 transition-all hover:bg-white/10 hover:text-white group"
-                              >
-                                <Zap size={12} className="group-hover:fill-sky-400 group-hover:text-sky-400 transition-all" />
-                                Recriar Vídeo IA
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => handleCreateVideoClick(property)}
-                              className="w-full flex items-center justify-center gap-2 rounded-xl border border-sky-500/20 bg-sky-500/5 py-2.5 text-xs font-bold text-sky-400 transition-all hover:bg-sky-500/10"
-                            >
-                              <Film size={14} />
-                              Criar Vídeo IA
-                            </button>
-                          )}
                         </div>
 
-                        {/* Impulsionamento */}
-                        <div className="space-y-2">
-                          <div className="flex gap-2">
-                            <Link 
-                              href={`/minha-conta/anuncios/${property.id}/turbinar?platform=meta`}
-                              className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-indigo-500/20 bg-indigo-500/5 py-2.5 text-xs font-bold text-indigo-300 transition-all hover:bg-indigo-500/10"
-                            >
-                              <Rocket size={14} />
-                              Meta Ads
-                            </Link>
-                            <Link 
-                              href={`/minha-conta/anuncios/${property.id}/turbinar?platform=google`}
-                              className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 py-2.5 text-xs font-bold text-emerald-300 transition-all hover:bg-emerald-500/10"
-                            >
-                              <Rocket size={14} />
-                              Google
-                            </Link>
-                          </div>
+                        {/* 2. CRIAR VÍDEO (IA) */}
+                        <div 
+                          className="space-y-3 bg-white/[0.02] border border-white/5 p-3 rounded-xl flex flex-col justify-between"
+                          onMouseEnter={(e) => {
+                            e.stopPropagation();
+                            const hasVideos = property.videos && property.videos.length > 0;
+                            const hasIaVideo = !!property.reelsVideoUrl;
 
-                          {!(property.sponsoredUntil && new Date(property.sponsoredUntil) > new Date()) && (
-                            <Link
-                              href={`/minha-conta/anuncios/${property.id}/patrocinar`}
-                              className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-yellow-500/30 py-2.5 text-xs font-black text-yellow-500 transition-all hover:from-amber-500/30 hover:to-yellow-500/30"
-                            >
-                              💎 Patrocinar Imóvel
-                            </Link>
-                          )}
-                          
-                          <button 
-                            onClick={() => handleViralizarClick(property)}
-                            className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 py-2.5 text-xs font-black text-white shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02] active:scale-95"
-                          >
-                            <Zap size={14} className="fill-white" /> VIRALIZAR (50% OFF)
-                          </button>
+                            let tooltipText = "";
+                            if (hasVideos && !hasIaVideo) {
+                              tooltipText = "✨ crie seu video para o reel aqui";
+                            } else if (!hasVideos) {
+                              tooltipText = "✨ adicione videos ao seu anuncio e crie seu video ia";
+                            } else if (hasIaVideo) {
+                              tooltipText = "✨ veja seu video ia ou se incluiu os videos posteriormente recrie ele";
+                            }
+
+                            setTooltipState({
+                              visible: true,
+                              x: e.clientX,
+                              y: e.clientY,
+                              text: tooltipText
+                            });
+                          }}
+                          onMouseMove={(e) => {
+                            e.stopPropagation();
+                            setTooltipState(prev => ({
+                              ...prev,
+                              x: e.clientX,
+                              y: e.clientY
+                            }));
+                          }}
+                          onMouseLeave={(e) => {
+                            e.stopPropagation();
+                            setTooltipState(prev => ({
+                              ...prev,
+                              visible: false
+                            }));
+                          }}
+                        >
+                          <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 flex items-center gap-1.5 border-b border-white/5 pb-2">
+                            <Film size={12} className="text-emerald-400" />
+                            2. Criar Vídeo IA
+                          </div>
+                          <div className="flex flex-col gap-2 flex-grow justify-end">
+                            {property.reelsVideoUrl ? (
+                              <>
+                                <button
+                                  onClick={() => setViewingVideoUrl(property.reelsVideoUrl!)}
+                                  className="w-full flex items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 py-2 text-[11px] font-bold text-emerald-400 transition-all hover:bg-emerald-500/10"
+                                >
+                                  <Film size={13} />
+                                  Ver Vídeo IA
+                                </button>
+                                <button
+                                  onClick={() => handleCreateVideoClick(property)}
+                                  className="w-full flex items-center justify-center gap-2 rounded-xl border border-sky-500/10 bg-white/5 py-2 text-[10px] font-bold text-slate-400 transition-all hover:bg-white/10 hover:text-white group"
+                                >
+                                  <Zap size={11} className="group-hover:fill-sky-400 group-hover:text-sky-400 transition-all" />
+                                  Recriar Vídeo IA
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => handleCreateVideoClick(property)}
+                                className="w-full flex items-center justify-center gap-2 rounded-xl border border-sky-500/20 bg-sky-500/5 py-2 text-[11px] font-bold text-sky-400 transition-all hover:bg-sky-500/10"
+                              >
+                                <Film size={13} />
+                                Criar Vídeo IA
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 3. TURBINAR / IMPULSIONAR */}
+                        <div 
+                          className="space-y-3 bg-white/[0.02] border border-white/5 p-3 rounded-xl flex flex-col justify-between"
+                          onMouseEnter={(e) => {
+                            e.stopPropagation();
+                            setTooltipState({
+                              visible: true,
+                              x: e.clientX,
+                              y: e.clientY,
+                              text: isPublished 
+                                ? "✨ Aqui é a cereja do bolo, contrate um pacote para turbinar seu anuncio e alcance milhares de pessoas nas redes sociais" 
+                                : "✨ publique seu anuncio nas redes sociais e contrate um pacote para turbinar seu anuncio e alcance milhares de pessoas nas redes sociais"
+                            });
+                          }}
+                          onMouseMove={(e) => {
+                            e.stopPropagation();
+                            setTooltipState(prev => ({
+                              ...prev,
+                              x: e.clientX,
+                              y: e.clientY
+                            }));
+                          }}
+                          onMouseLeave={(e) => {
+                            e.stopPropagation();
+                            setTooltipState(prev => ({
+                              ...prev,
+                              visible: false
+                            }));
+                          }}
+                        >
+                          <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 flex items-center gap-1.5 border-b border-white/5 pb-2">
+                            <Rocket size={12} className="text-indigo-400" />
+                            3. Turbinar Anúncio
+                          </div>
+                          <div className="flex flex-col gap-2 flex-grow justify-end">
+                            <div className="flex gap-2">
+                              <Link 
+                                href={`/minha-conta/anuncios/${property.id}/turbinar?platform=meta`}
+                                className="flex-1 flex items-center justify-center gap-1 text-center rounded-xl border border-indigo-500/20 bg-indigo-500/5 py-2 text-[11px] font-bold text-indigo-300 transition-all hover:bg-indigo-500/10"
+                              >
+                                <Rocket size={11} />
+                                Meta Ads
+                              </Link>
+                              <Link 
+                                href={`/minha-conta/anuncios/${property.id}/turbinar?platform=google`}
+                                className="flex-1 flex items-center justify-center gap-1 text-center rounded-xl border border-emerald-500/20 bg-emerald-500/5 py-2 text-[11px] font-bold text-emerald-300 transition-all hover:bg-emerald-500/10"
+                              >
+                                <Rocket size={11} />
+                                Google
+                              </Link>
+                            </div>
+                            {!(property.sponsoredUntil && new Date(property.sponsoredUntil) > new Date()) && (
+                              <Link
+                                href={`/minha-conta/anuncios/${property.id}/patrocinar`}
+                                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-yellow-500/30 py-2 text-[11px] font-black text-yellow-500 transition-all hover:from-amber-500/30 hover:to-yellow-500/30"
+                              >
+                                💎 Patrocinar Imóvel
+                              </Link>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1105,6 +1287,22 @@ export default function MeusAnunciosPage() {
               >
                 Cancelar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tooltipState.visible && (
+        <div 
+          className="fixed top-24 right-6 pointer-events-none z-[100] max-w-[320px] rounded-2xl border border-purple-500/40 bg-slate-950/95 p-4 text-xs font-semibold text-purple-300 shadow-2xl backdrop-blur-md transition-all duration-300 animate-in slide-in-from-top-5 fade-in duration-300"
+        >
+          <div className="flex gap-3 items-start">
+            <span className="text-base animate-pulse">✨</span>
+            <div className="space-y-1">
+              <div className="text-[10px] font-black uppercase tracking-wider text-purple-400">Dica RealStock</div>
+              <p className="leading-relaxed text-slate-200">
+                {tooltipState.text.replace("✨ ", "")}
+              </p>
             </div>
           </div>
         </div>
