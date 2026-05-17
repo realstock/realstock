@@ -6,6 +6,7 @@ import { publishToInstagram, publishToFacebook } from "@/lib/social-publish";
 import fs from "fs";
 import path from "path";
 import os from "os";
+import { execSync } from "child_process";
 
 async function downloadToTempFile(url: string): Promise<string> {
   const response = await fetch(url);
@@ -16,6 +17,36 @@ async function downloadToTempFile(url: string): Promise<string> {
   const tempFilePath = path.join(tempDir, `x-media-${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`);
   fs.writeFileSync(tempFilePath, Buffer.from(buffer));
   return tempFilePath;
+}
+
+async function transcodeIfNeeded(inputPath: string): Promise<string> {
+  if (inputPath.endsWith(".mp4")) {
+    return inputPath;
+  }
+  
+  const ffmpegPaths = ["/opt/homebrew/bin/ffmpeg", "/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg"];
+  let activeFfmpeg = "";
+  for (const p of ffmpegPaths) {
+    if (fs.existsSync(p)) {
+      activeFfmpeg = p;
+      break;
+    }
+  }
+  
+  if (!activeFfmpeg) {
+    console.warn("ffmpeg not found, skipping transcoding and uploading original file.");
+    return inputPath;
+  }
+  
+  const outputPath = inputPath.replace(/\.[^/.]+$/, "") + "-transcoded.mp4";
+  try {
+    console.log(`Executing transcoding using ${activeFfmpeg}...`);
+    execSync(`"${activeFfmpeg}" -y -i "${inputPath}" -c:v libx264 -preset superfast -pix_fmt yuv420p -c:a aac -movflags +faststart "${outputPath}"`, { stdio: 'ignore' });
+    return outputPath;
+  } catch (err) {
+    console.error("Transcoding failed:", err);
+    return inputPath;
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -393,19 +424,56 @@ export async function POST(req: NextRequest) {
 
             if (targetPostType === "reels" && videoUrl) {
               let tempFile = "";
+              let transcodedFile = "";
               try {
-                console.log("Uploading native video to X in bundle for reels...");
+                console.log("Downloading video for X Reels in bundle...");
                 tempFile = await downloadToTempFile(videoUrl);
-                const mediaId = await client.v1.uploadMedia(tempFile, {
+                
+                console.log("Checking if transcoding is needed in bundle...");
+                transcodedFile = await transcodeIfNeeded(tempFile);
+
+                console.log("Uploading native video to X in bundle for reels...");
+                const mediaId = await client.v1.uploadMedia(transcodedFile, {
                   mimeType: 'video/mp4',
                   target: 'tweet_video'
                 });
-                if (mediaId) mediaIds.push(mediaId);
+
+                if (mediaId) {
+                  console.log(`Video uploaded (ID: ${mediaId}), starting processing status check loop in bundle...`);
+                  let isProcessed = false;
+                  let checkAttempts = 0;
+                  
+                  while (!isProcessed && checkAttempts < 20) {
+                    const status = await client.v1.mediaInfo(mediaId);
+                    if (status && status.processing_info) {
+                      const state = status.processing_info.state;
+                      console.log(`[Bundle - Attempt ${checkAttempts + 1}] Video processing state: ${state}`);
+                      if (state === 'succeeded') {
+                        isProcessed = true;
+                      } else if (state === 'failed') {
+                        throw new Error("X Video processing failed: " + JSON.stringify(status.processing_info.error));
+                      } else {
+                        await new Promise(r => setTimeout(r, 2000));
+                        checkAttempts++;
+                      }
+                    } else {
+                      isProcessed = true;
+                    }
+                  }
+                  
+                  if (isProcessed) {
+                    mediaIds.push(mediaId);
+                    console.log("Video processing succeeded in bundle! Media ID attached.");
+                  }
+                }
               } catch (uploadErr) {
-                console.error("X Video upload error in bundle:", uploadErr);
+                console.error("X Video upload/transcode error in bundle:", uploadErr);
               } finally {
                 if (tempFile && fs.existsSync(tempFile)) {
                   fs.unlinkSync(tempFile);
+                }
+                if (transcodedFile && transcodedFile !== tempFile && fs.existsSync(transcodedFile)) {
+                  fs.unlinkSync(transcodedFile);
                 }
               }
             } else if (targetPostType === "carousel" && images && images.length > 0) {
