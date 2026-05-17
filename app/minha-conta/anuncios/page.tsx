@@ -494,7 +494,7 @@ export default function MeusAnunciosPage() {
                                   state: "Pro",
                                   price: 0,
                                   images: properties
-                                    .filter(p => p.images && p.images.length > 0)
+                                    .filter(p => !p.sold && p.images && p.images.length > 0)
                                     .map(p => ({
                                       imageUrl: p.images![0].imageUrl,
                                       title: p.title,

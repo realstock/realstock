@@ -50,7 +50,7 @@ export default function PortfolioFacebookPage() {
         throw new Error(data.error || "Erro ao carregar seu portfólio.");
       }
 
-      const propsWithImg = data.properties.filter((p: any) => p.images && p.images.length > 0);
+      const propsWithImg = data.properties.filter((p: any) => !p.sold && p.images && p.images.length > 0);
       setProperties(propsWithImg);
       setSelectedIds(propsWithImg.slice(0, 10).map((p: any) => p.id));
       setService(data.service);
