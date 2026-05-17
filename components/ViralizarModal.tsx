@@ -672,7 +672,7 @@ export default function ViralizarModal(props: ViralizarModalProps) {
         {/* SUCESSO */}
         <div className={step === "success" ? "block" : "hidden"}>
           <div className="py-12 text-center lg:text-left">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
               <div>
                 <div className="h-20 w-20 bg-emerald-500/20 text-emerald-400 rounded-3xl flex items-center justify-center mb-6 mx-auto lg:mx-0">
                   <CheckCircle2 size={48} />
@@ -691,6 +691,33 @@ export default function ViralizarModal(props: ViralizarModalProps) {
                    >
                      Turbinar Agora
                    </a>
+                </div>
+              </div>
+
+              <div className="space-y-4 bg-slate-900/50 p-6 rounded-3xl border border-white/5">
+                <h3 className="text-xl font-black text-white italic tracking-tighter uppercase italic mb-6">Links das Publicações</h3>
+                <div className="space-y-3">
+                  {tasks.filter(t => t.status === 'success' && t.permalink).map(task => (
+                    <div key={task.id} className="flex items-center justify-between p-4 rounded-2xl border bg-emerald-500/5 border-emerald-500/10 hover:border-emerald-500/20 transition-all">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 flex items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
+                          <CheckCircle2 size={16} />
+                        </div>
+                        <span className="text-sm font-bold text-white uppercase italic tracking-tighter">{task.label}</span>
+                      </div>
+                      <a 
+                        href={task.permalink} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-md"
+                      >
+                        Ver Post
+                      </a>
+                    </div>
+                  ))}
+                  {tasks.filter(t => t.status === 'success' && t.permalink).length === 0 && (
+                    <p className="text-slate-500 text-xs italic">Nenhuma publicação gerou link externo ou simulação.</p>
+                  )}
                 </div>
               </div>
             </div>
