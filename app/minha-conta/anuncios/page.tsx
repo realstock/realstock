@@ -9,6 +9,8 @@ import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import VideoCreatorModal from "@/components/VideoCreatorModal";
 import ViralizarModal from "@/components/ViralizarModal";
 import LoadingScreen from "@/components/LoadingScreen";
+import confetti from "canvas-confetti";
+
 
 // Garante que permalinks relativos do Facebook (ex: /reel/123/) virem URLs completas
 function normalizePermalink(permalink?: string | null): string {
@@ -33,6 +35,7 @@ type PropertyItem = {
   sponsoredUntil?: string | null;
   reelsVideoUrl?: string | null;
   offers?: any[];
+  sold?: boolean;
 };
 
 export default function MeusAnunciosPage() {
@@ -102,6 +105,37 @@ export default function MeusAnunciosPage() {
       setLoading(false);
     }
   }
+
+  async function toggleSoldStatus(propertyId: number, currentSold: boolean) {
+    try {
+      const res = await fetch(`/api/minha-conta/anuncios/${propertyId}/sold`, {
+        method: "PATCH",
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        alert(data.error || "Erro ao atualizar status do anúncio.");
+        return;
+      }
+
+      // Atualiza o estado local imediatamente
+      setProperties((prev) =>
+        prev.map((p) => (p.id === propertyId ? { ...p, sold: data.sold } : p))
+      );
+
+      // Se foi marcado como vendido, solta os confetes!
+      if (data.sold) {
+        confetti({
+          particleCount: 150,
+          spread: 85,
+          origin: { y: 0.6 }
+        });
+      }
+    } catch (err: any) {
+      alert("Erro ao conectar ao servidor para atualizar status.");
+    }
+  }
+
 
   const handleCreateVideoClick = (property: PropertyItem) => {
     const hasVideos = (property.videos || []).length > 0;
@@ -521,9 +555,20 @@ export default function MeusAnunciosPage() {
               return (
               <div
                 key={property.id}
-                className={`rounded-2xl border ${isPublished ? 'border-pink-500/40 bg-gradient-to-r from-pink-500/5 to-orange-500/5' : 'border-white/10 bg-white/5'} p-5 relative overflow-hidden`}
+                className={`rounded-2xl border transition-all duration-350 ${
+                  property.sold 
+                    ? 'border-emerald-500/60 bg-gradient-to-r from-emerald-950/40 via-emerald-900/10 to-slate-900/40 shadow-[0_0_20px_rgba(16,185,129,0.1)]' 
+                    : isPublished 
+                      ? 'border-pink-500/40 bg-gradient-to-r from-pink-500/5 to-orange-500/5' 
+                      : 'border-white/10 bg-white/5'
+                } p-5 relative overflow-hidden`}
               >
-                {isPublished && (
+                {property.sold ? (
+                  <div className="absolute top-0 right-0 bg-gradient-to-l from-emerald-500 to-teal-500 text-white text-[10px] font-black px-4 py-1.5 rounded-bl-xl shadow-lg flex items-center gap-1.5 uppercase tracking-wider animate-pulse">
+                    <CheckCircle2 size={13} />
+                    Vendido! 🏡🎉
+                  </div>
+                ) : isPublished && (
                   <div className="absolute top-0 right-0 bg-gradient-to-l from-pink-500 to-orange-500 text-white text-xs font-bold px-4 py-1 rounded-bl-xl shadow-lg flex items-center gap-1">
                     <Camera size={14} />
                     Publicado
@@ -593,6 +638,16 @@ export default function MeusAnunciosPage() {
                       >
                         Ofertas {property.offers && property.offers.length > 0 && `(${property.offers.length})`}
                       </Link>
+                      <button
+                        onClick={() => toggleSoldStatus(property.id, property.sold || false)}
+                        className={`flex-1 min-w-[120px] rounded-xl border px-4 py-2.5 text-center text-sm font-bold transition-all active:scale-95 ${
+                          property.sold
+                            ? "border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+                            : "border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                        }`}
+                      >
+                        {property.sold ? "Reativar Anúncio" : "Marcar Vendido"}
+                      </button>
                     </div>
 
                     {/* Painel de Performance e Marketing */}

@@ -174,6 +174,16 @@ export default async function PropertyPage({
 
   return (
     <main className="min-h-screen bg-slate-950 text-white overflow-x-hidden">
+      {property.sold && (
+        <div className="w-full bg-gradient-to-r from-emerald-600 to-teal-500 py-4 text-center shadow-lg relative overflow-hidden flex items-center justify-center gap-3">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.3),rgba(255,255,255,0))]" />
+          <div className="relative z-10 flex items-center gap-2 text-white font-black uppercase tracking-[0.15em] text-sm md:text-base animate-pulse">
+            <span className="text-xl">🏡</span>
+            Este Imóvel foi Vendido com Sucesso!
+            <span className="text-xl">🎉</span>
+          </div>
+        </div>
+      )}
       <section className="mx-auto max-w-7xl px-6 py-8">
         <div className="mb-6">
           <Link 
@@ -387,14 +397,26 @@ export default async function PropertyPage({
               de venda do imóvel.
             </div>
 
-            <div className="mt-5">
-              <OfferBookClient
-                propertyId={property.id}
-                ownerId={property.ownerId}
-                askingPrice={property.price.toString()}
-                offers={offers}
-              />
-            </div>
+            {property.sold ? (
+              <div className="mt-5 rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-5 text-center shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                <div className="mx-auto w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 mb-3 border border-emerald-500/20 animate-bounce">
+                  🎉
+                </div>
+                <h3 className="text-base font-bold text-emerald-400">Imóvel Vendido!</h3>
+                <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                  O proprietário já concluiu com sucesso a venda deste imóvel através da nossa plataforma. O anúncio não aceita mais novas ofertas.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-5">
+                <OfferBookClient
+                  propertyId={property.id}
+                  ownerId={property.ownerId}
+                  askingPrice={property.price.toString()}
+                  offers={offers}
+                />
+              </div>
+            )}
 
             {/* Banner Lateral Google Ads */}
             <div className="mt-8 flex justify-center border border-white/5 bg-slate-900/50 rounded-2xl py-6 relative overflow-hidden">

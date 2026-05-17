@@ -137,6 +137,7 @@ model Property {
   reelsVideoPaidAt    DateTime?       @map("reels_video_paid_at")
   reelsMusicUrl       String?         @map("reels_music_url")
   contactFeePaidAt    DateTime?       @map("contact_fee_paid_at")
+  sold                Boolean         @default(false)
   offers              Offer[]
   owner               User            @relation(fields: [ownerId], references: [id])
   images              PropertyImage[]
