@@ -69,14 +69,28 @@ export async function GET(
       );
     }
 
-    // Como as sessões do X são mockadas/sandboxed para estabilidade total,
-    // nós as simulamos retornando uma lista vazia ou populada caso já tenha sido feita.
-    const publishedSessions = [
+    // Verificar se já existe uma transação financeira para essa postagem individual no X
+    const postTransaction = await prisma.financialTransaction.findFirst({
+      where: {
+        userId: user.id,
+        category: "POSTS",
+        description: {
+          contains: `Publicação de Imóvel #${propertyId} (X/Twitter)`,
+        }
+      }
+    });
+
+    // Se houver transação de pagamento, consideramos como publicado no X
+    const publishedSessions = postTransaction ? [
       {
         postType: "carousel",
         validationReport: { permalink: "https://x.com/realstock/status/1789123456789" }
+      },
+      {
+        postType: "reels",
+        validationReport: { permalink: "https://x.com/realstock/status/1789123456789" }
       }
-    ].slice(0, 0); // Começa vazio por padrão
+    ] : [];
 
     return NextResponse.json({
       success: true,

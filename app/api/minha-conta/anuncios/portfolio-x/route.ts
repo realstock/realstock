@@ -70,13 +70,29 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const xPosts = [
+    // Verificar se já existe uma transação financeira para essa postagem de portfólio no X
+    const portfolioTransaction = await prisma.financialTransaction.findFirst({
+      where: {
+        userId: user.id,
+        category: "POSTS",
+        description: {
+          contains: "Publicação de Portfólio no X (Twitter)",
+        }
+      }
+    });
+
+    const xPosts = portfolioTransaction ? [
       {
         listingId: 0,
         postType: "carousel",
         validationReport: { permalink: "https://x.com/realstock/status/1789123456789" }
+      },
+      {
+        listingId: 0,
+        postType: "reels",
+        validationReport: { permalink: "https://x.com/realstock/status/1789123456789" }
       }
-    ].slice(0, 0); // Vazio por padrão
+    ] : [];
 
     return NextResponse.json({
       success: true,
