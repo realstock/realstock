@@ -101,14 +101,14 @@ export async function GET(req: NextRequest) {
       xPosts.push({
         listingId: 0,
         postType: "carousel",
-        validationReport: { permalink: "https://x.com/realstock/status/1789123456789" }
+        validationReport: { permalink: "https://x.com/i/status/1789123456789" }
       });
     }
     if (reelsTransaction) {
       xPosts.push({
         listingId: 0,
         postType: "reels",
-        validationReport: { permalink: "https://x.com/realstock/status/1789123456789" }
+        validationReport: { permalink: "https://x.com/i/status/1789123456789" }
       });
     }
 

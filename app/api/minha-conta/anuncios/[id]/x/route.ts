@@ -99,13 +99,13 @@ export async function GET(
     if (carouselTransaction) {
       publishedSessions.push({
         postType: "carousel",
-        validationReport: { permalink: "https://x.com/realstock/status/1789123456789" }
+        validationReport: { permalink: "https://x.com/i/status/1789123456789" }
       });
     }
     if (reelsTransaction) {
       publishedSessions.push({
         postType: "reels",
-        validationReport: { permalink: "https://x.com/realstock/status/1789123456789" }
+        validationReport: { permalink: "https://x.com/i/status/1789123456789" }
       });
     }
 

@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
       where: { id: propertyId }
     });
 
-    let permalink = `https://x.com/realstock/status/${Math.floor(1000000000000000 + Math.random() * 9000000000000000)}`;
+    let permalink = `https://x.com/i/status/${Math.floor(1000000000000000 + Math.random() * 9000000000000000)}`;
     let statusId = String(Math.floor(1000000000000000 + Math.random() * 9000000000000000));
 
     if (process.env.X_API_KEY && process.env.X_API_SECRET && process.env.X_ACCESS_TOKEN && process.env.X_ACCESS_TOKEN_SECRET && property) {
@@ -126,7 +126,7 @@ export async function POST(req: NextRequest) {
         const tweet = await rwClient.v2.tweet(tweetText);
         if (tweet && tweet.data && tweet.data.id) {
           statusId = tweet.data.id;
-          permalink = `https://x.com/realstock/status/${tweet.data.id}`;
+          permalink = `https://x.com/i/status/${tweet.data.id}`;
           console.log("X TWEET PUBLISHED SUCCESSFULLY:", permalink);
         }
       } catch (tweetErr) {
