@@ -448,7 +448,7 @@ export async function POST(req: NextRequest) {
                 transcodedFile = await transcodeIfNeeded(tempFile);
 
                 console.log("Uploading native video to X in bundle for reels...");
-                const mediaId = await client.v1.uploadMedia(transcodedFile);
+                const mediaId = await client.v1.uploadMedia(transcodedFile, { mimeType: 'video/mp4' });
 
                 if (mediaId) {
                   console.log(`Video uploaded (ID: ${mediaId}), starting processing status check loop in bundle...`);
@@ -505,6 +505,13 @@ export async function POST(req: NextRequest) {
                   }
                 }
               }
+            }
+
+            if (targetPostType === "reels" && mediaIds.length === 0) {
+              throw new Error("Falha ao carregar o vídeo para o X (Twitter) no Míssil.");
+            }
+            if (targetPostType === "carousel" && mediaIds.length === 0) {
+              throw new Error("Falha ao carregar as imagens para o X (Twitter) no Míssil.");
             }
 
             const rwClient = client.readWrite;
