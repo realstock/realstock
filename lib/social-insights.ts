@@ -176,3 +176,50 @@ export async function getMetaAdsInsights(targetIds: string[], pageToken: string)
     }
     return metrics;
 }
+
+/**
+ * Obtém insights de um post do X (Twitter)
+ */
+export async function getXPostInsights(tweetId: string): Promise<Partial<SocialPostInsights> & { error?: string }> {
+    try {
+        const appKey = process.env.X_API_KEY;
+        const appSecret = process.env.X_API_SECRET;
+        const accessToken = process.env.X_ACCESS_TOKEN;
+        const accessSecret = process.env.X_ACCESS_TOKEN_SECRET;
+
+        if (!appKey || !appSecret || !accessToken || !accessSecret) {
+            return { error: "Credenciais do X não configuradas" };
+        }
+
+        // Importação dinâmica para evitar erros caso dependências do twitter-api-v2 não estejam carregadas em ambientes restritos
+        const { TwitterApi } = await import("twitter-api-v2");
+        const client = new TwitterApi({
+            appKey: appKey!,
+            appSecret: appSecret!,
+            accessToken: accessToken!,
+            accessSecret: accessSecret!,
+        });
+        
+        const tweet = await client.v2.singleTweet(tweetId, {
+            "tweet.fields": ["public_metrics", "created_at"]
+        });
+
+        if (!tweet || !tweet.data) {
+            return { error: "Post não encontrado" };
+        }
+
+        const metrics = tweet.data.public_metrics;
+        return {
+            likes: metrics?.like_count || 0,
+            comments: metrics?.reply_count || 0,
+            views: metrics?.impression_count || 0,
+            reach: metrics?.impression_count || 0,
+            shares: (metrics?.retweet_count || 0) + (metrics?.quote_count || 0),
+            publishedDate: tweet.data.created_at || null,
+        };
+    } catch (e: any) {
+        console.error("[SocialInsights] Erro ao obter insights do X:", e);
+        return { error: e.message || "Erro na requisição X Insights" };
+    }
+}
+

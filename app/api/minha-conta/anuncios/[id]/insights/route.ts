@@ -8,7 +8,8 @@ import {
     getFacebookPageAccessToken, 
     getInstagramMediaInsights, 
     getFacebookPostInsights, 
-    getMetaAdsInsights 
+    getMetaAdsInsights,
+    getXPostInsights
 } from "@/lib/social-insights";
 
 export const dynamic = 'force-dynamic';
@@ -88,6 +89,7 @@ export async function GET(
         metaAds: (property.metaAdId || property.metaCampaignId) ? paidMetrics : null,
         instagram: { posts: [] },
         facebook: { posts: [] },
+        x: { posts: [] },
         google: null
     };
 
@@ -187,6 +189,72 @@ export async function GET(
         }
     }
 
+    // 3.5 X (TWITTER) ORGANIC
+    const xSearchTerm = isPortfolio 
+        ? `Publicação de Portfólio (X/Twitter)`
+        : `Publicação de Imóvel #${propertyId} (X/Twitter)`;
+
+    const xTransactions = await prisma.financialTransaction.findMany({
+        where: {
+            userId: user.id,
+            category: "POSTS",
+            description: {
+                contains: xSearchTerm,
+            }
+        },
+        orderBy: { createdAt: "desc" }
+    });
+
+    const dedupedXTransactions: any[] = [];
+    const seenFormats = new Set<string>();
+
+    for (const tx of xTransactions) {
+        const isReels = tx.description ? tx.description.includes("[Format: reels]") : false;
+        const formatKey = isReels ? "reels" : "carousel";
+        if (!seenFormats.has(formatKey)) {
+            seenFormats.add(formatKey);
+            dedupedXTransactions.push(tx);
+        }
+    }
+
+    for (const tx of dedupedXTransactions) {
+        const isReels = tx.description ? tx.description.includes("[Format: reels]") : false;
+        const permalinkMatch = tx.description ? tx.description.match(/\[Permalink:\s*(https?:\/\/[^\]]+)\]/) : null;
+        const permalink = permalinkMatch ? permalinkMatch[1] : "https://x.com/_RealStock_";
+
+        let tweetId = null;
+        if (permalink) {
+            const idMatch = permalink.match(/\/status\/(\d+)/);
+            if (idMatch) tweetId = idMatch[1];
+        }
+
+        const baseRecord: any = {
+            type: isReels ? 'reels' : 'carousel',
+            likes: 0,
+            comments: 0,
+            shares: 0,
+            views: 0,
+            reach: 0,
+            publishedDate: tx.createdAt,
+            permalink: permalink
+        };
+
+        if (tweetId) {
+            const xData = await getXPostInsights(tweetId);
+            if (xData && !xData.error) {
+                baseRecord.likes = xData.likes || 0;
+                baseRecord.comments = xData.comments || 0;
+                baseRecord.shares = xData.shares || 0;
+                baseRecord.views = xData.views || 0;
+                baseRecord.reach = xData.reach || 0;
+                if (xData.publishedDate) {
+                    baseRecord.publishedDate = xData.publishedDate;
+                }
+            }
+        }
+        insights.x.posts.push(baseRecord);
+    }
+
     // 4. GOOGLE ADS
     if (goSession?.campaignId && !goSession.campaignId.includes("MOCK")) {
         const adsData = await getGoogleAdsCampaignInsights(goSession.campaignId);
@@ -202,7 +270,8 @@ export async function GET(
 
     const igTotalViews = insights.instagram.posts.reduce((sum: number, p: any) => sum + (p.views || 0), 0);
     const fbTotalViews = insights.facebook.posts.reduce((sum: number, p: any) => sum + (p.views || 0), 0);
-    const totalImpact = Math.max(igTotalViews, fbTotalViews, paidMetrics.views) + (insights.google?.impressions || 0);
+    const xTotalViews = insights.x.posts.reduce((sum: number, p: any) => sum + (p.views || 0), 0);
+    const totalImpact = Math.max(igTotalViews, fbTotalViews, xTotalViews, paidMetrics.views) + (insights.google?.impressions || 0);
 
     return NextResponse.json({
       success: true,
