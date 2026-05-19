@@ -312,7 +312,9 @@ export default function VideoCreatorModal({
         } catch (e) {}
       }
 
-      const blob = new Blob(chunksRef.current, { type: mimeType });
+      // Correção Safari: remover o "codecs=" do type para o Blob URL funcionar corretamente
+      const cleanMimeType = mimeType.split(';')[0];
+      const blob = new Blob(chunksRef.current, { type: cleanMimeType });
       setVideoBlob(blob);
       setVideoUrl(URL.createObjectURL(blob));
       setStep("result");
@@ -348,45 +350,45 @@ export default function VideoCreatorModal({
     
     // Prioridade para vídeos se houver
     if (loadedVideos.length > 0) {
-        const maxDurationPerClip = targetTotalDuration / loadedVideos.length;
-        
-        for (let vIndex = 0; vIndex < loadedVideos.length; vIndex++) {
-            const vid = loadedVideos[vIndex];
-            const clipDuration = Math.min(vid.duration, maxDurationPerClip); 
-            const framesInVideo = clipDuration * fps;
+        const availableVideos: HTMLVideoElement[] = [];
+        while (availableVideos.length < 10) {
+            availableVideos.push(...loadedVideos);
+        }
+        const finalVideos = availableVideos.slice(0, 10);
+        const duration = 5.9; // Cada clipe dura exatamente 5.9s
+        const framesPerClip = duration * fps;
+
+        for (let vIndex = 0; vIndex < finalVideos.length; vIndex++) {
+            const vid = finalVideos[vIndex];
             
-            // LOGICA DO MIOLO: Centralizar o corte para evitar o início preto
             let startTime = 0;
-            if (vid.duration > clipDuration) {
-                startTime = (vid.duration - clipDuration) / 2;
+            if (vid.duration > duration) {
+                startTime = (vid.duration - duration) / 2;
             }
-            // Garantia anti-preto: pular pelo menos 0.5s do início se houver margem
-            if (vid.duration > (startTime + clipDuration + 0.5)) {
+            if (vid.duration > (startTime + duration + 0.5)) {
                 startTime += 0.5;
             }
 
             vid.currentTime = startTime;
-            await new Promise(r => setTimeout(r, 150)); // Buffer para estabilizar 
+            await new Promise(r => setTimeout(r, 150)); // Buffer para buscar frame
 
-            for (let f = 0; f < framesInVideo; f++) {
-                // Ajuste de progresso 
-                setProgress(20 + Math.round(((vIndex * framesInVideo + f) / (loadedVideos.length * framesInVideo)) * 79));
+            for (let f = 0; f < framesPerClip; f++) {
+                const frameStartTime = performance.now();
                 
-                vid.currentTime = startTime + (f / fps);
-                // Esperar o vídeo buscar o frame
+                setProgress(20 + Math.round(((vIndex * framesPerClip + f) / (finalVideos.length * framesPerClip)) * 79));
+                
+                const timeInClip = f / fps;
+                vid.currentTime = startTime + (timeInClip % vid.duration);
+                
                 await new Promise(resolve => {
-                    const onSeeked = () => {
-                        vid.removeEventListener('seeked', onSeeked);
-                        resolve(null);
-                    };
+                    const onSeeked = () => { vid.removeEventListener('seeked', onSeeked); resolve(null); };
                     vid.addEventListener('seeked', onSeeked);
-                    setTimeout(resolve, 50); // Fallback
+                    setTimeout(resolve, 50);
                 });
 
                 ctx.fillStyle = "#020617";
                 ctx.fillRect(0, 0, width, height);
 
-                // Desenhar vídeo
                 const vW = vid.videoWidth;
                 const vH = vid.videoHeight;
                 const scale = Math.max(width / vW, height / vH);
@@ -394,25 +396,34 @@ export default function VideoCreatorModal({
                 const dH = vH * scale;
                 ctx.drawImage(vid, (width - dW) / 2, (height - dH) / 2, dW, dH);
 
-                // Overlay e Textos
                 renderOverlays(ctx, width, height, propertyTitle, propertyCity, propertyState);
                 
                 await new Promise(resolve => requestAnimationFrame(resolve));
+
+                const elapsed = performance.now() - frameStartTime;
+                const sleepTime = Math.max(0, (1000 / fps) - elapsed);
+                if (sleepTime > 0) {
+                    await new Promise(resolve => setTimeout(resolve, sleepTime));
+                }
             }
         }
     } else {
-        const durationPerImage = Math.min(targetTotalDuration / loadedImages.length, 7.0);
-        const totalDuration = loadedImages.length * durationPerImage;
-        const totalFrames = totalDuration * fps;
+        const availableImages = loadedImages.slice(0, 10);
+        const totalDisplays = 10;
+        const durationPerImage = targetTotalDuration / totalDisplays; // Exatamente 5.9s
+        const totalFrames = targetTotalDuration * fps; // Exatamente 1770 frames
 
         for (let frame = 0; frame < totalFrames; frame++) {
+            const frameStartTime = performance.now();
+            
             const currentTime = frame / fps;
-            const imageIndex = Math.floor(currentTime / durationPerImage);
+            const displayIndex = Math.floor(currentTime / durationPerImage);
+            const imageIndex = displayIndex % availableImages.length;
             const imageProgress = (currentTime % durationPerImage) / durationPerImage;
             
-            setProgress(20 + Math.round((frame / totalFrames) * 80));
+            setProgress(20 + Math.round((frame / totalFrames) * 79));
 
-            const img = loadedImages[imageIndex];
+            const img = availableImages[imageIndex];
             if (!img) continue;
 
             const currentData = images[imageIndex];
@@ -431,6 +442,12 @@ export default function VideoCreatorModal({
             renderOverlays(ctx, width, height, currentTitle, currentCity, currentState);
             
             await new Promise(resolve => requestAnimationFrame(resolve));
+
+            const elapsed = performance.now() - frameStartTime;
+            const sleepTime = Math.max(0, (1000 / fps) - elapsed);
+            if (sleepTime > 0) {
+                await new Promise(resolve => setTimeout(resolve, sleepTime));
+            }
         }
     }
 
@@ -477,6 +494,7 @@ export default function VideoCreatorModal({
                     src={videos[currentImageIndex % videos.length]?.videoUrl}
                     autoPlay
                     muted
+                    playsInline
                     className="h-full w-full object-cover transition-opacity duration-300"
                     onEnded={async () => {
                         const nextIdx = (currentImageIndex + 1) % videos.length;
@@ -526,9 +544,18 @@ export default function VideoCreatorModal({
 
             {step === "result" && videoUrl && (
               <video 
+                ref={(el) => {
+                    if (el && !el.dataset.initialized) {
+                        el.dataset.initialized = 'true';
+                        el.load();
+                        el.play().catch(e => console.warn("Safari Autoplay Prevented:", e));
+                    }
+                }}
                 src={videoUrl} 
                 controls 
                 autoPlay 
+                muted
+                playsInline
                 loop 
                 className="h-full w-full object-contain bg-black"
               />

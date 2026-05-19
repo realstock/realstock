@@ -49,7 +49,8 @@ async function transcodeIfNeeded(inputPath: string): Promise<string> {
   const outputPath = inputPath.replace(/\.[^/.]+$/, "") + "-transcoded.mp4";
   try {
     console.log(`Executing transcoding using ${activeFfmpeg}...`);
-    execSync(`"${activeFfmpeg}" -y -i "${inputPath}" -r 30 -c:v libx264 -preset superfast -pix_fmt yuv420p -c:a aac -map 0:v:0 -map 0:a? -movflags +faststart "${outputPath}"`, { stdio: 'ignore' });
+    // Limita o vídeo a no máximo 140 segundos (limite padrão do X) caso precise ser postado
+    execSync(`"${activeFfmpeg}" -y -i "${inputPath}" -t 140 -r 30 -c:v libx264 -preset superfast -pix_fmt yuv420p -c:a aac -map 0:v:0 -map 0:a? -movflags +faststart "${outputPath}"`, { stdio: 'ignore' });
     return outputPath;
   } catch (err) {
     console.error("Transcoding failed:", err);

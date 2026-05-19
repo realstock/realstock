@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -29,6 +29,20 @@ export default function PortfolioInstagramPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isViralizarOpen, setIsViralizarOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = isMuted;
+    }
+  }, [isMuted]);
+
+  useEffect(() => {
+    if (portfolioVideoUrl && videoRef.current) {
+      videoRef.current.play().catch(e => console.log("Autoplay failed:", e));
+    }
+  }, [portfolioVideoUrl]);
 
   useEffect(() => {
     if (selectedIds.length <= 1 || postType === "reels") return;
@@ -145,21 +159,17 @@ export default function PortfolioInstagramPage() {
                 {postType === "reels" ? (
                    portfolioVideoUrl ? (
                      <div className="relative w-full h-full">
-                       <video 
-                         ref={(el) => {
-                           if (el) {
-                             el.muted = true;
-                             el.play().catch(e => console.log("Autoplay failed:", e));
-                           }
-                         }}
-                         src={portfolioVideoUrl ? `/api/proxy-video?url=${encodeURIComponent(portfolioVideoUrl)}#t=0.001` : undefined} 
-                         className="w-full h-full object-cover" 
-                         autoPlay 
-                         loop 
-                         muted
-                         playsInline 
-                         preload="auto"
-                       />
+                        <video 
+                          key={portfolioVideoUrl}
+                          ref={videoRef}
+                          src={portfolioVideoUrl ? `/api/proxy-video?url=${encodeURIComponent(portfolioVideoUrl)}#t=0.001` : undefined} 
+                          className="w-full h-full object-cover" 
+                          autoPlay 
+                          loop 
+                          muted={isMuted}
+                          playsInline 
+                          preload="auto"
+                        />
                        <button 
                           onClick={() => setIsMuted(!isMuted)}
                           className="absolute bottom-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md transition hover:bg-black/70"

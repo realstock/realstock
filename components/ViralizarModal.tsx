@@ -342,18 +342,40 @@ export default function ViralizarModal(props: ViralizarModalProps) {
     recorder.start(200); 
     await new Promise(r => setTimeout(r, 200));
 
+    const targetTotalDuration = 59; // Máximo de 59 segundos cravados (margem segura pro Insta/Site/FB)
     const fps = 30;
 
     // Lógica de colagem: Prioridade para Vídeos
     if (loadedVideos.length > 0) {
-        for (let vIdx = 0; vIdx < loadedVideos.length; vIdx++) {
-            const vid = loadedVideos[vIdx];
-            const duration = Math.min(vid.duration, 8); 
-            const frames = duration * fps;
+        const availableVideos: HTMLVideoElement[] = [];
+        while (availableVideos.length < 10) {
+            availableVideos.push(...loadedVideos);
+        }
+        const finalVideos = availableVideos.slice(0, 10);
+        const duration = 5.9; // Cada clipe dura exatamente 5.9s
+        const framesPerClip = duration * fps;
+
+        for (let vIndex = 0; vIndex < finalVideos.length; vIndex++) {
+            const vid = finalVideos[vIndex];
             
-            for (let f = 0; f < frames; f++) {
-                setProgress(Math.round(((vIdx * frames + f) / (loadedVideos.length * frames)) * 95));
-                vid.currentTime = f / fps;
+            let startTime = 0;
+            if (vid.duration > duration) {
+                startTime = (vid.duration - duration) / 2;
+            }
+            if (vid.duration > (startTime + duration + 0.5)) {
+                startTime += 0.5;
+            }
+
+            vid.currentTime = startTime;
+            await new Promise(r => setTimeout(r, 150)); // Buffer para buscar frame
+
+            for (let f = 0; f < framesPerClip; f++) {
+                const frameStartTime = performance.now();
+                
+                setProgress(20 + Math.round(((vIndex * framesPerClip + f) / (finalVideos.length * framesPerClip)) * 79));
+                
+                const timeInClip = f / fps;
+                vid.currentTime = startTime + (timeInClip % vid.duration);
                 
                 await new Promise(resolve => {
                     const onSeeked = () => { vid.removeEventListener('seeked', onSeeked); resolve(null); };
@@ -363,29 +385,48 @@ export default function ViralizarModal(props: ViralizarModalProps) {
 
                 ctx.fillStyle = "#020617";
                 ctx.fillRect(0, 0, width, height);
-                const scale = Math.max(width / vid.videoWidth, height / vid.videoHeight);
-                const dW = vid.videoWidth * scale;
-                const dH = vid.videoHeight * scale;
+
+                const vW = vid.videoWidth;
+                const vH = vid.videoHeight;
+                const scale = Math.max(width / vW, height / vH);
+                const dW = vW * scale;
+                const dH = vH * scale;
                 ctx.drawImage(vid, (width - dW) / 2, (height - dH) / 2, dW, dH);
 
                 renderOverlays(ctx, width, height, propertyTitle, propertyCity, propertyState);
+                
                 await new Promise(resolve => requestAnimationFrame(resolve));
+
+                const elapsed = performance.now() - frameStartTime;
+                const sleepTime = Math.max(0, (1000 / fps) - elapsed);
+                if (sleepTime > 0) {
+                    await new Promise(resolve => setTimeout(resolve, sleepTime));
+                }
             }
         }
     } else {
-        const targetTotalDuration = 30; 
-        const durationPerImage = Math.min(targetTotalDuration / loadedImages.slice(0, 10).length, 4.0);
-        const totalFrames = (loadedImages.slice(0, 10).length * durationPerImage) * 30;
+        const availableImages = loadedImages.slice(0, 10);
+        const totalDisplays = 10;
+        const durationPerImage = targetTotalDuration / totalDisplays; // Exatamente 5.9s
+        const totalFrames = targetTotalDuration * fps; // Exatamente 1770 frames
 
         for (let frame = 0; frame < totalFrames; frame++) {
-            const currentTime = frame / 30;
-            const imageIndex = Math.floor(currentTime / durationPerImage);
+            const frameStartTime = performance.now();
+            
+            const currentTime = frame / fps;
+            const displayIndex = Math.floor(currentTime / durationPerImage);
+            const imageIndex = displayIndex % availableImages.length;
             const imageProgress = (currentTime % durationPerImage) / durationPerImage;
             
-            setProgress(Math.round((frame / totalFrames) * 100));
+            setProgress(20 + Math.round((frame / totalFrames) * 79));
 
-            const img = loadedImages[imageIndex];
+            const img = availableImages[imageIndex];
             if (!img) continue;
+
+            const currentData = images[imageIndex];
+            const currentTitle = currentData?.title || propertyTitle;
+            const currentCity = currentData?.city || propertyCity;
+            const currentState = currentData?.state || propertyState;
 
             ctx.fillStyle = "#020617";
             ctx.fillRect(0, 0, width, height);
@@ -395,8 +436,15 @@ export default function ViralizarModal(props: ViralizarModalProps) {
             const dH = (img.height * (dW / img.width));
             ctx.drawImage(img, (width - dW) / 2, (height - dH) / 2, dW, dH);
 
-            renderOverlays(ctx, width, height, propertyTitle, propertyCity, propertyState);
+            renderOverlays(ctx, width, height, currentTitle, currentCity, currentState);
+            
             await new Promise(resolve => requestAnimationFrame(resolve));
+
+            const elapsed = performance.now() - frameStartTime;
+            const sleepTime = Math.max(0, (1000 / fps) - elapsed);
+            if (sleepTime > 0) {
+                await new Promise(resolve => setTimeout(resolve, sleepTime));
+            }
         }
     }
 

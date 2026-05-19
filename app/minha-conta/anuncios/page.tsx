@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -68,6 +68,23 @@ export default function MeusAnunciosPage() {
   const [viewingVideoUrl, setViewingVideoUrl] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(true);
   const [playerError, setPlayerError] = useState<string | null>(null);
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = isMuted;
+    }
+  }, [isMuted]);
+
+  useEffect(() => {
+    if (viewingVideoUrl && videoRef.current) {
+      videoRef.current.play().catch(e => {
+        console.log("Autoplay failed:", e);
+        setPlayerError(`Autoplay: ${e.message || String(e)}`);
+      });
+    }
+  }, [viewingVideoUrl]);
 
   const [isViralizarOpen, setIsViralizarOpen] = useState(false);
   const [viralizarTarget, setViralizarTarget] = useState<{id: number, title: string} | null>(null);
@@ -1167,15 +1184,7 @@ export default function MeusAnunciosPage() {
              <div className="aspect-[9/16] w-full overflow-hidden rounded-[28px] bg-slate-900 relative">
                 <video 
                   key={viewingVideoUrl}
-                  ref={(el) => {
-                    if (el) {
-                      el.muted = true;
-                      el.play().catch(e => {
-                        console.log("Autoplay failed:", e);
-                        setPlayerError(`Autoplay: ${e.message || String(e)}`);
-                      });
-                    }
-                  }}
+                  ref={videoRef}
                   onError={(e) => {
                     const mediaError = (e.target as HTMLVideoElement).error;
                     setPlayerError(mediaError ? `MediaError (Code ${mediaError.code}): ${mediaError.message || 'Decoder or format error'}` : "Unknown media error");
@@ -1184,7 +1193,7 @@ export default function MeusAnunciosPage() {
                   className="h-full w-full object-cover" 
                   controls 
                   autoPlay
-                  muted
+                  muted={isMuted}
                   playsInline
                   preload="auto"
                 />
