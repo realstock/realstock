@@ -68,27 +68,27 @@ export default function OfferBookClient({
     return userId === ownerId;
   }, [userId, ownerId]);
 
-  async function handleSubmitOffer(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmitOffer(e: React.FormEvent | any, isVisit = false) {
+    if (e && e.preventDefault) e.preventDefault();
     setError("");
     setMessage("");
 
     if (status === "loading") return;
 
     if (!session?.user) {
-      setError("Faça login para enviar uma proposta.");
+      setError("Faça login para enviar uma solicitação.");
       router.push("/login");
       return;
     }
 
     if (isOwner) {
-      setError("Você não pode enviar proposta para o próprio imóvel.");
+      setError("Você não pode enviar solicitação para o próprio imóvel.");
       return;
     }
 
-    const numericOffer = Number(offerPrice);
+    const numericOffer = isVisit ? 0 : Number(offerPrice);
 
-    if (!numericOffer || Number.isNaN(numericOffer) || numericOffer <= 0) {
+    if (!isVisit && (!numericOffer || Number.isNaN(numericOffer) || numericOffer <= 0)) {
       setError("Informe um valor de proposta válido.");
       return;
     }
@@ -120,17 +120,17 @@ export default function OfferBookClient({
       }
 
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Erro ao enviar oferta.");
+        throw new Error(data.error || "Erro ao enviar solicitação.");
       }
 
-      setMessage("Proposta enviada com sucesso.");
-      setOfferPrice("");
+      setMessage(isVisit ? "Visita agendada com sucesso." : "Proposta enviada com sucesso.");
+      if (!isVisit) setOfferPrice("");
 
       setTimeout(() => {
         router.refresh();
       }, 800);
     } catch (err: any) {
-      setError(err.message || "Erro ao enviar proposta.");
+      setError(err.message || "Erro ao enviar solicitação.");
     } finally {
       setLoading(false);
     }
@@ -178,26 +178,35 @@ export default function OfferBookClient({
             disabled={loading || status === "loading"}
             className="w-full rounded-2xl bg-white px-4 py-3 font-semibold text-slate-900 disabled:opacity-60"
           >
-            {loading ? "Enviando proposta..." : "Enviar proposta"}
+            {loading ? "Aguarde..." : "Enviar proposta"}
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => handleSubmitOffer(e, true)}
+            disabled={loading || status === "loading"}
+            className="w-full rounded-2xl border border-white/20 bg-transparent px-4 py-3 font-semibold text-white transition-all hover:bg-white/5 disabled:opacity-60 mt-2"
+          >
+            {loading ? "Aguarde..." : "Agendar visita"}
           </button>
         </form>
       )}
 
       {isOwner && (
         <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
-          Você é o anunciante deste imóvel. As propostas recebidas aparecem em{" "}
+          Você é o anunciante deste imóvel. As solicitações recebidas aparecem em{" "}
           <span className="font-semibold text-white">Meus anúncios</span>.
         </div>
       )}
 
       <div className="mt-6">
         <div className="mb-3 text-sm font-medium text-slate-300">
-          Histórico de propostas
+          Histórico de solicitações
         </div>
 
         {offers.length === 0 ? (
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-400">
-            Ainda não há propostas para este imóvel.
+            Ainda não há solicitações para este imóvel.
           </div>
         ) : (
           <div className="space-y-3">
@@ -209,7 +218,7 @@ export default function OfferBookClient({
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="text-sm text-slate-400">
-                      Comprador
+                      Interessado
                     </div>
                     <div className="font-medium text-white">
                       {getInitials(offer.buyer_name)}
@@ -218,7 +227,7 @@ export default function OfferBookClient({
 
                   <div className="text-right">
                     <div className="font-semibold text-emerald-400">
-                      R$ {formatMoney(offer.offer_price)}
+                      {Number(offer.offer_price) === 0 ? "Agendar Visita" : `R$ ${formatMoney(offer.offer_price)}`}
                     </div>
                     <div className="text-xs text-slate-400">
                       {formatStatus(offer.status)}

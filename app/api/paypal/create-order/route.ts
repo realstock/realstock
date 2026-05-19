@@ -64,7 +64,13 @@ export async function POST(req: NextRequest) {
 
     const property = offer.property;
     const acceptedOfferValue = Number(offer.offerPrice);
-    const paymentAmount = Number(((2 * acceptedOfferValue) / 10000).toFixed(2));
+    
+    const baseValueForFee = acceptedOfferValue > 0 ? acceptedOfferValue : Number(property.price);
+    let paymentAmount = Number(((2 * baseValueForFee) / 10000).toFixed(2));
+
+    if (paymentAmount <= 0) {
+      paymentAmount = 1.00;
+    }
 
     if (property.contactFeePaidAt) {
       return NextResponse.json({

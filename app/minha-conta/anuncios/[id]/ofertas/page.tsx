@@ -210,7 +210,7 @@ export default function GerenciarOfertasPage() {
               <div className="flex justify-between items-start gap-6">
                 <div>
                   <div className={`text-xl font-semibold ${offer.status === "cancelled" ? "line-through text-slate-500" : ""}`}>
-                    R$ {offer.offerPrice.toLocaleString("pt-BR")}
+                    {Number(offer.offerPrice) === 0 ? "Agendar Visita" : `R$ ${offer.offerPrice.toLocaleString("pt-BR")}`}
                   </div>
 
                   <div className="text-sm text-slate-400 mt-1">

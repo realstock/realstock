@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!offerPrice || Number.isNaN(offerPrice) || offerPrice <= 0) {
+    if (offerPrice === undefined || offerPrice === null || Number.isNaN(offerPrice) || offerPrice < 0) {
       return NextResponse.json(
         { success: false, error: "Valor da proposta inválido." },
         { status: 400 }

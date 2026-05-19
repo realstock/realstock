@@ -155,9 +155,9 @@ export default function MinhasOfertasPage() {
                       </div>
 
                       <div className="mt-3 text-sm text-slate-300">
-                        Oferta:{" "}
+                        {Number(offer.offerPrice) === 0 ? "Solicitação: " : "Oferta: "}
                         <span className={`font-semibold ${offer.status === "cancelled" ? "text-slate-500 line-through" : "text-emerald-400"}`}>
-                          R$ {Number(offer.offerPrice).toLocaleString("pt-BR")}
+                          {Number(offer.offerPrice) === 0 ? "Agendar Visita" : `R$ ${Number(offer.offerPrice).toLocaleString("pt-BR")}`}
                         </span>
                       </div>
 
@@ -182,19 +182,19 @@ export default function MinhasOfertasPage() {
                         onClick={() => handleCancel(offer.id)}
                         className="rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-300 hover:bg-red-400/15"
                       >
-                        Cancelar oferta
+                        {Number(offer.offerPrice) === 0 ? "Cancelar visita" : "Cancelar oferta"}
                       </button>
                     )}
 
                     {String(offer.status).toLowerCase() === "accepted" && (
                       <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-300">
-                        Oferta aceita aguardando contato do vendedor
+                        {Number(offer.offerPrice) === 0 ? "Visita aceita aguardando contato" : "Oferta aceita aguardando contato"}
                       </div>
                     )}
 
                     {String(offer.status).toLowerCase() === "cancelled" && (
                       <div className="rounded-2xl border border-slate-600 bg-slate-800 px-4 py-3 text-sm text-slate-400">
-                        Oferta cancelada
+                        {Number(offer.offerPrice) === 0 ? "Visita cancelada" : "Oferta cancelada"}
                       </div>
                     )}
                   </div>
