@@ -695,7 +695,7 @@ export default function ViralizarModal(props: ViralizarModalProps) {
                           <span className="text-sm font-bold text-white uppercase italic tracking-tighter">{task.label}</span>
                         </div>
                         {task.status === 'success' && task.permalink && (
-                          <a href={task.permalink} target="_blank" className="px-3 py-1.5 bg-white/10 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-white/20">Ver Post</a>
+                          <a href={task.permalink.startsWith('/') ? `https://www.facebook.com${task.permalink}` : task.permalink} target="_blank" className="px-3 py-1.5 bg-white/10 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-white/20">Ver Post</a>
                         )}
                       </div>
                     ))}
@@ -758,7 +758,7 @@ export default function ViralizarModal(props: ViralizarModalProps) {
                         <span className="text-sm font-bold text-white uppercase italic tracking-tighter">{task.label}</span>
                       </div>
                       <a 
-                        href={task.permalink} 
+                        href={task.permalink.startsWith('/') ? `https://www.facebook.com${task.permalink}` : task.permalink} 
                         target="_blank" 
                         rel="noopener noreferrer" 
                         className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-md"
