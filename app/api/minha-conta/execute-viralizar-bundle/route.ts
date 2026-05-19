@@ -139,7 +139,15 @@ export async function POST(req: NextRequest) {
     const videoUrl = passedVideoUrl || dbVideoUrl;
     console.log("FINAL VIDEO URL FOR SOCIAL:", videoUrl);
 
-    const caption = `🌟 ${title}\n\nConfira as melhores oportunidades no RealStock!\n\n${city ? `📍 ${city} - ${state}\n\n` : ""}Acesse nosso site para mais detalhes!${propertyId !== 0 ? `\nhttps://www.realstock.com.br/imovel/${propertyId}` : "\nhttps://www.realstock.com.br"}`;
+    let hashtagsStr = "\n\n#Imóveis #MercadoImobiliário #RealStock #Investimento";
+    if (city) {
+        hashtagsStr += ` #${city.replace(/\s+/g, '')}`;
+    }
+    if (state) {
+        hashtagsStr += ` #${state.replace(/\s+/g, '')}`;
+    }
+
+    const caption = `🌟 ${title}\n\nConfira as melhores oportunidades no RealStock!\n\n${city ? `📍 ${city} - ${state}\n\n` : ""}Acesse nosso site para mais detalhes!${propertyId !== 0 ? `\nhttps://www.realstock.com.br/imovel/${propertyId}` : "\nhttps://www.realstock.com.br"}${hashtagsStr}`;
 
     // SOCIAL MEDIA PUBLICATION (REAL)
     const results = {
@@ -347,8 +355,11 @@ export async function POST(req: NextRequest) {
         try {
             const pRes = await fetch(`https://graph.facebook.com/v19.0/${pubData.id}?fields=permalink_url&access_token=${pageToken}`);
             const pData = await pRes.json();
-            permalink = pData.permalink_url || "";
-        } catch (e) { console.error("Error fetching FB Reels permalink", e); }
+            permalink = pData.permalink_url || `https://www.facebook.com/watch/?v=${pubData.id}`;
+        } catch (e) { 
+            console.error("Error fetching FB Reels permalink", e);
+            permalink = `https://www.facebook.com/watch/?v=${pubData.id}`;
+        }
 
         results.fb_reels = { success: true, id: pubData.id, permalink };
 

@@ -54,11 +54,8 @@ function renderOverlays(ctx: CanvasRenderingContext2D, width: number, height: nu
   // Texto: Website (Rodapé do vídeo)
   ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
   ctx.font = "bold 24px sans-serif";
+  ctx.shadowBlur = 0;
   ctx.fillText("www.realstock.com.br", width / 2, titleY + 115);
-
-  // Linha decorativa
-  ctx.fillStyle = "#38bdf8";
-  ctx.fillRect(width / 2 - 120, titleY + 80, 240, 2);
 }
 
 export default function ViralizarModal(props: ViralizarModalProps) {
@@ -165,20 +162,13 @@ export default function ViralizarModal(props: ViralizarModalProps) {
 
   async function startVideoPipeline() {
     if (props.reelsVideoUrl) {
-        addLog("Vídeo IA já detectado no anúncio. Utilizando versão existente...");
+        addLog("Vídeo IA já detectado no anúncio. Pulando criação e indo direto para as postagens...");
         setStep("executing");
         setProgress(100);
         
-        await new Promise(r => setTimeout(r, 1500));
-        
-        try {
-            const response = await fetch(props.reelsVideoUrl);
-            const blob = await response.blob();
-            finishBundle(blob, activeOrderID || "CREDIT"); 
-            return;
-        } catch (e) {
-            addLog("Aviso: Não foi possível carregar o vídeo existente. Gerando um novo...");
-        }
+        await new Promise(r => setTimeout(r, 1000));
+        finishBundle(null, activeOrderID || "CREDIT", props.reelsVideoUrl); 
+        return;
     }
 
     updateTaskStatus('payment', 'success');
@@ -474,21 +464,35 @@ export default function ViralizarModal(props: ViralizarModalProps) {
     finalStream.getTracks().forEach(t => t.stop());
   }
 
-  async function finishBundle(videoBlob: Blob, orderID: string) {
+  async function finishBundle(videoBlob: Blob | null, orderID: string, existingVideoUrl?: string) {
     updateTaskStatus('video', 'success');
-    updateTaskStatus('upload', 'loading');
-    setCurrentAction("Salvando no servidor...");
     
-    try {
-        const formData = new FormData();
-        formData.append("file", videoBlob, `viralizar-${propertyId}.mp4`);
-        formData.append("propertyId", propertyId.toString());
-        formData.append("orderID", orderID);
-        const upRes = await fetch("/api/minha-conta/video-upload", { method: "POST", body: formData });
-        const upData = await upRes.json();
-        if (!upData.success) throw new Error("Erro no upload.");
-        updateTaskStatus('upload', 'success');
+    let finalVideoUrl = existingVideoUrl;
 
+    if (!finalVideoUrl && videoBlob) {
+        updateTaskStatus('upload', 'loading');
+        setCurrentAction("Salvando no servidor...");
+        try {
+            const formData = new FormData();
+            formData.append("file", videoBlob, `viralizar-${propertyId}.mp4`);
+            formData.append("propertyId", propertyId.toString());
+            formData.append("orderID", orderID);
+            const upRes = await fetch("/api/minha-conta/video-upload", { method: "POST", body: formData });
+            const upData = await upRes.json();
+            if (!upData.success) throw new Error("Erro no upload.");
+            finalVideoUrl = upData.videoUrl;
+            updateTaskStatus('upload', 'success');
+        } catch (err: any) {
+            addLog(`ERRO UPLOAD: ${err.message}`);
+            alert("Erro no upload do vídeo: " + err.message);
+            return;
+        }
+    } else {
+        addLog("Vídeo existente encontrado. Pulando etapa de upload...");
+        updateTaskStatus('upload', 'success');
+    }
+
+    try {
         const posts = [
             { id: 'ig_carousel', platform: 'instagram', type: 'carousel' },
             { id: 'ig_reels', platform: 'instagram', type: 'reels' },
@@ -509,7 +513,7 @@ export default function ViralizarModal(props: ViralizarModalProps) {
                     orderID, 
                     platform: post.platform, 
                     targetPostType: post.type,
-                    videoUrl: upData.videoUrl
+                    videoUrl: finalVideoUrl
                 })
             });
             const data = await res.json();

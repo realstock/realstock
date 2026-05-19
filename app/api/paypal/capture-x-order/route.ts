@@ -194,7 +194,12 @@ export async function POST(req: NextRequest) {
         
         tweetText += `\n`;
         
-        const reservedLength = tweetText.length + siteLink.length + 10;
+        let hashtagsStr = "\n\n#Imóveis #MercadoImobiliário #RealStock";
+        if (property.city) {
+            hashtagsStr += ` #${property.city.replace(/\s+/g, '')}`;
+        }
+        
+        const reservedLength = tweetText.length + siteLink.length + hashtagsStr.length + 10;
         const maxDescLength = 280 - reservedLength;
         
         if (property.description && maxDescLength > 10) {
@@ -202,10 +207,10 @@ export async function POST(req: NextRequest) {
           if (descSnippet.length > maxDescLength) {
             descSnippet = descSnippet.substring(0, maxDescLength - 3) + "...";
           }
-          tweetText += `${descSnippet}\n\n`;
+          tweetText += `${descSnippet}`;
         }
         
-        tweetText += `${siteLink}`;
+        tweetText += `${hashtagsStr}\n\n${siteLink}`;
         
         // Fazer upload de imagens (carrossel) ou vídeo (reels) dependendo do postType selecionado
         const mediaIds: string[] = [];

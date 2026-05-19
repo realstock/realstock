@@ -44,22 +44,18 @@ function renderOverlays(ctx: CanvasRenderingContext2D, width: number, height: nu
   }
 
   // Texto: Cidade e Estado
-  const locationText = [city, state].filter(Boolean).join(" • ");
+  const locationText = [city, state].filter(Boolean).join(" - ");
   if (locationText) {
-      ctx.fillStyle = "#94a3b8"; // slate-400
-      ctx.font = "32px Inter, sans-serif";
+      ctx.fillStyle = "#38bdf8"; // sky-400
+      ctx.font = "bold 32px Inter, sans-serif";
       ctx.fillText(locationText.toUpperCase(), width / 2, titleY + 60);
   }
 
-  // Linha decorativa
-  ctx.fillStyle = "#38bdf8";
-  ctx.fillRect(width / 2 - 120, titleY + 90, 240, 4);
-
   // Desenhar site/footer
   ctx.fillStyle = "rgba(255,255,255,0.7)";
-  ctx.font = "500 24px Inter, sans-serif";
+  ctx.font = "bold 24px Inter, sans-serif";
   ctx.shadowBlur = 0;
-  ctx.fillText("WWW.REALSTOCK.COM.BR", width / 2, height - 60);
+  ctx.fillText("www.realstock.com.br", width / 2, titleY + 115);
 }
 
 export default function VideoCreatorModal({ 
