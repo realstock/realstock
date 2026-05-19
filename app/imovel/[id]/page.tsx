@@ -105,8 +105,8 @@ export default async function PropertyPage({
     })
   ]);
 
-  const xReelsTx = xTransactions.find(tx => tx.description ? tx.description.includes("[Format: reels]") : false);
-  const xCarouselTx = xTransactions.find(tx => tx.description ? !tx.description.includes("[Format: reels]") : true);
+  const xReelsTx = xTransactions.find(tx => tx.description ? tx.description.includes("[Format: reels]") && tx.description.includes("[Permalink:") : false);
+  const xCarouselTx = xTransactions.find(tx => tx.description ? !tx.description.includes("[Format: reels]") && tx.description.includes("[Permalink:") : false);
 
   const xReelsMatch = xReelsTx?.description ? xReelsTx.description.match(/\[Permalink:\s*(https?:\/\/[^\]]+)\]/) : null;
   const xReelsPermalink = xReelsMatch ? xReelsMatch[1] : null;
@@ -118,15 +118,15 @@ export default async function PropertyPage({
     {
       name: "Instagram",
       links: [
-        { type: "Reels", permalink: (igSessions.find(s => s.postType === "reels")?.validationReport as any)?.permalink },
-        { type: "Carrossel", permalink: (igSessions.find(s => s.postType !== "reels")?.validationReport as any)?.permalink },
+        { type: "Reels", permalink: (igSessions.find(s => s.postType === "reels" && (s.validationReport as any)?.permalink)?.validationReport as any)?.permalink },
+        { type: "Carrossel", permalink: (igSessions.find(s => s.postType !== "reels" && (s.validationReport as any)?.permalink)?.validationReport as any)?.permalink },
       ].filter(l => l.permalink)
     },
     {
       name: "Facebook",
       links: [
-        { type: "Reels", permalink: (fbSessions.find(s => s.postType === "reels")?.validationReport as any)?.permalink },
-        { type: "Carrossel", permalink: (fbSessions.find(s => s.postType !== "reels")?.validationReport as any)?.permalink },
+        { type: "Reels", permalink: (fbSessions.find(s => s.postType === "reels" && (s.validationReport as any)?.permalink)?.validationReport as any)?.permalink },
+        { type: "Carrossel", permalink: (fbSessions.find(s => s.postType !== "reels" && (s.validationReport as any)?.permalink)?.validationReport as any)?.permalink },
       ].filter(l => {
           if (!l.permalink) return false;
           // Prepend domain for relative FB reels links
