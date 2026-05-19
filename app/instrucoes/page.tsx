@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { FiPlusCircle, FiEdit3, FiTrendingUp, FiShare2, FiTarget, FiDollarSign, FiStar } from "react-icons/fi";
+import { Rocket } from "lucide-react";
 
 const instructionsList = [
   {
@@ -15,6 +16,13 @@ const instructionsList = [
     title: "Editando ou Excluindo Anúncios",
     icon: <FiEdit3 className="w-8 h-8 text-emerald-400" />,
     content: "O mercado muda, e o seu anúncio acompanha. Navegue até 'Meus Anúncios'. Cada propriedade exibe um botão de 'Editar' na tabela, onde você pode reconfigurar fotos, baixar o preço ou alterar descrições. Caso a propriedade já tenha sido vendida, você possui o poder de excluí-la permanentemente em apenas um clique para manter o portfólio limpo.",
+    link: "/minha-conta/anuncios"
+  },
+  {
+    id: "viralizar",
+    title: "Míssil Viralizar",
+    icon: <Rocket className="w-8 h-8 text-purple-400" />,
+    content: "O botão Viralizar é o seu maior aliado para lançar o imóvel no mercado de forma explosiva! Com apenas um clique, a nossa Inteligência Artificial gera um vídeo animado (Reels) com as fotos e detalhes da sua propriedade, publica automaticamente no Feed e Reels do Instagram, Facebook e X (Twitter). Esse comando deixa o seu anúncio estruturado e perfeitamente pronto para ser impulsionado (Turbinado) em todas as redes sociais.",
     link: "/minha-conta/anuncios"
   },
   {
