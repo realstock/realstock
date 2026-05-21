@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import OfferBookClient from "@/components/OfferBookClient";
 import AdSenseBanner from "@/components/AdSenseBanner";
 import PropertyGallery from "@/components/PropertyGallery";
-
+import PropertyLocationInsights from "@/components/PropertyLocationInsights";
 const InstagramIcon = ({ size = 24 }: { size?: number }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -370,6 +370,8 @@ export default async function PropertyPage({
                 )}
               </div>
             ) : null}
+
+            <PropertyLocationInsights latitude={property.latitude?.toString() ?? null} longitude={property.longitude?.toString() ?? null} />
 
             {property.youtubeThumbnail || property.youtubeLink ? (
               <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">

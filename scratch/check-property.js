@@ -1,25 +1,12 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-async function check() {
-  try {
-    const properties = await prisma.property.findMany({
-      select: {
-        id: true,
-        title: true,
-        reelsVideoUrl: true,
-        _count: {
-          select: { images: true }
-        }
-      },
-      orderBy: { id: 'desc' }
-    });
-    console.log("All properties in DB:", properties);
-  } catch (err) {
-    console.error(err);
-  } finally {
-    await prisma.$disconnect();
-  }
+async function main() {
+  const prop = await prisma.property.findUnique({
+    where: { id: 37 }
+  });
+  console.log("LAT:", prop?.latitude);
+  console.log("LNG:", prop?.longitude);
 }
 
-check();
+main().catch(console.error).finally(() => prisma.$disconnect());
