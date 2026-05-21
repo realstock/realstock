@@ -6,6 +6,7 @@ import OfferBookClient from "@/components/OfferBookClient";
 import AdSenseBanner from "@/components/AdSenseBanner";
 import PropertyGallery from "@/components/PropertyGallery";
 import PropertyLocationInsights from "@/components/PropertyLocationInsights";
+import PropertyStreetView from "@/components/PropertyStreetView";
 const InstagramIcon = ({ size = 24 }: { size?: number }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -370,6 +371,8 @@ export default async function PropertyPage({
                 )}
               </div>
             ) : null}
+
+            <PropertyStreetView latitude={property.latitude?.toString() ?? null} longitude={property.longitude?.toString() ?? null} />
 
             <PropertyLocationInsights latitude={property.latitude?.toString() ?? null} longitude={property.longitude?.toString() ?? null} />
 
