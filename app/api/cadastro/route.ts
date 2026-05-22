@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { sendEmail } from "@/lib/email";
+import { getWelcomeEmailTemplate } from "@/lib/email-templates";
 
 export async function POST(req: NextRequest) {
   try {
@@ -104,6 +106,20 @@ export async function POST(req: NextRequest) {
         where: { id: referrerId },
         data: { viralizarCredits: { increment: 5 } }
       });
+    }
+
+    // Disparo assíncrono do e-mail de Boas-Vindas
+    try {
+      const emailHtml = getWelcomeEmailTemplate(user.name);
+      sendEmail({ 
+        to: user.email, 
+        subject: "Bem-vindo à RealStock! 🌟", 
+        html: emailHtml 
+      }).catch(err => {
+        console.error("Erro no envio silencioso de boas-vindas:", err);
+      });
+    } catch (e) {
+      console.error("Erro geral no email de boas vindas:", e);
     }
 
     return NextResponse.json({

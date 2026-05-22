@@ -118,6 +118,22 @@ export default function AdminDashboardClient() {
                 />
 
                 <QuickAction
+                  title="Google Analytics 4"
+                  description="Acesse o tráfego em tempo real, fluxo de usuários e taxa de rejeição da plataforma."
+                  href="https://analytics.google.com/"
+                  external={true}
+                  icon={<ChartIcon />}
+                />
+
+                <QuickAction
+                  title="Meta Pixel (Eventos)"
+                  description="Verifique a integridade do rastreamento de conversão e eventos no Gerenciador da Meta."
+                  href="https://business.facebook.com/events_manager2/"
+                  external={true}
+                  icon={<NetworkIcon />}
+                />
+
+                <QuickAction
                   title="Taxas e Serviços"
                   description="Cadastre taxas, serviços do site e defina qual taxa será aplicada a cada serviço."
                   href="/admin/taxas-servicos"

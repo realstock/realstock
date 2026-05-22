@@ -598,21 +598,21 @@ export default function MeusAnunciosPage() {
                         {/* 3. TURBINAR / IMPULSIONAR */}
                         <div className="space-y-3 bg-white/[0.02] border border-white/5 p-3 rounded-xl flex flex-col justify-between">
                           <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 flex items-center gap-1.5 border-b border-white/5 pb-2">
-                            <Rocket size={12} className="text-indigo-400" />
-                            3. Turbinar Anúncio
+                            <Rocket size={12} className="text-indigo-400 animate-pulse" />
+                            <span className="animate-pulse text-indigo-300">3. Turbinar Anúncio</span>
                           </div>
                           <div className="flex flex-col gap-2 flex-grow justify-end">
                             <div className="flex gap-2">
                               <Link 
                                 href={`/minha-conta/anuncios/0/turbinar?platform=meta`}
-                                className="flex-1 flex items-center justify-center gap-1 text-center rounded-xl border border-indigo-500/20 bg-indigo-500/5 py-2 text-[11px] font-bold text-indigo-300 transition-all hover:bg-indigo-500/10"
+                                className="flex-1 flex items-center justify-center gap-1 text-center rounded-xl border border-indigo-500/40 bg-indigo-500/10 py-2 text-[11px] font-bold text-indigo-300 transition-all hover:bg-indigo-500/20 shadow-[0_0_10px_rgba(99,102,241,0.2)] animate-pulse"
                               >
                                 <Rocket size={11} />
                                 Meta Ads
                               </Link>
                               <Link 
                                 href={`/minha-conta/anuncios/0/turbinar?platform=google`}
-                                className="flex-1 flex items-center justify-center gap-1 text-center rounded-xl border border-emerald-500/20 bg-emerald-500/5 py-2 text-[11px] font-bold text-emerald-300 transition-all hover:bg-emerald-500/10"
+                                className="flex-1 flex items-center justify-center gap-1 text-center rounded-xl border border-emerald-500/40 bg-emerald-500/10 py-2 text-[11px] font-bold text-emerald-300 transition-all hover:bg-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)] animate-pulse"
                               >
                                 <Rocket size={11} />
                                 Google
@@ -991,21 +991,21 @@ export default function MeusAnunciosPage() {
                           }}
                         >
                           <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 flex items-center gap-1.5 border-b border-white/5 pb-2">
-                            <Rocket size={12} className="text-indigo-400" />
-                            3. Turbinar Anúncio
+                            <Rocket size={12} className="text-indigo-400 animate-pulse" />
+                            <span className="animate-pulse text-indigo-300">3. Turbinar Anúncio</span>
                           </div>
                           <div className="flex flex-col gap-2 flex-grow justify-end">
                             <div className="flex gap-2">
                               <Link 
                                 href={`/minha-conta/anuncios/${property.id}/turbinar?platform=meta`}
-                                className="flex-1 flex items-center justify-center gap-1 text-center rounded-xl border border-indigo-500/20 bg-indigo-500/5 py-2 text-[11px] font-bold text-indigo-300 transition-all hover:bg-indigo-500/10"
+                                className="flex-1 flex items-center justify-center gap-1 text-center rounded-xl border border-indigo-500/40 bg-indigo-500/10 py-2 text-[11px] font-bold text-indigo-300 transition-all hover:bg-indigo-500/20 shadow-[0_0_10px_rgba(99,102,241,0.2)] animate-pulse"
                               >
                                 <Rocket size={11} />
                                 Meta Ads
                               </Link>
                               <Link 
                                 href={`/minha-conta/anuncios/${property.id}/turbinar?platform=google`}
-                                className="flex-1 flex items-center justify-center gap-1 text-center rounded-xl border border-emerald-500/20 bg-emerald-500/5 py-2 text-[11px] font-bold text-emerald-300 transition-all hover:bg-emerald-500/10"
+                                className="flex-1 flex items-center justify-center gap-1 text-center rounded-xl border border-emerald-500/40 bg-emerald-500/10 py-2 text-[11px] font-bold text-emerald-300 transition-all hover:bg-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)] animate-pulse"
                               >
                                 <Rocket size={11} />
                                 Google

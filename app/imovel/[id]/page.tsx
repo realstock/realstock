@@ -43,6 +43,56 @@ const TwitterIcon = ({ size = 24 }: { size?: number }) => (
   </svg>
 );
 
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const propertyId = Number(id);
+
+  if (!propertyId || Number.isNaN(propertyId)) {
+    return {
+      title: "Imóvel não encontrado | RealStock",
+    };
+  }
+
+  const property = await prisma.property.findUnique({
+    where: { id: propertyId },
+    include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+  });
+
+  if (!property) {
+    return {
+      title: "Imóvel não encontrado | RealStock",
+    };
+  }
+
+  const title = `${property.title} | RealStock`;
+  const description = property.description?.substring(0, 160) || "Confira este imóvel incrível na RealStock.";
+  const imageUrl = property.images?.[0]?.imageUrl || "https://www.realstock.com.br/icon.png";
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: [
+        {
+          url: imageUrl,
+          width: 800,
+          height: 600,
+          alt: property.title,
+        },
+      ],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [imageUrl],
+    },
+  };
+}
+
 export default async function PropertyPage({
   params,
 }: {

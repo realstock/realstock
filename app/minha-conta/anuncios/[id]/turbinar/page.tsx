@@ -343,11 +343,17 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                             </video>
                             <button 
                               onClick={() => setIsMuted(!isMuted)}
-                              className="absolute bottom-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md transition hover:bg-black/70"
+                              className="absolute bottom-16 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md transition hover:bg-black/70"
                               title={isMuted ? "Ligar som" : "Desligar som"}
                             >
                               {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
                             </button>
+
+                            {/* Botão CTA nativo Instagram Reels */}
+                            <div className="absolute bottom-0 left-0 right-0 w-full bg-[#0095f6] py-3 px-4 flex items-center justify-between text-white text-[13px] font-bold cursor-pointer z-40">
+                               Saiba mais
+                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                            </div>
                           </div>
                         ) : (
                           <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-slate-900">
@@ -376,13 +382,19 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                           ))}
                           
                           {/* Pontos do Carrossel */}
-                          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-20">
+                          <div className="absolute bottom-16 left-0 right-0 flex justify-center gap-1.5 z-20">
                             {(property.images?.length || 0) > 1 && property.images?.map((_: any, idx: number) => (
                               <div 
                                 key={idx} 
-                                className={`h-1 rounded-full transition-all ${idx === currentImageIndex ? 'w-4 bg-white' : 'w-1 bg-white/30'}`}
+                                className={`h-1.5 rounded-full transition-all ${idx === currentImageIndex ? 'w-4 bg-[#0095f6]' : 'w-1.5 bg-white/70 shadow-sm'}`}
                               />
                             ))}
+                          </div>
+
+                          {/* Botão CTA nativo Instagram Feed/Carousel */}
+                          <div className="absolute bottom-0 left-0 right-0 w-full bg-[#0095f6] py-3 px-4 flex items-center justify-between text-white text-[13px] font-bold cursor-pointer z-40">
+                             Saiba mais
+                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
                           </div>
                         </div>
                       )}
@@ -402,8 +414,16 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                       R$ {Number(property.price).toLocaleString("pt-BR")}
                     </div>
                     <div className="text-sm text-slate-300 whitespace-pre-wrap max-h-32 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/10">
-                      {property.description || "Nenhuma descrição."}
+                      {(() => {
+                        const title = property.title || "Anúncio";
+                        const city = property.city || "";
+                        const state = property.state || "";
+                        const hashtagsStr = "\n\n#Imóveis #MercadoImobiliário #RealStock #Investimento" + (city ? ` #${city.replace(/\s+/g, "")}` : "") + (state ? ` #${state.replace(/\s+/g, "")}` : "");
+                        return `🌟 ${title}\n\nConfira as melhores oportunidades no RealStock!\n\n${city ? `📍 ${city} - ${state}\n\n` : ""}Acesse nosso site para mais detalhes!${id !== "0" ? `\nhttps://www.realstock.com.br/imovel/${id}` : "\nhttps://www.realstock.com.br"}${hashtagsStr}`;
+                      })()}
                     </div>
+
+
                   </>
                 )}
 
