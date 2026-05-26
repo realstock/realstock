@@ -43,7 +43,13 @@ export async function GET(
         id: 0,
         title: "Portfólio de Imóveis (Todos)",
         state: user.state || "Brasil",
-        images: userProperties.flatMap(p => p.images)
+        images: userProperties.flatMap(p => p.images.map(img => ({
+          ...img,
+          propertyTitle: p.title,
+          propertyPrice: p.price?.toString() || "0",
+          propertyCity: p.city || "",
+          propertyState: p.state || ""
+        })))
       };
     } else {
       property = await prisma.property.findFirst({

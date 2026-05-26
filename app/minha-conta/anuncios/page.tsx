@@ -373,17 +373,34 @@ export default function MeusAnunciosPage() {
               <div>
                 <h2 className="text-xl font-bold text-white">Você é uma imobiliária?</h2>
                 <p className="text-slate-400 text-sm mt-1 max-w-md">
-                   Destaque sua marca na página inicial e tenha um portfólio exclusivo para seus clientes.
+                   Destaque sua marca na página inicial e tenha um portfólio exclusivo para seus clientes. Faça o upload de todos seus anúncios de uma só vez!
                 </p>
               </div>
             </div>
-            <button 
-              onClick={() => setIsLogoModalOpen(true)}
-              className="group flex items-center gap-2 rounded-2xl bg-sky-500 px-6 py-4 font-bold text-white transition-all hover:bg-sky-400 shadow-lg shadow-sky-500/20 active:scale-95"
-            >
-              Exibir meu Logo no Site
-              <Rocket size={18} className="transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
-            </button>
+            <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+              <a
+                href="/api/minha-conta/exportar-xml"
+                download
+                className="group flex flex-1 items-center justify-center gap-2 rounded-2xl border border-emerald-500/50 bg-emerald-500/20 px-6 py-4 font-bold text-emerald-300 transition-all hover:bg-emerald-500 hover:text-white shadow-lg shadow-emerald-500/10 active:scale-95 whitespace-nowrap"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                Baixar XML
+              </a>
+              <Link
+                href="/minha-conta/anuncios/importar"
+                className="group flex flex-1 items-center justify-center gap-2 rounded-2xl border border-indigo-500/50 bg-indigo-500/20 px-6 py-4 font-bold text-indigo-300 transition-all hover:bg-indigo-500 hover:text-white shadow-lg shadow-indigo-500/10 active:scale-95 whitespace-nowrap"
+              >
+                <Upload size={18} />
+                Importar XML
+              </Link>
+              <button 
+                onClick={() => setIsLogoModalOpen(true)}
+                className="group flex flex-1 items-center justify-center gap-2 rounded-2xl bg-sky-500 px-6 py-4 font-bold text-white transition-all hover:bg-sky-400 shadow-lg shadow-sky-500/20 active:scale-95 whitespace-nowrap"
+              >
+                Exibir Logo
+                <Rocket size={18} className="transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+              </button>
+            </div>
           </div>
           
           {logoActiveUntil && new Date(logoActiveUntil) > new Date() && (

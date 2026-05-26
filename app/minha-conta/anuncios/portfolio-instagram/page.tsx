@@ -198,12 +198,27 @@ export default function PortfolioInstagramPage() {
                       properties
                         .filter(p => selectedIds.includes(p.id))
                         .map((prop, idx) => (
-                          <img 
-                            key={prop.id}
-                            src={prop.images[0].imageUrl} 
-                            alt="" 
-                            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${idx === currentImageIndex ? 'opacity-100' : 'opacity-0'}`} 
-                          />
+                          <div 
+                            key={prop.id} 
+                            className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${idx === currentImageIndex ? 'opacity-100' : 'opacity-0'}`}
+                          >
+                            <img 
+                              src={prop.images[0].imageUrl} 
+                              alt="" 
+                              className="w-full h-full object-cover" 
+                            />
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-4 pt-12">
+                              <h3 className="text-lg font-bold text-white line-clamp-1 drop-shadow-md">{prop.title}</h3>
+                              <p className="text-sm font-bold text-emerald-400 drop-shadow-md">
+                                {Number(prop.price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                              </p>
+                              {(prop.city || prop.state) && (
+                                <p className="text-[10px] text-slate-300 mt-1 flex items-center gap-1 drop-shadow-md">
+                                  📍 {prop.city}{prop.city && prop.state ? " - " : ""}{prop.state}
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         ))
                     ) : (
                       <div className="flex h-full items-center justify-center text-slate-600 text-sm">

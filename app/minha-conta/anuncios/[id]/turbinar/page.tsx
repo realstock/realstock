@@ -373,12 +373,31 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                       ) : (
                         <div className="w-full h-full relative">
                           {property.images?.map((img: any, idx: number) => (
-                            <img 
+                            <div 
                               key={idx}
-                              src={img.imageUrl} 
-                              alt={`Slide ${idx}`} 
-                              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${idx === currentImageIndex ? 'opacity-100' : 'opacity-0'}`} 
-                            />
+                              className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${idx === currentImageIndex ? 'opacity-100' : 'opacity-0'}`}
+                            >
+                              <img 
+                                src={img.imageUrl} 
+                                alt={`Slide ${idx}`} 
+                                className="w-full h-full object-cover" 
+                              />
+                              {(img.propertyTitle || property.title) && (
+                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-4 pt-12 pb-14">
+                                  <h3 className="text-lg font-bold text-white line-clamp-1 drop-shadow-md">{img.propertyTitle || property.title}</h3>
+                                  {(img.propertyPrice || property.price) && (
+                                     <p className="text-sm font-bold text-emerald-400 drop-shadow-md">
+                                       {Number(img.propertyPrice || property.price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                                     </p>
+                                  )}
+                                  {((img.propertyCity || property.city) || (img.propertyState || property.state)) && (
+                                    <p className="text-[10px] text-slate-300 mt-1 flex items-center gap-1 drop-shadow-md">
+                                      📍 {img.propertyCity || property.city}{(img.propertyCity || property.city) && (img.propertyState || property.state) ? " - " : ""}{img.propertyState || property.state}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           ))}
                           
                           {/* Pontos do Carrossel */}
@@ -410,9 +429,11 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                        <div className="text-xs font-mono text-slate-500 bg-white/5 px-2 py-0.5 rounded border border-white/10">ID: {id}</div>
                     )}
                   </div>
-                    <div className="text-sm text-emerald-400 font-semibold mb-2">
-                      R$ {Number(property.price).toLocaleString("pt-BR")}
-                    </div>
+                    {id !== "0" && property.price && (
+                      <div className="text-sm text-emerald-400 font-semibold mb-2">
+                        R$ {Number(property.price).toLocaleString("pt-BR")}
+                      </div>
+                    )}
                     <div className="text-sm text-slate-300 whitespace-pre-wrap max-h-32 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/10">
                       {(() => {
                         const title = property.title || "Anúncio";

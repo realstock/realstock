@@ -211,18 +211,33 @@ export default function PortfolioXPage() {
                    )
                 ) : (
                   <div className="w-full h-full relative bg-slate-950 flex items-center justify-center">
-                    {selectedIds.map((pid, idx) => {
-                      const prop = properties.find(p => p.id === pid);
-                      if (!prop || !prop.images?.[0]) return null;
-                      return (
-                        <img 
-                          key={pid}
-                          src={prop.images[0].imageUrl} 
-                          alt="portfolio preview" 
-                          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${idx === currentImageIndex ? 'opacity-100' : 'opacity-0'}`}
-                        />
-                      );
-                    })}
+                    {selectedIds
+                      .map((pid) => properties.find(p => p.id === pid))
+                      .filter(p => p && p.images?.[0])
+                      .map((prop, idx) => (
+                        <div 
+                          key={prop.id} 
+                          className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${idx === currentImageIndex ? 'opacity-100' : 'opacity-0'}`}
+                        >
+                          <img 
+                            src={prop.images[0].imageUrl} 
+                            alt="" 
+                            className="w-full h-full object-cover" 
+                          />
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-4 pt-12">
+                            <h3 className="text-lg font-bold text-white line-clamp-1 drop-shadow-md">{prop.title}</h3>
+                            <p className="text-sm font-bold text-emerald-400 drop-shadow-md">
+                              {Number(prop.price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                            </p>
+                            {(prop.city || prop.state) && (
+                              <p className="text-[10px] text-slate-300 mt-1 flex items-center gap-1 drop-shadow-md">
+                                📍 {prop.city}{prop.city && prop.state ? " - " : ""}{prop.state}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    }
                     
                     {/* Indicador de fotos */}
                     <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-white border border-white/10 flex items-center gap-1.5 shadow-lg">
