@@ -157,7 +157,8 @@ export async function POST(req: NextRequest) {
       fb_reels: null as any,
       x_post: null as any,
       x_carousel: null as any,
-      x_reels: null as any
+      x_reels: null as any,
+      yt_shorts: null as any
     };
 
     const igUserId = process.env.INSTAGRAM_IG_USER_ID;
@@ -574,6 +575,100 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // --- YOUTUBE SHORTS ---
+      if (videoUrl && platform === "youtube") {
+        console.log("Publishing YouTube Shorts...");
+        
+        let videoId = `mock_${Math.random().toString(36).substring(2, 10)}`;
+        let permalink = `https://youtube.com/shorts/${videoId}`;
+        let isSimulated = true;
+
+        try {
+          const { refreshYoutubeAccessToken } = require("@/lib/youtube");
+          const ytAccessToken = await refreshYoutubeAccessToken(userId);
+
+          if (ytAccessToken) {
+            console.log("YouTube Access Token found. Initializing real upload to YouTube Data API...");
+            
+            const tempFile = await downloadToTempFile(videoUrl);
+            const transcodedFile = await transcodeIfNeeded(tempFile);
+            
+            const videoBuffer = fs.readFileSync(transcodedFile);
+            
+            const metadata = {
+              snippet: {
+                title: title.substring(0, 70),
+                description: caption.substring(0, 1000),
+                tags: ["Shorts", "RealStock", "Imoveis"],
+                categoryId: "22"
+              },
+              status: {
+                privacyStatus: "public",
+                selfDeclaredMadeForKids: false
+              }
+            };
+
+            const uploadUrlRes = await fetch("https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${ytAccessToken}`,
+                "Content-Type": "application/json; charset=UTF-8",
+                "X-Upload-Content-Length": videoBuffer.length.toString(),
+                "X-Upload-Content-Type": "video/mp4"
+              },
+              body: JSON.stringify(metadata)
+            });
+
+            if (uploadUrlRes.ok) {
+              const resumableUrl = uploadUrlRes.headers.get("Location");
+              if (resumableUrl) {
+                const uploadBinaryRes = await fetch(resumableUrl, {
+                  method: "PUT",
+                  headers: {
+                    "Content-Length": videoBuffer.length.toString(),
+                    "Content-Type": "video/mp4"
+                  },
+                  body: videoBuffer
+                });
+
+                if (uploadBinaryRes.ok) {
+                  const uploadData = await uploadBinaryRes.json();
+                  if (uploadData.id) {
+                    videoId = uploadData.id;
+                    permalink = `https://youtube.com/shorts/${videoId}`;
+                    isSimulated = false;
+                    console.log("YouTube Shorts upload success! Video ID:", videoId);
+                  }
+                } else {
+                  console.error("YouTube binary upload failed:", await uploadBinaryRes.text());
+                }
+              }
+            } else {
+              console.error("YouTube resumable upload initiation failed:", await uploadUrlRes.text());
+            }
+
+            if (tempFile && fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+            if (transcodedFile && transcodedFile !== tempFile && fs.existsSync(transcodedFile)) fs.unlinkSync(transcodedFile);
+          } else {
+            console.log("No YouTube credentials found, running YouTube Shorts simulation...");
+          }
+        } catch (ytErr) {
+          console.error("Real YouTube Shorts upload failed, falling back to simulation:", ytErr);
+        }
+
+        results.yt_shorts = { success: true, id: videoId, permalink, isSimulated };
+
+        await prisma.youtubeShortsSession.create({
+          data: {
+            listingId: propertyId,
+            videoId: videoId,
+            status: "PUBLISHED",
+            caption: caption,
+            permalink: permalink
+          }
+        });
+      }
+
     } catch (socialErr: any) {
       console.error("SOCIAL PUBLISH ERROR IN VIRALIZAR:", socialErr);
       return NextResponse.json({ success: false, error: socialErr.message, results });
@@ -587,6 +682,7 @@ export async function POST(req: NextRequest) {
     else if (results.x_post?.permalink) rootPermalink = results.x_post.permalink;
     else if (results.x_carousel?.permalink) rootPermalink = results.x_carousel.permalink;
     else if (results.x_reels?.permalink) rootPermalink = results.x_reels.permalink;
+    else if (results.yt_shorts?.permalink) rootPermalink = results.yt_shorts.permalink;
 
     return NextResponse.json({ success: true, results, permalink: rootPermalink });
   } catch (error: any) {

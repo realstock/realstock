@@ -39,6 +39,20 @@ model FacebookFeedSession {
   updatedAt        DateTime @updatedAt
 }
 
+model YoutubeShortsSession {
+  id            String   @id @default(cuid())
+  listingId     Int
+  status        String   @default("DRAFT")
+  caption       String?
+  videoId       String?  @map("video_id")
+  permalink     String?
+  publishErrors Json?    @map("publish_errors")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("youtube_shorts_sessions")
+}
+
 model User {
   id                          Int        @id @default(autoincrement())
   email                       String     @unique
@@ -73,6 +87,11 @@ model User {
   tiktokAccessToken           String?    @map("tiktok_access_token")
   tiktokRefreshToken          String?    @map("tiktok_refresh_token")
   tiktokTokenExpiresAt        DateTime?  @map("tiktok_token_expires_at")
+
+  // YouTube Integration
+  youtubeAccessToken          String?    @map("youtube_access_token")
+  youtubeRefreshToken         String?    @map("youtube_refresh_token")
+  youtubeTokenExpiresAt       DateTime?  @map("youtube_token_expires_at")
   
   // Sistema de Indicação e Créditos
   referrerId                  Int?       @map("referrer_id")

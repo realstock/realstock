@@ -44,10 +44,17 @@ export async function DELETE(
       },
     });
 
+    // 3. Deletar sessões do YouTube vinculadas a este imóvel
+    const deletedYoutube = await prisma.youtubeShortsSession.deleteMany({
+      where: {
+        listingId: propertyId,
+      },
+    });
+
     return NextResponse.json({
       success: true,
-      deletedCount: deletedInsta.count + deletedFace.count,
-      message: "Postagens anteriores removidas com sucesso (Instagram e Facebook)",
+      deletedCount: deletedInsta.count + deletedFace.count + deletedYoutube.count,
+      message: "Postagens anteriores removidas com sucesso (Instagram, Facebook e YouTube)",
     });
   } catch (error: any) {
     console.error("DELETE POSTS ERROR:", error);

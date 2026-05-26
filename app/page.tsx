@@ -859,7 +859,9 @@ export default function HomePage() {
                               : "border-white/10 bg-slate-900/60 hover:border-white/20 hover:bg-slate-900"
                           }`}
                         >
-                          <div className="h-full w-full rounded-[1.8rem] bg-slate-950 overflow-hidden flex flex-col pt-0">
+                          <div className={`h-full w-full rounded-[1.8rem] overflow-hidden flex flex-col pt-0 ${
+                            hasIG ? "bg-indigo-950" : "bg-slate-950"
+                          }`}>
                                 <div className="relative h-48 w-full bg-slate-800 overflow-hidden">
                                     {property.mainImage ? (
                                         <img

@@ -34,6 +34,7 @@ export async function GET() {
         role: true,
         verified: true,
         createdAt: true,
+        youtubeRefreshToken: true,
       },
     });
 
@@ -44,9 +45,14 @@ export async function GET() {
       );
     }
 
+    const { youtubeRefreshToken, ...userWithoutToken } = user;
+
     return NextResponse.json({
       success: true,
-      user,
+      user: {
+        ...userWithoutToken,
+        youtubeConnected: !!youtubeRefreshToken,
+      },
     });
   } catch (error: any) {
     return NextResponse.json(

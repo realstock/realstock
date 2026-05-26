@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Camera, CameraOff, CheckCircle2, Rocket, Globe, BarChart3, Building2, Upload, X, Wallet, TrendingUp, History, MapPin, Film, Zap, Users, Volume2, VolumeX } from "lucide-react";
+import { Camera, CameraOff, CheckCircle2, Rocket, Globe, BarChart3, Building2, Upload, X, Wallet, TrendingUp, History, MapPin, Film, Zap, Users, Volume2, VolumeX, Play } from "lucide-react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import VideoCreatorModal from "@/components/VideoCreatorModal";
 import ViralizarModal from "@/components/ViralizarModal";
@@ -542,13 +542,22 @@ export default function MeusAnunciosPage() {
                                 Face
                               </Link>
                             </div>
-                            <Link
-                              href={`/minha-conta/anuncios/portfolio-x`}
-                              className="w-full flex items-center justify-center gap-2 rounded-xl border border-slate-500/20 bg-slate-500/5 py-2 text-[11px] font-bold text-slate-300 transition-all hover:bg-slate-500/10"
-                            >
-                              <svg className="w-3.5 h-3.5 fill-slate-300" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                              X (Twitter)
-                            </Link>
+                            <div className="flex gap-2">
+                              <Link
+                                href={`/minha-conta/anuncios/portfolio-x`}
+                                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-slate-500/20 bg-slate-500/5 py-2 text-[11px] font-bold text-slate-300 transition-all hover:bg-slate-500/10"
+                              >
+                                <img src="/icones/x.png" className="w-3.5 h-3.5 rounded-sm object-cover" alt="" />
+                                X (Twitter)
+                              </Link>
+                              <Link
+                                href={`/minha-conta/anuncios/portfolio-youtube`}
+                                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-red-500/20 bg-red-500/5 py-2 text-[11px] font-bold text-red-400 transition-all hover:bg-red-500/10"
+                              >
+                                <img src="/icones/youtube.png" className="w-3.5 h-3.5 rounded-sm object-cover" alt="" />
+                                YT Shorts
+                              </Link>
+                            </div>
                           </div>
                         </div>
 
@@ -893,13 +902,22 @@ export default function MeusAnunciosPage() {
                                 Face
                               </Link>
                             </div>
-                            <Link
-                              href={`/minha-conta/anuncios/${property.id}/x`}
-                              className="w-full flex items-center justify-center gap-2 rounded-xl border border-slate-500/20 bg-slate-500/5 py-2 text-[11px] font-bold text-slate-300 transition-all hover:bg-slate-500/10"
-                            >
-                              <svg className="w-3.5 h-3.5 fill-slate-300" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                              X (Twitter)
-                            </Link>
+                            <div className="flex gap-2">
+                              <Link
+                                href={`/minha-conta/anuncios/${property.id}/x`}
+                                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-slate-500/20 bg-slate-500/5 py-2 text-[11px] font-bold text-slate-300 transition-all hover:bg-slate-500/10"
+                              >
+                                <img src="/icones/x.png" className="w-3.5 h-3.5 rounded-sm object-cover" alt="" />
+                                X (Twitter)
+                              </Link>
+                              <Link
+                                href={`/minha-conta/anuncios/${property.id}/youtube`}
+                                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-red-500/20 bg-red-500/5 py-2 text-[11px] font-bold text-red-400 transition-all hover:bg-red-500/10"
+                              >
+                                <img src="/icones/youtube.png" className="w-3.5 h-3.5 rounded-sm object-cover" alt="" />
+                                YT Shorts
+                              </Link>
+                            </div>
                           </div>
                         </div>
 

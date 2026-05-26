@@ -4,7 +4,7 @@ import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { BarChart3, TrendingUp, Users, Heart, MessageCircle, Eye, MousePointerClick, Activity, DollarSign, Rocket, X } from "lucide-react";
+import { BarChart3, TrendingUp, Users, Heart, MessageCircle, Eye, MousePointerClick, Activity, DollarSign, Rocket, X, Play } from "lucide-react";
 
 export default function InsightsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -131,6 +131,10 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
 
     const xTotalShares = insights.x?.posts?.reduce((sum: number, p: any) => sum + (p.shares || 0), 0) || 0;
 
+    const ytTotalViews = insights.youtube?.posts?.reduce((sum: number, p: any) => sum + (p.views || 0), 0) || 0;
+    const ytTotalLikes = insights.youtube?.posts?.reduce((sum: number, p: any) => sum + (p.likes || 0), 0) || 0;
+    const ytTotalComments = insights.youtube?.posts?.reduce((sum: number, p: any) => sum + (p.comments || 0), 0) || 0;
+
     return (
         <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
             <div className="mx-auto max-w-5xl">
@@ -194,9 +198,9 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                     <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-3xl p-6 flex flex-col justify-center">
                         <div className="text-emerald-300 text-xs font-bold uppercase tracking-widest mb-1 font-black">Visualizações Orgânicas</div>
                         <div className="text-4xl font-black text-emerald-400">
-                            {(igTotalViews + fbTotalViews + xTotalViews).toLocaleString('pt-BR')}
+                            {(igTotalViews + fbTotalViews + xTotalViews + ytTotalViews).toLocaleString('pt-BR')}
                         </div>
-                        <div className="text-[10px] text-emerald-500 mt-1 uppercase leading-none">Vindo do Instagram/Facebook/X</div>
+                        <div className="text-[10px] text-emerald-500 mt-1 uppercase leading-none">Vindo de redes sociais orgânicas</div>
                     </div>
                     
                     <div className="bg-indigo-600/10 border border-indigo-500/20 rounded-3xl p-6 flex flex-col justify-center border-dashed">
@@ -210,7 +214,7 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                     <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col justify-center">
                         <div className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Engajamento</div>
                         <div className="text-4xl font-black text-white">
-                            {( igTotalLikes + igTotalComments + fbTotalLikes + fbTotalComments + xTotalLikes + xTotalComments + xTotalShares + (insights.metaAds?.likes || 0) + (insights.google?.clicks || 0) ).toLocaleString('pt-BR')}
+                            {( igTotalLikes + igTotalComments + fbTotalLikes + fbTotalComments + xTotalLikes + xTotalComments + xTotalShares + ytTotalLikes + ytTotalComments + (insights.metaAds?.likes || 0) + (insights.google?.clicks || 0) ).toLocaleString('pt-BR')}
                         </div>
                         <div className="text-[10px] text-slate-500 mt-1 uppercase leading-none">Interações totais</div>
                     </div>
@@ -345,6 +349,57 @@ export default function InsightsPage({ params }: { params: Promise<{ id: string 
                                 </div>
                             )) : (
                                 <div className="text-sm text-slate-500 italic">Nenhum post encontrado.</div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* YOUTUBE SHORTS ORGANIC */}
+                    <div className="rounded-3xl bg-gradient-to-br from-slate-800/50 to-slate-900 border border-red-500/20 p-6 shadow-xl relative overflow-hidden">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="bg-red-500/20 p-2 rounded-xl">
+                                <Play size={20} className="text-red-400" />
+                            </div>
+                            <h2 className="text-xl font-bold">YouTube Shorts</h2>
+                        </div>
+                        <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+                            Visualizações e interações orgânicas vindas do canal do YouTube conectado.
+                        </p>
+
+                        <div className="flex flex-col gap-4">
+                            {insights.youtube?.posts?.length > 0 ? insights.youtube.posts.map((post: any, i: number) => (
+                                <div key={i} className="bg-red-500/10 p-4 rounded-2xl backdrop-blur-sm border border-red-500/10 flex flex-col gap-3">
+                                    <div className="text-xs font-bold text-red-300 uppercase tracking-wider mb-1 flex items-center gap-2">
+                                        <Eye size={14} className="text-red-400" />
+                                        Shorts
+                                    </div>
+
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div>
+                                            <div className="text-2xl font-black text-white">{(post.views || 0).toLocaleString('pt-BR')}</div>
+                                            <div className="text-[9px] font-bold text-slate-500 uppercase">Views</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-2xl font-black text-white">{(post.likes || 0).toLocaleString('pt-BR')}</div>
+                                            <div className="text-[9px] font-bold text-slate-500 uppercase">Likes</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-2xl font-black text-white">{(post.comments || 0).toLocaleString('pt-BR')}</div>
+                                            <div className="text-[9px] font-bold text-slate-500 uppercase">Comments</div>
+                                        </div>
+                                    </div>
+                                    {post.permalink && (
+                                        <a 
+                                            href={post.permalink} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer" 
+                                            className="mt-1 text-center bg-white/10 hover:bg-white/20 text-white rounded-xl text-[10px] font-black uppercase tracking-widest py-2 transition-all"
+                                        >
+                                            Assistir Shorts
+                                        </a>
+                                    )}
+                                </div>
+                            )) : (
+                                <div className="text-sm text-slate-500 italic">Nenhum Shorts publicado.</div>
                             )}
                         </div>
                     </div>

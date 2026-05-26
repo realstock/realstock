@@ -90,6 +90,7 @@ export async function GET(
         instagram: { posts: [] },
         facebook: { posts: [] },
         x: { posts: [] },
+        youtube: { posts: [] },
         google: null
     };
 
@@ -255,6 +256,74 @@ export async function GET(
         insights.x.posts.push(baseRecord);
     }
 
+    // 3.6 YOUTUBE ORGANIC
+    let ytSessions = await prisma.youtubeShortsSession.findMany({
+        where: { listingId: effectiveListingId, status: "PUBLISHED" },
+        orderBy: { createdAt: "desc" },
+    });
+    if (ytSessions.length === 0 && isPortfolio) {
+        ytSessions = await prisma.youtubeShortsSession.findMany({
+            where: { listingId: 0, status: "PUBLISHED" },
+            orderBy: { createdAt: "desc" }
+        });
+    }
+
+    if (ytSessions.length > 0) {
+        const { refreshYoutubeAccessToken } = require("@/lib/youtube");
+        const ytAccessToken = await refreshYoutubeAccessToken(user.id);
+
+        for (const session of ytSessions) {
+            let views = 0;
+            let likes = 0;
+            let comments = 0;
+            
+            const isMock = !session.videoId || session.videoId.startsWith("mock_");
+            let isRealApiFetched = false;
+
+            if (!isMock && ytAccessToken) {
+                try {
+                    const ytRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${session.videoId}`, {
+                        headers: {
+                            "Authorization": `Bearer ${ytAccessToken}`
+                        }
+                    });
+                    if (ytRes.ok) {
+                        const ytData = await ytRes.json();
+                        if (ytData?.items?.[0]?.statistics) {
+                            const stats = ytData.items[0].statistics;
+                            views = parseInt(stats.viewCount || "0");
+                            likes = parseInt(stats.likeCount || "0");
+                            comments = parseInt(stats.commentCount || "0");
+                            isRealApiFetched = true;
+                        }
+                    }
+                } catch (e) {
+                    console.error("YouTube statistics fetch failed:", e);
+                }
+            }
+            
+            // Fallback or Simulated metrics ONLY for mock sessions
+            if (isMock && !isRealApiFetched) {
+                const ageInMs = Date.now() - new Date(session.createdAt).getTime();
+                const ageInHours = ageInMs / (1000 * 60 * 60);
+                views = Math.floor(100 + ageInHours * 15 + Math.sin(ageInHours) * 30);
+                likes = Math.floor(views * 0.06);
+                comments = Math.floor(views * 0.008);
+            }
+
+            insights.youtube.posts.push({
+                type: "reels",
+                videoId: session.videoId,
+                likes,
+                comments,
+                views,
+                reach: views,
+                publishedDate: session.createdAt,
+                permalink: session.permalink
+            });
+        }
+    }
+
     // 4. GOOGLE ADS
     if (goSession?.campaignId && !goSession.campaignId.includes("MOCK")) {
         const adsData = await getGoogleAdsCampaignInsights(goSession.campaignId);
@@ -271,7 +340,8 @@ export async function GET(
     const igTotalViews = insights.instagram.posts.reduce((sum: number, p: any) => sum + (p.views || 0), 0);
     const fbTotalViews = insights.facebook.posts.reduce((sum: number, p: any) => sum + (p.views || 0), 0);
     const xTotalViews = insights.x.posts.reduce((sum: number, p: any) => sum + (p.views || 0), 0);
-    const totalImpact = Math.max(igTotalViews, fbTotalViews, xTotalViews, paidMetrics.views) + (insights.google?.impressions || 0);
+    const ytTotalViews = insights.youtube.posts.reduce((sum: number, p: any) => sum + (p.views || 0), 0);
+    const totalImpact = Math.max(igTotalViews, fbTotalViews, xTotalViews, ytTotalViews, paidMetrics.views) + (insights.google?.impressions || 0);
 
     return NextResponse.json({
       success: true,

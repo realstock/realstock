@@ -190,7 +190,7 @@ export default function InstagramPublisherPage() {
                           muted={isMuted}
                           playsInline 
                         >
-                          <source src={property.reelsVideoUrl} type={property.reelsVideoUrl.endsWith('.mp4') ? 'video/mp4' : 'video/webm'} />
+                           <source src={property.reelsVideoUrl ? `/api/proxy-video?url=${encodeURIComponent(property.reelsVideoUrl)}#t=0.001` : undefined} type={property.reelsVideoUrl.includes('.mp4') ? 'video/mp4' : 'video/webm'} />
                         </video>
                         <button 
                             onClick={() => setIsMuted(!isMuted)}

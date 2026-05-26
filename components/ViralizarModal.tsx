@@ -107,6 +107,7 @@ export default function ViralizarModal(props: ViralizarModalProps) {
     { id: 'fb_reels', label: 'Facebook: Reels', status: 'pending' as 'pending' | 'loading' | 'success' | 'error', permalink: '' },
     { id: 'x_carousel', label: 'X (Twitter): Carrossel', status: 'pending' as 'pending' | 'loading' | 'success' | 'error', permalink: '' },
     { id: 'x_reels', label: 'X (Twitter): Reels', status: 'pending' as 'pending' | 'loading' | 'success' | 'error', permalink: '' },
+    { id: 'yt_shorts', label: 'YouTube: Shorts', status: 'pending' as 'pending' | 'loading' | 'success' | 'error', permalink: '' },
   ]);
 
   const updateTaskStatus = (id: string, status: 'pending' | 'loading' | 'success' | 'error', permalink: string = '') => {
@@ -499,7 +500,8 @@ export default function ViralizarModal(props: ViralizarModalProps) {
             { id: 'fb_feed', platform: 'facebook', type: 'carousel' },
             { id: 'fb_reels', platform: 'facebook', type: 'reels' },
             { id: 'x_carousel', platform: 'x', type: 'carousel' },
-            { id: 'x_reels', platform: 'x', type: 'reels' }
+            { id: 'x_reels', platform: 'x', type: 'reels' },
+            { id: 'yt_shorts', platform: 'youtube', type: 'reels' }
         ];
 
         for (const post of posts) {

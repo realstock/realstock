@@ -29,6 +29,7 @@ export async function GET(req: Request) {
       { id: "fb_reels", keywords: ["video facebook", "reel facebook", "post de anuncio"], defaultName: "Postar Reels Facebook", defaultValue: isPortfolio ? 100 : 50 },
       { id: "x_carousel", keywords: ["carrossel x", "carrossel twitter"], defaultName: "Postar Carrossel X (Twitter)", defaultValue: isPortfolio ? 100 : 50 },
       { id: "x_reels", keywords: ["video x", "reel x", "video twitter", "reel twitter"], defaultName: "Postar Reels X (Twitter)", defaultValue: isPortfolio ? 100 : 50 },
+      { id: "yt_shorts", keywords: ["video youtube", "shorts youtube", "youtube shorts"], defaultName: "Postar YouTube Shorts", defaultValue: isPortfolio ? 100 : 50 },
     ];
 
     const result = viralizarServices.map(v => {
