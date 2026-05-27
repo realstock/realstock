@@ -58,6 +58,122 @@ function renderOverlays(ctx: CanvasRenderingContext2D, width: number, height: nu
   ctx.fillText("www.realstock.com.br", width / 2, titleY + 115);
 }
 
+function MíssilAnimation() {
+  return (
+    <svg width="100%" height="100%" viewBox="0 0 400 400" className="w-full h-full select-none">
+      <style>{`
+        @keyframes center-pulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.08); filter: drop-shadow(0 0 15px rgba(168, 85, 247, 0.6)); }
+          100% { transform: scale(1); }
+        }
+        @keyframes draw-arrow {
+          to { stroke-dashoffset: 0; }
+        }
+        @keyframes pop-icon {
+          0% { transform: scale(0); opacity: 0; }
+          80% { transform: scale(1.15); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes draw-circle {
+          to { stroke-dashoffset: 0; opacity: 0.4; }
+        }
+        @keyframes orbit {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+      <defs>
+        <linearGradient id="arrow-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#a855f7" />
+          <stop offset="100%" stopColor="#4f46e5" />
+        </linearGradient>
+        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="4" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+      </defs>
+
+      {/* Central Circle with RealStock Icon */}
+      <g transform="translate(200, 200)">
+        <circle r="45" fill="url(#arrow-grad)" opacity="0.15" className="animate-[center-pulse_3s_infinite_ease-in-out]" style={{ transformOrigin: '0px 0px' }} />
+        <g className="animate-[pop-icon_1s_ease-out_forwards]" style={{ transformOrigin: '0px 0px' }}>
+          <clipPath id="center-clip">
+            <circle r="36" />
+          </clipPath>
+          <circle r="38" fill="#0f172a" stroke="url(#arrow-grad)" strokeWidth="2" />
+          <image href="/apple-icon.png" x="-36" y="-36" width="72" height="72" clipPath="url(#center-clip)" />
+        </g>
+      </g>
+
+      {/* Arrows extending to 4 sides */}
+      {/* Top Arrow (Up) */}
+      <path d="M 200 156 L 200 74" stroke="url(#arrow-grad)" strokeWidth="3" strokeDasharray="82" strokeDashoffset="82" strokeLinecap="round" className="animate-[draw-arrow_1.2s_ease-out_1s_forwards]" />
+      <path d="M 195 82 L 200 74 L 205 82" fill="none" stroke="url(#arrow-grad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0" className="animate-[pop-icon_0.3s_ease-out_2.1s_forwards]" style={{ transformOrigin: '200px 74px' }} />
+
+      {/* Right Arrow (Right) */}
+      <path d="M 244 200 L 326 200" stroke="url(#arrow-grad)" strokeWidth="3" strokeDasharray="82" strokeDashoffset="82" strokeLinecap="round" className="animate-[draw-arrow_1.2s_ease-out_1s_forwards]" />
+      <path d="M 318 195 L 326 200 L 318 205" fill="none" stroke="url(#arrow-grad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0" className="animate-[pop-icon_0.3s_ease-out_2.1s_forwards]" style={{ transformOrigin: '326px 200px' }} />
+
+      {/* Bottom Arrow (Down) */}
+      <path d="M 200 244 L 200 326" stroke="url(#arrow-grad)" strokeWidth="3" strokeDasharray="82" strokeDashoffset="82" strokeLinecap="round" className="animate-[draw-arrow_1.2s_ease-out_1s_forwards]" />
+      <path d="M 195 318 L 200 326 L 205 318" fill="none" stroke="url(#arrow-grad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0" className="animate-[pop-icon_0.3s_ease-out_2.1s_forwards]" style={{ transformOrigin: '200px 326px' }} />
+
+      {/* Left Arrow (Left) */}
+      <path d="M 156 200 L 74 200" stroke="url(#arrow-grad)" strokeWidth="3" strokeDasharray="82" strokeDashoffset="82" strokeLinecap="round" className="animate-[draw-arrow_1.2s_ease-out_1s_forwards]" />
+      <path d="M 82 195 L 74 200 L 82 205" fill="none" stroke="url(#arrow-grad)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0" className="animate-[pop-icon_0.3s_ease-out_2.1s_forwards]" style={{ transformOrigin: '74px 200px' }} />
+
+      {/* Four Social Icons at the end of the arrows */}
+      {/* Top: Instagram */}
+      <g transform="translate(200, 48)" opacity="0" className="animate-[pop-icon_0.8s_cubic-bezier(0.34,1.56,0.64,1)_2.2s_forwards]" style={{ transformOrigin: '200px 48px' }}>
+        <circle r="22" fill="#0f172a" stroke="#ec4899" strokeWidth="2" filter="url(#glow)" />
+        <clipPath id="insta-clip">
+          <circle r="20" />
+        </clipPath>
+        <image href="/icones/instagram.jpg" x="-20" y="-20" width="40" height="40" clipPath="url(#insta-clip)" />
+      </g>
+
+      {/* Right: Facebook */}
+      <g transform="translate(352, 200)" opacity="0" className="animate-[pop-icon_0.8s_cubic-bezier(0.34,1.56,0.64,1)_2.4s_forwards]" style={{ transformOrigin: '352px 200px' }}>
+        <circle r="22" fill="#0f172a" stroke="#3b82f6" strokeWidth="2" filter="url(#glow)" />
+        <clipPath id="fb-clip">
+          <circle r="20" />
+        </clipPath>
+        <image href="/icones/facebook.jpeg" x="-20" y="-20" width="40" height="40" clipPath="url(#fb-clip)" />
+      </g>
+
+      {/* Bottom: YouTube */}
+      <g transform="translate(200, 352)" opacity="0" className="animate-[pop-icon_0.8s_cubic-bezier(0.34,1.56,0.64,1)_2.6s_forwards]" style={{ transformOrigin: '200px 352px' }}>
+        <circle r="22" fill="#0f172a" stroke="#ef4444" strokeWidth="2" filter="url(#glow)" />
+        <clipPath id="yt-clip">
+          <circle r="20" />
+        </clipPath>
+        <image href="/icones/youtube.png" x="-20" y="-20" width="40" height="40" clipPath="url(#yt-clip)" />
+      </g>
+
+      {/* Left: X */}
+      <g transform="translate(48, 200)" opacity="0" className="animate-[pop-icon_0.8s_cubic-bezier(0.34,1.56,0.64,1)_2.8s_forwards]" style={{ transformOrigin: '48px 200px' }}>
+        <circle r="22" fill="#0f172a" stroke="#f8fafc" strokeWidth="2" filter="url(#glow)" />
+        <clipPath id="x-clip">
+          <circle r="20" />
+        </clipPath>
+        <image href="/icones/x.png" x="-20" y="-20" width="40" height="40" clipPath="url(#x-clip)" />
+      </g>
+
+      {/* Outer Circle surrounding everything */}
+      <circle cx="200" cy="200" r="152" fill="none" stroke="url(#arrow-grad)" strokeWidth="2" strokeDasharray="955" strokeDashoffset="955" strokeLinecap="round" opacity="0" className="animate-[draw-circle_2s_ease-in-out_3.2s_forwards]" />
+
+      {/* Orbit container that rotates around the center */}
+      <g transform="translate(200, 200)" className="animate-[orbit_12s_linear_infinite]" style={{ transformOrigin: '200px 200px' }}>
+        <g transform="translate(0, -152)" className="animate-[pop-icon_0.5s_ease-out_4.5s_forwards]" opacity="0" style={{ transformOrigin: '0px -152px' }}>
+          <circle r="14" fill="#0f172a" stroke="#3b82f6" strokeWidth="1.5" />
+          <image href="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" x="-10" y="-10" width="20" height="20" />
+        </g>
+      </g>
+    </svg>
+  );
+}
+
 export default function ViralizarModal(props: ViralizarModalProps) {
   const { 
     isOpen, 
@@ -682,7 +798,17 @@ export default function ViralizarModal(props: ViralizarModalProps) {
         <div className={step === 'executing' ? "block" : "fixed -left-[9999px] opacity-0 pointer-events-none"}>
            <div className="flex flex-col lg:flex-row gap-8">
               <div className="flex-1 space-y-6">
-                 <h2 className="text-3xl font-black text-white italic tracking-tighter uppercase italic">Lançando Míssil...</h2>
+                 <div className="flex flex-col md:flex-row items-center gap-6 bg-white/[0.02] border border-white/5 p-6 rounded-3xl">
+                    <div className="w-48 h-48 flex-shrink-0 flex items-center justify-center bg-slate-950/40 rounded-2xl border border-white/5 overflow-hidden">
+                       <MíssilAnimation />
+                    </div>
+                    <div>
+                       <h2 className="text-3xl font-black text-white italic tracking-tighter uppercase">Lançando Míssil...</h2>
+                       <p className="text-xs text-slate-400 mt-2 max-w-sm leading-relaxed">
+                          Distribuindo seu anúncio simultaneamente para as principais plataformas. O motor inteligente está formatando os criativos e realizando as postagens automáticas.
+                       </p>
+                    </div>
+                 </div>
                  <div className="space-y-3">
                     {tasks.map(task => (
                       <div key={task.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
