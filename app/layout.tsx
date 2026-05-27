@@ -26,6 +26,8 @@ export default function RootLayout({
     <html lang="pt-BR">
       <head>
         <meta name="google-adsense-account" content="ca-pub-8662280633716608" />
+      </head>
+      <body className="bg-slate-950 text-white min-h-screen flex flex-col">
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8662280633716608"
@@ -63,8 +65,7 @@ export default function RootLayout({
             fbq('track', 'PageView');
           `}
         </Script>
-      </head>
-      <body className="bg-slate-950 text-white min-h-screen flex flex-col">
+
         <noscript>
           <img height="1" width="1" style={{ display: 'none' }} src="https://www.facebook.com/tr?id=1274929870774414&ev=PageView&noscript=1" />
         </noscript>

@@ -146,6 +146,26 @@ export async function POST(req: NextRequest) {
         console.error("FINANCE LOGGING ERROR FOR PORTFOLIO YOUTUBE:", finErr);
     }
 
+    // Buscar os imóveis do portfólio para compor a descrição
+    const properties = await prisma.property.findMany({
+      where: {
+        ownerId: user.id,
+        ...(selectedPropertyIds && Array.isArray(selectedPropertyIds) && selectedPropertyIds.length > 0
+          ? { id: { in: selectedPropertyIds.map(Number) } }
+          : {})
+      },
+      orderBy: { createdAt: "desc" }
+    });
+
+    let propertyListText = "";
+    properties.forEach((p, idx) => {
+      const address = [p.street, p.addressNumber, p.neighborhood, p.city, p.state].filter(Boolean).join(", ");
+      const priceText = `R$ ${Number(p.price).toLocaleString("pt-BR")}`;
+      propertyListText += `${idx + 1}. ${p.title}\n📍 Endereço: ${address || p.city || "Não informado"}\n💰 Valor: ${priceText}\n\n`;
+    });
+
+    const captionText = `Confira nosso portfólio completo de imóveis!\n\n${propertyListText}#Shorts #RealStock #Imoveis #MercadoImobiliario`;
+
     let videoId = `mock_${Math.random().toString(36).substring(2, 10)}`;
     let permalink = `https://youtube.com/shorts/${videoId}`;
     let isSimulated = true;
@@ -163,12 +183,10 @@ export async function POST(req: NextRequest) {
           
           const videoBuffer = fs.readFileSync(transcodedFile);
           
-          const captionText = `Confira nosso portfólio completo de imóveis!\n\nAs melhores oportunidades imobiliárias selecionadas para você.\n\n#Shorts #RealStock #Imoveis #MercadoImobiliario`;
-          
           const metadata = {
             snippet: {
               title: `Portfólio Completo - RealStock`.substring(0, 70),
-              description: captionText.substring(0, 1000),
+              description: captionText.substring(0, 4900),
               tags: ["Shorts", "RealStock", "Imoveis"],
               categoryId: "22"
             },
@@ -235,7 +253,7 @@ export async function POST(req: NextRequest) {
         listingId: portfolioListingId,
         videoId: videoId,
         status: "PUBLISHED",
-        caption: `Portfólio Completo - RealStock`,
+        caption: captionText.substring(0, 1000),
         permalink: permalink
       }
     });

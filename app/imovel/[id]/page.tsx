@@ -43,6 +43,18 @@ const TwitterIcon = ({ size = 24 }: { size?: number }) => (
   </svg>
 );
 
+const YoutubeIcon = ({ size = 24 }: { size?: number }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    className="fill-current"
+  >
+    <path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.517 3.545 12 3.545 12 3.545s-7.517 0-9.388.508a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11c1.871.508 9.388.508 9.388.508s7.517 0 9.388-.508a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+  </svg>
+);
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const propertyId = Number(id);
@@ -136,7 +148,7 @@ export default async function PropertyPage({
   }
 
   // Fetch social sessions
-  const [igSessions, fbSessions, xTransactions] = await Promise.all([
+  const [igSessions, fbSessions, xTransactions, ytSessions] = await Promise.all([
     prisma.instagramPreviewSession.findMany({
       where: { listingId: propertyId, status: "PUBLISHED" },
       orderBy: { createdAt: "desc" },
@@ -153,6 +165,10 @@ export default async function PropertyPage({
         }
       },
       orderBy: { createdAt: "desc" }
+    }),
+    prisma.youtubeShortsSession.findMany({
+      where: { listingId: propertyId, status: "PUBLISHED" },
+      orderBy: { createdAt: "desc" },
     })
   ]);
 
@@ -193,6 +209,13 @@ export default async function PropertyPage({
         { type: "Reels", permalink: xReelsPermalink },
         { type: "Carrossel", permalink: xCarouselPermalink },
       ].filter(l => l.permalink)
+    },
+    {
+      name: "YouTube",
+      links: ytSessions.map(s => ({
+        type: "Shorts",
+        permalink: s.permalink || `https://youtube.com/shorts/${s.videoId}`
+      })).filter(l => l.permalink)
     }
   ];
 
@@ -343,7 +366,7 @@ export default async function PropertyPage({
             <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
               <h2 className="text-xl font-bold">Confira esse anúncio nas redes sociais</h2>
               
-              <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {socialLinks.map((platform) => (
                   <div key={platform.name} className="flex flex-col justify-between gap-4 rounded-2xl border border-white/10 bg-slate-900/50 p-4">
                     <div className="flex flex-col gap-4">
@@ -355,6 +378,10 @@ export default async function PropertyPage({
                         ) : platform.name === 'Facebook' ? (
                           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
                             <FacebookIcon size={18} />
+                          </div>
+                        ) : platform.name === 'YouTube' ? (
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 text-white">
+                            <YoutubeIcon size={18} />
                           </div>
                         ) : (
                           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-950 border border-white/15 text-white">

@@ -132,11 +132,11 @@ export default function PortfolioXPage() {
               </svg>
             </div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-100 via-slate-300 to-slate-400 bg-clip-text text-transparent">
-              Turbinar Portfólio no X (Twitter)
+              Postar Portfólio no X (Twitter)
             </h1>
           </div>
           <p className="mt-2 text-slate-400">
-            Aumente a visibilidade do seu portfólio completo no X e feche negócios muito mais rápido!
+            Aumente a visibilidade do seu portfólio completo no X publicando seus imóveis!
           </p>
         </div>
 
@@ -284,7 +284,7 @@ export default function PortfolioXPage() {
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 backdrop-blur-md p-6 h-fit shadow-2xl">
               <h2 className="text-xl font-semibold mb-2">Valor da Publicação</h2>
               <p className="text-slate-400 text-sm mb-6">
-                Realize o pagamento para iniciar a postagem automatizada e turbinar a audiência do seu portfólio de imóveis no X (Twitter).
+                Realize o pagamento para iniciar a postagem automatizada e publicar o seu portfólio de imóveis no X (Twitter).
               </p>
 
               <div className="flex items-center justify-between bg-white/5 p-4 rounded-xl border border-white/10 mb-6">

@@ -525,32 +525,32 @@ export default function MeusAnunciosPage() {
                             <Globe size={12} className="text-sky-400" />
                             1. Postar / Ver Post
                           </div>
-                            <div className="flex gap-2.5 justify-between items-center mt-2.5">
+                            <div className="grid grid-cols-2 gap-2 mt-2">
                               <Link
                                 href={`/minha-conta/anuncios/portfolio-instagram`}
-                                className="transition-all duration-200 hover:scale-110 active:scale-95 hover:shadow-lg rounded-xl overflow-hidden"
+                                className="flex items-center justify-center p-2 rounded-xl bg-white/[0.02] border border-white/5 transition-all duration-200 hover:bg-pink-500/10 hover:border-pink-500/20 active:scale-95 group"
                               >
-                                <img src="/icones/instagram.jpg" className="w-9 h-9 object-cover" alt="Instagram" />
+                                <img src="/icones/instagram.jpg" className="w-7 h-7 rounded-lg object-cover transition-transform group-hover:scale-110" alt="Instagram" />
                               </Link>
                               <Link
                                 href={`/minha-conta/anuncios/portfolio-facebook`}
-                                className="transition-all duration-200 hover:scale-110 active:scale-95 hover:shadow-lg rounded-xl overflow-hidden"
+                                className="flex items-center justify-center p-2 rounded-xl bg-white/[0.02] border border-white/5 transition-all duration-200 hover:bg-blue-500/10 hover:border-blue-500/20 active:scale-95 group"
                               >
-                                <img src="/icones/facebook.jpeg" className="w-9 h-9 object-cover" alt="Facebook" />
+                                <img src="/icones/facebook.jpeg" className="w-7 h-7 rounded-lg object-cover transition-transform group-hover:scale-110" alt="Facebook" />
                               </Link>
                               <Link
                                 href={`/minha-conta/anuncios/portfolio-x`}
-                                className="transition-all duration-200 hover:scale-110 active:scale-95 hover:shadow-lg rounded-xl overflow-hidden"
+                                className="flex items-center justify-center p-2 rounded-xl bg-white/[0.02] border border-white/5 transition-all duration-200 hover:bg-slate-500/10 hover:border-slate-500/20 active:scale-95 group"
                               >
-                                <img src="/icones/x.png" className="w-9 h-9 object-cover" alt="X (Twitter)" />
+                                <img src="/icones/x.png" className="w-7 h-7 rounded-lg object-cover transition-transform group-hover:scale-110" alt="X (Twitter)" />
                               </Link>
                               <Link
                                 href={`/minha-conta/anuncios/portfolio-youtube`}
-                                className="transition-all duration-200 hover:scale-110 active:scale-95 hover:shadow-lg rounded-xl overflow-hidden"
+                                className="flex items-center justify-center p-2 rounded-xl bg-white/[0.02] border border-white/5 transition-all duration-200 hover:bg-red-500/10 hover:border-red-500/20 active:scale-95 group"
                               >
-                                <img src="/icones/youtube.png" className="w-9 h-9 object-cover" alt="YouTube Shorts" />
+                                <img src="/icones/youtube.png" className="w-7 h-7 rounded-lg object-cover transition-transform group-hover:scale-110" alt="YouTube Shorts" />
                               </Link>
-                          </div>
+                            </div>
                         </div>
 
                         {/* 2. CRIAR VÍDEO (IA) */}
@@ -877,32 +877,32 @@ export default function MeusAnunciosPage() {
                             <Globe size={12} className="text-sky-400" />
                             1. Postar / Ver Post
                           </div>
-                            <div className="flex gap-2.5 justify-between items-center mt-2.5">
+                            <div className="grid grid-cols-2 gap-2 mt-2">
                               <Link
                                 href={`/minha-conta/anuncios/${property.id}/instagram`}
-                                className="transition-all duration-200 hover:scale-110 active:scale-95 hover:shadow-lg rounded-xl overflow-hidden"
+                                className="flex items-center justify-center p-2 rounded-xl bg-white/[0.02] border border-white/5 transition-all duration-200 hover:bg-pink-500/10 hover:border-pink-500/20 active:scale-95 group"
                               >
-                                <img src="/icones/instagram.jpg" className="w-9 h-9 object-cover" alt="Instagram" />
+                                <img src="/icones/instagram.jpg" className="w-7 h-7 rounded-lg object-cover transition-transform group-hover:scale-110" alt="Instagram" />
                               </Link>
                               <Link
                                 href={`/minha-conta/anuncios/${property.id}/facebook`}
-                                className="transition-all duration-200 hover:scale-110 active:scale-95 hover:shadow-lg rounded-xl overflow-hidden"
+                                className="flex items-center justify-center p-2 rounded-xl bg-white/[0.02] border border-white/5 transition-all duration-200 hover:bg-blue-500/10 hover:border-blue-500/20 active:scale-95 group"
                               >
-                                <img src="/icones/facebook.jpeg" className="w-9 h-9 object-cover" alt="Facebook" />
+                                <img src="/icones/facebook.jpeg" className="w-7 h-7 rounded-lg object-cover transition-transform group-hover:scale-110" alt="Facebook" />
                               </Link>
                               <Link
                                 href={`/minha-conta/anuncios/${property.id}/x`}
-                                className="transition-all duration-200 hover:scale-110 active:scale-95 hover:shadow-lg rounded-xl overflow-hidden"
+                                className="flex items-center justify-center p-2 rounded-xl bg-white/[0.02] border border-white/5 transition-all duration-200 hover:bg-slate-500/10 hover:border-slate-500/20 active:scale-95 group"
                               >
-                                <img src="/icones/x.png" className="w-9 h-9 object-cover" alt="X (Twitter)" />
+                                <img src="/icones/x.png" className="w-7 h-7 rounded-lg object-cover transition-transform group-hover:scale-110" alt="X (Twitter)" />
                               </Link>
                               <Link
                                 href={`/minha-conta/anuncios/${property.id}/youtube`}
-                                className="transition-all duration-200 hover:scale-110 active:scale-95 hover:shadow-lg rounded-xl overflow-hidden"
+                                className="flex items-center justify-center p-2 rounded-xl bg-white/[0.02] border border-white/5 transition-all duration-200 hover:bg-red-500/10 hover:border-red-500/20 active:scale-95 group"
                               >
-                                <img src="/icones/youtube.png" className="w-9 h-9 object-cover" alt="YouTube Shorts" />
+                                <img src="/icones/youtube.png" className="w-7 h-7 rounded-lg object-cover transition-transform group-hover:scale-110" alt="YouTube Shorts" />
                               </Link>
-                          </div>
+                            </div>
                         </div>
 
                         {/* 2. CRIAR VÍDEO (IA) */}

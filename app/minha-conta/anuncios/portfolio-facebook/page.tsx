@@ -131,10 +131,10 @@ export default function PortfolioFacebookPage() {
             </Link>
           </div>
           <h1 className="mt-4 text-3xl font-bold bg-gradient-to-r from-blue-500 via-sky-500 to-indigo-500 bg-clip-text text-transparent">
-            Turbinar Portfólio no Facebook
+            Postar Portfólio no Facebook
           </h1>
           <p className="mt-2 text-slate-400">
-            Aumente a visibilidade do seu portfólio no Facebook e feche negócio mais rápido!
+            Aumente a visibilidade do seu portfólio no Facebook publicando seus imóveis!
           </p>
         </div>
 
@@ -308,13 +308,13 @@ export default function PortfolioFacebookPage() {
             <div className="rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-indigo-500/5 p-6 h-fit">
               <h2 className="text-xl font-semibold mb-2">Valor da publicação</h2>
               <p className="text-slate-400 text-sm mb-6">
-                 Aumente a visibilidade do seu portfólio adquirindo os pacotes disponíveis para turbinar seu post no Facebook.
+                 Aumente a visibilidade do seu portfólio publicando seu post no Facebook.
               </p>
 
               <div className="flex items-center justify-between bg-white/5 p-4 rounded-xl border border-white/10 mb-6">
                  <div>
                     <div className="font-semibold">{service.name}</div>
-                    <div className="text-sm text-slate-400">Serviço digital</div>
+                    <div className="text-sm text-slate-400">Serviço de portfólio digital</div>
                  </div>
                  <div className="text-xl font-bold">
                     R$ {service.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
@@ -334,13 +334,24 @@ export default function PortfolioFacebookPage() {
               )}
 
               {!isPublishing && !paypalOrderId ? (
-                <button
-                  onClick={startPaypalCheckout}
-                  disabled={selectedIds.length === 0}
-                  className="w-full rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-400 px-6 py-4 text-center font-bold text-white transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {selectedIds.length === 0 ? 'Selecione as fotos' : 'Turbinar Agora'}
-                </button>
+                publishedSessions.find(s => s.postType === postType) ? (
+                  <a 
+                    href={publishedSessions.find(s => s.postType === postType)?.validationReport?.permalink || "#"} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="w-full block rounded-2xl bg-white/10 border border-white/10 px-6 py-4 text-center font-bold text-white transition hover:bg-white/20"
+                  >
+                    Ver Post Publicado
+                  </a>
+                ) : (
+                  <button
+                    onClick={startPaypalCheckout}
+                    disabled={selectedIds.length === 0}
+                    className="w-full rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-400 px-6 py-4 text-center font-bold text-white transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {selectedIds.length === 0 ? 'Selecione as fotos' : 'Postar Agora'}
+                  </button>
+                )
               ) : !isPublishing && paypalOrderId ? (
                  <PayPalScriptProvider options={{ clientId: paypalClientId, currency: "BRL", intent: "capture" }}>
                   <PayPalButtons
