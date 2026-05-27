@@ -284,6 +284,54 @@ function normalizeProperties(items: any[]): PropertyPin[] {
   });
 }
 
+const InstagramIcon = ({ size = 20 }: { size?: number }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    className="fill-current"
+  >
+    <path d="M7.75 2C4.678 2 2 4.678 2 7.75v8.5C2 19.322 4.678 22 7.75 22h8.5C19.322 22 22 19.322 22 16.25v-8.5C22 4.678 19.322 2 16.25 2h-8.5zm0 2h8.5C18.217 4 20 5.783 20 7.75v8.5c0 1.967-1.783 3.75-3.75 3.75h-8.5C5.783 20 4 18.217 4 16.25v-8.5C4 5.783 5.783 4 7.75 4zm9.75 1.5a1 1 0 100 2 1 1 0 000-2zM12 7a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6z" />
+  </svg>
+);
+
+const FacebookIcon = ({ size = 20 }: { size?: number }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    className="fill-current"
+  >
+    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+  </svg>
+);
+
+const TwitterIcon = ({ size = 20 }: { size?: number }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    className="fill-current"
+  >
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+  </svg>
+);
+
+const YoutubeIcon = ({ size = 20 }: { size?: number }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    className="fill-current"
+  >
+    <path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.517 3.545 12 3.545 12 3.545s-7.517 0-9.388.508a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11c1.871.508 9.388.508 9.388.508s7.517 0 9.388-.508a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+  </svg>
+);
+
 export default function HomePage() {
   const [bounds, setBounds] = useState<MapBounds | null>(null);
   const [properties, setProperties] = useState<PropertyPin[]>([]);
@@ -766,6 +814,51 @@ export default function HomePage() {
                 ) : (
                   <span>{properties.length} imóvel(is) encontrado(s)</span>
                 )}
+              </div>
+
+              {/* Siga a RealStock nas Redes Sociais */}
+              <div className="mt-6 border-t border-white/10 pt-5">
+                <div className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">
+                  Siga a RealStock nas redes
+                </div>
+                <div className="grid grid-cols-4 gap-2.5">
+                  <a
+                    href="https://www.instagram.com/realstock.com.br"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex h-11 items-center justify-center rounded-xl bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-500 text-white transition-all hover:scale-105 active:scale-95 shadow-lg shadow-pink-500/10"
+                    title="Instagram"
+                  >
+                    <InstagramIcon size={18} />
+                  </a>
+                  <a
+                    href="https://www.facebook.com/profile.php?id=61576499943300"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex h-11 items-center justify-center rounded-xl bg-blue-600 text-white transition-all hover:scale-105 active:scale-95 shadow-lg shadow-blue-600/10"
+                    title="Facebook"
+                  >
+                    <FacebookIcon size={18} />
+                  </a>
+                  <a
+                    href="https://youtube.com/@realstock_live?si=PcZmxTavYsNIIhtQ"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex h-11 items-center justify-center rounded-xl bg-red-600 text-white transition-all hover:scale-105 active:scale-95 shadow-lg shadow-red-600/10"
+                    title="YouTube"
+                  >
+                    <YoutubeIcon size={18} />
+                  </a>
+                  <a
+                    href="https://x.com/_RealStock_"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex h-11 items-center justify-center rounded-xl bg-slate-950 border border-white/15 text-white transition-all hover:scale-105 active:scale-95 shadow-lg shadow-black/20"
+                    title="X (Twitter)"
+                  >
+                    <TwitterIcon size={16} />
+                  </a>
+                </div>
               </div>
             </div>
 
