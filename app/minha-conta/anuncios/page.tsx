@@ -525,39 +525,31 @@ export default function MeusAnunciosPage() {
                             <Globe size={12} className="text-sky-400" />
                             1. Postar / Ver Post
                           </div>
-                          <div className="flex flex-col gap-2 flex-grow justify-end">
-                            <div className="flex gap-2">
+                            <div className="flex gap-2.5 justify-between items-center mt-2.5">
                               <Link
                                 href={`/minha-conta/anuncios/portfolio-instagram`}
-                                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-pink-500/20 bg-pink-500/5 py-2 text-[11px] font-bold text-pink-400 transition-all hover:bg-pink-500/10"
+                                className="transition-all duration-200 hover:scale-110 active:scale-95 hover:shadow-lg rounded-xl overflow-hidden"
                               >
-                                <img src="/icones/instagram.jpg" className="w-3.5 h-3.5 rounded-sm object-cover" alt="" />
-                                Insta
+                                <img src="/icones/instagram.jpg" className="w-9 h-9 object-cover" alt="Instagram" />
                               </Link>
                               <Link
                                 href={`/minha-conta/anuncios/portfolio-facebook`}
-                                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-blue-500/20 bg-blue-500/5 py-2 text-[11px] font-bold text-blue-400 transition-all hover:bg-blue-500/10"
+                                className="transition-all duration-200 hover:scale-110 active:scale-95 hover:shadow-lg rounded-xl overflow-hidden"
                               >
-                                <img src="/icones/facebook.jpeg" className="w-3.5 h-3.5 rounded-sm object-cover" alt="" />
-                                Face
+                                <img src="/icones/facebook.jpeg" className="w-9 h-9 object-cover" alt="Facebook" />
                               </Link>
-                            </div>
-                            <div className="flex gap-2">
                               <Link
                                 href={`/minha-conta/anuncios/portfolio-x`}
-                                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-slate-500/20 bg-slate-500/5 py-2 text-[11px] font-bold text-slate-300 transition-all hover:bg-slate-500/10"
+                                className="transition-all duration-200 hover:scale-110 active:scale-95 hover:shadow-lg rounded-xl overflow-hidden"
                               >
-                                <img src="/icones/x.png" className="w-3.5 h-3.5 rounded-sm object-cover" alt="" />
-                                X (Twitter)
+                                <img src="/icones/x.png" className="w-9 h-9 object-cover" alt="X (Twitter)" />
                               </Link>
                               <Link
                                 href={`/minha-conta/anuncios/portfolio-youtube`}
-                                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-red-500/20 bg-red-500/5 py-2 text-[11px] font-bold text-red-400 transition-all hover:bg-red-500/10"
+                                className="transition-all duration-200 hover:scale-110 active:scale-95 hover:shadow-lg rounded-xl overflow-hidden"
                               >
-                                <img src="/icones/youtube.png" className="w-3.5 h-3.5 rounded-sm object-cover" alt="" />
-                                YT Shorts
+                                <img src="/icones/youtube.png" className="w-9 h-9 object-cover" alt="YouTube Shorts" />
                               </Link>
-                            </div>
                           </div>
                         </div>
 
@@ -885,39 +877,31 @@ export default function MeusAnunciosPage() {
                             <Globe size={12} className="text-sky-400" />
                             1. Postar / Ver Post
                           </div>
-                          <div className="flex flex-col gap-2 flex-grow justify-end">
-                            <div className="flex gap-2">
+                            <div className="flex gap-2.5 justify-between items-center mt-2.5">
                               <Link
                                 href={`/minha-conta/anuncios/${property.id}/instagram`}
-                                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-pink-500/20 bg-pink-500/5 py-2 text-[11px] font-bold text-pink-400 transition-all hover:bg-pink-500/10"
+                                className="transition-all duration-200 hover:scale-110 active:scale-95 hover:shadow-lg rounded-xl overflow-hidden"
                               >
-                                <img src="/icones/instagram.jpg" className="w-3.5 h-3.5 rounded-sm object-cover" alt="" />
-                                Insta
+                                <img src="/icones/instagram.jpg" className="w-9 h-9 object-cover" alt="Instagram" />
                               </Link>
                               <Link
                                 href={`/minha-conta/anuncios/${property.id}/facebook`}
-                                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-blue-500/20 bg-blue-500/5 py-2 text-[11px] font-bold text-blue-400 transition-all hover:bg-blue-500/10"
+                                className="transition-all duration-200 hover:scale-110 active:scale-95 hover:shadow-lg rounded-xl overflow-hidden"
                               >
-                                <img src="/icones/facebook.jpeg" className="w-3.5 h-3.5 rounded-sm object-cover" alt="" />
-                                Face
+                                <img src="/icones/facebook.jpeg" className="w-9 h-9 object-cover" alt="Facebook" />
                               </Link>
-                            </div>
-                            <div className="flex gap-2">
                               <Link
                                 href={`/minha-conta/anuncios/${property.id}/x`}
-                                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-slate-500/20 bg-slate-500/5 py-2 text-[11px] font-bold text-slate-300 transition-all hover:bg-slate-500/10"
+                                className="transition-all duration-200 hover:scale-110 active:scale-95 hover:shadow-lg rounded-xl overflow-hidden"
                               >
-                                <img src="/icones/x.png" className="w-3.5 h-3.5 rounded-sm object-cover" alt="" />
-                                X (Twitter)
+                                <img src="/icones/x.png" className="w-9 h-9 object-cover" alt="X (Twitter)" />
                               </Link>
                               <Link
                                 href={`/minha-conta/anuncios/${property.id}/youtube`}
-                                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-red-500/20 bg-red-500/5 py-2 text-[11px] font-bold text-red-400 transition-all hover:bg-red-500/10"
+                                className="transition-all duration-200 hover:scale-110 active:scale-95 hover:shadow-lg rounded-xl overflow-hidden"
                               >
-                                <img src="/icones/youtube.png" className="w-3.5 h-3.5 rounded-sm object-cover" alt="" />
-                                YT Shorts
+                                <img src="/icones/youtube.png" className="w-9 h-9 object-cover" alt="YouTube Shorts" />
                               </Link>
-                            </div>
                           </div>
                         </div>
 
