@@ -98,6 +98,13 @@ export async function POST(req: NextRequest) {
     const youtubeLink = String(body.youtube_link || "").trim();
     const youtubeThumbnail = String(body.youtube_thumbnail || "").trim();
     const reelsMusicUrl = String(body.reels_music_url || "").trim();
+    const customVideoUrl = String(body.custom_video_url || "").trim();
+    const listingType = String(body.listing_type || "COMPRA_VENDA").trim();
+    const minNights = body.min_nights !== null && body.min_nights !== undefined && body.min_nights !== "" ? Number(body.min_nights) : null;
+    const maxGuests = body.max_guests !== null && body.max_guests !== undefined && body.max_guests !== "" ? Number(body.max_guests) : null;
+    const depositPercentage = body.deposit_percentage !== null && body.deposit_percentage !== undefined && body.deposit_percentage !== "" ? Number(body.deposit_percentage) : 20;
+    const pixKey = String(body.pix_key || "").trim();
+    const icalFeeds = body.ical_feeds || [];
 
     const topographyPoints = String(body.topography_points || "").trim();
 
@@ -169,6 +176,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (listingType === "ALUGUEL_TEMPORADA") {
+      const hasValidIcal = Array.isArray(icalFeeds) && icalFeeds.some((f: any) => f && typeof f.url === "string" && f.url.trim().length > 0);
+      if (!hasValidIcal) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Para verificação de sua propriedade é necessário o cadastro de no mínimo 1 calendário de outro portal",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     if (!city || !stateName || !country) {
       return NextResponse.json(
         { success: false, error: "Endereço incompleto." },
@@ -223,6 +243,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (customVideoUrl && !isValidHttpUrl(customVideoUrl)) {
+      return NextResponse.json(
+        { success: false, error: "O vídeo próprio possui URL inválida." },
+        { status: 400 }
+      );
+    }
+
     const property = await prisma.property.create({
       data: {
         ownerId,
@@ -267,6 +294,13 @@ export async function POST(req: NextRequest) {
         condominiumFee,
 
         reelsMusicUrl: reelsMusicUrl || null,
+        customVideoUrl: customVideoUrl || null,
+        listingType,
+        minNights,
+        maxGuests,
+        depositPercentage,
+        pixKey: pixKey || null,
+        icalFeeds,
 
         acceptsFinancing,
         frontSea,

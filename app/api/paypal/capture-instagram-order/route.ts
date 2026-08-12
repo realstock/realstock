@@ -142,9 +142,10 @@ export async function POST(req: NextRequest) {
 
     let finalMediaId = null;
 
-    if (postType === "reels" && property.reelsVideoUrl) {
+    const videoUrl = property.customVideoUrl || property.reelsVideoUrl;
+    if (postType === "reels" && videoUrl) {
        // Publicar como REELS
-       const createReelRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media?media_type=REELS&video_url=${encodeURIComponent(property.reelsVideoUrl)}&caption=${encodeURIComponent(caption)}&access_token=${igToken}`, {
+       const createReelRes = await fetch(`https://graph.facebook.com/v19.0/${igUserId}/media?media_type=REELS&video_url=${encodeURIComponent(videoUrl)}&caption=${encodeURIComponent(caption)}&access_token=${igToken}`, {
            method: "POST"
        });
        const reelData = await createReelRes.json();

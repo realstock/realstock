@@ -6,14 +6,18 @@ import { X } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
+import { useListingType } from "@/context/ListingTypeContext";
+
 export default function MinhaContaPage() {
   const { data: session } = useSession();
+  const { listingType } = useListingType();
 
   function handleLogout() {
     signOut({ callbackUrl: "/" });
   }
 
   const userName = session?.user?.name || "Usuário";
+  const isSeasonal = listingType === "ALUGUEL_TEMPORADA";
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -33,7 +37,9 @@ export default function MinhaContaPage() {
           <div className="text-sm text-slate-400">Minha conta</div>
           <h1 className="mt-2 text-4xl font-bold">Olá, {userName}</h1>
           <p className="mt-2 text-slate-400">
-            Gerencie seus anúncios e acompanhe suas ofertas.
+            {isSeasonal
+              ? "Gerencie seus anúncios de temporada e acompanhe suas reservas."
+              : "Gerencie seus anúncios e acompanhe suas ofertas."}
           </p>
         </div>
 
@@ -42,10 +48,14 @@ export default function MinhaContaPage() {
             href="/minha-conta/anuncios"
             className="rounded-[28px] border border-white/10 bg-white/5 p-8 transition hover:border-white/20"
           >
-            <div className="text-sm text-slate-400">Área do vendedor</div>
+            <div className="text-sm text-slate-400">
+              {isSeasonal ? "Área do anfitrião" : "Área do vendedor"}
+            </div>
             <div className="mt-2 text-2xl font-bold">Meus anúncios</div>
             <p className="mt-3 text-slate-300">
-              Veja os imóveis que você publicou e acompanhe as ofertas recebidas.
+              {isSeasonal
+                ? "Veja os imóveis que você publicou e gerencie os pedidos de reserva."
+                : "Veja os imóveis que você publicou e acompanhe as ofertas recebidas."}
             </p>
           </Link>
 
@@ -53,10 +63,16 @@ export default function MinhaContaPage() {
             href="/minha-conta/ofertas"
             className="rounded-[28px] border border-white/10 bg-white/5 p-8 transition hover:border-white/20"
           >
-            <div className="text-sm text-slate-400">Área do comprador</div>
-            <div className="mt-2 text-2xl font-bold">Minhas ofertas</div>
+            <div className="text-sm text-slate-400">
+              {isSeasonal ? "Área do hóspede" : "Área do comprador"}
+            </div>
+            <div className="mt-2 text-2xl font-bold">
+              {isSeasonal ? "Meus pedidos de reserva" : "Minhas ofertas"}
+            </div>
             <p className="mt-3 text-slate-300">
-              Acompanhe todas as propostas que você enviou para os anúncios.
+              {isSeasonal
+                ? "Acompanhe todas as solicitações de reserva que você enviou."
+                : "Acompanhe todas as propostas que você enviou para os anúncios."}
             </p>
           </Link>
         </div>

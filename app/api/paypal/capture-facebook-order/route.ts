@@ -158,10 +158,11 @@ export async function POST(req: NextRequest) {
 
     let finalPostId = null;
 
-    if (postType === "reels" && property.reelsVideoUrl) {
+    const videoUrl = property.customVideoUrl || property.reelsVideoUrl;
+    if (postType === "reels" && videoUrl) {
        // Publicar como VÍDEO (Reels no Facebook Page)
        const videoParams = new URLSearchParams();
-       videoParams.append('file_url', property.reelsVideoUrl);
+       videoParams.append('file_url', videoUrl);
        videoParams.append('description', caption);
        videoParams.append('access_token', pageToken);
 

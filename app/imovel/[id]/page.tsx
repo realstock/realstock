@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import OfferBookClient from "@/components/OfferBookClient";
 import AdSenseBanner from "@/components/AdSenseBanner";
+import { fetchICalEvents } from "@/lib/ical-parser";
 import PropertyGallery from "@/components/PropertyGallery";
 import PropertyLocationInsights from "@/components/PropertyLocationInsights";
 import PropertyStreetView from "@/components/PropertyStreetView";
@@ -107,10 +109,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function PropertyPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ checkin?: string; checkout?: string; guests?: string }>;
 }) {
   const { id } = await params;
+  const { checkin, checkout, guests } = await searchParams;
   const propertyId = Number(id);
 
   if (!propertyId || Number.isNaN(propertyId)) {
@@ -146,6 +151,45 @@ export default async function PropertyPage({
   if (!property) {
     notFound();
   }
+
+  // Carregar e fundir eventos dos feeds iCal vinculados
+  const icalEvents: any[] = [];
+  const feeds = (property.icalFeeds as { name: string; url: string }[]) || [];
+  if (property.listingType === "ALUGUEL_TEMPORADA" && feeds.length > 0) {
+    try {
+      const fetchPromises = feeds.map((feed) =>
+        fetchICalEvents(feed.url, feed.name)
+      );
+      const results = await Promise.all(fetchPromises);
+      for (const eventsList of results) {
+        icalEvents.push(...eventsList);
+      }
+    } catch (err) {
+      console.error("Erro ao sincronizar feeds iCal no servidor:", err);
+    }
+  }
+
+  const parsedICalOffers = icalEvents.map((evt, index) => ({
+    id: -1000 - index,
+    buyerId: -1,
+    offerPrice: new Prisma.Decimal(0),
+    status: "accepted",
+    startDate: evt.start,
+    endDate: evt.end,
+    createdAt: new Date(),
+    buyer: {
+      id: -1,
+      name: evt.summary,
+      email: "",
+      phone: "",
+      instagram: "",
+    },
+  }));
+
+  const combinedOffers = [
+    ...property.offers,
+    ...parsedICalOffers as any[],
+  ];
 
   // Fetch social sessions
   const [igSessions, fbSessions, xTransactions, ytSessions] = await Promise.all([
@@ -219,12 +263,15 @@ export default async function PropertyPage({
     }
   ];
 
-  const offers = property.offers.map((offer) => ({
+  const offers = combinedOffers.map((offer) => ({
     id: offer.id,
-    buyer_name: offer.buyer.name,
+    buyer_name: offer.buyer?.name || "Comprador",
     offer_price: offer.offerPrice.toString(),
     status: offer.status,
     created_at: offer.createdAt.toISOString(),
+    startDate: offer.startDate ? offer.startDate.toISOString() : null,
+    endDate: offer.endDate ? offer.endDate.toISOString() : null,
+    guests: (offer as any).guests || null,
   }));
 
   const propertyUrl = `${
@@ -506,16 +553,18 @@ export default async function PropertyPage({
           </div>
 
           <aside className="h-fit rounded-[24px] border border-white/10 bg-white/5 p-5">
-            <div className="text-sm text-slate-400">Valor de venda</div>
+            <div className="text-sm text-slate-400">
+              {property.listingType === "ALUGUEL_TEMPORADA" ? "Valor da diária" : "Valor de venda"}
+            </div>
 
             <div className="mt-2 text-4xl font-bold text-emerald-400">
-              R$ {property.price.toString()}
+              R$ {property.price.toString()} {property.listingType === "ALUGUEL_TEMPORADA" ? "/ diária" : ""}
             </div>
 
             <div className="mt-5 rounded-2xl border border-blue-400/20 bg-blue-400/10 p-4 text-sm leading-6 text-blue-200">
-              Os dados do anunciante ficam protegidos e só serão liberados após
-              aceite de proposta pelo vendedor ou quando uma oferta atingir o valor
-              de venda do imóvel.
+              {property.listingType === "ALUGUEL_TEMPORADA"
+                ? "Os dados do anfitrião ficam protegidos e só serão liberados após aceite de solicitação de reserva pelo anfitrião e pagamento da taxa correspondente."
+                : "Os dados do anunciante ficam protegidos e só serão liberados após aceite de proposta pelo vendedor ou quando uma oferta atingir o valor de venda do imóvel."}
             </div>
 
             {property.sold ? (
@@ -535,6 +584,12 @@ export default async function PropertyPage({
                   ownerId={property.ownerId}
                   askingPrice={property.price.toString()}
                   offers={offers}
+                  listingType={property.listingType}
+                  minNights={property.minNights}
+                  customRates={property.customRates as any}
+                  defaultCheckIn={checkin}
+                  defaultCheckOut={checkout}
+                  defaultGuests={guests}
                 />
               </div>
             )}

@@ -4,11 +4,13 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useListingType } from "@/context/ListingTypeContext";
 import { Camera, CameraOff, CheckCircle2, Rocket, Globe, BarChart3, Building2, Upload, X, Wallet, TrendingUp, History, MapPin, Film, Zap, Users, Volume2, VolumeX, Play } from "lucide-react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import VideoCreatorModal from "@/components/VideoCreatorModal";
 import ViralizarModal from "@/components/ViralizarModal";
 import LoadingScreen from "@/components/LoadingScreen";
+import CalendarioReservasModal from "@/components/CalendarioReservasModal";
 import confetti from "canvas-confetti";
 
 
@@ -34,13 +36,17 @@ type PropertyItem = {
   metaBoostedUntil?: string | null;
   sponsoredUntil?: string | null;
   reelsVideoUrl?: string | null;
+  customVideoUrl?: string | null;
   offers?: any[];
   sold?: boolean;
+  listingType?: string | null;
+  minNights?: number | null;
 };
 
 export default function MeusAnunciosPage() {
   const { status } = useSession();
   const router = useRouter();
+  const { listingType: listingTypeFilter } = useListingType();
 
   const [properties, setProperties] = useState<PropertyItem[]>([]);
   const [instagramPosts, setInstagramPosts] = useState<any[]>([]);
@@ -88,6 +94,8 @@ export default function MeusAnunciosPage() {
 
   const [isViralizarOpen, setIsViralizarOpen] = useState(false);
   const [viralizarTarget, setViralizarTarget] = useState<{id: number, title: string} | null>(null);
+
+  const [calendarioProperty, setCalendarioProperty] = useState<{ id: number; title: string } | null>(null);
 
   const [isMediaCheckOpen, setIsMediaCheckOpen] = useState(false);
   const [pendingVideoProperty, setPendingVideoProperty] = useState<PropertyItem | null>(null);
@@ -183,8 +191,9 @@ export default function MeusAnunciosPage() {
   const handleViralizarClick = (property: PropertyItem) => {
     const hasVideos = (property.videos || []).length > 0;
     const hasMusic = !!property.reelsMusicUrl;
+    const hasCustomVideo = !!property.customVideoUrl;
 
-    if (!hasVideos || !hasMusic) {
+    if (!hasCustomVideo && (!hasVideos || !hasMusic)) {
       setMediaCheckSource("viralizar");
       setPendingVideoProperty(property);
       setIsMediaCheckOpen(true);
@@ -199,8 +208,10 @@ export default function MeusAnunciosPage() {
     const [imageError, setImageError] = useState(false);
     const [videoError, setVideoError] = useState(false);
 
-    // Prioridades: 1. Vídeo IA pronto, 2. Foto (se não falhar), 3. Vídeo real (se não falhar), 4. Placeholder
-    const reelsUrl = property.reelsVideoUrl && property.reelsVideoUrl.trim() !== "" ? property.reelsVideoUrl : null;
+    // Prioridades: 1. Vídeo próprio pronto ou Vídeo IA pronto, 2. Foto (se não falhar), 3. Vídeo real (se não falhar), 4. Placeholder
+    const reelsUrl = (property.customVideoUrl && property.customVideoUrl.trim() !== "") 
+      ? property.customVideoUrl 
+      : (property.reelsVideoUrl && property.reelsVideoUrl.trim() !== "" ? property.reelsVideoUrl : null);
     const imageUrl = property.images && property.images.length > 0 && property.images[0].imageUrl && property.images[0].imageUrl.trim() !== "" && !imageError ? property.images[0].imageUrl : null;
     const rawVideoUrl = property.videos && property.videos.length > 0 && property.videos[0].videoUrl && property.videos[0].videoUrl.trim() !== "" && !videoError ? property.videos[0].videoUrl : null;
 
@@ -413,6 +424,14 @@ export default function MeusAnunciosPage() {
         {(() => {
            if (properties.length === 0) return null;
 
+           const filteredPortfolioProps = properties.filter(p =>
+             listingTypeFilter === "ALUGUEL_TEMPORADA"
+               ? p.listingType === "ALUGUEL_TEMPORADA"
+               : p.listingType !== "ALUGUEL_TEMPORADA"
+           );
+
+           if (filteredPortfolioProps.length === 0) return null;
+
            const portfolioSession = instagramPosts.find(p => p.listingId === 0);
            const facebookPortfolioSession = facebookPosts.find(p => p.listingId === 0);
            const isPublishedAny = portfolioSession || facebookPortfolioSession;
@@ -433,7 +452,7 @@ export default function MeusAnunciosPage() {
                  <div className="flex gap-4">
                     <div className="flex flex-col gap-3 w-52 shrink-0">
                       <div className="flex -space-x-4 w-full items-center">
-                        {properties.filter(p => !p.sold && ((p.images && p.images.length > 0) || (p.videos && p.videos.length > 0))).slice(0, 4).map((p, idx) => {
+                        {filteredPortfolioProps.filter(p => !p.sold && ((p.images && p.images.length > 0) || (p.videos && p.videos.length > 0))).slice(0, 4).map((p, idx) => {
                           const mediaUrl = p.images?.[0]?.imageUrl || p.videos?.[0]?.videoUrl;
                           const isVideo = !p.images?.[0]?.imageUrl && p.videos?.[0]?.videoUrl;
                           return (
@@ -455,9 +474,9 @@ export default function MeusAnunciosPage() {
                             </div>
                           );
                         })}
-                        {properties.filter(p => !p.sold && ((p.images && p.images.length > 0) || (p.videos && p.videos.length > 0))).length > 4 && (
+                        {filteredPortfolioProps.filter(p => !p.sold && ((p.images && p.images.length > 0) || (p.videos && p.videos.length > 0))).length > 4 && (
                           <div className="h-16 w-16 md:h-20 md:w-20 flex items-center justify-center rounded-xl border border-white/10 bg-slate-800 text-xs font-bold shadow-md relative z-[5]" style={{ zIndex: 5 }}>
-                            +{properties.filter(p => !p.sold && ((p.images && p.images.length > 0) || (p.videos && p.videos.length > 0))).length - 4}
+                            +{filteredPortfolioProps.filter(p => !p.sold && ((p.images && p.images.length > 0) || (p.videos && p.videos.length > 0))).length - 4}
                           </div>
                         )}
                       </div>
@@ -577,7 +596,7 @@ export default function MeusAnunciosPage() {
                                       city: "RealStock",
                                       state: "Pro",
                                       price: 0,
-                                      images: properties.filter(p => !p.sold && p.images && p.images.length > 0).map(p => ({
+                                      images: filteredPortfolioProps.filter(p => !p.sold && p.images && p.images.length > 0).map(p => ({
                                           imageUrl: p.images![0].imageUrl, title: p.title, city: p.city || "", state: p.state || ""
                                       })).slice(0, 12)
                                     });
@@ -598,7 +617,7 @@ export default function MeusAnunciosPage() {
                                     city: "RealStock",
                                     state: "Pro",
                                     price: 0,
-                                    images: properties.filter(p => !p.sold && p.images && p.images.length > 0).map(p => ({
+                                    images: filteredPortfolioProps.filter(p => !p.sold && p.images && p.images.length > 0).map(p => ({
                                         imageUrl: p.images![0].imageUrl, title: p.title, city: p.city || "", state: p.state || ""
                                     })).slice(0, 12)
                                   });
@@ -658,7 +677,24 @@ export default function MeusAnunciosPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {properties.map((property) => {
+
+            {properties.filter(p =>
+              listingTypeFilter === "ALUGUEL_TEMPORADA"
+                ? p.listingType === "ALUGUEL_TEMPORADA"
+                : p.listingType !== "ALUGUEL_TEMPORADA"
+            ).length === 0 && (
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-slate-400 text-sm">
+                Nenhum imóvel encontrado para este tipo de anúncio.
+              </div>
+            )}
+
+            {properties
+              .filter(p =>
+                listingTypeFilter === "ALUGUEL_TEMPORADA"
+                  ? p.listingType === "ALUGUEL_TEMPORADA"
+                  : p.listingType !== "ALUGUEL_TEMPORADA"
+              )
+              .map((property) => {
               const publishedSession = instagramPosts.find(p => p.listingId === property.id);
               const isPublished = !!publishedSession;
               const permalink = publishedSession?.validationReport?.permalink;
@@ -762,7 +798,7 @@ export default function MeusAnunciosPage() {
                           .join(" • ")}
                       </div>
                       <div className="mt-2 text-sm font-semibold text-emerald-400">
-                        R$ {Number(property.price).toLocaleString("pt-BR")}
+                        R$ {Number(property.price).toLocaleString("pt-BR")} {property.listingType === "ALUGUEL_TEMPORADA" ? "/ diária" : ""}
                       </div>
                       
                       {property.metaBoostedUntil && new Date(property.metaBoostedUntil) > new Date() && (
@@ -802,26 +838,41 @@ export default function MeusAnunciosPage() {
                       >
                         Editar
                       </Link>
-                      <Link
-                        href={`/minha-conta/anuncios/${property.id}/ofertas`}
-                        className={`flex-1 min-w-[120px] rounded-xl border px-4 py-2.5 text-center text-sm font-semibold transition-all active:scale-95 ${
-                          property.offers && property.offers.length > 0
-                            ? "border-emerald-500 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-                            : "border-white/10 bg-white/5 text-white hover:bg-white/10"
-                        }`}
-                      >
-                        Ofertas {property.offers && property.offers.length > 0 && `(${property.offers.length})`}
-                      </Link>
-                      <button
-                        onClick={() => toggleSoldStatus(property.id, property.sold || false)}
-                        className={`flex-1 min-w-[120px] rounded-xl border px-4 py-2.5 text-center text-sm font-bold transition-all active:scale-95 ${
-                          property.sold
-                            ? "border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
-                            : "border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-                        }`}
-                      >
-                        {property.sold ? "Reativar Anúncio" : "Marcar Vendido"}
-                      </button>
+                      {property.listingType === "ALUGUEL_TEMPORADA" ? (
+                        <Link
+                          href={`/minha-conta/anuncios/${property.id}/calendario`}
+                          className={`flex-1 min-w-[120px] rounded-xl border px-4 py-2.5 text-center text-sm font-semibold transition-all active:scale-95 ${
+                            property.offers && property.offers.length > 0
+                              ? "border-emerald-500 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                              : "border-white/10 bg-white/5 text-white hover:bg-white/10"
+                          }`}
+                        >
+                          Calendário
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/minha-conta/anuncios/${property.id}/ofertas`}
+                          className={`flex-1 min-w-[120px] rounded-xl border px-4 py-2.5 text-center text-sm font-semibold transition-all active:scale-95 ${
+                            property.offers && property.offers.length > 0
+                              ? "border-emerald-500 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                              : "border-white/10 bg-white/5 text-white hover:bg-white/10"
+                          }`}
+                        >
+                          Ofertas {property.offers && property.offers.length > 0 && `(${property.offers.length})`}
+                        </Link>
+                      )}
+                      {property.listingType !== "ALUGUEL_TEMPORADA" && (
+                        <button
+                          onClick={() => toggleSoldStatus(property.id, property.sold || false)}
+                          className={`flex-1 min-w-[120px] rounded-xl border px-4 py-2.5 text-center text-sm font-bold transition-all active:scale-95 ${
+                            property.sold
+                              ? "border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+                              : "border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                          }`}
+                        >
+                          {property.sold ? "Reativar Anúncio" : "Marcar Vendido"}
+                        </button>
+                      )}
                     </div>
 
                     {/* Painel de Performance e Marketing */}
@@ -911,7 +962,7 @@ export default function MeusAnunciosPage() {
                           onMouseEnter={(e) => {
                             e.stopPropagation();
                             const hasVideos = property.videos && property.videos.length > 0;
-                            const hasIaVideo = !!property.reelsVideoUrl;
+                            const hasIaVideo = !!(property.customVideoUrl || property.reelsVideoUrl);
 
                             let tooltipText = "";
                             if (hasVideos && !hasIaVideo) {
@@ -919,7 +970,7 @@ export default function MeusAnunciosPage() {
                             } else if (!hasVideos) {
                               tooltipText = "✨ adicione videos ao seu anuncio e crie seu video ia";
                             } else if (hasIaVideo) {
-                              tooltipText = "✨ veja seu video ia ou se incluiu os videos posteriormente recrie ele";
+                              tooltipText = "✨ veja seu video ou se incluiu os videos posteriormente recrie ele";
                             }
 
                             setTooltipState({
@@ -950,14 +1001,14 @@ export default function MeusAnunciosPage() {
                             2. Criar Vídeo IA
                           </div>
                           <div className="flex flex-col gap-2 flex-grow justify-end">
-                            {property.reelsVideoUrl ? (
+                            {property.customVideoUrl || property.reelsVideoUrl ? (
                               <>
                                 <button
-                                  onClick={() => setViewingVideoUrl(property.reelsVideoUrl!)}
+                                  onClick={() => setViewingVideoUrl((property.customVideoUrl || property.reelsVideoUrl)!)}
                                   className="w-full flex items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 py-2 text-[11px] font-bold text-emerald-400 transition-all hover:bg-emerald-500/10"
                                 >
                                   <Film size={13} />
-                                  Ver Vídeo IA
+                                  {property.customVideoUrl ? "Ver Vídeo Próprio" : "Ver Vídeo IA"}
                                 </button>
                                 <button
                                   onClick={() => handleCreateVideoClick(property)}
@@ -1331,7 +1382,10 @@ export default function MeusAnunciosPage() {
             : properties.find(p => p.id === viralizarTarget.id)?.reelsMusicUrl}
           reelsVideoUrl={viralizarTarget.id === 0
             ? null
-            : properties.find(p => p.id === viralizarTarget.id)?.reelsVideoUrl}
+            : (() => {
+                const p = properties.find(prop => prop.id === viralizarTarget.id);
+                return p?.customVideoUrl || p?.reelsVideoUrl || null;
+              })()}
         />
       )}
 
@@ -1395,6 +1449,15 @@ export default function MeusAnunciosPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* MODAL DE CALENDÁRIO DE RESERVAS */}
+      {calendarioProperty && (
+        <CalendarioReservasModal
+          propertyId={calendarioProperty.id}
+          propertyTitle={calendarioProperty.title}
+          onClose={() => setCalendarioProperty(null)}
+        />
       )}
     </main>
   );

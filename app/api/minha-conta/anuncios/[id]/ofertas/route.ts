@@ -74,13 +74,25 @@ export async function GET(
 
     const safeOffers = offers.map((offer, index) => {
       const payment = paymentsMap.get(offer.id);
-      const contactReleased = isContactFeePaid || Boolean(payment?.contactReleased);
+      const isAcceptedOrConfirmed =
+        offer.status === "ACCEPTED_WAITING_PAYMENT" ||
+        offer.status === "RESERVA_CONFIRMADA" ||
+        offer.status === "accepted";
+
+      const contactReleased = isContactFeePaid || Boolean(payment?.contactReleased) || isAcceptedOrConfirmed;
 
       return {
         id: offer.id,
         offerPrice: Number(offer.offerPrice),
+        totalStayPrice: offer.totalStayPrice ? Number(offer.totalStayPrice) : Number(offer.offerPrice),
+        depositAmount: offer.depositAmount ? Number(offer.depositAmount) : null,
         status: offer.status,
         createdAt: offer.createdAt.toISOString(),
+        startDate: offer.startDate ? offer.startDate.toISOString() : null,
+        endDate: offer.endDate ? offer.endDate.toISOString() : null,
+        guests: offer.guests,
+        expiresAt: offer.expiresAt ? offer.expiresAt.toISOString() : null,
+        pixReceiptUrl: offer.pixReceiptUrl || null,
         contactReleased,
         buyer: contactReleased
           ? {
@@ -90,7 +102,7 @@ export async function GET(
               instagram: offer.buyer?.instagram || null,
             }
           : {
-              name: `Comprador ${index + 1}`,
+              name: property.listingType === "ALUGUEL_TEMPORADA" ? `Hóspede ${index + 1}` : `Comprador ${index + 1}`,
               email: null,
               phone: null,
               instagram: null,
@@ -107,6 +119,7 @@ export async function GET(
         state: property.state,
         neighborhood: property.neighborhood,
         contactFeePaidAt: property.contactFeePaidAt,
+        listingType: property.listingType,
       },
       offers: safeOffers,
     });

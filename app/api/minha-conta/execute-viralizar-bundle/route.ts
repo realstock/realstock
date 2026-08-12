@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
       title = prop.title;
       city = prop.city || "";
       state = prop.state || "";
-      dbVideoUrl = prop.reelsVideoUrl || "";
+      dbVideoUrl = prop.customVideoUrl || prop.reelsVideoUrl || "";
 
       await prisma.property.update({
         where: { id: propertyId },

@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Rocket, Building2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { Rocket, Building2, Calendar, X, RefreshCw } from "lucide-react";
 import CesiumMapClient from "@/components/CesiumMapClient";
+import { useListingType } from "@/context/ListingTypeContext";
 
 
 type MapBounds = {
@@ -19,6 +22,15 @@ type ClusterZoomTarget = {
   east: number;
   west: number;
 };
+
+const SEASONAL_PROPERTY_TYPES = [
+  "APARTAMENTOS_URBANOS_STUDIOS",
+  "FLATS_APART_HOTEIS",
+  "CASAS_DE_PRAIA",
+  "CASAS_DE_CAMPO_CHACARAS",
+  "CASAS_EM_CONDOMINIOS_FECHADOS",
+  "ACONCHEGOS_RURAIS_ALTERNATIVOS",
+] as const;
 
 const PROPERTY_TYPES = {
   RESIDENCIAL: [
@@ -227,6 +239,14 @@ const BRAZIL_STATE_BOUNDS: Record<string, ClusterZoomTarget> = {
 };
 
 function formatLabel(value: string) {
+  if (value === "APARTAMENTOS_URBANOS_STUDIOS") return "Apartamentos urbanos e studios";
+  if (value === "FLATS_APART_HOTEIS") return "Flats e apart-hotéis";
+  if (value === "CASAS_DE_PRAIA") return "Casas de praia";
+  if (value === "CASAS_DE_CAMPO_CHACARAS") return "Casas de campo e chácaras";
+  if (value === "CASAS_EM_CONDOMINIOS_FECHADOS") return "Casas em condomínios fechados";
+  if (value === "ACONCHEGOS_RURAIS_ALTERNATIVOS") return "Aconchegos rurais e alternativos";
+  if (value === "TEMPORADA") return "Temporada";
+
   return value
     .toLowerCase()
     .replaceAll("_", " ")
@@ -237,9 +257,11 @@ type PropertyPin = {
   id: number;
   title: string;
   price: string;
+  rawPrice: number;
   legalStatus: string;
   area: string;
   city: string;
+  neighborhood?: string | null;
   lat: number;
   lng: number;
   mainImage: string | null;
@@ -247,16 +269,118 @@ type PropertyPin = {
   metaBoostedUntil?: string | null;
   instagramMediaId?: string | null;
   instagramPermalink?: string | null;
+  listingType?: string | null;
+  minNights?: number | null;
+  maxGuests?: number | null;
+  depositPercentage?: number | null;
+  pixKey?: string | null;
+  customRates?: any;
 };
+
+type StayTotalResult = {
+  numberOfNights: number;
+  total: number;
+  hasBlockedDate: boolean;
+  isAvailable: boolean;
+  unavailabilityReason?: string;
+  formattedTotal: string;
+};
+
+function calculateStayTotal(
+  property: PropertyPin,
+  checkInStr: string,
+  checkOutStr: string,
+  guestsStr?: string
+): StayTotalResult | null {
+  if (!checkInStr || !checkOutStr) return null;
+  const start = new Date(checkInStr);
+  const end = new Date(checkOutStr);
+
+  const diffTime = end.getTime() - start.getTime();
+  const numberOfNights = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  if (numberOfNights <= 0) return null;
+
+  const guestsCountNum = Number(guestsStr || 1);
+  if (property.maxGuests && guestsCountNum > property.maxGuests) {
+    return {
+      numberOfNights,
+      total: 0,
+      hasBlockedDate: false,
+      isAvailable: false,
+      unavailabilityReason: `Excede capacidade (${property.maxGuests} hóspedes)`,
+      formattedTotal: "R$ 0",
+    };
+  }
+
+  if (property.minNights && numberOfNights < property.minNights) {
+    return {
+      numberOfNights,
+      total: 0,
+      hasBlockedDate: false,
+      isAvailable: false,
+      unavailabilityReason: `Exige mínimo de ${property.minNights} noites`,
+      formattedTotal: "R$ 0",
+    };
+  }
+
+  const basePrice = property.rawPrice || 0;
+  const ratesMap = (property.customRates || {}) as Record<string, any>;
+
+  let total = 0;
+  let hasBlockedDate = false;
+  const cur = new Date(start);
+
+  for (let i = 0; i < numberOfNights; i++) {
+    const y = cur.getFullYear();
+    const m = String(cur.getMonth() + 1).padStart(2, "0");
+    const d = String(cur.getDate()).padStart(2, "0");
+    const dateStr = `${y}-${m}-${d}`;
+
+    const entry = ratesMap[dateStr];
+    if (entry && typeof entry === "object" && entry.blocked === true) {
+      hasBlockedDate = true;
+    }
+
+    let nightRate = basePrice;
+    if (typeof entry === "number") {
+      nightRate = entry;
+    } else if (entry && typeof entry === "object" && entry.price !== undefined) {
+      nightRate = Number(entry.price);
+    }
+    total += nightRate;
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  if (hasBlockedDate) {
+    return {
+      numberOfNights,
+      total,
+      hasBlockedDate: true,
+      isAvailable: false,
+      unavailabilityReason: "Datas fechadas pelo anfitrião",
+      formattedTotal: total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+    };
+  }
+
+  return {
+    numberOfNights,
+    total,
+    hasBlockedDate: false,
+    isAvailable: true,
+    formattedTotal: total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+  };
+}
 
 function normalizeProperties(items: any[]): PropertyPin[] {
   return (items || []).map((item: any) => ({
     id: Number(item.id),
     title: item.title,
     price: `R$ ${Number(item.price).toLocaleString("pt-BR")}`,
+    rawPrice: Number(item.price || 0),
     legalStatus: item.legalStatus || "-",
     area: item.area || "-",
     city: item.city || "-",
+    neighborhood: item.neighborhood || null,
     lat: Number(item.latitude),
     lng: Number(item.longitude),
     mainImage: item.images?.[0]?.imageUrl || null,
@@ -264,6 +388,12 @@ function normalizeProperties(items: any[]): PropertyPin[] {
     metaBoostedUntil: item.metaBoostedUntil || null,
     instagramMediaId: item.instagramMediaId || null,
     instagramPermalink: item.instagramPermalink || null,
+    listingType: item.listingType || "COMPRA_VENDA",
+    minNights: item.minNights ? Number(item.minNights) : null,
+    maxGuests: item.maxGuests ? Number(item.maxGuests) : null,
+    depositPercentage: item.depositPercentage !== undefined && item.depositPercentage !== null ? Number(item.depositPercentage) : 20,
+    pixKey: item.pixKey || null,
+    customRates: item.customRates || {},
   }))
   .sort((a: any, b: any) => {
     const isNow = new Date();
@@ -333,6 +463,47 @@ const YoutubeIcon = ({ size = 20 }: { size?: number }) => (
 );
 
 export default function HomePage() {
+  const router = useRouter();
+  const { status } = useSession();
+  const { listingType, checkInDate, setCheckInDate, checkOutDate, setCheckOutDate, guestsCount, setGuestsCount } = useListingType();
+  const [viewMode, setViewMode] = useState<"both" | "map_only" | "cards_only">("both");
+  const [reservationModalProperty, setReservationModalProperty] = useState<{
+    property: PropertyPin;
+    stayInfo: StayTotalResult;
+  } | null>(null);
+  const [submittingReservation, setSubmittingReservation] = useState(false);
+
+  async function handleConfirmReservation() {
+    if (!reservationModalProperty) return;
+    try {
+      setSubmittingReservation(true);
+      const res = await fetch("/api/offers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          property_id: reservationModalProperty.property.id,
+          offer_price: reservationModalProperty.stayInfo.total,
+          total_stay_price: reservationModalProperty.stayInfo.total,
+          start_date: checkInDate,
+          end_date: checkOutDate,
+          guests: Number(guestsCount || 1),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Erro ao enviar pedido de reserva.");
+      }
+
+      setReservationModalProperty(null);
+      alert("🚀 Pedido de reserva enviado com sucesso! O anfitrião tem 24 horas para aceitar o pedido.");
+      router.push("/minha-conta/ofertas");
+    } catch (err: any) {
+      alert(err?.message || "Erro ao solicitar reserva.");
+    } finally {
+      setSubmittingReservation(false);
+    }
+  }
   const [bounds, setBounds] = useState<MapBounds | null>(null);
   const [properties, setProperties] = useState<PropertyPin[]>([]);
   const [loading, setLoading] = useState(false);
@@ -362,20 +533,24 @@ export default function HomePage() {
   const [acceptsFinancing, setAcceptsFinancing] = useState(false);
 
   const typeOptions = useMemo(() => {
+    if (listingType === "ALUGUEL_TEMPORADA") {
+      return SEASONAL_PROPERTY_TYPES as unknown as string[];
+    }
+
     // If no category is selected, we just show all existing types from the db.
     if (!category) return availablePropertyTypes;
     
     // If a category is selected, intersect standard types with DB types so we don't show empty categories
     const standardTypes: readonly string[] = PROPERTY_TYPES[category as keyof typeof PROPERTY_TYPES] || [];
     return availablePropertyTypes.filter(dbType => standardTypes.includes(dbType));
-  }, [category, availablePropertyTypes]);
+  }, [category, availablePropertyTypes, listingType]);
 
   async function loadInitialProperties() {
     try {
       setLoading(true);
       setError("");
 
-      const res = await fetch("/api/properties");
+      const res = await fetch(`/api/properties?listingType=${listingType}`);
       const data = await res.json();
 
       if (!res.ok || !data.success) {
@@ -468,6 +643,10 @@ export default function HomePage() {
         frontSea,
         pool,
         acceptsFinancing,
+        listingType,
+        checkInDate: listingType === "ALUGUEL_TEMPORADA" ? checkInDate : undefined,
+        checkOutDate: listingType === "ALUGUEL_TEMPORADA" ? checkOutDate : undefined,
+        guestsCount: listingType === "ALUGUEL_TEMPORADA" ? guestsCount : undefined,
       };
 
       const res = await fetch("/api/properties/search", {
@@ -497,7 +676,7 @@ export default function HomePage() {
   useEffect(() => {
     loadInitialProperties();
     loadPartners();
-  }, []);
+  }, [listingType]);
 
   useEffect(() => {
     if (!bounds || !boundsReady) return;
@@ -524,6 +703,10 @@ export default function HomePage() {
     frontSea,
     pool,
     acceptsFinancing,
+    listingType,
+    checkInDate,
+    checkOutDate,
+    guestsCount,
   ]);
 
   async function handleApplyFilters() {
@@ -623,24 +806,85 @@ export default function HomePage() {
             </div>
 
             <div className="space-y-4">
-              <Field label="Categoria">
-                <select
-                  value={category}
-                  onChange={(e) => {
-                    setCategory(e.target.value);
-                    setPropertyType("");
-                  }}
-                  className="input"
-                >
-                  <option value="">Todas</option>
-                  <option value="RESIDENCIAL">Residencial</option>
-                  <option value="TERRENOS">Terrenos</option>
-                  <option value="COMERCIAL">Comercial</option>
-                  <option value="INDUSTRIAL_LOGISTICO">
-                    Industrial / Logístico
-                  </option>
-                </select>
-              </Field>
+              {listingType === "ALUGUEL_TEMPORADA" && (
+                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 space-y-3 shadow-inner">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                      📅 Datas & Hóspedes
+                    </h3>
+                    {(checkInDate || checkOutDate || guestsCount !== "1") && (
+                      <button
+                        onClick={() => {
+                          setCheckInDate("");
+                          setCheckOutDate("");
+                          setGuestsCount("1");
+                        }}
+                        className="text-[10px] font-bold text-red-400 hover:underline cursor-pointer"
+                      >
+                        Limpar
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Check-in</label>
+                      <input
+                        type="date"
+                        value={checkInDate}
+                        onChange={(e) => setCheckInDate(e.target.value)}
+                        onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 outline-none transition cursor-pointer [color-scheme:dark]"
+                        min={new Date().toISOString().split("T")[0]}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Check-out</label>
+                      <input
+                        type="date"
+                        value={checkOutDate}
+                        onChange={(e) => setCheckOutDate(e.target.value)}
+                        onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 outline-none transition cursor-pointer [color-scheme:dark]"
+                        min={checkInDate || new Date().toISOString().split("T")[0]}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Qtd. de Hóspedes</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={guestsCount}
+                      onChange={(e) => setGuestsCount(e.target.value)}
+                      className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-1.5 text-xs text-white focus:border-emerald-500 outline-none transition"
+                      placeholder="Ex.: 2"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {listingType !== "ALUGUEL_TEMPORADA" && (
+                <Field label="Categoria">
+                  <select
+                    value={category}
+                    onChange={(e) => {
+                      setCategory(e.target.value);
+                      setPropertyType("");
+                    }}
+                    className="input"
+                  >
+                    <option value="">Todas</option>
+                    <option value="RESIDENCIAL">Residencial</option>
+                    <option value="TERRENOS">Terrenos</option>
+                    <option value="COMERCIAL">Comercial</option>
+                    <option value="INDUSTRIAL_LOGISTICO">
+                      Industrial / Logístico
+                    </option>
+                  </select>
+                </Field>
+              )}
 
               <Field label="Tipo do imóvel">
                 <select
@@ -780,15 +1024,7 @@ export default function HomePage() {
                 </Field>
               </Grid2>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Toggle label="Frente mar" checked={frontSea} onChange={setFrontSea} />
-                <Toggle label="Piscina" checked={pool} onChange={setPool} />
-                <Toggle
-                  label="Aceita financiamento"
-                  checked={acceptsFinancing}
-                  onChange={setAcceptsFinancing}
-                />
-              </div>
+              {/* Filtros de características removidos */}
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <button
@@ -900,7 +1136,15 @@ export default function HomePage() {
             )}
 
             <CesiumMapClient
-              properties={properties}
+              properties={useMemo(() => {
+                if (listingType === "ALUGUEL_TEMPORADA" && checkInDate && checkOutDate) {
+                  return properties.filter((p) => {
+                    const info = calculateStayTotal(p, checkInDate, checkOutDate, guestsCount);
+                    return !info || info.isAvailable;
+                  });
+                }
+                return properties;
+              }, [properties, listingType, checkInDate, checkOutDate, guestsCount])}
               onBoundsChange={handleBoundsChange}
               clusterZoomTarget={clusterZoomTarget}
               onClusterZoomRequest={handleClusterZoomRequest}
@@ -938,12 +1182,19 @@ export default function HomePage() {
                       
                       const hasIG = isPublishedIG || isMetaBoosted;
 
+                      const stayInfo = property.listingType === "ALUGUEL_TEMPORADA" && checkInDate && checkOutDate
+                        ? calculateStayTotal(property, checkInDate, checkOutDate, guestsCount)
+                        : null;
+
+                      const isUnavailable = stayInfo ? !stayInfo.isAvailable : false;
+
                       return (
-                        <Link
+                        <div
                           key={property.id}
-                          href={`/imovel/${property.id}`}
                           className={`group overflow-hidden rounded-[2rem] border transition-all duration-300 relative p-[2.5px] ${
-                            isSponsored && hasIG
+                            isUnavailable
+                              ? "border-red-500/30 bg-slate-900/40 opacity-75 hover:opacity-100 hover:border-red-500/50"
+                              : isSponsored && hasIG
                               ? "bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 shadow-[0_0_20px_rgba(250,204,21,0.3)] hover:shadow-[0_0_30px_rgba(250,204,21,0.5)] scale-[1.02]"
                               : isSponsored
                               ? "border-yellow-400 bg-yellow-400/20 shadow-[0_0_15px_rgba(250,204,21,0.2)] hover:shadow-[0_0_25px_rgba(250,204,21,0.4)]"
@@ -952,9 +1203,16 @@ export default function HomePage() {
                               : "border-white/10 bg-slate-900/60 hover:border-white/20 hover:bg-slate-900"
                           }`}
                         >
-                          <div className={`h-full w-full rounded-[1.8rem] overflow-hidden flex flex-col pt-0 ${
-                            hasIG ? "bg-indigo-950" : "bg-slate-950"
-                          }`}>
+                          <Link 
+                            href={`/imovel/${property.id}${
+                              property.listingType === "ALUGUEL_TEMPORADA" && checkInDate && checkOutDate
+                                ? `?checkin=${checkInDate}&checkout=${checkOutDate}&guests=${guestsCount}`
+                                : ""
+                            }`}
+                            className={`h-full w-full rounded-[1.8rem] overflow-hidden flex flex-col pt-0 ${
+                              hasIG ? "bg-indigo-950" : "bg-slate-950"
+                            }`}
+                          >
                                 <div className="relative h-48 w-full bg-slate-800 overflow-hidden">
                                     {property.mainImage ? (
                                         <img
@@ -968,20 +1226,28 @@ export default function HomePage() {
                                         </div>
                                     )}
 
+                                    {isUnavailable && (
+                                      <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[1px] z-30 flex items-center justify-center p-2 text-center">
+                                        <span className="bg-red-600/90 text-white font-black text-[11px] uppercase tracking-wider px-3 py-1.5 rounded-xl shadow-xl border border-red-400/30">
+                                          🚫 Indisponível para as datas
+                                        </span>
+                                      </div>
+                                    )}
+
                                     {/* Badges Hierárquicas */}
-                                    {isSponsored && hasIG && (
+                                    {!isUnavailable && isSponsored && hasIG && (
                                         <div className="absolute top-2 right-2 bg-gradient-to-r from-yellow-500 to-pink-500 text-white text-[8px] font-black px-3 py-1 rounded-full flex items-center gap-1.5 shadow-xl ring-1 ring-white/20 z-20 uppercase tracking-tighter">
                                             <Rocket size={10} fill="white" /> VIP GOLD + IG
                                         </div>
                                     )}
 
-                                    {isSponsored && !hasIG && (
+                                    {!isUnavailable && isSponsored && !hasIG && (
                                         <div className="absolute top-2 right-2 bg-yellow-400 text-slate-950 text-[9px] font-black px-2.5 py-1 rounded-full shadow-lg z-20 border border-white/20 uppercase">
                                             Patrocinado
                                         </div>
                                     )}
 
-                                    {!isSponsored && hasIG && (
+                                    {!isUnavailable && !isSponsored && hasIG && (
                                         <div className="absolute top-2 right-2 bg-gradient-to-tr from-purple-600 to-pink-500 text-white text-[8px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg ring-1 ring-white/20 z-20 uppercase">
                                             <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.791-4-4s1.791-4 4-4 4 1.791 4 4-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg> 
                                             Instagram
@@ -1005,20 +1271,105 @@ export default function HomePage() {
                                         </div>
                                     </div>
 
-                                    <div className="mt-4 grid gap-2 text-[11px] text-slate-400 font-bold uppercase tracking-wider">
-                                        <div className="flex items-center justify-between rounded-xl bg-white/5 border border-white/5 px-3 py-2">
-                                            <span className="opacity-50">Situação</span>
-                                            <span className="text-slate-200">{property.legalStatus}</span>
-                                        </div>
+                                    {stayInfo && (
+                                      <div className={`mt-3 rounded-xl border p-2.5 ${
+                                        isUnavailable
+                                          ? "border-red-500/30 bg-red-500/10"
+                                          : "border-emerald-500/30 bg-emerald-500/10"
+                                      }`}>
+                                        {isUnavailable ? (
+                                          <div>
+                                            <div className="text-xs font-black text-red-400 flex items-center gap-1">
+                                              <span>🚫 Indisponível</span>
+                                            </div>
+                                            <p className="mt-0.5 text-[10px] text-red-300 font-medium">
+                                              {stayInfo.unavailabilityReason || "Período fechado pelo anfitrião"}
+                                            </p>
+                                          </div>
+                                        ) : (
+                                          <div>
+                                            <div className="flex items-center justify-between text-xs font-extrabold text-emerald-300">
+                                              <span>Total Estadia ({stayInfo.numberOfNights} {stayInfo.numberOfNights === 1 ? 'noite' : 'noites'}):</span>
+                                              <span className="text-sm font-black text-emerald-400">{stayInfo.formattedTotal}</span>
+                                            </div>
+                                            <p className="mt-0.5 text-[10px] text-slate-400 font-medium">
+                                              Média: {(stayInfo.total / stayInfo.numberOfNights).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} / noite
+                                            </p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
 
-                                        <div className="flex items-center justify-between rounded-xl bg-white/5 border border-white/5 px-3 py-2">
-                                            <span className="opacity-50">Área</span>
-                                            <span className="text-slate-200">{property.area} m²</span>
-                                        </div>
+                                    <div className="mt-4 grid gap-2 text-[11px] text-slate-400 font-bold uppercase tracking-wider">
+                                        {property.listingType === "ALUGUEL_TEMPORADA" ? (
+                                          <>
+                                            <div className="flex items-center justify-between rounded-xl bg-white/5 border border-white/5 px-3 py-2">
+                                                <span className="opacity-50">Cidade / Bairro</span>
+                                                <span className="text-slate-200 font-extrabold">
+                                                  {property.city}{property.neighborhood ? ` · ${property.neighborhood}` : ""}
+                                                </span>
+                                            </div>
+
+                                            <div className="flex items-center justify-between rounded-xl bg-sky-500/5 border border-sky-500/10 px-3 py-2">
+                                                <span className="text-sky-400">Máx. Hóspedes</span>
+                                                <span className="text-sky-300 font-black">
+                                                  {property.maxGuests ? `${property.maxGuests} ${property.maxGuests === 1 ? 'hóspede' : 'hóspedes'}` : "Não informado"}
+                                                </span>
+                                            </div>
+
+                                            {property.minNights && (
+                                              <div className="flex items-center justify-between rounded-xl bg-emerald-500/5 border border-emerald-500/10 px-3 py-2">
+                                                  <span className="text-emerald-400">Mínimo Estadia</span>
+                                                  <span className="text-emerald-300 font-black">{property.minNights} {property.minNights === 1 ? 'noite' : 'noites'}</span>
+                                              </div>
+                                            )}
+
+                                            <div className="mt-3">
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.preventDefault();
+                                                  e.stopPropagation();
+                                                  if (!checkInDate || !checkOutDate) {
+                                                    alert("Por favor, selecione as datas de check-in e check-out no topo para reservar este imóvel.");
+                                                    window.scrollTo({ top: 0, behavior: "smooth" });
+                                                    return;
+                                                  }
+                                                  if (!stayInfo || !stayInfo.isAvailable) {
+                                                    alert(stayInfo?.unavailabilityReason || "Imóvel indisponível no período selecionado.");
+                                                    return;
+                                                  }
+                                                  setReservationModalProperty({ property, stayInfo });
+                                                }}
+                                                disabled={stayInfo ? !stayInfo.isAvailable : false}
+                                                className={`w-full rounded-xl py-2.5 px-4 text-xs font-black transition flex items-center justify-center gap-2 shadow-lg ${
+                                                  stayInfo && !stayInfo.isAvailable
+                                                    ? "bg-slate-800 text-slate-500 border border-white/5 cursor-not-allowed"
+                                                    : "bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20 cursor-pointer"
+                                                }`}
+                                              >
+                                                <Calendar className="h-4 w-4" />
+                                                {stayInfo && !stayInfo.isAvailable ? "Indisponível nestas datas" : "Reservar imóvel"}
+                                              </button>
+                                            </div>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <div className="flex items-center justify-between rounded-xl bg-white/5 border border-white/5 px-3 py-2">
+                                                <span className="opacity-50">Situação</span>
+                                                <span className="text-slate-200">{property.legalStatus}</span>
+                                            </div>
+
+                                            <div className="flex items-center justify-between rounded-xl bg-white/5 border border-white/5 px-3 py-2">
+                                                <span className="opacity-50">Área</span>
+                                                <span className="text-slate-200">{property.area} m²</span>
+                                            </div>
+                                          </>
+                                        )}
                                     </div>
                                 </div>
-                          </div>
-                        </Link>
+                          </Link>
+                        </div>
                       );
                     })}
                 </div>
@@ -1043,6 +1394,89 @@ export default function HomePage() {
     </footer>
 
     <div className="pb-16" />
+
+    {reservationModalProperty && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
+        <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl space-y-6">
+          <div className="flex items-center justify-between border-b border-white/10 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400">
+                <Calendar className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-white text-lg">Confirmar Pedido de Reserva</h3>
+                <p className="text-xs text-slate-400 max-w-[280px] truncate">{reservationModalProperty.property.title}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setReservationModalProperty(null)}
+              className="rounded-xl bg-white/5 p-2 text-slate-400 hover:bg-white/10 hover:text-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="space-y-3 rounded-2xl border border-white/5 bg-slate-950/60 p-4 text-sm text-slate-300">
+            <div className="flex justify-between border-b border-white/5 pb-2">
+              <span className="text-slate-400">Período:</span>
+              <span className="font-bold text-white">
+                {checkInDate} a {checkOutDate} ({reservationModalProperty.stayInfo.numberOfNights} {reservationModalProperty.stayInfo.numberOfNights === 1 ? 'noite' : 'noites'})
+              </span>
+            </div>
+            <div className="flex justify-between border-b border-white/5 pb-2">
+              <span className="text-slate-400">Hóspedes:</span>
+              <span className="font-bold text-white">{guestsCount} {Number(guestsCount) === 1 ? 'hóspede' : 'hóspedes'}</span>
+            </div>
+            <div className="flex justify-between border-b border-white/5 pb-2">
+              <span className="text-slate-400">Valor Total da Estadia:</span>
+              <span className="font-bold text-emerald-400 text-base">{reservationModalProperty.stayInfo.formattedTotal}</span>
+            </div>
+            <div className="flex justify-between pt-1">
+              <span className="text-slate-400">Sinal para Confirmação ({reservationModalProperty.property.depositPercentage || 20}%):</span>
+              <span className="font-black text-emerald-300 text-base">
+                {((reservationModalProperty.stayInfo.total * (reservationModalProperty.property.depositPercentage || 20)) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              </span>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs text-amber-200 leading-relaxed space-y-1">
+            <p className="font-bold text-amber-300 flex items-center gap-1">
+              <span>⚠️</span> Aviso de Confirmação:
+            </p>
+            <p>
+              O anfitrião irá cobrar <strong>{reservationModalProperty.property.depositPercentage || 20}%</strong> ({((reservationModalProperty.stayInfo.total * (reservationModalProperty.property.depositPercentage || 20)) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}) do valor total da reserva para confirmar.
+            </p>
+            <p className="pt-1 text-slate-300">
+              Ao confirmar, as datas ficarão <strong>indisponíveis por 24 horas</strong> ou até a aceitação/recusa do anfitrião com o status <em>"Pedido de reserva enviado"</em>.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setReservationModalProperty(null)}
+              disabled={submittingReservation}
+              className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-slate-300 hover:bg-white/10 hover:text-white transition text-center cursor-pointer"
+            >
+              Não, cancelar pedido de reserva
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmReservation}
+              disabled={submittingReservation}
+              className="flex-1 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white hover:bg-emerald-500 transition text-center shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {submittingReservation ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                "Sim, confirmar pedido de reserva"
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   </main>
     
 

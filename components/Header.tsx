@@ -4,12 +4,24 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import { signOut, useSession } from "next-auth/react";
+import { useRouter, usePathname } from "next/navigation";
 import AdSenseBanner from "./AdSenseBanner";
+import { useListingType } from "@/context/ListingTypeContext";
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { data: session, status } = useSession();
+  const { listingType, setListingType } = useListingType();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  function handleTypeSwitch(type: "COMPRA_VENDA" | "ALUGUEL_TEMPORADA") {
+    setListingType(type);
+    if (session?.user && pathname !== "/") {
+      router.push("/");
+    }
+  }
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -32,16 +44,42 @@ export default function Header() {
   return (
     <header className="border-b border-white/10 bg-slate-950 text-white">
       <div className="mx-auto flex max-w-[1600px] h-[70px] lg:h-[90px] items-center justify-between px-4 lg:px-6">
-        <Link href="/" className="block w-[160px] md:w-[240px] lg:w-[340px]">
-          <Image
-            src="/logo-realstock.jpg"
-            alt="RealStock"
-            width={500}
-            height={120}
-            className="h-[50px] lg:h-[90px] w-full object-fill"
-            priority
-          />
-        </Link>
+        <div className="flex items-center gap-3 md:gap-5">
+          <Link href="/" className="block w-[110px] md:w-[150px] lg:w-[190px]">
+            <Image
+              src="/logo-realstock.jpg"
+              alt="RealStock"
+              width={500}
+              height={120}
+              className="h-[35px] lg:h-[55px] w-full object-fill"
+              priority
+            />
+          </Link>
+
+          {/* Switcher Compra e Venda / Temporada */}
+          <div className="flex rounded-xl bg-slate-900 border border-white/10 p-[3px] select-none scale-90 md:scale-100 origin-left">
+            <button
+              onClick={() => handleTypeSwitch("COMPRA_VENDA")}
+              className={`rounded-lg px-2.5 py-1 md:px-3.5 md:py-1.5 text-[10px] md:text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                listingType === "COMPRA_VENDA"
+                  ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/20"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Compra e Venda
+            </button>
+            <button
+              onClick={() => handleTypeSwitch("ALUGUEL_TEMPORADA")}
+              className={`rounded-lg px-2.5 py-1 md:px-3.5 md:py-1.5 text-[10px] md:text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                listingType === "ALUGUEL_TEMPORADA"
+                  ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Aluguel Temporada
+            </button>
+          </div>
+        </div>
 
         {/* Espaço reservado para o Banner do Google Ads */}
         <div className="hidden lg:flex flex-1 mx-8 h-[90px] max-h-[90px] items-center justify-center overflow-hidden relative">
@@ -88,7 +126,7 @@ export default function Header() {
                       className="block rounded-xl px-4 py-3 text-sm hover:bg-white/10"
                       onClick={() => setMenuOpen(false)}
                     >
-                      Minhas ofertas
+                      {listingType === "ALUGUEL_TEMPORADA" ? "Minhas reservas" : "Minhas ofertas"}
                     </Link>
 
                     <Link

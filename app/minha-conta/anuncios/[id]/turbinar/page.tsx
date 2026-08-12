@@ -66,7 +66,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
       videoRef.current.muted = true;
       videoRef.current.play().catch(e => console.log("Autoplay failed:", e));
     }
-  }, [postType, property?.reelsVideoUrl]);
+  }, [postType, property?.customVideoUrl, property?.reelsVideoUrl]);
 
   useEffect(() => {
     if (!property?.images || property.images.length <= 1 || postType === "reels") return;
@@ -188,7 +188,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
 
   const currentSessions = selectedPlatform === "facebook" ? fbSessions : (selectedPlatform === "instagram" ? igSessions : []);
   const hasCarousel = property?.images && property.images.length > 0;
-  const hasReels = !!property?.reelsVideoUrl;
+  const hasReels = !!(property?.customVideoUrl || property?.reelsVideoUrl);
   
   const selectedSession = currentSessions.find(s => s.postType?.toLowerCase() === postType);
   const selectedPermalink = selectedSession?.validationReport ? (selectedSession.validationReport as any).permalink : null;
@@ -327,11 +327,11 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                   ) : (
                     <div className="aspect-square w-full rounded-xl bg-slate-900 border border-white/10 overflow-hidden relative">
                       {postType === "reels" ? (
-                        property.reelsVideoUrl ? (
+                        (property.customVideoUrl || property.reelsVideoUrl) ? (
                           <div className="relative w-full h-full">
                             <video 
                               ref={videoRef}
-                              key={property.reelsVideoUrl}
+                              key={property.customVideoUrl || property.reelsVideoUrl}
                               className="w-full h-full object-cover" 
                               autoPlay 
                               loop 
@@ -339,7 +339,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                               playsInline 
                               preload="auto"
                             >
-                              <source src={property.reelsVideoUrl ? `/api/proxy-video?url=${encodeURIComponent(property.reelsVideoUrl)}#t=0.001` : undefined} type={property.reelsVideoUrl.includes('.mp4') ? 'video/mp4' : 'video/webm'} />
+                              <source src={property.customVideoUrl || property.reelsVideoUrl ? `/api/proxy-video?url=${encodeURIComponent(property.customVideoUrl || property.reelsVideoUrl)}#t=0.001` : undefined} type={(property.customVideoUrl || property.reelsVideoUrl || "").includes('.mp4') ? 'video/mp4' : 'video/webm'} />
                             </video>
                             <button 
                               onClick={() => setIsMuted(!isMuted)}

@@ -65,11 +65,20 @@ export async function POST(req: NextRequest) {
     const property = offer.property;
     const acceptedOfferValue = Number(offer.offerPrice);
     
-    const baseValueForFee = acceptedOfferValue > 0 ? acceptedOfferValue : Number(property.price);
-    let paymentAmount = Number(((2 * baseValueForFee) / 10000).toFixed(2));
+    let paymentAmount = 0;
+    if (property.listingType === "ALUGUEL_TEMPORADA") {
+      const siteService = await prisma.siteService.findFirst({
+        where: { slug: "aluguel-temporada" },
+        include: { fee: true }
+      });
+      paymentAmount = siteService?.fee?.value ? Number(siteService.fee.value) : 10.00;
+    } else {
+      const baseValueForFee = acceptedOfferValue > 0 ? acceptedOfferValue : Number(property.price);
+      paymentAmount = Number(((2 * baseValueForFee) / 10000).toFixed(2));
 
-    if (paymentAmount <= 0) {
-      paymentAmount = 1.00;
+      if (paymentAmount <= 0) {
+        paymentAmount = 1.00;
+      }
     }
 
     if (property.contactFeePaidAt) {

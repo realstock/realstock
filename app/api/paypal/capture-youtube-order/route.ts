@@ -157,7 +157,8 @@ export async function POST(req: NextRequest) {
     let permalink = `https://youtube.com/shorts/${videoId}`;
     let isSimulated = true;
 
-    if (property && property.reelsVideoUrl) {
+    const videoUrl = property?.customVideoUrl || property?.reelsVideoUrl;
+    if (property && videoUrl) {
       try {
         const { refreshYoutubeAccessToken } = require("@/lib/youtube");
         const ytAccessToken = await refreshYoutubeAccessToken(user.id);
@@ -165,7 +166,7 @@ export async function POST(req: NextRequest) {
         if (ytAccessToken) {
           console.log("YouTube Access Token found. Initializing real upload to YouTube Data API...");
           
-          const tempFile = await downloadToTempFile(property.reelsVideoUrl);
+          const tempFile = await downloadToTempFile(videoUrl);
           const transcodedFile = await transcodeIfNeeded(tempFile);
           
           const videoBuffer = fs.readFileSync(transcodedFile);

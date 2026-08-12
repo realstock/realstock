@@ -23,6 +23,10 @@ export async function POST(req: NextRequest) {
       pool,
       acceptsFinancing,
       neighborhood,
+      listingType,
+      checkInDate,
+      checkOutDate,
+      guestsCount,
     } = body;
 
     if (
@@ -38,6 +42,8 @@ export async function POST(req: NextRequest) {
     }
 
     const where: any = {};
+
+    where.listingType = listingType || "ALUGUEL_TEMPORADA";
 
     // Only restrict by map bounds if the user hasn't explicitly mandated a specific city or neighborhood.
     // This prevents zooming glitches from hiding properties that belong to the selected location!
@@ -84,6 +90,13 @@ export async function POST(req: NextRequest) {
 
     if (bathroomsMin) {
       where.bathrooms = { gte: Number(bathroomsMin) };
+    }
+
+    if (guestsCount && Number(guestsCount) > 0) {
+      where.OR = [
+        { maxGuests: { gte: Number(guestsCount) } },
+        { maxGuests: null },
+      ];
     }
 
     if (frontSea) where.frontSea = true;

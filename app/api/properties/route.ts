@@ -1,9 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const listingType = searchParams.get("listingType") || "ALUGUEL_TEMPORADA";
+
     const properties = await prisma.property.findMany({
+      where: {
+        listingType: listingType,
+      },
       include: {
         images: {
           take: 1,

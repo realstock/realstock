@@ -46,10 +46,11 @@ export async function POST(req: Request) {
     const isImage = file.type.startsWith("image/");
     const isVideo = file.type.startsWith("video/");
     const isAudio = file.type.startsWith("audio/");
+    const isPdf = file.type === "application/pdf";
 
-    if (!isImage && !isVideo && !isAudio) {
+    if (!isImage && !isVideo && !isAudio && !isPdf) {
       return NextResponse.json(
-        { success: false, error: "Formato inválido. Use Imagens, Vídeos ou Áudios (MP3/WAV)." },
+        { success: false, error: "Formato inválido. Use Imagens, Vídeos, Áudios ou PDF." },
         { status: 400 }
       );
     }

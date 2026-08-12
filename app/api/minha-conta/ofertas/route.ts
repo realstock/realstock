@@ -23,13 +23,68 @@ export async function GET() {
       );
     }
 
-    const offers = await prisma.offer.findMany({
+    const guestOffers = await prisma.offer.findMany({
       where: {
         buyerId: userId,
       },
       include: {
+        buyer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
         property: {
           include: {
+            owner: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
+            images: {
+              orderBy: {
+                sortOrder: "asc",
+              },
+              take: 1,
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    const hostOffers = await prisma.offer.findMany({
+      where: {
+        property: {
+          ownerId: userId,
+        },
+      },
+      include: {
+        buyer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+        property: {
+          include: {
+            owner: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
             images: {
               orderBy: {
                 sortOrder: "asc",
@@ -46,7 +101,9 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      offers,
+      guestOffers,
+      hostOffers,
+      offers: guestOffers,
     });
   } catch (error: any) {
     console.error("MINHA CONTA OFERTAS ERROR:", error);
@@ -90,6 +147,80 @@ export async function POST(req: NextRequest) {
         { success: false, error: "offer_id inválido." },
         { status: 400 }
       );
+    }
+
+    if (action === "upload_pix") {
+      const pixReceiptUrl = String(body.pix_receipt_url || "").trim();
+      const skipConfirm = body.skip_confirm === true;
+
+      if (!pixReceiptUrl) {
+        return NextResponse.json(
+          { success: false, error: "URL do comprovante Pix é obrigatória." },
+          { status: 400 }
+        );
+      }
+
+      const offer = await prisma.offer.findUnique({
+        where: { id: offerId },
+      });
+
+      if (!offer || offer.buyerId !== userId) {
+        return NextResponse.json(
+          { success: false, error: "Pedido de reserva não encontrado." },
+          { status: 404 }
+        );
+      }
+
+      // If skip_confirm, just save the URL; AI validation will advance the status.
+      // Otherwise (legacy), mark as confirmed immediately.
+      const updatedOffer = await prisma.offer.update({
+        where: { id: offerId },
+        data: {
+          pixReceiptUrl,
+          ...(skipConfirm ? {} : { status: "RESERVA_CONFIRMADA" }),
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        offer: updatedOffer,
+        message: skipConfirm
+          ? "Comprovante salvo. Iniciando verificação automática..."
+          : "Comprovante enviado! Sua reserva está confirmada.",
+      });
+    }
+
+    if (action === "reject") {
+      const offer = await prisma.offer.findUnique({
+        where: { id: offerId },
+        include: { property: true },
+      });
+
+      if (!offer) {
+        return NextResponse.json(
+          { success: false, error: "Pedido não encontrado." },
+          { status: 404 }
+        );
+      }
+
+      if (offer.property.ownerId !== userId) {
+        return NextResponse.json(
+          { success: false, error: "Sem permissão para recusar esta reserva." },
+          { status: 403 }
+        );
+      }
+
+      const updatedOffer = await prisma.offer.update({
+        where: { id: offerId },
+        data: {
+          status: "REJECTED",
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        offer: updatedOffer,
+      });
     }
 
     if (action === "accept") {

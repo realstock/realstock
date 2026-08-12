@@ -55,11 +55,20 @@ export async function PUT(
     const description = String(body.description || "").trim();
     const price = Number(body.price || 0);
 
-    if (!title || !description || !price) {
-      return NextResponse.json(
-        { success: false, error: "Título, descrição e preço são obrigatórios." },
-        { status: 400 }
-      );
+    const listingType = String(body.listing_type || "COMPRA_VENDA").trim();
+    const icalFeeds = body.ical_feeds || [];
+
+    if (listingType === "ALUGUEL_TEMPORADA") {
+      const hasValidIcal = Array.isArray(icalFeeds) && icalFeeds.some((f: any) => f && typeof f.url === "string" && f.url.trim().length > 0);
+      if (!hasValidIcal) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Para verificação de sua propriedade é necessário o cadastro de no mínimo 1 calendário de outro portal",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Usar transação para garantir que ou salva tudo ou não apaga nada
@@ -76,6 +85,12 @@ export async function PUT(
         data: {
           category: String(body.category || "").trim() || null,
           propertyType: String(body.property_type || "").trim() || null,
+          listingType: String(body.listing_type || "COMPRA_VENDA").trim(),
+          minNights: body.min_nights !== null && body.min_nights !== undefined && body.min_nights !== "" ? Number(body.min_nights) : null,
+          maxGuests: body.max_guests !== null && body.max_guests !== undefined && body.max_guests !== "" ? Number(body.max_guests) : null,
+          depositPercentage: body.deposit_percentage !== null && body.deposit_percentage !== undefined && body.deposit_percentage !== "" ? Number(body.deposit_percentage) : 20,
+          pixKey: String(body.pix_key || "").trim() || null,
+          icalFeeds: body.ical_feeds || [],
           title,
           description,
           price,
@@ -113,6 +128,7 @@ export async function PUT(
           latitude: Number(body.latitude),
           longitude: Number(body.longitude),
           reelsMusicUrl: body.reels_music_url || null,
+          customVideoUrl: body.custom_video_url || null,
 
           images: {
             create: (body.images || []).map((imageUrl: string, index: number) => ({

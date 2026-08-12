@@ -2,6 +2,7 @@
 
 import { SessionProvider } from "next-auth/react";
 import { PayPalScriptProvider } from "@paypal/react-paypal-js";
+import { ListingTypeProvider } from "@/context/ListingTypeContext";
 
 export default function Providers({
   children,
@@ -16,7 +17,11 @@ export default function Providers({
 
   return (
     <PayPalScriptProvider options={paypalOptions}>
-      <SessionProvider>{children}</SessionProvider>
+      <SessionProvider>
+        <ListingTypeProvider>
+          {children}
+        </ListingTypeProvider>
+      </SessionProvider>
     </PayPalScriptProvider>
   );
 }

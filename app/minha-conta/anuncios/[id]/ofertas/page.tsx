@@ -13,6 +13,9 @@ type Offer = {
   status: string;
   createdAt: string;
   contactReleased: boolean;
+  startDate?: string | null;
+  endDate?: string | null;
+  guests?: number | null;
   buyer?: {
     name?: string | null;
     email?: string | null;
@@ -99,53 +102,80 @@ export default function GerenciarOfertasPage() {
   }
 
   async function prepararPaypal(offerId: number) {
-  try {
-    setPaypalError("");
-    setPaypalOfferId(offerId);
-    setPaypalOrderId(null);
-
-    const res = await fetch("/api/paypal/create-order", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        offer_id: offerId,
-      }),
-    });
-
-    const raw = await res.text();
-
-    let data: any = null;
     try {
-      data = JSON.parse(raw);
-    } catch {
-      data = {
-        success: false,
-        error: raw || "Resposta inválida da API do PayPal.",
-      };
-    }
+      setPaypalError("");
+      setPaypalOfferId(offerId);
+      setPaypalOrderId(null);
 
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || "Erro ao preparar pagamento PayPal.");
-    }
+      const endpoint = property?.listingType === "ALUGUEL_TEMPORADA"
+        ? "/api/paypal/create-host-reservation-fee-order"
+        : "/api/paypal/create-order";
 
-    if (data.already_paid) {
-      await loadData();
-      return;
-    }
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          offer_id: offerId,
+        }),
+      });
 
-    if (!data.paypal_order_id) {
-      throw new Error("A ordem PayPal não foi retornada.");
-    }
+      const raw = await res.text();
 
-    setPaypalOrderId(data.paypal_order_id);
-  } catch (err: any) {
-    setPaypalOfferId(null);
-    setPaypalOrderId(null);
-    setPaypalError(err.message || "Erro ao preparar pagamento PayPal.");
+      let data: any = null;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        data = {
+          success: false,
+          error: raw || "Resposta inválida da API do PayPal.",
+        };
+      }
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Erro ao preparar pagamento PayPal.");
+      }
+
+      if (data.already_paid) {
+        await loadData();
+        return;
+      }
+
+      if (!data.paypal_order_id) {
+        throw new Error("A ordem PayPal não foi retornada.");
+      }
+
+      setPaypalOrderId(data.paypal_order_id);
+    } catch (err: any) {
+      setPaypalOfferId(null);
+      setPaypalOrderId(null);
+      setPaypalError(err.message || "Erro ao preparar pagamento PayPal.");
+    }
   }
-}
+
+  async function recusarOferta(id: number) {
+    const confirmReject = window.confirm("Deseja recusar este pedido de reserva? As datas serão liberadas imediatamente.");
+    if (!confirmReject) return;
+
+    try {
+      setActionLoadingId(id);
+      const res = await fetch("/api/minha-conta/ofertas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject", offer_id: id }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Erro ao recusar reserva.");
+      }
+      await loadData();
+    } catch (err: any) {
+      alert(err.message || "Erro ao recusar reserva.");
+    } finally {
+      setActionLoadingId(null);
+    }
+  }
 
   function closePaypalModal() {
     setPaypalOfferId(null);
@@ -170,7 +200,9 @@ export default function GerenciarOfertasPage() {
             ← Voltar
           </Link>
 
-          <h1 className="text-3xl font-bold mt-3">Ofertas do imóvel</h1>
+          <h1 className="text-3xl font-bold mt-3">
+            {property?.listingType === "ALUGUEL_TEMPORADA" ? "Pedidos de Reserva do imóvel" : "Ofertas do imóvel"}
+          </h1>
 
           {property && <div className="text-slate-400 mt-1">{property.title}</div>}
         </div>
@@ -200,110 +232,146 @@ export default function GerenciarOfertasPage() {
         )}
 
         <div className="space-y-4">
-          {offers.map((offer, index) => (
-            <div
-              key={offer.id}
-              className={`bg-white/5 border border-white/10 p-5 rounded-2xl transition-all ${
-                offer.status === "cancelled" ? "opacity-40 grayscale-[0.5]" : ""
-              }`}
-            >
-              <div className="flex justify-between items-start gap-6">
-                <div>
-                  <div className={`text-xl font-semibold ${offer.status === "cancelled" ? "line-through text-slate-500" : ""}`}>
-                    {Number(offer.offerPrice) === 0 ? "Agendar Visita" : `R$ ${offer.offerPrice.toLocaleString("pt-BR")}`}
-                  </div>
+          {offers.map((offer, index) => {
+            const statusUpper = String(offer.status).toUpperCase();
+            const isPendingHost = statusUpper === "PENDING_HOST_APPROVAL";
+            const isAcceptedWaiting = statusUpper === "ACCEPTED_WAITING_PAYMENT";
+            const isConfirmed = statusUpper === "RESERVA_CONFIRMADA";
+            const isRejected = statusUpper === "REJECTED";
 
-                  <div className="text-sm text-slate-400 mt-1">
-                    {new Date(offer.createdAt).toLocaleDateString("pt-BR")} 
-                    {offer.status === "cancelled" && " • Cancelada"}
-                  </div>
-
-                  <div className="mt-3 text-sm text-slate-300 space-y-1">
-                    <div>
-                      👤{" "}
-                      {offer.contactReleased
-                        ? offer.buyer?.name || "-"
-                        : `Comprador ${index + 1}`}
+            return (
+              <div
+                key={offer.id}
+                className={`bg-white/5 border border-white/10 p-5 rounded-2xl transition-all ${
+                  offer.status === "cancelled" || isRejected ? "opacity-40 grayscale-[0.5]" : ""
+                }`}
+              >
+                <div className="flex justify-between items-start gap-6">
+                  <div>
+                    <div className={`text-xl font-semibold ${offer.status === "cancelled" || isRejected ? "line-through text-slate-500" : ""}`}>
+                      {Number(offer.offerPrice) === 0 ? (
+                        "Agendar Visita"
+                      ) : offer.startDate && offer.endDate ? (
+                        <div className="flex flex-col">
+                          <span className="text-emerald-400 font-black">Solicitação de Reserva</span>
+                          <span className="text-sm text-slate-300 font-medium mt-0.5">
+                            Período: {new Date(offer.startDate).toLocaleDateString("pt-BR")} a {new Date(offer.endDate).toLocaleDateString("pt-BR")}
+                            {offer.guests && ` • Hóspedes: ${offer.guests}`}
+                          </span>
+                          <span className="text-slate-400 font-normal text-xs mt-1">
+                            Valor total da estadia: <span className="font-bold text-white">R$ {Number(offer.offerPrice).toLocaleString("pt-BR")}</span>
+                          </span>
+                        </div>
+                      ) : (
+                        `R$ ${offer.offerPrice.toLocaleString("pt-BR")}`
+                      )}
                     </div>
 
-                    {offer.contactReleased ? (
-                      <>
-                        <div>📧 {offer.buyer?.email || "-"}</div>
-                        <div>📱 {offer.buyer?.phone || "-"}</div>
-                        <div>📷 {offer.buyer?.instagram || "-"}</div>
-                      </>
-                    ) : (
-                      <div className="rounded-xl border border-blue-400/20 bg-blue-400/10 px-3 py-2 text-blue-200 mt-2">
-                        Os dados do comprador serão liberados somente após o pagamento da taxa via PayPal.
+                    <div className="text-sm text-slate-400 mt-1">
+                      Enviado em {new Date(offer.createdAt).toLocaleDateString("pt-BR")} 
+                    </div>
+
+                    <div className="mt-3 text-sm text-slate-300 space-y-1">
+                      <div>
+                        👤{" "}
+                        {offer.contactReleased
+                          ? offer.buyer?.name || "-"
+                          : property?.listingType === "ALUGUEL_TEMPORADA"
+                          ? `Hóspede ${index + 1}`
+                          : `Comprador ${index + 1}`}
                       </div>
+
+                      {offer.contactReleased ? (
+                        <>
+                          <div>📧 {offer.buyer?.email || "-"}</div>
+                          <div>📱 {offer.buyer?.phone || "-"}</div>
+                          <div>📷 {offer.buyer?.instagram || "-"}</div>
+                        </>
+                      ) : (
+                        <div className="rounded-xl border border-blue-400/20 bg-blue-400/10 px-3 py-2 text-blue-200 mt-2 text-xs">
+                          {property?.listingType === "ALUGUEL_TEMPORADA"
+                            ? "Os dados do hóspede serão liberados assim que você aceitar o pedido pagando a taxa de 1% no PayPal."
+                            : "Os dados do comprador serão liberados após a taxa ser paga."}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="text-right flex flex-col gap-2">
+                    {(isPendingHost || offer.status === "open") && (
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => prepararPaypal(offer.id)}
+                          disabled={actionLoadingId === offer.id}
+                          className="bg-emerald-500 text-slate-950 px-4 py-2.5 rounded-xl font-extrabold hover:bg-emerald-400 transition cursor-pointer shadow-lg shadow-emerald-500/20"
+                        >
+                          {actionLoadingId === offer.id
+                            ? "Processando..."
+                            : property?.listingType === "ALUGUEL_TEMPORADA"
+                            ? "Aceitar pedido (Pagar taxa 1% PayPal)"
+                            : "Aceitar proposta"}
+                        </button>
+
+                        <button
+                          onClick={() => recusarOferta(offer.id)}
+                          disabled={actionLoadingId === offer.id}
+                          className="border border-red-500/30 bg-red-500/10 text-red-300 px-4 py-2 rounded-xl text-xs font-bold hover:bg-red-500/20 transition cursor-pointer"
+                        >
+                          Recusar reserva
+                        </button>
+                      </div>
+                    )}
+
+                    {isAcceptedWaiting && (
+                      <div className="text-emerald-400 font-bold text-xs bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 rounded-xl">
+                        ✔ Aceito por você! Aguardando comprovante Pix do hóspede.
+                      </div>
+                    )}
+
+                    {isConfirmed && (
+                      <div className="text-emerald-300 font-black text-xs bg-emerald-400/20 border border-emerald-400/40 px-3 py-2 rounded-xl">
+                        🎉 Reserva Confirmada!
+                      </div>
+                    )}
+
+                    {isRejected && (
+                      <div className="text-red-400 font-medium text-xs">
+                        ❌ Reserva Recusada
+                      </div>
+                    )}
+
+                    {offer.status === "cancelled" && (
+                      <div className="text-slate-500 text-xs">Cancelada pelo hóspede</div>
                     )}
                   </div>
                 </div>
-
-                <div className="text-right flex flex-col gap-2">
-                  {offer.status === "open" && (
-                    <button
-                      onClick={() => aceitarOferta(offer.id)}
-                      disabled={actionLoadingId === offer.id}
-                      className="bg-white text-black px-4 py-2 rounded-xl font-semibold disabled:opacity-60"
-                    >
-                      {actionLoadingId === offer.id ? "Aceitando..." : "Aceitar proposta"}
-                    </button>
-                  )}
-
-                  {offer.status === "accepted" && !offer.contactReleased && (
-                    <>
-                      <div className="text-green-400 font-medium">✔ Aceita</div>
-                      <button
-                        onClick={() => prepararPaypal(offer.id)}
-                        className="bg-emerald-500 text-white px-4 py-2 rounded-xl font-semibold"
-                      >
-                        Pagar taxa com PayPal
-                      </button>
-                    </>
-                  )}
-
-                  {offer.status === "accepted" && offer.contactReleased && (
-                    <>
-                      <div className="text-green-400 font-medium">✔ Aceita</div>
-                      <div className="text-xs text-emerald-300">
-                        Contato liberado
-                      </div>
-                    </>
-                  )}
-
-                  {offer.status === "cancelled" && (
-                    <div className="text-slate-500">Cancelada</div>
-                  )}
-                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
       {paypalOfferId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-slate-950 p-6 text-white shadow-2xl">
-            <div className="flex items-center justify-between gap-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <div className="flex justify-between items-center pb-4 border-b border-white/10">
               <div>
-                <div className="text-sm text-slate-400">Pagamento da taxa</div>
-                <h2 className="mt-1 text-2xl font-bold">PayPal</h2>
+                <h3 className="font-bold text-lg">Pagar Taxa de Aceite</h3>
+                <p className="text-xs text-slate-400">1% do valor total da estadia via PayPal</p>
               </div>
 
               <button
                 type="button"
                 onClick={closePaypalModal}
-                className="rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300"
+                className="rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-300 hover:bg-white/10"
               >
                 Fechar
               </button>
             </div>
 
-            <div className="mt-4 rounded-2xl border border-blue-400/20 bg-blue-400/10 p-4 text-sm text-blue-200 space-y-2">
-              <p>Após a confirmação do pagamento, os dados do comprador serão liberados automaticamente nesta tela.</p>
-              <p className="font-bold border-t border-blue-400/20 pt-2 text-blue-100">
-                Esta taxa é paga apenas uma vez por anúncio. Caso a venda desta oferta não se concretize, os contatos de todas as outras ofertas deste imóvel serão liberados sem custo adicional.
+            <div className="mt-4 rounded-2xl border border-blue-400/20 bg-blue-400/10 p-4 text-xs text-blue-200 space-y-2 leading-relaxed">
+              <p>
+                Após a aprovação do pagamento da taxa de 1%, os dados de contato do hóspede serão liberados e o hóspede receberá sua chave Pix para pagamento do sinal.
               </p>
             </div>
 
@@ -314,7 +382,7 @@ export default function GerenciarOfertasPage() {
             )}
 
             {!paypalOrderId ? (
-              <div className="mt-6 text-slate-400">Preparando pagamento...</div>
+              <div className="mt-6 text-slate-400 text-center">Preparando checkout PayPal...</div>
             ) : (
               <div className="mt-6">
                 <PayPalButtons
@@ -327,13 +395,18 @@ export default function GerenciarOfertasPage() {
                     return paypalOrderId;
                   }}
                   onApprove={async (data) => {
-                    const res = await fetch("/api/paypal/capture-order", {
+                    const endpoint = property?.listingType === "ALUGUEL_TEMPORADA"
+                      ? "/api/paypal/capture-host-reservation-fee-order"
+                      : "/api/paypal/capture-order";
+
+                    const res = await fetch(endpoint, {
                       method: "POST",
                       headers: {
                         "Content-Type": "application/json",
                       },
                       body: JSON.stringify({
                         orderID: data.orderID,
+                        offerId: paypalOfferId,
                       }),
                     });
 

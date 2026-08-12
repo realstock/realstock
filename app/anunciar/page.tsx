@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useListingType } from "@/context/ListingTypeContext";
 import { 
   DndContext, 
   closestCenter, 
@@ -17,7 +18,7 @@ import {
   useSortable 
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { X, Sparkles, Upload, Music, ChevronRight, Camera, LayoutGrid, Home, FileText, MapPin, Video, Map } from "lucide-react";
+import { X, Sparkles, Upload, Music, ChevronRight, Camera, LayoutGrid, Home, FileText, MapPin, Video, Map, Calendar, AlertCircle } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import PropertyLocationPicker from "@/components/PropertyLocationPicker";
 import NeighborhoodAutocomplete from "@/components/NeighborhoodAutocomplete";
@@ -45,6 +46,15 @@ function SortableItem({ id, children }: { id: string | number, children: React.R
     </div>
   );
 }
+
+const SEASONAL_PROPERTY_TYPES = [
+  "APARTAMENTOS_URBANOS_STUDIOS",
+  "FLATS_APART_HOTEIS",
+  "CASAS_DE_PRAIA",
+  "CASAS_DE_CAMPO_CHACARAS",
+  "CASAS_EM_CONDOMINIOS_FECHADOS",
+  "ACONCHEGOS_RURAIS_ALTERNATIVOS",
+] as const;
 
 const PROPERTY_CATEGORIES = [
   "RESIDENCIAL",
@@ -128,6 +138,14 @@ const MAX_IMAGE_SIZE_BYTES = 500 * 1024;
 const MAX_DIMENSION = 1920;
 
 function formatLabel(value: string) {
+  if (value === "APARTAMENTOS_URBANOS_STUDIOS") return "Apartamentos urbanos e studios";
+  if (value === "FLATS_APART_HOTEIS") return "Flats e apart-hotéis";
+  if (value === "CASAS_DE_PRAIA") return "Casas de praia";
+  if (value === "CASAS_DE_CAMPO_CHACARAS") return "Casas de campo e chácaras";
+  if (value === "CASAS_EM_CONDOMINIOS_FECHADOS") return "Casas em condomínios fechados";
+  if (value === "ACONCHEGOS_RURAIS_ALTERNATIVOS") return "Aconchegos rurais e alternativos";
+  if (value === "TEMPORADA") return "Temporada";
+
   return value
     .toLowerCase()
     .replaceAll("_", " ")
@@ -269,6 +287,10 @@ function AnunciarFormContent() {
   const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
   const [existingVideoUrls, setExistingVideoUrls] = useState<string[]>([]);
   const [existingMusicUrl, setExistingMusicUrl] = useState<string>("");
+  const [existingCustomVideoUrl, setExistingCustomVideoUrl] = useState<string>("");
+
+  const [customVideo, setCustomVideo] = useState<File | null>(null);
+  const [customVideoPreview, setCustomVideoPreview] = useState<string>("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -345,6 +367,12 @@ function AnunciarFormContent() {
 
   const [category, setCategory] = useState("");
   const [propertyType, setPropertyType] = useState("");
+
+  const { listingType, setListingType } = useListingType();
+  const [minNights, setMinNights] = useState("");
+  const [maxGuests, setMaxGuests] = useState("");
+  const [depositPercentage, setDepositPercentage] = useState("20");
+  const [pixKey, setPixKey] = useState("");
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -430,6 +458,23 @@ function AnunciarFormContent() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
+  const [icalFeeds, setIcalFeeds] = useState<{ name: string; url: string }[]>([]);
+  const [showIcalAlertModal, setShowIcalAlertModal] = useState(false);
+
+  const addIcalFeed = () => {
+    setIcalFeeds([...icalFeeds, { name: "", url: "" }]);
+  };
+
+  const updateIcalFeed = (index: number, key: "name" | "url", value: string) => {
+    const updated = [...icalFeeds];
+    updated[index][key] = value;
+    setIcalFeeds(updated);
+  };
+
+  const removeIcalFeed = (index: number) => {
+    setIcalFeeds(icalFeeds.filter((_, i) => i !== index));
+  };
+
   useEffect(() => {
     if (editId && status === "authenticated") {
       setIsEditing(true);
@@ -480,6 +525,13 @@ function AnunciarFormContent() {
         setExistingImageUrls(p.images?.map((img: any) => img.imageUrl) || []);
         setExistingVideoUrls(p.videos?.map((vid: any) => vid.videoUrl) || []);
         setExistingMusicUrl(p.reelsMusicUrl || "");
+        setExistingCustomVideoUrl(p.customVideoUrl || "");
+        setListingType(p.listingType || "COMPRA_VENDA");
+        setMinNights(p.minNights?.toString() || "");
+        setMaxGuests(p.maxGuests?.toString() || "");
+        setDepositPercentage(p.depositPercentage?.toString() || "20");
+        setPixKey(p.pixKey || "");
+        setIcalFeeds(p.icalFeeds ? (p.icalFeeds as any) : []);
       }
     } catch (e) {
       console.error("Erro ao carregar imóvel para edição:", e);
@@ -567,9 +619,12 @@ function AnunciarFormContent() {
   }, [status, session, router]);
 
   const typeOptions = useMemo(() => {
+    if (listingType === "ALUGUEL_TEMPORADA") {
+      return SEASONAL_PROPERTY_TYPES as unknown as string[];
+    }
     if (!category) return [];
     return PROPERTY_TYPES[category as keyof typeof PROPERTY_TYPES] || [];
-  }, [category]);
+  }, [category, listingType]);
 
   function buildGoogleMapsLinkFromCoords(
     lat: number | null,
@@ -916,6 +971,18 @@ function AnunciarFormContent() {
       return;
     }
 
+    if (listingType === "ALUGUEL_TEMPORADA" && (!minNights || Number(minNights) <= 0)) {
+      setError("Informe a quantidade mínima de noites para o aluguel por temporada.");
+      return;
+    }
+
+    const hasValidIcal = icalFeeds.some((f) => f.url && f.url.trim().length > 0);
+    if (listingType === "ALUGUEL_TEMPORADA" && !hasValidIcal) {
+      setShowIcalAlertModal(true);
+      setError("Para verificação de sua propriedade é necessário o cadastro de no mínimo 1 calendário de outro portal");
+      return;
+    }
+
     if (
       !title ||
       !description ||
@@ -950,7 +1017,7 @@ function AnunciarFormContent() {
       setUploadProgress(5);
       setStatusMessage("Preparando arquivos...");
 
-      const totalSteps = images.length + (reelsMusic ? 1 : 0) + videos.length + 1; // +1 for final save
+      const totalSteps = images.length + (reelsMusic ? 1 : 0) + videos.length + (customVideo ? 1 : 0) + 1; // +1 for final save
       let currentStep = 0;
 
       const updateProgress = (msg: string) => {
@@ -995,6 +1062,21 @@ function AnunciarFormContent() {
           }
       }
 
+      // Upload de Vídeo Pronto (1 Minuto)
+      let uploadedCustomVideoUrl = "";
+      if (customVideo) {
+          updateProgress("Enviando vídeo próprio...");
+          const formData = new FormData();
+          formData.append("file", customVideo);
+          const res = await fetch("/api/upload-image", { method: "POST", body: formData });
+          const data = await res.json();
+          if (data.success) {
+              uploadedCustomVideoUrl = data.imageUrl;
+          } else {
+              throw new Error(`Falha ao enviar o vídeo próprio: ${data.error}`);
+          }
+      }
+
       // Upload de Vídeos
       const uploadedVideoUrls: string[] = [];
       if (videos.length > 0) {
@@ -1024,6 +1106,11 @@ function AnunciarFormContent() {
         title,
         description,
         price: Number(price),
+        listing_type: listingType,
+        min_nights: listingType === "ALUGUEL_TEMPORADA" ? Number(minNights) : null,
+        max_guests: listingType === "ALUGUEL_TEMPORADA" && maxGuests ? Number(maxGuests) : null,
+        deposit_percentage: listingType === "ALUGUEL_TEMPORADA" && depositPercentage ? Number(depositPercentage) : 20,
+        pix_key: listingType === "ALUGUEL_TEMPORADA" ? pixKey : "",
 
         legal_status: legalStatus,
         area_total: areaTotal,
@@ -1064,6 +1151,8 @@ function AnunciarFormContent() {
         images: [...existingImageUrls, ...uploadedImageUrls],
         videos: [...existingVideoUrls, ...uploadedVideoUrls],
         reels_music_url: uploadedMusicUrl || existingMusicUrl,
+        custom_video_url: uploadedCustomVideoUrl || existingCustomVideoUrl,
+        ical_feeds: icalFeeds,
       };
 
       const endpoint = isEditing ? `/api/anunciar/${editId}` : "/api/anunciar";
@@ -1165,13 +1254,6 @@ function AnunciarFormContent() {
                 checked: condominium,
                 onChange: setCondominium,
               },
-              { label: "Piscina", checked: pool, onChange: setPool },
-              { label: "Frente mar", checked: frontSea, onChange: setFrontSea },
-              {
-                label: "Aceita financiamento",
-                checked: acceptsFinancing,
-                onChange: setAcceptsFinancing,
-              },
             ]}
           />
 
@@ -1189,22 +1271,55 @@ function AnunciarFormContent() {
       );
     }
 
+    if (category === "TEMPORADA") {
+      return (
+        <Grid2>
+          <Field label="Quartos">
+            <input
+              type="number"
+              value={bedrooms}
+              onChange={(e) => setBedrooms(e.target.value)}
+              className="input"
+            />
+          </Field>
+          <Field label="Suítes">
+            <input
+              type="number"
+              value={suites}
+              onChange={(e) => setSuites(e.target.value)}
+              className="input"
+            />
+          </Field>
+          <Field label="Banheiros">
+            <input
+              type="number"
+              value={bathrooms}
+              onChange={(e) => setBathrooms(e.target.value)}
+              className="input"
+            />
+          </Field>
+          <Field label="Vagas">
+            <input
+              type="number"
+              value={parkingSpaces}
+              onChange={(e) => setParkingSpaces(e.target.value)}
+              className="input"
+            />
+          </Field>
+        </Grid2>
+      );
+    }
+
     if (category === "TERRENOS") {
       return (
         <>
           <ToggleRow
             items={[
               {
-                label: "Aceita financiamento",
-                checked: acceptsFinancing,
-                onChange: setAcceptsFinancing,
-              },
-              {
                 label: "Condomínio",
                 checked: condominium,
                 onChange: setCondominium,
               },
-              { label: "Frente mar", checked: frontSea, onChange: setFrontSea },
             ]}
           />
 
@@ -1394,7 +1509,43 @@ function AnunciarFormContent() {
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 lg:grid-cols-[320px_1fr_420px]">
             <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
-              {!category ? (
+              {listingType === "ALUGUEL_TEMPORADA" ? (
+                <>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-gradient-to-br from-slate-400 to-slate-600 text-white shadow-lg">
+                       <Home size={24} />
+                    </div>
+                    <div>
+                       <h3 className="text-xl font-black text-white tracking-tighter uppercase italic leading-tight">1. Tipo do imóvel</h3>
+                       <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest">Especificação de Temporada</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {SEASONAL_PROPERTY_TYPES.map((item) => {
+                      const active = propertyType === item;
+
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => {
+                            setCategory("TEMPORADA");
+                            setPropertyType(item);
+                          }}
+                          className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                            active
+                              ? "border-white bg-white text-slate-900"
+                              : "border-white/10 bg-slate-900/70 text-white hover:bg-slate-800"
+                          }`}
+                        >
+                          {formatLabel(item)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : !category ? (
                 <>
                   <div className="flex items-center gap-3 mb-6">
                     <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-gradient-to-br from-slate-400 to-slate-600 text-white shadow-lg">
@@ -1498,6 +1649,7 @@ function AnunciarFormContent() {
                     </div>
 
                     <div className="space-y-4">
+
                       <Field label="Título *">
                         <input
                           value={title}
@@ -1508,13 +1660,13 @@ function AnunciarFormContent() {
                       </Field>
 
                       <Grid2>
-                        <Field label="Preço *">
+                        <Field label={listingType === "ALUGUEL_TEMPORADA" ? "Preço da Diária *" : "Preço *"}>
                           <input
                             type="number"
                             value={price}
                             onChange={(e) => setPrice(e.target.value)}
                             className="input"
-                            placeholder="Ex.: 850000"
+                            placeholder={listingType === "ALUGUEL_TEMPORADA" ? "Ex.: 250" : "Ex.: 850000"}
                           />
                         </Field>
 
@@ -1528,22 +1680,76 @@ function AnunciarFormContent() {
                         </Field>
                       </Grid2>
 
-                      <Field label="Situação jurídica *">
-                        <select
-                          value={legalStatus}
-                          onChange={(e) => setLegalStatus(e.target.value)}
-                          className="input"
-                        >
-                          <option value="Regular">Regular</option>
-                          <option value="Matrícula">Matrícula</option>
-                          <option value="Escritura">Escritura</option>
-                          <option value="Posse">Posse</option>
-                          <option value="Usucapião">Usucapião</option>
-                          <option value="Inventário">Inventário</option>
-                          <option value="Leilão">Leilão</option>
-                          <option value="Outro">Outro</option>
-                        </select>
-                      </Field>
+                      {listingType === "ALUGUEL_TEMPORADA" && (
+                        <>
+                          <Grid2>
+                            <Field label="Mínimo de noites *">
+                              <input
+                                type="number"
+                                value={minNights}
+                                onChange={(e) => setMinNights(e.target.value)}
+                                className="input border-emerald-500/20 focus:border-emerald-500"
+                                placeholder="Ex.: 3"
+                                min="1"
+                              />
+                            </Field>
+
+                            <Field label="Máx. de Hóspedes suportados *">
+                              <input
+                                type="number"
+                                value={maxGuests}
+                                onChange={(e) => setMaxGuests(e.target.value)}
+                                className="input border-emerald-500/20 focus:border-emerald-500"
+                                placeholder="Ex.: 6"
+                                min="1"
+                              />
+                            </Field>
+                          </Grid2>
+
+                          <Grid2>
+                            <Field label="Sinal de Confirmação (%) *">
+                              <input
+                                type="number"
+                                value={depositPercentage}
+                                onChange={(e) => setDepositPercentage(e.target.value)}
+                                className="input border-emerald-500/20 focus:border-emerald-500"
+                                placeholder="Ex.: 20"
+                                min="1"
+                                max="100"
+                              />
+                            </Field>
+
+                            <Field label="Chave Pix para Recebimento do Sinal *">
+                              <input
+                                type="text"
+                                value={pixKey}
+                                onChange={(e) => setPixKey(e.target.value)}
+                                className="input border-emerald-500/20 focus:border-emerald-500"
+                                placeholder="CPF, E-mail, Celular ou Chave Aleatória"
+                              />
+                            </Field>
+                          </Grid2>
+                        </>
+                      )}
+
+                      {listingType !== "ALUGUEL_TEMPORADA" && (
+                        <Field label="Situação jurídica *">
+                          <select
+                            value={legalStatus}
+                            onChange={(e) => setLegalStatus(e.target.value)}
+                            className="input"
+                          >
+                            <option value="Regular">Regular</option>
+                            <option value="Matrícula">Matrícula</option>
+                            <option value="Escritura">Escritura</option>
+                            <option value="Posse">Posse</option>
+                            <option value="Usucapião">Usucapião</option>
+                            <option value="Inventário">Inventário</option>
+                            <option value="Leilão">Leilão</option>
+                            <option value="Outro">Outro</option>
+                          </select>
+                        </Field>
+                      )}
 
                       {renderSpecificFields()}
 
@@ -1907,6 +2113,9 @@ function AnunciarFormContent() {
                             </div>
                             <span className="text-[10px] font-bold text-slate-500">MÁX. 10 CLIPES</span>
                          </div>
+                         <p className="text-[11px] text-slate-400 leading-relaxed">
+                            Caso você queira que a IA crie um vídeo automático, adicione os vídeos de até 10 segundos aqui.
+                         </p>
 
                          <div className="relative">
                             <input
@@ -2005,77 +2214,222 @@ function AnunciarFormContent() {
                       </div>
 
                       <div className="space-y-6">
-                         <div className="flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
-                            <span className="text-xs font-black text-slate-200 uppercase tracking-widest">Trilha Sonora</span>
-                         </div>
-
-                         <div className="relative">
-                            <input
-                              id="reels-music-input"
-                              type="file"
-                              accept="audio/*"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0] || null;
-                                setReelsMusic(file);
-                                if (file) {
-                                    setExistingMusicUrl(""); 
-                                    const url = URL.createObjectURL(file);
-                                    setReelsMusicPreview(url);
-                                }
-                              }}
-                              className="hidden"
-                            />
-                            <label 
-                              htmlFor="reels-music-input"
-                              className="flex items-center gap-4 p-4 rounded-2xl border border-white/10 bg-slate-950/50 hover:bg-slate-900 cursor-pointer transition-all group/music"
-                            >
-                               <div className="h-12 w-12 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover/music:scale-110 transition-transform">
-                                  <Music size={24} />
+                         {/* VÍDEO PRONTO DE 1 MINUTO */}
+                         <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                               <div className="flex items-center gap-2">
+                                  <div className="h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
+                                  <span className="text-xs font-black text-slate-200 uppercase tracking-widest">Vídeo de 1 Minuto Pronto (Opcional)</span>
                                </div>
-                               <div className="flex-1 min-w-0">
-                                  <div className="text-xs font-bold text-white truncate uppercase tracking-widest">
-                                     {reelsMusic ? reelsMusic.name : existingMusicUrl ? "Trilha sonora ativa" : "Escolher Trilha Sonora"}
+                            </div>
+                            <p className="text-[11px] text-slate-400 leading-relaxed">
+                               Caso você já tenha um vídeo pronto e queira utilizá-lo no anúncio e nas publicações, faça o upload dele aqui.
+                            </p>
+                            <div className="relative">
+                               <input
+                                 id="custom-video-input"
+                                 type="file"
+                                 accept="video/*"
+                                 onChange={(e) => {
+                                   const file = e.target.files?.[0] || null;
+                                   setCustomVideo(file);
+                                   if (file) {
+                                       setExistingCustomVideoUrl("");
+                                       const url = URL.createObjectURL(file);
+                                       setCustomVideoPreview(url);
+                                   }
+                                 }}
+                                 className="hidden"
+                               />
+                               <label 
+                                 htmlFor="custom-video-input"
+                                 className="flex items-center gap-4 p-4 rounded-2xl border border-white/10 bg-slate-950/50 hover:bg-slate-900 cursor-pointer transition-all group/custom-video"
+                               >
+                                  <div className="h-12 w-12 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400 group-hover/custom-video:scale-110 transition-transform">
+                                     <Video size={24} />
                                   </div>
-                                  <div className="text-[10px] text-slate-500 uppercase">Personalize seu Reels</div>
+                                  <div className="flex-1 min-w-0">
+                                     <div className="text-xs font-bold text-white truncate uppercase tracking-widest">
+                                        {customVideo ? customVideo.name : existingCustomVideoUrl ? "Vídeo próprio ativo" : "Enviar Vídeo de 1 Minuto"}
+                                     </div>
+                                     <div className="text-[10px] text-slate-500 uppercase">Seu vídeo finalizado</div>
+                                  </div>
+                               </label>
+                            </div>
+                            {(customVideoPreview || existingCustomVideoUrl) && (
+                               <div className="p-4 rounded-2xl bg-purple-500/5 border border-purple-500/20 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                     <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest italic">Visualização do Vídeo</span>
+                                     <button 
+                                        type="button" 
+                                        onClick={() => {
+                                           setCustomVideo(null);
+                                           setCustomVideoPreview("");
+                                           setExistingCustomVideoUrl("");
+                                        }}
+                                        className="text-red-400 hover:text-red-300 transition-colors"
+                                     >
+                                        <X size={14} />
+                                     </button>
+                                  </div>
+                                  <video src={customVideoPreview || existingCustomVideoUrl} controls className="w-full rounded-lg max-h-48" />
                                </div>
-                            </label>
+                            )}
                          </div>
 
-                         {(reelsMusicPreview || existingMusicUrl) && (
-                            <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 space-y-3">
-                               <div className="flex items-center justify-between">
-                                  <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest italic">Preview do Áudio</span>
-                                  <button 
-                                     type="button" 
-                                     onClick={() => {
-                                        setReelsMusic(null);
-                                        setReelsMusicPreview("");
-                                        setExistingMusicUrl("");
-                                     }}
-                                     className="text-red-400 hover:text-red-300 transition-colors"
-                                  >
-                                     <X size={14} />
-                                  </button>
-                               </div>
-                               <audio src={reelsMusicPreview || existingMusicUrl} controls className="w-full h-8" />
+                         {/* TRILHA SONORA */}
+                         <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                               <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
+                               <span className="text-xs font-black text-slate-200 uppercase tracking-widest">Trilha Sonora</span>
                             </div>
-                         )}
 
-                         <div className="p-6 rounded-[24px] bg-indigo-500/10 border border-indigo-500/20 relative overflow-hidden">
-                            <div className="absolute -right-4 -bottom-4 opacity-10 text-indigo-400 rotate-12">
-                               <Sparkles size={80} />
+                            <div className="relative">
+                               <input
+                                 id="reels-music-input"
+                                 type="file"
+                                 accept="audio/*"
+                                 onChange={(e) => {
+                                   const file = e.target.files?.[0] || null;
+                                   setReelsMusic(file);
+                                   if (file) {
+                                       setExistingMusicUrl(""); 
+                                       const url = URL.createObjectURL(file);
+                                       setReelsMusicPreview(url);
+                                   }
+                                 }}
+                                 className="hidden"
+                               />
+                               <label 
+                                 htmlFor="reels-music-input"
+                                 className="flex items-center gap-4 p-4 rounded-2xl border border-white/10 bg-slate-950/50 hover:bg-slate-900 cursor-pointer transition-all group/music"
+                               >
+                                  <div className="h-12 w-12 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover/music:scale-110 transition-transform">
+                                     <Music size={24} />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                     <div className="text-xs font-bold text-white truncate uppercase tracking-widest">
+                                        {reelsMusic ? reelsMusic.name : existingMusicUrl ? "Trilha sonora ativa" : "Escolher Trilha Sonora"}
+                                     </div>
+                                     <div className="text-[10px] text-slate-500 uppercase">Personalize seu Reels</div>
+                                  </div>
+                               </label>
                             </div>
-                            <div className="relative z-10">
-                               <p className="text-[10px] leading-relaxed text-slate-400 font-medium">
-                                  <strong className="text-slate-200">Dica Estratégica:</strong> Selecione até 10 clipes. O sistema usará o miolo de 6 segundos de cada um para criar um Reels dinâmico e sincronizado com a música.
-                               </p>
+
+                            {(reelsMusicPreview || existingMusicUrl) && (
+                               <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                     <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest italic">Preview do Áudio</span>
+                                     <button 
+                                        type="button" 
+                                        onClick={() => {
+                                           setReelsMusic(null);
+                                           setReelsMusicPreview("");
+                                           setExistingMusicUrl("");
+                                        }}
+                                        className="text-red-400 hover:text-red-300 transition-colors"
+                                     >
+                                        <X size={14} />
+                                     </button>
+                                  </div>
+                                  <audio src={reelsMusicPreview || existingMusicUrl} controls className="w-full h-8" />
+                               </div>
+                            )}
+
+                            <div className="p-6 rounded-[24px] bg-indigo-500/10 border border-indigo-500/20 relative overflow-hidden">
+                               <div className="absolute -right-4 -bottom-4 opacity-10 text-indigo-400 rotate-12">
+                                  <Sparkles size={80} />
+                               </div>
+                               <div className="relative z-10">
+                                  <p className="text-[10px] leading-relaxed text-slate-400 font-medium">
+                                     <strong className="text-slate-200">Dica Estratégica:</strong> Selecione até 10 clipes. O sistema usará o miolo de 6 segundos de cada um para criar um Reels dinâmico e sincronizado com a música.
+                                  </p>
+                               </div>
                             </div>
                          </div>
                       </div>
                    </div>
                 </div>
              </div>
+
+             {/* SEÇÃO DE CALENDÁRIOS ICAL - SOMENTE TEMPORADA */}
+             {listingType === "ALUGUEL_TEMPORADA" && (
+               <div id="ical-section" className="rounded-[28px] border border-amber-500/30 bg-white/5 p-5 space-y-6">
+                 {/* Banner de Verificação Obrigatória iCal */}
+                 <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-4 text-amber-300 text-xs font-semibold flex items-start gap-3 shadow-lg shadow-amber-500/5 mb-4">
+                   <AlertCircle size={22} className="shrink-0 text-amber-400 mt-0.5 animate-pulse" />
+                   <div>
+                     <span className="font-black text-amber-200 uppercase tracking-wider block mb-1 text-[11px]">
+                       Verificação Obrigatória do Imóvel
+                     </span>
+                     Para verificação de sua propriedade é necessário o cadastro de no mínimo 1 calendário de outro portal (como Booking, Airbnb ou VRBO).
+                   </div>
+                 </div>
+
+                 <div>
+                   <div className="flex items-center gap-4 mb-6">
+                     <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20">
+                        <Calendar size={24} />
+                     </div>
+                     <div>
+                        <h3 className="text-xl font-black text-white tracking-tighter uppercase italic leading-tight">9. Sincronização iCal</h3>
+                        <p className="text-[9px] text-emerald-400 font-black uppercase tracking-widest">Airbnb, Booking, VRBO</p>
+                     </div>
+                   </div>
+
+                   <p className="text-xs text-slate-400 mb-4 leading-relaxed font-medium">
+                     Cole os links de exportação de calendário iCal de outras plataformas para atualizar a disponibilidade deste imóvel automaticamente.
+                   </p>
+
+                   <div className="space-y-4">
+                     {icalFeeds.map((feed, index) => (
+                       <div key={index} className="p-4 rounded-2xl border border-white/5 bg-slate-950/40 space-y-3">
+                         <div className="flex justify-between items-center">
+                           <span className="text-[10px] uppercase font-bold text-slate-500">Calendário #{index + 1}</span>
+                           <button
+                             type="button"
+                             onClick={() => removeIcalFeed(index)}
+                             className="text-red-400 hover:text-red-300 text-xs font-bold transition-colors cursor-pointer"
+                           >
+                             Remover
+                           </button>
+                         </div>
+                         <Grid2>
+                           <Field label="Nome da Plataforma *">
+                             <input
+                               type="text"
+                               value={feed.name}
+                               onChange={(e) => updateIcalFeed(index, "name", e.target.value)}
+                               placeholder="Ex.: Airbnb"
+                               className="input font-sans"
+                               required
+                             />
+                           </Field>
+                           <Field label="Link iCal *">
+                             <input
+                               type="url"
+                               value={feed.url}
+                               onChange={(e) => updateIcalFeed(index, "url", e.target.value)}
+                               placeholder="https://www.airbnb.com.br/calendar/ical/..."
+                               className="input font-sans"
+                               required
+                             />
+                           </Field>
+                         </Grid2>
+                       </div>
+                     ))}
+
+                     <button
+                       type="button"
+                       onClick={addIcalFeed}
+                       className="w-full py-3.5 rounded-2xl border border-dashed border-emerald-500/30 text-emerald-400 text-xs font-bold hover:bg-emerald-500/5 transition cursor-pointer flex items-center justify-center gap-2"
+                     >
+                       + Conectar Novo Calendário
+                     </button>
+                   </div>
+                 </div>
+               </div>
+             )}
 
              <div className="pt-8">
                <button
@@ -2145,6 +2499,31 @@ function AnunciarFormContent() {
            </div>
         </div>
       )}
+       {/* POPUP MODAL DE ERRO ICAL OBRIGATÓRIO */}
+       {showIcalAlertModal && (
+         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md">
+           <div className="w-full max-w-md rounded-[28px] border border-amber-500/40 bg-slate-900 p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400">
+               <Calendar size={28} />
+             </div>
+             <h3 className="mb-2 text-lg font-black text-white uppercase tracking-tight">Verificação da Propriedade</h3>
+             <p className="mb-6 text-sm text-slate-300 leading-relaxed font-medium">
+               Para verificação de sua propriedade é necessário o cadastro de no mínimo 1 calendário de outro portal
+             </p>
+             <button
+               type="button"
+               onClick={() => {
+                 setShowIcalAlertModal(false);
+                 const el = document.getElementById("ical-section");
+                 if (el) el.scrollIntoView({ behavior: "smooth" });
+               }}
+               className="w-full rounded-xl bg-amber-500 py-3.5 text-sm font-black text-slate-950 transition hover:bg-amber-400 cursor-pointer shadow-lg shadow-amber-500/20"
+             >
+               Entendi, Cadastrar Calendário
+             </button>
+           </div>
+         </div>
+       )}
     </main>
   );
 }

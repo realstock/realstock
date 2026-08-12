@@ -20,6 +20,7 @@ type PropertyPin = {
   lng: number;
   mainImage: string | null;
   sponsoredUntil?: string | null;
+  listingType?: string | null;
 };
 
 type MapBounds = {
@@ -506,9 +507,9 @@ export default function CesiumMapClient({
 
               <Link
                 href={`/imovel/${selectedProperty.id}`}
-                className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm text-white"
+                className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm text-white hover:bg-white/10 transition"
               >
-                Fazer oferta
+                {selectedProperty.listingType === "ALUGUEL_TEMPORADA" ? "Reservar" : "Fazer oferta"}
               </Link>
             </div>
           </div>

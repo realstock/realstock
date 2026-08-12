@@ -215,12 +215,13 @@ export async function POST(req: NextRequest) {
         // Fazer upload de imagens (carrossel) ou vídeo (reels) dependendo do postType selecionado
         const mediaIds: string[] = [];
 
-        if (postType === "reels" && property.reelsVideoUrl) {
+        const videoUrl = property.customVideoUrl || property.reelsVideoUrl;
+        if (postType === "reels" && videoUrl) {
           let tempFile = "";
           let transcodedFile = "";
           try {
             console.log("Downloading video for X Reels...");
-            tempFile = await downloadToTempFile(property.reelsVideoUrl);
+            tempFile = await downloadToTempFile(videoUrl);
             
             console.log("Checking if transcoding is needed...");
             transcodedFile = await transcodeIfNeeded(tempFile);
