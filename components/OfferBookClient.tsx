@@ -295,12 +295,14 @@ export default function OfferBookClient({
         {isSeasonal ? "Solicitação de Reserva" : "Livro de ofertas"}
       </div>
 
-      <div className="mt-2 text-sm text-slate-300">
-        {isSeasonal ? "Valor da diária: " : "Valor pedido: "}
-        <span className="font-semibold text-emerald-400">
-          R$ {formatMoney(askingPrice)} {isSeasonal ? "/ noite" : ""}
-        </span>
-      </div>
+      {!isSeasonal && (
+        <div className="mt-2 text-sm text-slate-300">
+          Valor pedido:{" "}
+          <span className="font-semibold text-emerald-400">
+            R$ {formatMoney(askingPrice)}
+          </span>
+        </div>
+      )}
 
       {message && (
         <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-3 text-sm text-emerald-300">
@@ -315,7 +317,7 @@ export default function OfferBookClient({
       )}
 
       {!isOwner && (
-        <form onSubmit={handleSubmitOffer} className="mt-5 space-y-3">
+        <form onSubmit={handleSubmitOffer} className="mt-4 space-y-3">
           {isSeasonal ? (
             <div className="space-y-3">
               <div>
