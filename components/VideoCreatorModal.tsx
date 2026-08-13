@@ -10,6 +10,7 @@ interface VideoCreatorModalProps {
   propertyTitle: string;
   propertyCity?: string | null;
   propertyState?: string | null;
+  listingType?: string | null;
   images: { imageUrl: string, title?: string; city?: string; state?: string }[];
   videos?: { videoUrl: string }[];
   reelsMusicUrl?: string | null;
@@ -17,7 +18,7 @@ interface VideoCreatorModalProps {
   onSuccess?: (videoUrl: string) => void;
 }
 
-function renderOverlays(ctx: CanvasRenderingContext2D, width: number, height: number, title: string, city?: string | null, state?: string | null) {
+function renderOverlays(ctx: CanvasRenderingContext2D, width: number, height: number, title: string, city?: string | null, state?: string | null, listingType?: string | null) {
   // Overlay de Gradiente
   const grad = ctx.createLinearGradient(0, height * 0.6, 0, height);
   grad.addColorStop(0, "transparent");
@@ -25,37 +26,56 @@ function renderOverlays(ctx: CanvasRenderingContext2D, width: number, height: nu
   ctx.fillStyle = grad;
   ctx.fillRect(0, height * 0.6, width, height * 0.4);
 
-  // Texto: Título
-  const displayTitle = title.toUpperCase();
+  const isSeasonal = listingType === "ALUGUEL_TEMPORADA";
+  const displayTitle = isSeasonal
+    ? "PROCURANDO LUGAR PARA SE HOSPEDAR? CONHEÇA ESTE ESPAÇO!"
+    : title.toUpperCase();
+
   ctx.fillStyle = "white";
-  ctx.font = "bold 44px Inter, sans-serif";
+  ctx.font = "bold 40px Inter, sans-serif";
   ctx.shadowColor = "rgba(0,0,0,0.5)";
   ctx.shadowBlur = 10;
   ctx.textAlign = "center";
   
   const words = displayTitle.split(" ");
   let titleY = height - 240;
-  if (words.length > 3) {
-      ctx.fillText(words.slice(0, 3).join(" "), width / 2, titleY);
-      ctx.fillText(words.slice(3).join(" "), width / 2, titleY + 55);
-      titleY += 55;
-  } else {
-      ctx.fillText(displayTitle, width / 2, titleY);
+  let line = "";
+  const lines: string[] = [];
+
+  for (let n = 0; n < words.length; n++) {
+    const testLine = line + words[n] + " ";
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > width - 80 && n > 0) {
+      lines.push(line.trim());
+      line = words[n] + " ";
+    } else {
+      line = testLine;
+    }
   }
+  lines.push(line.trim());
+
+  lines.forEach((l, index) => {
+    ctx.fillText(l, width / 2, titleY + index * 50);
+  });
+
+  titleY += lines.length * 50;
 
   // Texto: Cidade e Estado
-  const locationText = [city, state].filter(Boolean).join(" - ");
+  const locationText = isSeasonal
+    ? [city, state, "ALUGUEL TEMPORADA"].filter(Boolean).join(" • ")
+    : [city, state].filter(Boolean).join(" - ");
+
   if (locationText) {
       ctx.fillStyle = "#38bdf8"; // sky-400
-      ctx.font = "bold 32px Inter, sans-serif";
-      ctx.fillText(locationText.toUpperCase(), width / 2, titleY + 60);
+      ctx.font = "bold 28px Inter, sans-serif";
+      ctx.fillText(locationText.toUpperCase(), width / 2, titleY + 20);
   }
 
   // Desenhar site/footer
   ctx.fillStyle = "rgba(255,255,255,0.7)";
   ctx.font = "bold 24px Inter, sans-serif";
   ctx.shadowBlur = 0;
-  ctx.fillText("www.realstock.com.br", width / 2, titleY + 115);
+  ctx.fillText("www.realstock.com.br", width / 2, titleY + 70);
 }
 
 export default function VideoCreatorModal({ 
@@ -64,6 +84,7 @@ export default function VideoCreatorModal({
   propertyTitle, 
   propertyCity, 
   propertyState, 
+  listingType,
   images, 
   videos = [],
   reelsMusicUrl,
@@ -333,7 +354,7 @@ export default function VideoCreatorModal({
         const dH = img.height * scale;
         ctx.drawImage(img, (width - dW) / 2, (height - dH) / 2, dW, dH);
     }
-    renderOverlays(ctx, width, height, propertyTitle, propertyCity, propertyState);
+    renderOverlays(ctx, width, height, propertyTitle, propertyCity, propertyState, listingType);
     
     // Espera explícita para o Safari estabilizar o stream
     await new Promise(r => setTimeout(r, 500));
@@ -392,7 +413,7 @@ export default function VideoCreatorModal({
                 const dH = vH * scale;
                 ctx.drawImage(vid, (width - dW) / 2, (height - dH) / 2, dW, dH);
 
-                renderOverlays(ctx, width, height, propertyTitle, propertyCity, propertyState);
+                renderOverlays(ctx, width, height, propertyTitle, propertyCity, propertyState, listingType);
                 
                 await new Promise(resolve => requestAnimationFrame(resolve));
 
@@ -435,7 +456,7 @@ export default function VideoCreatorModal({
             const dH = (img.height * (dW / img.width));
             ctx.drawImage(img, (width - dW) / 2, (height - dH) / 2, dW, dH);
 
-            renderOverlays(ctx, width, height, currentTitle, currentCity, currentState);
+            renderOverlays(ctx, width, height, currentTitle, currentCity, currentState, listingType);
             
             await new Promise(resolve => requestAnimationFrame(resolve));
 
@@ -515,12 +536,16 @@ export default function VideoCreatorModal({
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                 <div className="absolute bottom-12 left-0 w-full px-6 text-center">
                   <h3 className="text-xl font-bold uppercase tracking-tight">
-                    {images[currentImageIndex]?.title || propertyTitle}
+                    {listingType === "ALUGUEL_TEMPORADA"
+                      ? "Procurando lugar para se hospedar? Conheça este espaço!"
+                      : images[currentImageIndex]?.title || propertyTitle}
                   </h3>
                   <p className="mt-2 text-sky-400 font-bold text-xs">
-                    {images[currentImageIndex]?.city && images[currentImageIndex]?.state 
-                      ? `${images[currentImageIndex].city} • ${images[currentImageIndex].state}`.toUpperCase()
-                      : "REALSTOCK • O SEU IMÓVEL EM DESTAQUE"}
+                    {listingType === "ALUGUEL_TEMPORADA"
+                      ? [propertyCity, propertyState, "ALUGUEL TEMPORADA"].filter(Boolean).join(" • ").toUpperCase()
+                      : images[currentImageIndex]?.city && images[currentImageIndex]?.state 
+                        ? `${images[currentImageIndex].city} • ${images[currentImageIndex].state}`.toUpperCase()
+                        : "REALSTOCK • O SEU IMÓVEL EM DESTAQUE"}
                   </p>
                 </div>
               </div>

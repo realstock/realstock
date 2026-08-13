@@ -1286,6 +1286,7 @@ export default function MeusAnunciosPage() {
           propertyTitle={selectedPropertyForVideo.title}
           propertyCity={selectedPropertyForVideo.city}
           propertyState={selectedPropertyForVideo.state}
+          listingType={selectedPropertyForVideo.listingType}
           propertyId={selectedPropertyForVideo.id}
           images={selectedPropertyForVideo.images || []}
           videos={selectedPropertyForVideo.videos || []}

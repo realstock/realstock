@@ -33,11 +33,14 @@ export async function POST(req: Request) {
       );
     }
 
-    if (offer.status === "accepted") {
+    const hasReceipt = !!(offer.pixReceiptUrl || (offer as any).payment_receipt_url);
+    const isConfirmed = offer.status === "RESERVA_CONFIRMADA";
+
+    if (hasReceipt || isConfirmed) {
       return NextResponse.json(
         {
           success: false,
-          error: "Uma oferta aceita não pode ser cancelada pelo comprador.",
+          error: "Uma reserva não pode ser cancelada após o envio do comprovante.",
         },
         { status: 400 }
       );

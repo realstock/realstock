@@ -150,7 +150,12 @@ export async function POST(req: NextRequest) {
       ? `#RealStock #AluguelTemporada #Temporada #Hospedagem #${property.city.replace(/\s+/g, '')}`
       : `#RealStock #Imoveis #Oportunidade #VendaImoveis #${property.city.replace(/\s+/g, '')}`;
 
-    const caption = `🌟 ${property.title.toUpperCase()}\n\n📍 LOCALIZAÇÃO: ${property.city} - ${property.state}\n${priceLabel}\n\n📋 DETALHES DO IMÓVEL:\n${details}\n\n📝 DESCRIÇÃO:\n${property.description || "Confira os detalhes deste incrível imóvel em nosso portal."}\n\n${hashtags}\n\nwww.realstock.com.br`;
+    const propertyUrl = `https://www.realstock.com.br/imovel/${property.id}`;
+    const descStr = property.description ? ` - ${property.description}` : "";
+
+    const caption = isSeasonal
+      ? `Pensando em viajar para ${property.city} reserve este imovel no ${propertyUrl}${descStr}`
+      : `🌟 ${property.title.toUpperCase()}\n\n📍 LOCALIZAÇÃO: ${property.city} - ${property.state}\n${priceLabel}\n\n📋 DETALHES DO IMÓVEL:\n${details}\n\n📝 DESCRIÇÃO:\n${property.description || "Confira os detalhes deste incrível imóvel em nosso portal."}\n\n${hashtags}\n\nwww.realstock.com.br`;
 
     let finalMediaId = null;
 

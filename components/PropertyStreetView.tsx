@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Navigation, MapPin } from "lucide-react";
 
 type Props = {
@@ -11,10 +11,21 @@ type Props = {
 export default function PropertyStreetView({ latitude, longitude }: Props) {
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    if (imgRef.current && imgRef.current.complete) {
+      if (imgRef.current.naturalWidth > 0) {
+        setIsLoading(false);
+      }
+    }
+  }, [latitude, longitude]);
 
   if (!latitude || !longitude) {
     return null;
   }
+
+  const imageUrl = `/api/streetview?lat=${latitude}&lng=${longitude}`;
 
   return (
     <div className="rounded-[24px] border border-white/10 bg-white/5 p-5 mt-8">
@@ -32,8 +43,11 @@ export default function PropertyStreetView({ latitude, longitude }: Props) {
 
       <div className="relative overflow-hidden rounded-2xl border border-white/10 h-[280px] bg-slate-900/50">
         {isLoading && !hasError && (
-          <div className="absolute inset-0 flex items-center justify-center animate-pulse bg-white/5">
-            <div className="text-xs text-slate-400">Carregando visão da rua...</div>
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-900/60 z-10">
+            <div className="flex items-center gap-2 text-xs text-slate-300 bg-slate-900/90 px-3 py-2 rounded-xl border border-white/10 shadow-lg">
+              <div className="w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+              <span>Carregando visão da rua...</span>
+            </div>
           </div>
         )}
 
@@ -50,11 +64,10 @@ export default function PropertyStreetView({ latitude, longitude }: Props) {
         ) : (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
-            src={`/api/streetview?lat=${latitude}&lng=${longitude}`}
+            ref={imgRef}
+            src={imageUrl}
             alt="Visão da rua do imóvel no Google Street View"
-            className={`h-full w-full object-cover transition-opacity duration-500 ${
-              isLoading ? "opacity-0" : "opacity-100"
-            }`}
+            className="h-full w-full object-cover"
             onLoad={() => setIsLoading(false)}
             onError={() => {
               setIsLoading(false);

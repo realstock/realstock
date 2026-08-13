@@ -284,9 +284,20 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      if (String(offer.status).toLowerCase() !== "open") {
+      const isAlreadyEnded = offer.status === "cancelled" || offer.status === "rejected";
+      if (isAlreadyEnded) {
+        return NextResponse.json({
+          success: true,
+          offer,
+        });
+      }
+
+      const hasReceipt = !!(offer.pixReceiptUrl || (offer as any).payment_receipt_url);
+      const isConfirmed = offer.status === "RESERVA_CONFIRMADA";
+
+      if (hasReceipt || isConfirmed) {
         return NextResponse.json(
-          { success: false, error: "Apenas ofertas abertas podem ser canceladas." },
+          { success: false, error: "Não é possível cancelar a reserva após o envio do comprovante." },
           { status: 400 }
         );
       }

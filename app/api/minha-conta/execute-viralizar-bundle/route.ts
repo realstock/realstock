@@ -156,7 +156,15 @@ export async function POST(req: NextRequest) {
         hashtagsStr += ` #${state.replace(/\s+/g, '')}`;
     }
 
-    const caption = `🌟 ${title}\n\n${priceText ? `💰 ${priceText}\n` : ""}Confira as melhores oportunidades no RealStock!\n\n${city ? `📍 ${city} - ${state}\n\n` : ""}Acesse nosso site para mais detalhes!${propertyId !== 0 ? `\nhttps://www.realstock.com.br/imovel/${propertyId}` : "\nhttps://www.realstock.com.br"}${hashtagsStr}`;
+    const propertyUrl = propertyId !== 0
+      ? `https://www.realstock.com.br/imovel/${propertyId}`
+      : `https://www.realstock.com.br`;
+    const cityStr = city || propObj?.city || "";
+    const descStr = propObj?.description ? ` - ${propObj.description}` : "";
+
+    const caption = isSeasonal
+      ? `Pensando em viajar para ${cityStr} reserve este imovel no ${propertyUrl}${descStr}`
+      : `🌟 ${title}\n\n${priceText ? `💰 ${priceText}\n` : ""}Confira as melhores oportunidades no RealStock!\n\n${city ? `📍 ${city} - ${state}\n\n` : ""}Acesse nosso site para mais detalhes!${propertyId !== 0 ? `\nhttps://www.realstock.com.br/imovel/${propertyId}` : "\nhttps://www.realstock.com.br"}${hashtagsStr}`;
 
     // SOCIAL MEDIA PUBLICATION (REAL)
     const results = {
@@ -604,11 +612,15 @@ export async function POST(req: NextRequest) {
             
             const videoBuffer = fs.readFileSync(transcodedFile);
             
+            const videoTitle = isSeasonal
+              ? "Procurando lugar para se hospedar? Conheça este espaço!"
+              : title.substring(0, 70);
+
             const metadata = {
               snippet: {
-                title: title.substring(0, 70),
+                title: videoTitle,
                 description: caption.substring(0, 1000),
-                tags: ["Shorts", "RealStock", "Imoveis"],
+                tags: isSeasonal ? ["Shorts", "RealStock", "AluguelTemporada", "Temporada"] : ["Shorts", "RealStock", "Imoveis"],
                 categoryId: "22"
               },
               status: {

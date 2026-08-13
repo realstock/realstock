@@ -172,16 +172,21 @@ export async function POST(req: NextRequest) {
           const videoBuffer = fs.readFileSync(transcodedFile);
           
           const isSeasonal = property.listingType === "ALUGUEL_TEMPORADA";
-          const priceLabel = isSeasonal
-            ? `R$ ${Number(property.price).toLocaleString("pt-BR")} / diária`
-            : `R$ ${Number(property.price).toLocaleString("pt-BR")}`;
+          const propertyUrl = `https://www.realstock.com.br/imovel/${property.id}`;
+          const descStr = property.description ? ` - ${property.description}` : "";
 
-          const captionText = `${property.title}\n\n📍 ${[property.city, property.state].filter(Boolean).join(" - ")}\n💰 ${priceLabel}\n\n${property.description || ""}`;
-          
+          const videoTitle = isSeasonal
+            ? "Procurando lugar para se hospedar? Conheça este espaço!"
+            : property.title.substring(0, 70);
+
+          const videoDescription = isSeasonal
+            ? `Pensando em viajar para ${property.city} reserve este imovel no ${propertyUrl}${descStr}`
+            : `${property.title}\n\n📍 ${[property.city, property.state].filter(Boolean).join(" - ")}\n💰 R$ ${Number(property.price).toLocaleString("pt-BR")}\n\n${property.description || ""}`;
+
           const metadata = {
             snippet: {
-              title: property.title.substring(0, 70),
-              description: captionText.substring(0, 1000),
+              title: videoTitle,
+              description: videoDescription.substring(0, 1000),
               tags: isSeasonal ? ["Shorts", "RealStock", "AluguelTemporada", "Temporada"] : ["Shorts", "RealStock", "Imoveis"],
               categoryId: "22"
             },

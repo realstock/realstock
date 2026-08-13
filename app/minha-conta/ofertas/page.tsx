@@ -583,7 +583,7 @@ export default function MinhasReservasPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5 border-b border-white/5 pb-3">
               <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-400">
                 <Sparkles size={16} />
-                <span>Fases para Conclusão da Reserva ({activeTab === "VIAJANDO" ? "Perspectiva do Hóspede" : "Perspectiva do Anfitrião"})</span>
+                <span>Fases para Conclusão da Reserva</span>
               </div>
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Fluxo em 4 Etapas</span>
             </div>
@@ -794,7 +794,16 @@ export default function MinhasReservasPage() {
                           </Link>
                         )}
 
-                        {activeTab === "VIAJANDO" && (isPending || statusStr === "OPEN") && (
+                        {(isAcceptedWaiting || isConfirmed) && (
+                          <Link
+                            href="/minha-conta/chat"
+                            className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 text-center transition flex items-center justify-center gap-1.5"
+                          >
+                            💬 Abrir Chat
+                          </Link>
+                        )}
+
+                        {activeTab === "VIAJANDO" && !isCancelled && !isRejected && !offer.pixReceiptUrl && statusStr !== "RESERVA_CONFIRMADA" && (
                           <button
                             onClick={() => handleCancel(offer.id)}
                             className="rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-2 text-xs font-bold text-red-300 hover:bg-red-400/15 text-center cursor-pointer transition"
@@ -857,28 +866,36 @@ export default function MinhasReservasPage() {
                             <span className="text-xs text-amber-300 font-medium">
                               Após realizar o pagamento do sinal via Pix, anexe o comprovante para confirmar a reserva:
                             </span>
-                            <label className={`rounded-xl px-4 py-2.5 text-xs font-black text-slate-950 transition cursor-pointer flex items-center justify-center gap-2 shadow-lg ${
-                              uploadingOfferId === offer.id || validatingOfferId === offer.id
-                                ? "bg-slate-600 cursor-not-allowed shadow-none"
-                                : "bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20"
-                            }`}>
-                              <Upload size={14} />
-                              {uploadingOfferId === offer.id
-                                ? "Enviando..."
-                                : validatingOfferId === offer.id
-                                ? "⏳ Analisando comprovante..."
-                                : "📎 Incluir comprovante Pix"}
-                              <input
-                                type="file"
-                                accept="image/*,.pdf"
-                                className="hidden"
-                                disabled={uploadingOfferId === offer.id || validatingOfferId === offer.id}
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) handleUploadPixReceipt(offer.id, file);
-                                }}
-                              />
-                            </label>
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
+                              <button
+                                onClick={() => handleCancel(offer.id)}
+                                className="rounded-xl border border-red-400/20 bg-red-400/10 px-3 py-2.5 text-xs font-bold text-red-300 hover:bg-red-400/15 transition cursor-pointer whitespace-nowrap"
+                              >
+                                Cancelar reserva
+                              </button>
+                              <label className={`rounded-xl px-4 py-2.5 text-xs font-black text-slate-950 transition cursor-pointer flex items-center justify-center gap-2 shadow-lg whitespace-nowrap ${
+                                uploadingOfferId === offer.id || validatingOfferId === offer.id
+                                  ? "bg-slate-600 cursor-not-allowed shadow-none"
+                                  : "bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20"
+                              }`}>
+                                <Upload size={14} />
+                                {uploadingOfferId === offer.id
+                                  ? "Enviando..."
+                                  : validatingOfferId === offer.id
+                                  ? "⏳ Analisando comprovante..."
+                                  : "📎 Incluir comprovante Pix"}
+                                <input
+                                  type="file"
+                                  accept="image/*,.pdf"
+                                  className="hidden"
+                                  disabled={uploadingOfferId === offer.id || validatingOfferId === offer.id}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleUploadPixReceipt(offer.id, file);
+                                  }}
+                                />
+                              </label>
+                            </div>
                           </div>
                         )}
 

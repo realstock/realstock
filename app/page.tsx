@@ -1349,7 +1349,7 @@ export default function HomePage() {
                                                 }`}
                                               >
                                                 <Calendar className="h-4 w-4" />
-                                                {stayInfo && !stayInfo.isAvailable ? "Indisponível nestas datas" : "Reservar imóvel"}
+                                                {stayInfo && !stayInfo.isAvailable ? "Indisponível nestas datas" : "Reservar"}
                                               </button>
                                             </div>
                                           </>

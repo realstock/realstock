@@ -130,6 +130,14 @@ export default function Header() {
                     </Link>
 
                     <Link
+                      href="/minha-conta/chat"
+                      className="block rounded-xl px-4 py-3 text-sm text-emerald-400 font-medium hover:bg-white/10 transition-colors"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Chat / Mensagens
+                    </Link>
+
+                    <Link
                       href="/minha-conta/perfil"
                       className="block rounded-xl px-4 py-3 text-sm hover:bg-white/10"
                       onClick={() => setMenuOpen(false)}

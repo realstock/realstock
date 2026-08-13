@@ -292,7 +292,7 @@ export default function OfferBookClient({
   return (
     <div className="rounded-[24px] border border-white/10 bg-slate-950/40 p-5">
       <div className="text-sm text-slate-400">
-        {isSeasonal ? "Solicitação de Reserva" : "Livro de ofertas"}
+        {isSeasonal ? "Reservar" : "Livro de ofertas"}
       </div>
 
       {!isSeasonal && (
@@ -382,7 +382,7 @@ export default function OfferBookClient({
                 disabled={loading || status === "loading" || numberOfNights < (minNights ?? 1) || !!dateOverlapError}
                 className="w-full rounded-2xl bg-emerald-500 hover:bg-emerald-400 px-4 py-3 font-semibold text-slate-950 disabled:opacity-60 cursor-pointer transition-all"
               >
-                {loading ? "Aguarde..." : "Solicitar Reserva"}
+                {loading ? "Aguarde..." : "Reservar"}
               </button>
             </div>
           ) : (

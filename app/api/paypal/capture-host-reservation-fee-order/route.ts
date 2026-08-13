@@ -117,6 +117,54 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Abrir/Criar o Chat automaticamente e enviar a mensagem inicial do hóspede
+    try {
+      let conversation = await prisma.conversation.findFirst({
+        where: {
+          propertyId: offer.propertyId,
+          buyerId: offer.buyerId,
+          sellerId: offer.property.ownerId,
+        },
+      });
+
+      if (!conversation) {
+        conversation = await prisma.conversation.create({
+          data: {
+            propertyId: offer.propertyId,
+            buyerId: offer.buyerId,
+            sellerId: offer.property.ownerId,
+          },
+        });
+      }
+
+      const checkInFormatted = offer.startDate
+        ? new Date(offer.startDate).toLocaleDateString("pt-BR")
+        : "xx/xx/xxxx";
+      const checkOutFormatted = offer.endDate
+        ? new Date(offer.endDate).toLocaleDateString("pt-BR")
+        : "xx/xx/xxxx";
+
+      const initialText = `Olá estou interessado em reservar do periodo de ${checkInFormatted} à ${checkOutFormatted}`;
+
+      await prisma.chatMessage.create({
+        data: {
+          conversationId: conversation.id,
+          senderId: offer.buyerId,
+          text: initialText,
+        },
+      });
+
+      await prisma.conversation.update({
+        where: { id: conversation.id },
+        data: {
+          lastMessage: initialText,
+          updatedAt: new Date(),
+        },
+      });
+    } catch (chatErr) {
+      console.error("CHAT CREATION ERROR ON RESERVATION ACCEPT:", chatErr);
+    }
+
     // Enviar notificação por e-mail/WhatsApp para o hóspede informando aceite e chave Pix do anfitrião
     try {
       const { sendNotification } = require("@/lib/messenger");

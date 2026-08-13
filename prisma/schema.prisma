@@ -104,6 +104,9 @@ model User {
   offers                      Offer[]                @relation("BuyerOffers")
   properties                  Property[]
   financialTransactions       FinancialTransaction[]
+  buyerConversations          Conversation[]         @relation("BuyerConversations")
+  sellerConversations         Conversation[]         @relation("SellerConversations")
+  sentMessages                ChatMessage[]          @relation("SentMessages")
 
   @@map("users")
 }
@@ -169,6 +172,7 @@ model Property {
   owner               User            @relation(fields: [ownerId], references: [id])
   images              PropertyImage[]
   videos              PropertyVideo[]
+  conversations       Conversation[]
 
   @@map("properties")
 }
@@ -405,3 +409,33 @@ model Coupon {
 
   @@map("coupons")
 }
+
+model Conversation {
+  id           Int           @id @default(autoincrement())
+  propertyId   Int?          @map("property_id")
+  property     Property?     @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  buyerId      Int           @map("buyer_id")
+  buyer        User          @relation("BuyerConversations", fields: [buyerId], references: [id], onDelete: Cascade)
+  sellerId     Int           @map("seller_id")
+  seller       User          @relation("SellerConversations", fields: [sellerId], references: [id], onDelete: Cascade)
+  lastMessage  String?       @map("last_message")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  messages     ChatMessage[]
+
+  @@unique([propertyId, buyerId, sellerId])
+  @@map("conversations")
+}
+
+model ChatMessage {
+  id             Int          @id @default(autoincrement())
+  conversationId Int          @map("conversation_id")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       Int          @map("sender_id")
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  text           String
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  @@map("chat_messages")
+}
+
