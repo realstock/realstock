@@ -66,13 +66,21 @@ IMPORTANTE:
 - Comprovantes de agendamento NÃO são válidos como prova de pagamento
 - Retorne APENAS o JSON, sem explicações extras`;
 
-  let geminiUrl = "";
-  let requestBody: any = {};
+  // Candidate models to try in order of preference
+  const configuredModel = process.env.GEMINI_MODEL;
+  const candidateModels = configuredModel
+    ? [configuredModel, "gemini-2.5-flash", "gemini-1.5-flash-latest", "gemini-2.0-flash", "gemini-1.5-flash-002", "gemini-1.5-flash-001", "gemini-1.5-flash"]
+    : ["gemini-2.5-flash", "gemini-1.5-flash-latest", "gemini-2.0-flash", "gemini-1.5-flash-002", "gemini-1.5-flash-001", "gemini-1.5-flash"];
 
-  if (apiKey) {
-    // Google AI Studio API (gratuita)
-    geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-    requestBody = {
+  if (!apiKey) {
+    throw new Error("Chave da API Gemini não configurada (GEMINI_API_KEY).");
+  }
+
+  // Helper to call generateContent for a given model
+  async function callGemini(modelName: string) {
+    const cleanModel = modelName.replace(/^models\//, "");
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${apiKey}`;
+    const requestBody = {
       contents: [
         {
           parts: [
@@ -89,34 +97,123 @@ IMPORTANTE:
       generationConfig: {
         temperature: 0.1,
         maxOutputTokens: 1000,
+        responseMimeType: "application/json",
       },
     };
-  } else {
-    throw new Error("Chave da API Gemini não configurada (GEMINI_API_KEY).");
+
+    const res = await fetch(geminiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+    });
+
+    return res;
   }
 
-  const geminiRes = await fetch(geminiUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(requestBody),
-  });
+  // Try dynamic ListModels if needed
+  let lastError: Error | null = null;
+  let responseData: any = null;
 
-  if (!geminiRes.ok) {
-    const errText = await geminiRes.text();
-    throw new Error(`Erro na API Gemini: ${geminiRes.status} - ${errText}`);
+  // First, try candidate models in order
+  for (const model of candidateModels) {
+    try {
+      const res = await callGemini(model);
+      if (res.ok) {
+        responseData = await res.json();
+        break;
+      }
+      const errText = await res.text();
+      // If 404 model not found, try next candidate model
+      if (res.status === 404) {
+        lastError = new Error(`Model ${model} returned 404: ${errText}`);
+        continue;
+      }
+      // For other errors (like 400, 401, 429), throw immediately
+      throw new Error(`Erro na API Gemini (${res.status}): ${errText}`);
+    } catch (err: any) {
+      lastError = err;
+      if (err.message?.includes("404")) {
+        continue;
+      }
+      throw err;
+    }
   }
 
-  const geminiData = await geminiRes.json();
-  const rawContent =
-    geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  // If candidate loop failed due to 404s, try fetching available models directly via ListModels API
+  if (!responseData) {
+    try {
+      const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        const availableModels: any[] = listData.models || [];
+        // Find models supporting generateContent
+        const validModels = availableModels
+          .filter((m: any) => m.supportedGenerationMethods?.includes("generateContent"))
+          .map((m: any) => m.name);
 
-  // Parse JSON from response
-  const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error("Resposta da IA não contém JSON válido.");
+        for (const modelPath of validModels) {
+          const res = await callGemini(modelPath);
+          if (res.ok) {
+            responseData = await res.json();
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      // Ignore list error and throw last error below
+    }
   }
 
-  const parsed = JSON.parse(jsonMatch[0]);
+  if (!responseData) {
+    throw lastError || new Error("Nenhum modelo Gemini compatível foi encontrado para sua chave API.");
+  }
+
+  const geminiData = responseData;
+  const parts = geminiData?.candidates?.[0]?.content?.parts || [];
+  const rawContent = parts.map((p: any) => p.text || "").join("\n").trim();
+
+  // Clean codeblock formatting (```json ... ```)
+  const cleanedText = rawContent
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/\s*```$/, "")
+    .trim();
+
+  let parsed: any = null;
+
+  try {
+    parsed = JSON.parse(cleanedText);
+  } catch (e) {
+    const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        parsed = JSON.parse(jsonMatch[0]);
+      } catch (e2) {
+        // Ignored
+      }
+    }
+  }
+
+  if (!parsed) {
+    console.warn("⚠️ Gemini output could not be parsed as JSON. Raw output:", rawContent);
+    return {
+      recipientName: null,
+      recipientCpfCnpj: null,
+      recipientBank: null,
+      payerName: null,
+      payerCpfCnpj: null,
+      transactionDate: null,
+      debitDate: null,
+      authCode: null,
+      transactionValue: null,
+      transactionType: "OUTRO",
+      isCompleted: false,
+      isScheduled: false,
+      rawText: rawContent,
+      confidence: "LOW",
+    };
+  }
+
   return parsed;
 }
 

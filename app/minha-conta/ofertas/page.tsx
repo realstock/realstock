@@ -270,6 +270,7 @@ export default function MinhasReservasPage() {
   const [uploadingOfferId, setUploadingOfferId] = useState<number | null>(null);
   const [validatingOfferId, setValidatingOfferId] = useState<number | null>(null);
   const [pixValidationResult, setPixValidationResult] = useState<{ offerId: number; validation: PixValidation } | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // PayPal modal state for host acceptance
   const [paypalOfferId, setPaypalOfferId] = useState<number | null>(null);
@@ -379,13 +380,19 @@ export default function MinhasReservasPage() {
       const validateData = await validateRes.json();
 
       if (!validateRes.ok || !validateData.success) {
-        // Validation failed technically — still save, let host review manually
-        alert("⚠️ Comprovante enviado. A verificação automática falhou — o anfitrião irá analisar manualmente.");
+        const errorMsg = validateData.error || "Falha na verificação automática do comprovante.";
+        setValidationError(errorMsg);
+        // Still allow host to review manually
+        // Optionally clear previous validation result
+        setPixValidationResult(null);
       } else {
+        setValidationError(null);
         if (validateData.allPassed) {
           alert("✅ Comprovante validado com sucesso! Sua reserva foi confirmada automaticamente.");
+          setPixValidationResult({ offerId, validation: validateData.validation });
         } else {
           alert(`⚠️ Comprovante enviado. ${validateData.validation?.passedCount || 0} de 5 verificações passaram. O anfitrião irá analisar o comprovante.`);
+          setPixValidationResult({ offerId, validation: validateData.validation });
         }
       }
 
