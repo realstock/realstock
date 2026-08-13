@@ -15,8 +15,9 @@ export async function GET(request: Request) {
   }
 
   // size=600x400 (sufficient for our UI)
+  // radius=1000 searches within 1km for nearest Street View panorama
   // return_error_code=true ensures we get a 404 instead of a generic grey placeholder if no image exists
-  const url = `https://maps.googleapis.com/maps/api/streetview?size=600x400&location=${lat},${lng}&return_error_code=true&key=${apiKey}`;
+  const url = `https://maps.googleapis.com/maps/api/streetview?size=600x400&location=${lat},${lng}&radius=1000&return_error_code=true&key=${apiKey}`;
 
   try {
     const response = await fetch(url);
