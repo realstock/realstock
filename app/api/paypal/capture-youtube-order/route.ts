@@ -171,13 +171,18 @@ export async function POST(req: NextRequest) {
           
           const videoBuffer = fs.readFileSync(transcodedFile);
           
-          const captionText = `${property.title}\n\n📍 ${[property.city, property.state].filter(Boolean).join(" - ")}\n💰 R$ ${Number(property.price).toLocaleString("pt-BR")}\n\n${property.description || ""}`;
+          const isSeasonal = property.listingType === "ALUGUEL_TEMPORADA";
+          const priceLabel = isSeasonal
+            ? `R$ ${Number(property.price).toLocaleString("pt-BR")} / diária`
+            : `R$ ${Number(property.price).toLocaleString("pt-BR")}`;
+
+          const captionText = `${property.title}\n\n📍 ${[property.city, property.state].filter(Boolean).join(" - ")}\n💰 ${priceLabel}\n\n${property.description || ""}`;
           
           const metadata = {
             snippet: {
               title: property.title.substring(0, 70),
               description: captionText.substring(0, 1000),
-              tags: ["Shorts", "RealStock", "Imoveis"],
+              tags: isSeasonal ? ["Shorts", "RealStock", "AluguelTemporada", "Temporada"] : ["Shorts", "RealStock", "Imoveis"],
               categoryId: "22"
             },
             status: {

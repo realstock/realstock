@@ -306,29 +306,56 @@ export default async function PropertyPage({
         .filter(Boolean)
     : [];
 
-  const compactDetails = [
-    ["Categoria", formatText(property.category)],
-    ["Tipo", formatText(property.propertyType)],
-    ["Jurídico", formatText(property.legalStatus)],
-    ["Área total", formatText(property.area)],
-    ["Área construída", formatText(property.areaBuilt)],
-    ["Quartos", formatText(property.bedrooms)],
-    ["Suítes", formatText(property.suites)],
-    ["Banheiros", formatText(property.bathrooms)],
-    ["Vagas", formatText(property.parkingSpaces)],
-    ["Mobiliado", formatYesNo(property.furnished)],
-    ["Condomínio", formatYesNo(property.condominium)],
-    [
-      "Valor condomínio",
-      property.condominiumFee
-        ? `R$ ${property.condominiumFee.toString()}`
-        : "-",
-    ],
-    ["Financiamento", formatYesNo(property.acceptsFinancing)],
-    ["Frente mar", formatYesNo(property.frontSea)],
-    ["Piscina", formatYesNo(property.pool)],
-    ["Código", `#${property.id}`],
-  ];
+  const isSeasonal = property.listingType === "ALUGUEL_TEMPORADA";
+
+  const compactDetails = isSeasonal
+    ? [
+        ["Categoria", formatText(property.category)],
+        ["Tipo", formatText(property.propertyType)],
+        ["Mínimo de noites", property.minNights ? `${property.minNights} noites` : "1 noite"],
+        ["Máximo de hóspedes", property.maxGuests ? `${property.maxGuests} pessoas` : "-"],
+        ["Caução / Sinal", property.depositPercentage ? `${property.depositPercentage}%` : "20%"],
+        ["Área total", formatText(property.area)],
+        ["Área construída", formatText(property.areaBuilt)],
+        ["Quartos", formatText(property.bedrooms)],
+        ["Suítes", formatText(property.suites)],
+        ["Banheiros", formatText(property.bathrooms)],
+        ["Vagas", formatText(property.parkingSpaces)],
+        ["Mobiliado", formatYesNo(property.furnished)],
+        ["Condomínio", formatYesNo(property.condominium)],
+        [
+          "Valor condomínio",
+          property.condominiumFee
+            ? `R$ ${property.condominiumFee.toString()}`
+            : "-",
+        ],
+        ["Frente mar", formatYesNo(property.frontSea)],
+        ["Piscina", formatYesNo(property.pool)],
+        ["Código", `#${property.id}`],
+      ]
+    : [
+        ["Categoria", formatText(property.category)],
+        ["Tipo", formatText(property.propertyType)],
+        ["Jurídico", formatText(property.legalStatus)],
+        ["Área total", formatText(property.area)],
+        ["Área construída", formatText(property.areaBuilt)],
+        ["Quartos", formatText(property.bedrooms)],
+        ["Suítes", formatText(property.suites)],
+        ["Banheiros", formatText(property.bathrooms)],
+        ["Vagas", formatText(property.parkingSpaces)],
+        ["Mobiliado", formatYesNo(property.furnished)],
+        ["Condomínio", formatYesNo(property.condominium)],
+        [
+          "Valor condomínio",
+          property.condominiumFee
+            ? `R$ ${property.condominiumFee.toString()}`
+            : "-",
+        ],
+        ["Financiamento", formatYesNo(property.acceptsFinancing)],
+        ["Frente mar", formatYesNo(property.frontSea)],
+        ["Piscina", formatYesNo(property.pool)],
+        ["Código", `#${property.id}`],
+      ];
 
   return (
     <main className="min-h-screen bg-slate-950 text-white overflow-x-hidden">
@@ -356,7 +383,7 @@ export default async function PropertyPage({
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div className="text-sm uppercase tracking-[0.2em] text-slate-400">
-              anúncio imobiliário
+              {isSeasonal ? "aluguel por temporada" : "anúncio imobiliário"}
             </div>
             <div className="bg-white/10 px-3 py-1 rounded-full text-[11px] font-bold text-slate-400 border border-white/10">
               IMÓVEL #{property.id}

@@ -126,19 +126,31 @@ export async function POST(req: NextRequest) {
         }, { status: 400 });
     }
 
+    const isSeasonal = property.listingType === "ALUGUEL_TEMPORADA";
+
     const details = [
         property.area ? `📏 Área: ${property.area}` : null,
         property.bedrooms ? `🛏️ Quartos: ${property.bedrooms}` : null,
         property.suites ? `🚿 Suítes: ${property.suites}` : null,
         property.bathrooms ? `🚽 Banheiros: ${property.bathrooms}` : null,
         property.parkingSpaces ? `🚗 Vagas: ${property.parkingSpaces}` : null,
+        isSeasonal && property.minNights ? `🌙 Mínimo de noites: ${property.minNights}` : null,
+        isSeasonal && property.maxGuests ? `👥 Máx. Hóspedes: ${property.maxGuests}` : null,
         property.furnished ? "🛋️ Mobiliado" : null,
         property.pool ? "🏊 Piscina" : null,
         property.frontSea ? "🌊 Frente Mar" : null,
-        property.acceptsFinancing ? "🏦 Aceita Financiamento" : null,
+        !isSeasonal && property.acceptsFinancing ? "🏦 Aceita Financiamento" : null,
     ].filter(Boolean).join("\n");
 
-    const caption = `🌟 ${property.title.toUpperCase()}\n\n📍 LOCALIZAÇÃO: ${property.city} - ${property.state}\n💰 VALOR: R$ ${Number(property.price).toLocaleString("pt-BR")}\n\n📋 DETALHES DO IMÓVEL:\n${details}\n\n📝 DESCRIÇÃO:\n${property.description || "Confira os detalhes deste incrível imóvel em nosso portal."}\n\n#RealStock #Imoveis #Oportunidade #VendaImoveis #${property.city.replace(/\s+/g, '')}\n\nwww.realstock.com.br`;
+    const priceLabel = isSeasonal
+      ? `💰 DIÁRIA: R$ ${Number(property.price).toLocaleString("pt-BR")}`
+      : `💰 VALOR: R$ ${Number(property.price).toLocaleString("pt-BR")}`;
+
+    const hashtags = isSeasonal
+      ? `#RealStock #AluguelTemporada #Temporada #Hospedagem #${property.city.replace(/\s+/g, '')}`
+      : `#RealStock #Imoveis #Oportunidade #VendaImoveis #${property.city.replace(/\s+/g, '')}`;
+
+    const caption = `🌟 ${property.title.toUpperCase()}\n\n📍 LOCALIZAÇÃO: ${property.city} - ${property.state}\n${priceLabel}\n\n📋 DETALHES DO IMÓVEL:\n${details}\n\n📝 DESCRIÇÃO:\n${property.description || "Confira os detalhes deste incrível imóvel em nosso portal."}\n\n${hashtags}\n\nwww.realstock.com.br`;
 
     let finalMediaId = null;
 

@@ -92,6 +92,7 @@ export async function POST(req: NextRequest) {
     let city = "";
     let state = "";
     let dbVideoUrl = "";
+    let propObj: any = null;
 
     if (propertyId === 0) {
       // Portfolio logic
@@ -120,6 +121,7 @@ export async function POST(req: NextRequest) {
       });
       if (!prop) return NextResponse.json({ success: false, error: "Imóvel não encontrado" }, { status: 404 });
       
+      propObj = prop;
       images = prop.images.map(img => img.imageUrl);
       title = prop.title;
       city = prop.city || "";
@@ -139,7 +141,14 @@ export async function POST(req: NextRequest) {
     const videoUrl = passedVideoUrl || dbVideoUrl;
     console.log("FINAL VIDEO URL FOR SOCIAL:", videoUrl);
 
-    let hashtagsStr = "\n\n#Imóveis #MercadoImobiliário #RealStock #Investimento";
+    const isSeasonal = propObj?.listingType === "ALUGUEL_TEMPORADA";
+    const priceText = propObj?.price
+      ? (isSeasonal ? `R$ ${Number(propObj.price).toLocaleString("pt-BR")} / diária` : `R$ ${Number(propObj.price).toLocaleString("pt-BR")}`)
+      : "";
+
+    let hashtagsStr = isSeasonal
+      ? "\n\n#AluguelTemporada #Temporada #RealStock #Hospedagem"
+      : "\n\n#Imóveis #MercadoImobiliário #RealStock #Investimento";
     if (city) {
         hashtagsStr += ` #${city.replace(/\s+/g, '')}`;
     }
@@ -147,7 +156,7 @@ export async function POST(req: NextRequest) {
         hashtagsStr += ` #${state.replace(/\s+/g, '')}`;
     }
 
-    const caption = `🌟 ${title}\n\nConfira as melhores oportunidades no RealStock!\n\n${city ? `📍 ${city} - ${state}\n\n` : ""}Acesse nosso site para mais detalhes!${propertyId !== 0 ? `\nhttps://www.realstock.com.br/imovel/${propertyId}` : "\nhttps://www.realstock.com.br"}${hashtagsStr}`;
+    const caption = `🌟 ${title}\n\n${priceText ? `💰 ${priceText}\n` : ""}Confira as melhores oportunidades no RealStock!\n\n${city ? `📍 ${city} - ${state}\n\n` : ""}Acesse nosso site para mais detalhes!${propertyId !== 0 ? `\nhttps://www.realstock.com.br/imovel/${propertyId}` : "\nhttps://www.realstock.com.br"}${hashtagsStr}`;
 
     // SOCIAL MEDIA PUBLICATION (REAL)
     const results = {

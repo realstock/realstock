@@ -1759,7 +1759,11 @@ function AnunciarFormContent() {
                           onChange={(e) => setDescription(e.target.value)}
                           rows={6}
                           className="input"
-                          placeholder="Descreva o imóvel, diferenciais, documentação e localização."
+                          placeholder={
+                            listingType === "ALUGUEL_TEMPORADA"
+                              ? "Descreva a propriedade de temporada, comodidades, regras do imóvel, horário de check-in/out e diferenciais da localização."
+                              : "Descreva o imóvel, diferenciais, documentação e localização."
+                          }
                         />
                       </Field>
                     </div>
