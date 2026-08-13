@@ -776,7 +776,7 @@ export default function CalendarioPropertyPage() {
             <button
               type="button"
               onClick={() => {
-                const url = `https://www.realstock.com.br/api/properties/${propertyId}/ical.ics`;
+                const url = `https://www.realstock.com.br/api/ical/${propertyId}.ics`;
                 navigator.clipboard.writeText(url);
                 setCopiedIcal(true);
                 setTimeout(() => setCopiedIcal(false), 3000);
@@ -792,11 +792,11 @@ export default function CalendarioPropertyPage() {
             <input
               type="text"
               readOnly
-              value={`https://www.realstock.com.br/api/properties/${propertyId}/ical.ics`}
+              value={`https://www.realstock.com.br/api/ical/${propertyId}.ics`}
               className="flex-1 rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-xs text-sky-300 font-mono select-all focus:outline-none"
             />
             <a
-              href={`https://www.realstock.com.br/api/properties/${propertyId}/ical.ics`}
+              href={`https://www.realstock.com.br/api/ical/${propertyId}.ics`}
               target="_blank"
               rel="noreferrer"
               className="rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-3 text-xs font-bold text-slate-300 transition text-center shrink-0"
