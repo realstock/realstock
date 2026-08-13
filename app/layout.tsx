@@ -2,7 +2,7 @@ import "./globals.css";
 import Providers from "./providers";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import SecurityBlocker from "@/components/SecurityBlocker";
+
 import Script from "next/script";
 
 export const metadata = {
@@ -70,7 +70,7 @@ export default function RootLayout({
           <img height="1" width="1" style={{ display: 'none' }} src="https://www.facebook.com/tr?id=1274929870774414&ev=PageView&noscript=1" />
         </noscript>
         <Providers>
-          <SecurityBlocker />
+
           <Header />
           <div className="flex-1">
             {children}
