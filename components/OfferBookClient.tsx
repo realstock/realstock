@@ -407,14 +407,6 @@ export default function OfferBookClient({
             </>
           )}
 
-          <button
-            type="button"
-            onClick={(e) => handleSubmitOffer(e, true)}
-            disabled={loading || status === "loading"}
-            className="w-full rounded-2xl border border-white/20 bg-transparent px-4 py-3 font-semibold text-white transition-all hover:bg-white/5 disabled:opacity-60 mt-2 cursor-pointer"
-          >
-            {loading ? "Aguarde..." : "Agendar visita"}
-          </button>
         </form>
       )}
 

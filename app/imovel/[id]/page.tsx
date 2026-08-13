@@ -413,7 +413,9 @@ export default async function PropertyPage({
 
               <div className="mt-5 border-t border-white/10 pt-4">
                 <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2 xl:grid-cols-3">
-                  {compactDetails.map(([label, value]) => (
+                  {compactDetails
+                    .filter(([_, value]) => value !== "Não" && value !== "-")
+                    .map(([label, value]) => (
                     <div
                       key={label}
                       className="flex items-start justify-between gap-3 border-b border-white/5 py-1.5 text-sm"
@@ -588,11 +590,11 @@ export default async function PropertyPage({
               R$ {property.price.toString()} {property.listingType === "ALUGUEL_TEMPORADA" ? "/ diária" : ""}
             </div>
 
-            <div className="mt-5 rounded-2xl border border-blue-400/20 bg-blue-400/10 p-4 text-sm leading-6 text-blue-200">
-              {property.listingType === "ALUGUEL_TEMPORADA"
-                ? "Os dados do anfitrião ficam protegidos e só serão liberados após aceite de solicitação de reserva pelo anfitrião e pagamento da taxa correspondente."
-                : "Os dados do anunciante ficam protegidos e só serão liberados após aceite de proposta pelo vendedor ou quando uma oferta atingir o valor de venda do imóvel."}
-            </div>
+            {!isSeasonal && (
+              <div className="mt-5 rounded-2xl border border-blue-400/20 bg-blue-400/10 p-4 text-sm leading-6 text-blue-200">
+                Os dados do anunciante ficam protegidos e só serão liberados após aceite de proposta pelo vendedor ou quando uma oferta atingir o valor de venda do imóvel.
+              </div>
+            )}
 
             {property.sold ? (
               <div className="mt-5 rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-5 text-center shadow-[0_0_15px_rgba(16,185,129,0.1)]">
