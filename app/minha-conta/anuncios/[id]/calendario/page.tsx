@@ -17,7 +17,10 @@ import {
   Moon,
   RotateCcw,
   Sparkles,
-  Ban
+  Ban,
+  Share2,
+  Copy,
+  Check
 } from "lucide-react";
 
 type Block = {
@@ -69,6 +72,7 @@ export default function CalendarioPropertyPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [copiedIcal, setCopiedIcal] = useState(false);
 
   const [propertyTitle, setPropertyTitle] = useState("");
   const [basePrice, setBasePrice] = useState<number>(0);
@@ -749,6 +753,63 @@ export default function CalendarioPropertyPage() {
             <div className="text-[11px] text-slate-500">
               Períodos com regras customizadas: {Object.keys(customRates).length} {Object.keys(customRates).length === 1 ? "dia" : "dias"}
             </div>
+          </div>
+        </div>
+
+        {/* SECTION: EXPORTAR LINK ICAL PARA OUTROS SITES */}
+        <div className="mt-8 rounded-3xl border border-sky-500/30 bg-gradient-to-r from-sky-950/40 via-slate-900/80 to-indigo-950/40 p-6 backdrop-blur-xl space-y-4 shadow-2xl">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-500/20 text-sky-400 border border-sky-500/30 shrink-0">
+                <Share2 size={20} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <span>Link de Exportação iCal para Outros Sites</span>
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Compartilhe a disponibilidade do seu calendário RealStock com Airbnb, Booking.com, Vrbo e outros portais.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                const url = `https://www.realstock.com.br/api/properties/${propertyId}/ical/ical.ics`;
+                navigator.clipboard.writeText(url);
+                setCopiedIcal(true);
+                setTimeout(() => setCopiedIcal(false), 3000);
+              }}
+              className="w-full sm:w-auto rounded-xl bg-sky-500 hover:bg-sky-400 px-5 py-3 text-xs font-black text-slate-950 shadow-lg shadow-sky-500/20 transition cursor-pointer flex items-center justify-center gap-2 shrink-0"
+            >
+              {copiedIcal ? <Check size={16} className="text-slate-950" /> : <Copy size={16} />}
+              <span>{copiedIcal ? "Link Copiado!" : "Copiar Link iCal"}</span>
+            </button>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+            <input
+              type="text"
+              readOnly
+              value={`https://www.realstock.com.br/api/properties/${propertyId}/ical/ical.ics`}
+              className="flex-1 rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-xs text-sky-300 font-mono select-all focus:outline-none"
+            />
+            <a
+              href={`https://www.realstock.com.br/api/properties/${propertyId}/ical/ical.ics`}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-3 text-xs font-bold text-slate-300 transition text-center shrink-0"
+            >
+              Testar / Baixar .ics ↗
+            </a>
+          </div>
+
+          <div className="rounded-2xl border border-white/5 bg-slate-950/60 p-4 text-[11px] text-slate-400 leading-relaxed space-y-1">
+            <strong className="text-slate-200 block font-semibold mb-1">Como importar este link no Airbnb, Booking ou Vrbo:</strong>
+            <p>1. Copie o link acima clicando no botão <strong>"Copiar Link iCal"</strong>.</p>
+            <p>2. Acesse o painel do anfitrião no site externo (ex: Airbnb -&gt; Calendário -&gt; Configurações de Disponibilidade -&gt; Importar Calendário).</p>
+            <p>3. Cole este link no campo correspondente. O portal externo sincronizará as reservas e bloqueios do RealStock automaticamente.</p>
           </div>
         </div>
 

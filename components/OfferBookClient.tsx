@@ -92,10 +92,14 @@ export default function OfferBookClient({
 
   const numberOfNights = useMemo(() => {
     if (!checkIn || !checkOut) return 0;
-    const start = new Date(checkIn);
-    const end = new Date(checkOut);
+    const [inY, inM, inD] = checkIn.split("T")[0].split("-").map(Number);
+    const [outY, outM, outD] = checkOut.split("T")[0].split("-").map(Number);
+    if (!inY || !inM || !inD || !outY || !outM || !outD) return 0;
+
+    const start = new Date(Date.UTC(inY, inM - 1, inD));
+    const end = new Date(Date.UTC(outY, outM - 1, outD));
     const diffTime = end.getTime() - start.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
     return diffDays > 0 ? diffDays : 0;
   }, [checkIn, checkOut]);
 
@@ -104,24 +108,28 @@ export default function OfferBookClient({
     const ratesMap = (customRates || {}) as Record<string, any>;
     const base = Number(askingPrice || 0);
 
+    const [inY, inM, inD] = checkIn.split("T")[0].split("-").map(Number);
+    if (!inY || !inM || !inD) return 0;
+
     let total = 0;
-    const cur = new Date(checkIn);
+    const cur = new Date(Date.UTC(inY, inM - 1, inD));
+
     for (let i = 0; i < numberOfNights; i++) {
-      const y = cur.getFullYear();
-      const m = String(cur.getMonth() + 1).padStart(2, "0");
-      const d = String(cur.getDate()).padStart(2, "0");
+      const y = cur.getUTCFullYear();
+      const m = String(cur.getUTCMonth() + 1).padStart(2, "0");
+      const d = String(cur.getUTCDate()).padStart(2, "0");
       const dateStr = `${y}-${m}-${d}`;
       
       const entry = ratesMap[dateStr];
       let nightRate = base;
       if (typeof entry === "number") {
         nightRate = entry;
-      } else if (entry && typeof entry === "object" && entry.price !== undefined) {
+      } else if (entry && typeof entry === "object" && entry.price !== undefined && entry.price !== null) {
         nightRate = Number(entry.price);
       }
       total += nightRate;
 
-      cur.setDate(cur.getDate() + 1);
+      cur.setUTCDate(cur.getUTCDate() + 1);
     }
     return total;
   }, [checkIn, checkOut, numberOfNights, askingPrice, customRates]);
@@ -138,23 +146,27 @@ export default function OfferBookClient({
 
   const dateOverlapError = useMemo(() => {
     if (!checkIn || !checkOut || !isSeasonal) return null;
-    const start = new Date(checkIn);
-    const end = new Date(checkOut);
+    const [inY, inM, inD] = checkIn.split("T")[0].split("-").map(Number);
+    const [outY, outM, outD] = checkOut.split("T")[0].split("-").map(Number);
+    if (!inY || !inM || !inD || !outY || !outM || !outD) return null;
+
+    const start = new Date(Date.UTC(inY, inM - 1, inD));
+    const end = new Date(Date.UTC(outY, outM - 1, outD));
     
     // Check owner blocked dates in customRates
     const ratesMap = (customRates || {}) as Record<string, any>;
-    const cur = new Date(checkIn);
+    const cur = new Date(Date.UTC(inY, inM - 1, inD));
     while (cur < end) {
-      const y = cur.getFullYear();
-      const m = String(cur.getMonth() + 1).padStart(2, "0");
-      const d = String(cur.getDate()).padStart(2, "0");
+      const y = cur.getUTCFullYear();
+      const m = String(cur.getUTCMonth() + 1).padStart(2, "0");
+      const d = String(cur.getUTCDate()).padStart(2, "0");
       const dateStr = `${y}-${m}-${d}`;
 
       const entry = ratesMap[dateStr];
       if (entry && typeof entry === "object" && entry.blocked === true) {
         return `Período indisponível: Datas fechadas para reserva pelo proprietário.`;
       }
-      cur.setDate(cur.getDate() + 1);
+      cur.setUTCDate(cur.getUTCDate() + 1);
     }
 
     const activeStatuses = ["accepted", "ACCEPTED_WAITING_PAYMENT", "RESERVA_CONFIRMADA", "PENDING_HOST_APPROVAL"];

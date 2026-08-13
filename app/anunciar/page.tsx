@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback, Suspense } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useListingType } from "@/context/ListingTypeContext";
@@ -288,6 +289,7 @@ function AnunciarFormContent() {
   const [existingVideoUrls, setExistingVideoUrls] = useState<string[]>([]);
   const [existingMusicUrl, setExistingMusicUrl] = useState<string>("");
   const [existingCustomVideoUrl, setExistingCustomVideoUrl] = useState<string>("");
+  const [acceptedTerms, setAcceptedTerms] = useState<boolean>(false);
 
   const [customVideo, setCustomVideo] = useState<File | null>(null);
   const [customVideoPreview, setCustomVideoPreview] = useState<string>("");
@@ -958,6 +960,11 @@ function AnunciarFormContent() {
 
     if (!user?.id) {
       setError("Usuário não autenticado.");
+      return;
+    }
+
+    if (!acceptedTerms) {
+      setError("Você precisa declarar ciência e aceitar os Termos e Condições Gerais de Uso para publicar ou salvar o anúncio.");
       return;
     }
 
@@ -2434,6 +2441,29 @@ function AnunciarFormContent() {
                  </div>
                </div>
              )}
+
+              {/* TERMOS E CONDICOES OBRIGATORIOS */}
+              <div className="rounded-2xl border border-white/10 bg-slate-900/80 p-5 backdrop-blur-xl">
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    className="mt-0.5 h-5 w-5 rounded border-white/20 bg-slate-800 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-900 cursor-pointer shrink-0"
+                  />
+                  <span className="text-xs text-slate-300 leading-relaxed font-medium">
+                    Li, compreendi e concordo integralmente com os{" "}
+                    <Link
+                      href="/termos"
+                      target="_blank"
+                      className="text-sky-400 underline font-bold hover:text-sky-300 transition"
+                    >
+                      Termos e Condições Gerais de Uso
+                    </Link>{" "}
+                    do RealStock. Declaro expressamente estar ciente de que o RealStock atua exclusivamente como intermediador tecnológico entre hóspedes e anfitriões/vendedores, estando totalmente isento de qualquer responsabilidade sobre estadias, pagamentos de sinal, condições do imóvel ou cancelamentos.
+                  </span>
+                </label>
+              </div>
 
              <div className="pt-8">
                <button

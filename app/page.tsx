@@ -293,11 +293,16 @@ function calculateStayTotal(
   guestsStr?: string
 ): StayTotalResult | null {
   if (!checkInStr || !checkOutStr) return null;
-  const start = new Date(checkInStr);
-  const end = new Date(checkOutStr);
+
+  const [inY, inM, inD] = checkInStr.split("T")[0].split("-").map(Number);
+  const [outY, outM, outD] = checkOutStr.split("T")[0].split("-").map(Number);
+  if (!inY || !inM || !inD || !outY || !outM || !outD) return null;
+
+  const start = new Date(Date.UTC(inY, inM - 1, inD));
+  const end = new Date(Date.UTC(outY, outM - 1, outD));
 
   const diffTime = end.getTime() - start.getTime();
-  const numberOfNights = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const numberOfNights = Math.round(diffTime / (1000 * 60 * 60 * 24));
   if (numberOfNights <= 0) return null;
 
   const guestsCountNum = Number(guestsStr || 1);
@@ -312,28 +317,19 @@ function calculateStayTotal(
     };
   }
 
-  if (property.minNights && numberOfNights < property.minNights) {
-    return {
-      numberOfNights,
-      total: 0,
-      hasBlockedDate: false,
-      isAvailable: false,
-      unavailabilityReason: `Exige mínimo de ${property.minNights} noites`,
-      formattedTotal: "R$ 0",
-    };
-  }
-
   const basePrice = property.rawPrice || 0;
   const ratesMap = (property.customRates || {}) as Record<string, any>;
 
   let total = 0;
   let hasBlockedDate = false;
+  let effectiveMinNights = property.minNights || 1;
+
   const cur = new Date(start);
 
   for (let i = 0; i < numberOfNights; i++) {
-    const y = cur.getFullYear();
-    const m = String(cur.getMonth() + 1).padStart(2, "0");
-    const d = String(cur.getDate()).padStart(2, "0");
+    const y = cur.getUTCFullYear();
+    const m = String(cur.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(cur.getUTCDate()).padStart(2, "0");
     const dateStr = `${y}-${m}-${d}`;
 
     const entry = ratesMap[dateStr];
@@ -341,14 +337,29 @@ function calculateStayTotal(
       hasBlockedDate = true;
     }
 
+    if (i === 0 && entry && typeof entry === "object" && entry.minNights !== undefined) {
+      effectiveMinNights = Number(entry.minNights);
+    }
+
     let nightRate = basePrice;
     if (typeof entry === "number") {
       nightRate = entry;
-    } else if (entry && typeof entry === "object" && entry.price !== undefined) {
+    } else if (entry && typeof entry === "object" && entry.price !== undefined && entry.price !== null) {
       nightRate = Number(entry.price);
     }
     total += nightRate;
-    cur.setDate(cur.getDate() + 1);
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+
+  if (numberOfNights < effectiveMinNights) {
+    return {
+      numberOfNights,
+      total: 0,
+      hasBlockedDate: false,
+      isAvailable: false,
+      unavailabilityReason: `Exige mínimo de ${effectiveMinNights} noites`,
+      formattedTotal: "R$ 0",
+    };
   }
 
   if (hasBlockedDate) {

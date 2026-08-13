@@ -1,72 +1,206 @@
-import React from "react";
+"use client";
 
-export const metadata = {
-  title: "Termos de Uso | RealStock",
-  description: "Termos e condições de uso da plataforma RealStock.",
-};
+import React from "react";
+import Link from "next/link";
+import { Download, ShieldCheck, ArrowLeft, FileText, Scale, AlertTriangle } from "lucide-react";
 
 export default function TermosPage() {
+  const handleDownloadTerms = () => {
+    const textContent = `
+================================================================================
+REALSTOCK - TERMOS E CONDIÇÕES GERAIS DE USO DA PLATAFORMA
+Última Atualização: 13 de Agosto de 2026
+================================================================================
+
+1. ACEITAÇÃO E NATUREZA JURÍDICA DA PLATAFORMA
+A RealStock (https://www.realstock.com.br) é uma plataforma digital e marketplace tecnológico que oferece infraestrutura de software para a publicação de anúncios imobiliários, englobando a venda, locação tradicional e locação por temporada.
+Ao utilizar a Plataforma, cadastrar anúncios ou solicitar reservas, o usuário declara ter lido, compreendido e aceito integralmente estes Termos de Uso.
+
+2. INTERMEDIAÇÃO TECNOLÓGICA E ISENÇÃO TOTAL DE RESPONSABILIDADE SOBRE RESERVAS
+2.1. A RealStock atua EXCLUSIVAMENTE como intermediadora tecnológica e vitrine digital de aproximação entre Anfitriões/Proprietários e Hóspedes/Compradores.
+2.2. A RealStock NÃO é proprietária, possuidora, locadora, administradora, corretora ou garantidora de nenhum dos imóveis anunciados na plataforma.
+2.3. A RealStock está ISENTA DE QUALQUER RESPONSABILIDADE civil, consumidora, criminal ou financeira em relação a:
+     a) Condições físicas, higiênicas, sanitárias, de segurança ou manutenção dos imóveis;
+     b) Exatidão, veracidade ou atualização de fotografias, descrições, valores de diárias e comodidades prestadas pelo Anfitrião;
+     c) Cancelamentos, desistências, atrasos no check-in/check-out ou alterações de reserva promovidas por qualquer das partes;
+     d) Pagamentos diretos efetuados entre Anfitrião e Hóspede (incluindo transferências Pix, sinais de reserva ou pagamentos em dinheiro);
+     e) Furtos, roubos, danos patrimoniais, acidentes pessoais, lesões ou qualquer tipo de sinistro ocorrido durante a estadia;
+     f) Descumprimentos contratuais, atrasos ou disputas judiciais/extrajudiciais entre Hóspede e Anfitrião.
+
+3. OBRIGAÇÕES E RESPONSABILIDADES DO ANFITRIÃO
+3.1. O Anfitrião declara e garante possuir capacidade legal e todos os direitos de propriedade, posse ou autorização expressa para disponibilizar o imóvel.
+3.2. O Anfitrião é o único e exclusivo responsável por manter as informações do imóvel e o calendário de disponibilidade devidamente atualizados.
+3.3. Cabe exclusivamente ao Anfitrião fornecer a Chave Pix correta, receber o sinal da reserva, disponibilizar o acesso/chaves ao hóspede e responder diretamente por eventuais vícios ou vícios ocultos do imóvel.
+
+4. OBRIGAÇÕES E RESPONSABILIDADES DO HÓSPEDE / COMPRADOR
+4.1. O Hóspede compromete-se a utilizar o imóvel com zelo e cuidado, respeitando o número máximo de hóspedes, as regras da casa e os horários de check-in/check-out estipulados pelo Anfitrião.
+4.2. O Hóspede é o único responsável pelo pagamento do sinal acordado diretamente ao Anfitrião e pelo cumprimento das obrigações assumidas no pedido de reserva.
+
+5. TAXAS DA PLATAFORMA E SERVIÇOS DE MARKETING
+5.1. A taxa administrativa de 1% cobrada do Anfitrião refere-se exclusivamente à licença de uso da tecnologia e liberação do canal de comunicação/dados da reserva, não constituindo taxa de seguro, fiança ou garantia de estadia.
+5.2. Serviços adicionais como Míssil Viralizar, Impulsionamentos Meta/Google Ads ou Patrocínio possuem caráter estritamente publicitário e de visibilidade de mídia.
+
+6. PROPRIEDADE INTELECTUAL E CONTEÚDO DO USUÁRIO
+Ao cadastrar fotos, vídeos ou descrições, o usuário concede à RealStock licença não exclusiva para exibição e promoção publicitária dos anúncios em redes sociais e buscadores.
+
+7. LEI APLICÁVEL E FORO
+Estes Termos são regidos pelas leis da República Federativa do Brasil, elegendo-se o foro da sede administrativa da RealStock para dirimir quaisquer controvérsias.
+
+================================================================================
+RealStock Tecnologia Imobiliária - Todos os direitos reservados.
+    `.trim();
+
+    const blob = new Blob([textContent], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "Termos_e_Condicoes_RealStock.txt";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-300 py-12 px-6">
-      <div className="max-w-4xl mx-auto bg-slate-900 border border-white/10 rounded-[28px] p-8 md:p-12 shadow-2xl">
-        <h1 className="text-3xl font-bold text-white mb-2">Termos de Uso</h1>
-        <p className="text-slate-400 mb-8 border-b border-white/10 pb-6">
-          Última atualização: {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-        </p>
+    <main className="min-h-screen bg-slate-950 text-slate-200 py-12 px-4 sm:px-6 lg:px-8 selection:bg-sky-500/30">
+      <div className="max-w-4xl mx-auto space-y-8">
+        
+        {/* HEADER BAR */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="rounded-xl border border-white/10 bg-white/5 p-2.5 text-slate-300 hover:bg-white/10 transition"
+              title="Voltar para a página inicial"
+            >
+              <ArrowLeft size={18} />
+            </Link>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
+                <Scale className="text-sky-400" size={28} />
+                <span>Termos e Condições de Uso</span>
+              </h1>
+              <p className="text-xs text-slate-400">
+                Diretrizes contratuais de intermediação tecnológica da RealStock
+              </p>
+            </div>
+          </div>
 
-        <div className="space-y-8 leading-relaxed font-sans cursor-default">
-          <section>
-            <h2 className="text-xl font-bold text-white mb-3">1. Aceitação dos Termos</h2>
-            <p>
-              Ao acessar e utilizar o site <strong>RealStock</strong> (https://www.realstock.com.br), doravante denominado "Plataforma", você concorda em cumprir e vincular-se a estes Termos de Uso. Caso não concorde com qualquer parte destes termos, você está proibido de utilizar ou acessar este site. Os materiais contidos neste site são protegidos pelas leis aplicáveis de direitos autorais e marcas comerciais. 
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-white mb-3">2. Natureza dos Serviços (Marketplace)</h2>
-            <p className="mb-3">
-              A <strong>RealStock</strong> atua exclusivamente como uma plataforma de aproximação (marketplace imobiliário), oferecendo um espaço digital para que proprietários, construtoras e corretores (Anunciantes) publiquem imóveis e investidores ou compradores (Usuários) pesquisem as ofertas.
-            </p>
-            <p>
-              Não somos uma imobiliária, não prestamos assessoria jurídica, não cobramos comissões de corretagem sobre as vendas diretas originadas através das comunicações no site e não garantimos a veracidade absoluta das informações cadastradas por terceiros. Toda a devida diligência (Due Diligence) de documentação, visita ou vistoria do imóvel é de responsabilidade conjunta do Vendedor e Comprador.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-white mb-3">3. Responsabilidade dos Anunciantes</h2>
-            <p>
-              Os Anunciantes garantem ter o direito legal de colocar os imóveis à venda ou estarem devidamente autorizados pelo proprietário para atuar nesta finalidade (sob contrato de exclusividade ou parcerias autorizadas). O Anunciante compromete-se a não enviar imagens fraudulentas, inflacionar preços de maneira dissimulada ou utilizar a plataforma para anúncios inexistentes. A constatação de fraude resultará no banimento imediato e na comunicação das partes aos órgãos de proteção cível da jurisdição.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-white mb-3">4. Direitos Autorais e Propriedade de Mídia</h2>
-            <p>
-              Todo o conteúdo original estrutural deste site (elementos gráficos, logotipos, arquitetura de software, layouts e design) pertence à RealStock. O conteúdo cadastrado pelo usuário (fotografias dos imóveis, textos descritivos e vídeos) permanecem como propriedade intelectual do usuário enviador. No entanto, ao submeter o anúncio, o usuário cede à RealStock a licença não exclusiva para dispor, compartilhar e divulgar referidas imagens em campanhas publicitárias dentro da plataforma Meta Ads (Instagram/Facebook) ou Google Ads visando impulsionar as prospecções.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-white mb-3">5. Compras de Impulsionamentos e Assinaturas</h2>
-            <p>
-              Todos os valores para dar visibilidade extra e turbinar um anúncio através dos nossos programas integrados aos Provedores externos (Meta Platforms Inc ou Google Alphabet) estão descritos diretamente no momento do checkout e serão processados pelo parceiro de pagamentos oficial (PayPal). Devido à natureza irreversível da aquisição de espaço publicitário nestas redes, uma vez que a campanha esteja iniciada e creditada, não garantimos o reembolso de verbas de mídia digital.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-white mb-3">6. Modificações dos Termos de Uso</h2>
-            <p>
-              A RealStock poderá revisar estes termos de serviço do site a qualquer momento, independente de aviso-prévio contínuo e massivo, bastando a atualização nesta página. Ao usar o site, você concorda em ficar vinculado pela versão atual e contínua destes termos de compromisso de serviço. Recomendamos revisitar a página de forma periódica.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-white mb-3">7. Lei Aplicável e Jurisdição</h2>
-            <p>
-              Estes termos e condições são regidos e interpretados de acordo com as leis do Brasil e você se submete irrevogavelmente à jurisdição exclusiva dos tribunais da sede administrativa principal da detentora do marketplace para a resolução judiciária de quaisquer conflitos.
-            </p>
-          </section>
+          <button
+            onClick={handleDownloadTerms}
+            className="w-full sm:w-auto rounded-xl bg-sky-500 hover:bg-sky-400 px-5 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-sky-500/20 transition cursor-pointer flex items-center justify-center gap-2"
+          >
+            <Download size={16} />
+            <span>Baixar Termos (TXT)</span>
+          </button>
         </div>
+
+        {/* ALERTA DE ISENÇÃO DE RESPONSABILIDADE */}
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 text-amber-200 text-xs sm:text-sm leading-relaxed flex items-start gap-3">
+          <AlertTriangle size={24} className="text-amber-400 shrink-0 mt-0.5" />
+          <div>
+            <strong className="block font-bold text-amber-300 mb-1">Aviso Importante aos Usuários (Intermediação Tecnológica):</strong>
+            O RealStock atua <strong>exclusivamente como intermediador tecnológico</strong> aproximando hóspedes e anfitriões. O portal não é proprietário, locador ou garantidor dos imóveis e <strong>não possui qualquer responsabilidade sobre o cumprimento das reservas, estadias, pagamentos de sinal via Pix ou condições físicas das propriedades</strong>.
+          </div>
+        </div>
+
+        {/* CORPO DOS TERMOS */}
+        <div className="bg-slate-900/90 border border-white/10 rounded-3xl p-6 sm:p-10 shadow-2xl space-y-8 text-sm leading-relaxed text-slate-300">
+          
+          <section className="space-y-3">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <FileText size={18} className="text-sky-400" />
+              1. Aceitação e Natureza Jurídica da Plataforma
+            </h2>
+            <p>
+              A <strong>RealStock</strong> (https://www.realstock.com.br) é uma plataforma digital e marketplace tecnológico que oferece infraestrutura de software para a publicação de anúncios imobiliários, englobando venda, locação tradicional e locação por temporada.
+            </p>
+            <p>
+              Ao utilizar a Plataforma, cadastrar anúncios ou solicitar reservas, o usuário declara ter lido, compreendido e aceito integralmente estes Termos e Condições de Uso.
+            </p>
+          </section>
+
+          <section className="space-y-3 border-t border-white/10 pt-6">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <ShieldCheck size={18} className="text-emerald-400" />
+              2. Intermediação Tecnológica e Isenção Total de Responsabilidade
+            </h2>
+            <p>
+              2.1. A RealStock atua <strong>EXCLUSIVAMENTE como intermediadora tecnológica</strong> e vitrine digital de aproximação entre Anfitriões/Proprietários e Hóspedes/Compradores.
+            </p>
+            <p>
+              2.2. A RealStock <strong>NÃO é proprietária, possuidora, locadora, administradora, corretora ou garantidora</strong> de nenhum dos imóveis anunciados na plataforma.
+            </p>
+            <div className="rounded-xl border border-white/5 bg-slate-950 p-4 space-y-2 text-xs text-slate-300">
+              <strong className="text-white block font-semibold mb-2">2.3. A RealStock está ISENTA DE QUALQUER RESPONSABILIDADE civil, consumidora, criminal ou financeira em relação a:</strong>
+              <ul className="list-disc pl-5 space-y-1 text-slate-400">
+                <li>Condições físicas, higiênicas, sanitárias, de segurança ou manutenção dos imóveis;</li>
+                <li>Exatidão, veracidade ou atualização de fotografias, descrições, valores de diárias e comodidades;</li>
+                <li>Cancelamentos, desistências, atrasos no check-in/check-out ou alterações de reserva por qualquer das partes;</li>
+                <li>Pagamentos diretos efetuados entre Anfitrião e Hóspede (transferências Pix, sinais de reserva ou saldo);</li>
+                <li>Furtos, roubos, danos patrimoniais, acidentes pessoais ou lesões ocorridos durante a estadia;</li>
+                <li>Descumprimentos contratuais ou disputas judiciais/extrajudiciais entre Hóspede e Anfitrião.</li>
+              </ul>
+            </div>
+          </section>
+
+          <section className="space-y-3 border-t border-white/10 pt-6">
+            <h2 className="text-lg font-bold text-white">3. Obrigações e Responsabilidades do Anfitrião</h2>
+            <p>
+              3.1. O Anfitrião declara e garante possuir capacidade legal e todos os direitos de propriedade, posse ou autorização expressa para disponibilizar o imóvel para locação por temporada ou venda.
+            </p>
+            <p>
+              3.2. O Anfitrião é o único e exclusivo responsável por manter as informações do imóvel e o calendário de disponibilidade devidamente atualizados.
+            </p>
+            <p>
+              3.3. Cabe exclusivamente ao Anfitrião fornecer a Chave Pix correta, receber o sinal da reserva, disponibilizar o acesso/chaves ao hóspede e responder diretamente por eventuais vícios do imóvel.
+            </p>
+          </section>
+
+          <section className="space-y-3 border-t border-white/10 pt-6">
+            <h2 className="text-lg font-bold text-white">4. Obrigações e Responsabilidades do Hóspede / Comprador</h2>
+            <p>
+              4.1. O Hóspede compromete-se a utilizar o imóvel com zelo e cuidado, respeitando o número máximo de hóspedes, as regras da casa e os horários de check-in/check-out estipulados pelo Anfitrião.
+            </p>
+            <p>
+              4.2. O Hóspede é o único responsável pelo pagamento do sinal acordado diretamente ao Anfitrião e pelo cumprimento das obrigações assumidas no pedido de reserva.
+            </p>
+          </section>
+
+          <section className="space-y-3 border-t border-white/10 pt-6">
+            <h2 className="text-lg font-bold text-white">5. Taxas da Plataforma e Serviços de Marketing</h2>
+            <p>
+              5.1. A taxa administrativa de 1% cobrada do Anfitrião refere-se exclusivamente à licença de uso da tecnologia e liberação do canal de comunicação/dados da reserva, não constituindo taxa de seguro, fiança ou garantia de estadia.
+            </p>
+            <p>
+              5.2. Serviços adicionais como Míssil Viralizar, Impulsionamentos Meta/Google Ads ou Patrocínio possuem caráter estritamente publicitário de alcance digital.
+            </p>
+          </section>
+
+          <section className="space-y-3 border-t border-white/10 pt-6">
+            <h2 className="text-lg font-bold text-white">6. Lei Aplicável e Foro</h2>
+            <p>
+              Estes Termos são regidos pelas leis da República Federativa do Brasil, elegendo-se o foro da sede administrativa da RealStock para dirimir quaisquer controvérsias.
+            </p>
+          </section>
+
+        </div>
+
+        {/* BOTTOM DOWNLOAD CTA */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 rounded-2xl border border-white/10 bg-slate-900 text-center sm:text-left">
+          <div>
+            <h3 className="text-sm font-bold text-white">Precisa guardar uma cópia destes termos?</h3>
+            <p className="text-xs text-slate-400">Clique ao lado para baixar o arquivo de texto completo dos Termos de Uso.</p>
+          </div>
+          <button
+            onClick={handleDownloadTerms}
+            className="rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 px-5 py-2.5 text-xs font-bold text-slate-200 transition flex items-center gap-2 shrink-0"
+          >
+            <Download size={16} />
+            <span>Baixar Arquivo TXT</span>
+          </button>
+        </div>
+
       </div>
     </main>
   );

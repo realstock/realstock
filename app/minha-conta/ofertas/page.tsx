@@ -50,8 +50,18 @@ type PixValidation = {
   };
 };
 
+function getWhatsAppUrl(phoneStr: string | null | undefined) {
+  if (!phoneStr) return null;
+  const digits = phoneStr.replace(/\D/g, "");
+  if (!digits) return null;
+  const fullPhone = digits.length >= 10 && !digits.startsWith("55") ? `55${digits}` : digits;
+  return `https://wa.me/${fullPhone}`;
+}
+
 type OfferItem = {
   id: number;
+  propertyId: number;
+  buyerId: number;
   offerPrice: string | number;
   totalStayPrice?: string | number | null;
   depositAmount?: string | number | null;
@@ -61,6 +71,7 @@ type OfferItem = {
   guests?: number | null;
   pixReceiptUrl?: string | null;
   pixValidation?: PixValidation | null;
+  conversationId?: number | null;
   createdAt: string;
   buyer?: {
     id?: number;
@@ -198,32 +209,41 @@ function PixValidationPanel({ validation, perspective }: { validation: PixValida
         </span>
       </div>
 
-      {/* Check rows */}
-      {checkList.map(({ key, check, detail }) => (
-        <div key={key} className={`flex items-start gap-2.5 rounded-xl px-3 py-2.5 border ${
-          check.passed
-            ? "bg-emerald-500/10 border-emerald-500/20"
-            : "bg-red-500/10 border-red-500/20"
-        }`}>
-          <span className={`mt-0.5 flex-shrink-0 text-sm ${check.passed ? "text-emerald-400" : "text-red-400"}`}>
-            {check.passed ? "✅" : "❌"}
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className={`text-xs font-bold ${check.passed ? "text-emerald-300" : "text-red-300"}`}>
-              {check.label}
+      {/* Check cards in a horizontal row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 pt-1">
+        {checkList.map(({ key, check, detail }) => (
+          <div
+            key={key}
+            className={`flex flex-col justify-between rounded-xl p-3 border text-xs transition-all ${
+              check.passed
+                ? "bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/15"
+                : "bg-red-500/10 border-red-500/20 hover:bg-red-500/15"
+            }`}
+          >
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-1">
+                <span className={`font-bold text-[11px] leading-tight ${check.passed ? "text-emerald-300" : "text-red-300"}`}>
+                  {check.label}
+                </span>
+                <span className="text-sm shrink-0">
+                  {check.passed ? "✅" : "❌"}
+                </span>
+              </div>
+              {detail && (
+                <p className="text-[11px] text-slate-300 font-medium break-all leading-tight pt-1">
+                  {detail}
+                </p>
+              )}
             </div>
-            {detail && (
-              <div className="text-[11px] text-slate-400 mt-0.5 break-all">{detail}</div>
-            )}
-            {/* Show hint only in guest view for failed checks */}
+
             {!check.passed && perspective === "VIAJANDO" && CHECK_FAILURE_HINTS[key] && (
-              <div className="mt-1 text-[11px] text-amber-300 leading-relaxed">
+              <div className="mt-2 text-[10px] text-amber-300 leading-snug pt-1 border-t border-red-500/20">
                 ⚠️ {CHECK_FAILURE_HINTS[key]}
               </div>
             )}
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
       {/* Summary guidance for guest */}
       {perspective === "VIAJANDO" && !validation.allPassed && (
@@ -693,12 +713,12 @@ export default function MinhasReservasPage() {
                                   />
                                 </div>
                                 <span
-                                  className={`mt-1 text-[10px] font-bold text-center truncate max-w-[80px] hidden sm:block ${
+                                  className={`mt-1.5 text-[10px] md:text-xs font-bold text-center leading-tight whitespace-normal w-full px-0.5 ${
                                     isCurrent
                                       ? "text-emerald-400"
                                       : isDone
-                                      ? "text-slate-400"
-                                      : "text-slate-600"
+                                      ? "text-slate-300"
+                                      : "text-slate-500"
                                   }`}
                                 >
                                   {st.title.split(". ")[1]}
@@ -796,7 +816,11 @@ export default function MinhasReservasPage() {
 
                         {(isAcceptedWaiting || isConfirmed) && (
                           <Link
-                            href="/minha-conta/chat"
+                            href={
+                              offer.conversationId
+                                ? `/minha-conta/chat?conversationId=${offer.conversationId}`
+                                : `/minha-conta/chat?propertyId=${offer.propertyId}&buyerId=${offer.buyerId}`
+                            }
                             className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 text-center transition flex items-center justify-center gap-1.5"
                           >
                             💬 Abrir Chat
@@ -838,15 +862,47 @@ export default function MinhasReservasPage() {
                     {/* DETAILS BOX FOR GUEST ("VIAJANDO") */}
                     {activeTab === "VIAJANDO" && (isAcceptedWaiting || isConfirmed) && (
                       <div className="mt-5 border-t border-white/10 pt-4 space-y-3 rounded-2xl bg-slate-950/70 p-4 border border-white/5">
-                        <div className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
-                          <ShieldCheck size={16} />
-                          <span>Dados de Contato e Pagamento do Anfitrião</span>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                            <ShieldCheck size={16} />
+                            <span>Dados de Contato e Pagamento do Anfitrião</span>
+                          </div>
+                          <Link
+                            href={
+                              offer.conversationId
+                                ? `/minha-conta/chat?conversationId=${offer.conversationId}`
+                                : `/minha-conta/chat?propertyId=${offer.propertyId}&buyerId=${offer.buyerId}`
+                            }
+                            className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/20 transition"
+                          >
+                            💬 Ir para o Chat
+                          </Link>
                         </div>
 
                         <div className="grid gap-2 sm:grid-cols-2 text-xs text-slate-300">
                           <div><strong>Anfitrião:</strong> {offer.property?.owner?.name || "Não informado"}</div>
                           <div><strong>E-mail:</strong> {offer.property?.owner?.email || "Não informado"}</div>
-                          <div><strong>Telefone / WhatsApp:</strong> {offer.property?.owner?.phone || "Não informado"}</div>
+                          <div>
+                            <strong>Telefone / WhatsApp:</strong>{" "}
+                            {offer.property?.owner?.phone ? (
+                              getWhatsAppUrl(offer.property.owner.phone) ? (
+                                <a
+                                  href={getWhatsAppUrl(offer.property.owner.phone)!}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1.5 font-bold text-emerald-400 hover:text-emerald-300 underline transition cursor-pointer"
+                                  title="Abrir no WhatsApp"
+                                >
+                                  <span>{offer.property.owner.phone}</span>
+                                  <span className="no-underline bg-emerald-500/20 border border-emerald-500/40 rounded px-1.5 py-0.5 text-[11px]">💬 WhatsApp</span>
+                                </a>
+                              ) : (
+                                <span>{offer.property.owner.phone}</span>
+                              )
+                            ) : (
+                              "Não informado"
+                            )}
+                          </div>
                           <div>
                             <strong>Chave Pix:</strong>{" "}
                             <span className="font-mono text-emerald-300 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
@@ -994,15 +1050,47 @@ export default function MinhasReservasPage() {
 
                     {activeTab === "HOSPEDANDO" && (isAcceptedWaiting || isConfirmed) && (
                       <div className="mt-5 border-t border-white/10 pt-4 space-y-3 rounded-2xl bg-slate-950/70 p-4 border border-white/5">
-                        <div className="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-2">
-                          <ShieldCheck size={16} />
-                          <span>Dados de Contato do Hóspede (Liberado)</span>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-2">
+                            <ShieldCheck size={16} />
+                            <span>Dados de Contato do Hóspede (Liberado)</span>
+                          </div>
+                          <Link
+                            href={
+                              offer.conversationId
+                                ? `/minha-conta/chat?conversationId=${offer.conversationId}`
+                                : `/minha-conta/chat?propertyId=${offer.propertyId}&buyerId=${offer.buyerId}`
+                            }
+                            className="inline-flex items-center gap-1 rounded-lg border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-[11px] font-bold text-sky-300 hover:bg-sky-500/20 transition"
+                          >
+                            💬 Ir para o Chat
+                          </Link>
                         </div>
 
                         <div className="grid gap-2 sm:grid-cols-2 text-xs text-slate-300">
                           <div><strong>Hóspede:</strong> {offer.buyer?.name || "Não informado"}</div>
                           <div><strong>E-mail:</strong> {offer.buyer?.email || "Não informado"}</div>
-                          <div><strong>Telefone / WhatsApp:</strong> {offer.buyer?.phone || "Não informado"}</div>
+                          <div>
+                            <strong>Telefone / WhatsApp:</strong>{" "}
+                            {offer.buyer?.phone ? (
+                              getWhatsAppUrl(offer.buyer.phone) ? (
+                                <a
+                                  href={getWhatsAppUrl(offer.buyer.phone)!}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1.5 font-bold text-emerald-400 hover:text-emerald-300 underline transition cursor-pointer"
+                                  title="Abrir no WhatsApp"
+                                >
+                                  <span>{offer.buyer.phone}</span>
+                                  <span className="no-underline bg-emerald-500/20 border border-emerald-500/40 rounded px-1.5 py-0.5 text-[11px]">💬 WhatsApp</span>
+                                </a>
+                              ) : (
+                                <span>{offer.buyer.phone}</span>
+                              )
+                            ) : (
+                              "Não informado"
+                            )}
+                          </div>
                           {offer.depositAmount && (
                             <div>
                               <strong>Sinal Pix Solicitado:</strong>{" "}
@@ -1111,9 +1199,13 @@ export default function MinhasReservasPage() {
                         throw new Error(result.error || "Erro ao capturar pagamento.");
                       }
 
-                      alert("🎉 Pedido aceito com sucesso! O hóspede foi notificado para realizar o pagamento do sinal.");
+                      alert("🎉 Pedido aceito com sucesso! O chat com o hóspede foi liberado.");
                       closePaypalModal();
-                      await loadOffers();
+                      if (result.conversationId) {
+                        router.push(`/minha-conta/chat?conversationId=${result.conversationId}`);
+                      } else {
+                        await loadOffers();
+                      }
                     }}
                     onError={(err) => {
                       console.error("PAYPAL MODAL ERROR:", err);

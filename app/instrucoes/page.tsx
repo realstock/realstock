@@ -1,6 +1,19 @@
 import React from "react";
 import Link from "next/link";
-import { FiPlusCircle, FiEdit3, FiTrendingUp, FiShare2, FiTarget, FiDollarSign, FiStar } from "react-icons/fi";
+import {
+  FiPlusCircle,
+  FiEdit3,
+  FiTrendingUp,
+  FiShare2,
+  FiTarget,
+  FiDollarSign,
+  FiStar,
+  FiHome,
+  FiCalendar,
+  FiMessageSquare,
+  FiShield,
+  FiCheckSquare,
+} from "react-icons/fi";
 import { Rocket } from "lucide-react";
 
 const instructionsList = [
@@ -10,6 +23,41 @@ const instructionsList = [
     icon: <FiPlusCircle className="w-8 h-8 text-sky-400" />,
     content: "Para cadastrar um novo imóvel e capturar clientes no RealStock, acesse o botão 'Anunciar' no topo da página ou através do seu menu. Preencha os campos exigidos como Título, Descrição, Fotos e Valores. Nossa tecnologia de geolocalização auxiliará na construção do seu anúncio perfeito. Após salvar, seu imóvel entrará imediatamente anunciado na rede RealStock.",
     link: "/anunciar"
+  },
+  {
+    id: "aluguel_temporada",
+    title: "Aluguel por Temporada",
+    icon: <FiHome className="w-8 h-8 text-sky-400" />,
+    content: "Anuncie seus imóveis na modalidade Aluguel por Temporada definindo o valor da diária padrão, capacidade máxima de hóspedes, mínimo de noites por estadia, porcentagem de sinal e sua Chave Pix. Seu anúncio é disponibilizado na busca do mapa com seletor interativo de datas de entrada (check-in) e saída (check-out) calculando o valor total da estadia automaticamente.",
+    link: "/anunciar"
+  },
+  {
+    id: "calendario_tarifas",
+    title: "Calendário & Preços por Data",
+    icon: <FiCalendar className="w-8 h-8 text-emerald-400" />,
+    content: "Gerencie o calendário do seu imóvel de temporada com flexibilidade total. Defina preços diferenciados para datas específicas (feriados, fins de semana e alta temporada), altere a exigência mínima de noites por período, feche dias para manutenção ou sincronize reservas com plataformas externas (Airbnb, Booking.com) via importação/exportação de links iCal.",
+    link: "/minha-conta/anuncios"
+  },
+  {
+    id: "gestao_reservas",
+    title: "Fluxo de Aprovação de Reservas",
+    icon: <FiCheckSquare className="w-8 h-8 text-indigo-400" />,
+    content: "Acompanhe seus pedidos de reserva em um fluxo transparente em 4 etapas: 1) O hóspede solicita o período; 2) O anfitrião aceita o pedido pagando a taxa administrativa de 1% do site; 3) O hóspede recebe a Chave Pix e paga o sinal da reserva; 4) O comprovante Pix é auditado e a reserva é confirmada no sistema.",
+    link: "/minha-conta/ofertas"
+  },
+  {
+    id: "chat_direto",
+    title: "Chat Direto (Hóspede x Anfitrião)",
+    icon: <FiMessageSquare className="w-8 h-8 text-teal-400" />,
+    content: "Comunique-se em tempo real diretamente pelo portal! Assim que o anfitrião aceita a reserva e paga a taxa de 1%, a Central de Chat é aberta automaticamente com uma mensagem inicial pré-formatada contendo as datas da estadia. Anfitriões e hóspedes trocam mensagens para alinhar horário de check-in, regras da casa e tirar dúvidas rapidamente.",
+    link: "/minha-conta/chat"
+  },
+  {
+    id: "validacao_pix_ia",
+    title: "Validação Automática de Pix por IA",
+    icon: <FiShield className="w-8 h-8 text-emerald-400" />,
+    content: "Segurança total no pagamento do sinal! Quando o hóspede envia o comprovante Pix na página da reserva, a Inteligência Artificial do RealStock analisa o documento em segundos. Ela audita o valor da transação, o nome do recebedor, a data/hora e o código de autenticação bancária, garantindo transparência para o anfitrião.",
+    link: "/minha-conta/ofertas"
   },
   {
     id: "editar",

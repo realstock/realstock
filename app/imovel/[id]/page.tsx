@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Globe, CalendarCheck2 } from "lucide-react";
 import OfferBookClient from "@/components/OfferBookClient";
 import AdSenseBanner from "@/components/AdSenseBanner";
 import { fetchICalEvents } from "@/lib/ical-parser";
@@ -42,6 +42,36 @@ const TwitterIcon = ({ size = 24 }: { size?: number }) => (
     className="fill-current"
   >
     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+  </svg>
+);
+
+const AirbnbLogo = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 32 32" fill="currentColor">
+    <path d="M16 1c-2.007 0-3.481 1.144-4.521 2.871L3.921 17.585C3.011 19.167 2 20.871 2 23.36 2 27.606 5.485 31 9.771 31c3.155 0 5.679-1.895 6.229-4.5.55 2.605 3.074 4.5 6.229 4.5C26.515 31 30 27.606 30 23.36c0-2.489-1.011-4.193-1.921-5.775L20.521 3.871C19.481 2.144 18.007 1 16 1zm0 3.333c.875 0 1.625.592 2.229 1.6l7.558 13.714c.712 1.237 1.212 2.376 1.212 3.713 0 2.505-1.954 4.333-4.229 4.333-2.128 0-3.692-1.583-4.183-3.667l-.78-3.333h-3.614l-.78 3.333C12.921 28.75 11.357 30.333 9.229 30.333 6.954 30.333 5 28.505 5 26c0-1.337.5-2.476 1.212-3.713L13.771 8.571C14.375 7.562 15.125 4.333 16 4.333zm0 7c-1.288 0-2.333 1.046-2.333 2.334 0 2.115 2.333 5.333 2.333 5.333s2.333-3.218 2.333-5.333c0-1.288-1.045-2.334-2.333-2.334zm0 2.667c.368 0 .667.299.667.667 0 .584-.667 1.776-.667 1.776s-.667-1.192-.667-1.776c0-.368.299-.667.667-.667z" />
+  </svg>
+);
+
+const BookingLogo = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M2.5 4h8.5c2.5 0 4.5 1.5 4.5 3.8 0 1.5-.9 2.7-2.2 3.3 1.7.5 2.8 2 2.8 3.8 0 2.5-2.1 4.1-4.8 4.1H2.5V4zm4.2 3.2v3.1h3.8c1.1 0 1.8-.6 1.8-1.5s-.7-1.6-1.8-1.6H6.7zm0 5.8v3.5h4.2c1.2 0 2.1-.7 2.1-1.7s-.9-1.8-2.1-1.8H6.7zM20 16.5a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6z" />
+  </svg>
+);
+
+const VrboLogo = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2L2 9.5V21h20V9.5L12 2zm0 3.2l7 5.3V19H5v-8.5l7-5.3zm-1 6.8h2v5h-2v-5z" />
+  </svg>
+);
+
+const TripAdvisorLogo = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-5 13.5c-1.4 0-2.5-1.1-2.5-2.5s1.1-2.5 2.5-2.5 2.5 1.1 2.5 2.5-1.1 2.5-2.5 2.5zm10 0c-1.4 0-2.5-1.1-2.5-2.5s1.1-2.5 2.5-2.5 2.5 1.1 2.5 2.5-1.1 2.5-2.5 2.5z" />
+  </svg>
+);
+
+const ExpediaLogo = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
   </svg>
 );
 
@@ -357,6 +387,84 @@ export default async function PropertyPage({
         ["Código", `#${property.id}`],
       ];
 
+  // Analisar portais iCal vinculados à propriedade
+  const rawFeeds = (property.icalFeeds as { name?: string; url?: string }[]) || [];
+  const detectedPortals: { id: string; name: string; type: string; badgeStyle: string }[] = [];
+  const addedPortalIds = new Set<string>();
+
+  for (const f of rawFeeds) {
+    const urlStr = (f.url || "").toLowerCase();
+    const nameStr = (f.name || "").toLowerCase();
+    const combined = `${urlStr} ${nameStr}`;
+
+    if (!urlStr && !nameStr) continue;
+
+    if (combined.includes("airbnb") && !addedPortalIds.has("airbnb")) {
+      addedPortalIds.add("airbnb");
+      detectedPortals.push({
+        id: "airbnb",
+        name: "Airbnb",
+        type: "airbnb",
+        badgeStyle: "bg-[#FF5A5F]/15 text-[#FF5A5F] border-[#FF5A5F]/40 hover:bg-[#FF5A5F]/25",
+      });
+    } else if (combined.includes("booking") && !addedPortalIds.has("booking")) {
+      addedPortalIds.add("booking");
+      detectedPortals.push({
+        id: "booking",
+        name: "Booking.com",
+        type: "booking",
+        badgeStyle: "bg-[#003580]/25 text-[#3b82f6] border-[#003580]/50 hover:bg-[#003580]/40",
+      });
+    } else if ((combined.includes("vrbo") || combined.includes("homeaway") || combined.includes("aluguetemporada")) && !addedPortalIds.has("vrbo")) {
+      addedPortalIds.add("vrbo");
+      detectedPortals.push({
+        id: "vrbo",
+        name: "Vrbo / HomeAway",
+        type: "vrbo",
+        badgeStyle: "bg-[#194086]/25 text-[#60a5fa] border-[#194086]/50 hover:bg-[#194086]/40",
+      });
+    } else if ((combined.includes("tripadvisor") || combined.includes("flipkey")) && !addedPortalIds.has("tripadvisor")) {
+      addedPortalIds.add("tripadvisor");
+      detectedPortals.push({
+        id: "tripadvisor",
+        name: "TripAdvisor",
+        type: "tripadvisor",
+        badgeStyle: "bg-[#00AF87]/15 text-[#00AF87] border-[#00AF87]/40 hover:bg-[#00AF87]/25",
+      });
+    } else if ((combined.includes("expedia") || combined.includes("hotels.com")) && !addedPortalIds.has("expedia")) {
+      addedPortalIds.add("expedia");
+      detectedPortals.push({
+        id: "expedia",
+        name: "Expedia",
+        type: "expedia",
+        badgeStyle: "bg-[#FFCC00]/15 text-[#facc15] border-[#FFCC00]/40 hover:bg-[#FFCC00]/25",
+      });
+    } else {
+      let customName = f.name?.trim() || "";
+      if (!customName || customName.toLowerCase() === "outro") {
+        try {
+          if (f.url) {
+            const u = new URL(f.url);
+            customName = u.hostname.replace("www.", "");
+          }
+        } catch {
+          customName = "Portal Parceiro";
+        }
+      }
+      if (!customName) customName = "Portal Parceiro";
+      const key = `custom-${customName}`;
+      if (!addedPortalIds.has(key)) {
+        addedPortalIds.add(key);
+        detectedPortals.push({
+          id: key,
+          name: customName,
+          type: "custom",
+          badgeStyle: "bg-emerald-500/15 text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/25",
+        });
+      }
+    }
+  }
+
   return (
     <main className="min-h-screen bg-slate-950 text-white overflow-x-hidden">
       {property.sold && (
@@ -403,6 +511,62 @@ export default async function PropertyPage({
               videos={property.videos} 
               alt={property.title} 
             />
+
+            {/* PORTAIS DE DISPONIBILIDADE ICAL */}
+            {detectedPortals.length > 0 && (
+              <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
+                <h2 className="text-xl font-bold">
+                  Essa propriedade também está listada nos portais
+                </h2>
+                <p className="text-xs text-slate-400 mt-1 mb-5">
+                  O calendário de disponibilidade desta acomodação é sincronizado em tempo real com as plataformas parceiras.
+                </p>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {detectedPortals.map((portal) => (
+                    <div
+                      key={portal.id}
+                      className="flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900/50 p-4 transition-all hover:bg-white/5 hover:border-white/20"
+                    >
+                      {portal.type === "airbnb" ? (
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FF5A5F] text-white shrink-0 shadow-lg shadow-[#FF5A5F]/20">
+                          <AirbnbLogo className="w-5 h-5" />
+                        </div>
+                      ) : portal.type === "booking" ? (
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#003580] text-white shrink-0 shadow-lg shadow-[#003580]/20">
+                          <BookingLogo className="w-5 h-5" />
+                        </div>
+                      ) : portal.type === "vrbo" ? (
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2f6ce5] text-white shrink-0 shadow-lg shadow-[#2f6ce5]/20">
+                          <VrboLogo className="w-5 h-5" />
+                        </div>
+                      ) : portal.type === "tripadvisor" ? (
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#00AF87] text-white shrink-0 shadow-lg shadow-[#00AF87]/20">
+                          <TripAdvisorLogo className="w-5 h-5" />
+                        </div>
+                      ) : portal.type === "expedia" ? (
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFCC00] text-slate-950 shrink-0 shadow-lg shadow-[#FFCC00]/20">
+                          <ExpediaLogo className="w-5 h-5" />
+                        </div>
+                      ) : (
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white shrink-0 shadow-lg">
+                          <Globe size={18} />
+                        </div>
+                      )}
+
+                      <div className="min-w-0">
+                        <span className="text-xs font-bold uppercase tracking-widest text-white truncate block">
+                          {portal.name}
+                        </span>
+                        <span className="text-[10px] text-emerald-400 font-semibold block mt-0.5">
+                          ● Sincronizado
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
               <h2 className="text-xl font-bold">Descrição e detalhes</h2>

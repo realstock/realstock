@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
         role: "USER",
         verified: false,
         referrerId,
-        viralizarCredits: 5,
+        viralizarCredits: 1,
       },
     });
 
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
     if (referrerId) {
       await prisma.user.update({
         where: { id: referrerId },
-        data: { viralizarCredits: { increment: 5 } }
+        data: { viralizarCredits: { increment: 1 } }
       });
     }
 

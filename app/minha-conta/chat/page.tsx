@@ -55,6 +55,8 @@ function ChatContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialConvId = searchParams.get("conversationId");
+  const propertyIdParam = searchParams.get("propertyId");
+  const buyerIdParam = searchParams.get("buyerId");
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<number | null>(
@@ -66,7 +68,6 @@ function ChatContent() {
   const [loadingConv, setLoadingConv] = useState(true);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [sendingMsg, setSendingMsg] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const currentUserId = session?.user ? Number((session.user as any).id) : null;
 
@@ -84,11 +85,54 @@ function ChatContent() {
       const res = await fetch("/api/chat/conversations");
       const data = await res.json();
       if (data.success) {
-        setConversations(data.conversations || []);
-        
-        // Auto select first conversation if none selected
-        if (!activeConvId && data.conversations && data.conversations.length > 0) {
-          setActiveConvId(data.conversations[0].id);
+        let convs: Conversation[] = data.conversations || [];
+
+        // If propertyIdParam was passed and not in list, auto-create via API
+        if (propertyIdParam && buyerIdParam && !convs.some(c => c.propertyId === Number(propertyIdParam))) {
+          try {
+            const createRes = await fetch("/api/chat/conversations", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                property_id: Number(propertyIdParam),
+                target_user_id: Number(buyerIdParam),
+              }),
+            });
+            const createData = await createRes.json();
+            if (createData.success && createData.conversationId) {
+              const refreshRes = await fetch("/api/chat/conversations");
+              const refreshData = await refreshRes.json();
+              if (refreshData.success) {
+                convs = refreshData.conversations || [];
+              }
+              setActiveConvId(createData.conversationId);
+            }
+          } catch (createErr) {
+            console.error("Erro ao auto-criar conversa:", createErr);
+          }
+        }
+
+        setConversations(convs);
+
+        // Determine active conversation
+        if (initialConvId) {
+          const targetId = Number(initialConvId);
+          const found = convs.find((c) => c.id === targetId);
+          if (found) {
+            setActiveConvId(found.id);
+          } else if (convs.length > 0) {
+            setActiveConvId(convs[0].id);
+          }
+        } else if (propertyIdParam) {
+          const targetPropId = Number(propertyIdParam);
+          const found = convs.find((c) => c.propertyId === targetPropId);
+          if (found) {
+            setActiveConvId(found.id);
+          } else if (convs.length > 0 && !activeConvId) {
+            setActiveConvId(convs[0].id);
+          }
+        } else if (!activeConvId && convs.length > 0) {
+          setActiveConvId(convs[0].id);
         }
       }
     } catch (err) {
@@ -129,9 +173,13 @@ function ChatContent() {
     }
   }, [activeConvId, session]);
 
-  // Auto scroll to bottom when messages update
+  const chatMessagesContainerRef = useRef<HTMLDivElement>(null);
+
+  // Auto scroll internal chat container to bottom when messages update without moving the main browser window
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (chatMessagesContainerRef.current) {
+      chatMessagesContainerRef.current.scrollTop = chatMessagesContainerRef.current.scrollHeight;
+    }
   }, [messages]);
 
   // Polling every 4 seconds for real-time messages & list update
@@ -394,7 +442,7 @@ function ChatContent() {
                 </div>
 
                 {/* MESSAGES BODY */}
-                <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+                <div ref={chatMessagesContainerRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
                   {loadingMsgs && messages.length === 0 ? (
                     <div className="flex items-center justify-center h-full text-xs text-slate-500">
                       Carregando histórico...
@@ -432,7 +480,6 @@ function ChatContent() {
                       );
                     })
                   )}
-                  <div ref={messagesEndRef} />
                 </div>
 
                 {/* INPUT BAR */}

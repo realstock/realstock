@@ -488,7 +488,7 @@ export default function MeusAnunciosPage() {
                         }}
                         className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 py-3 text-xs font-black text-white shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02] active:scale-95"
                       >
-                        <Zap size={14} className="fill-white animate-pulse" /> VIRALIZAR TUDO (50% OFF)
+                        <Zap size={14} className="fill-white animate-pulse" /> VIRALIZAR TUDO (75% OFF)
                       </button>
                     </div>
 
@@ -715,7 +715,7 @@ export default function MeusAnunciosPage() {
                       visible: true,
                       x: e.clientX,
                       y: e.clientY,
-                      text: "✨ vc ainda nao viralizou esse anuncio, clique no botão viralizar e publique ele no instagram, facebook e twitter com apenas um clique e 50% de desconto"
+                      text: "✨ vc ainda nao viralizou esse anuncio, clique no botão viralizar e publique ele no instagram, facebook e twitter com apenas um clique e 75% de desconto"
                     });
                   }
                 }}
@@ -784,7 +784,7 @@ export default function MeusAnunciosPage() {
                           }
                         }}
                       >
-                        <Zap size={14} className="fill-white animate-pulse" /> {isPublished ? "VIRALIZAR NOVAMENTE" : "VIRALIZAR (50% OFF)"}
+                        <Zap size={14} className="fill-white animate-pulse" /> {isPublished ? "VIRALIZAR NOVAMENTE" : "VIRALIZAR (75% OFF)"}
                       </button>
                     </div>
 

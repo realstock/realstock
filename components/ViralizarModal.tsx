@@ -685,8 +685,8 @@ export default function ViralizarModal(props: ViralizarModalProps) {
                      <span>R$ {fees?.totalOriginal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between items-center text-emerald-400 text-xs font-black uppercase tracking-tighter">
-                     <span>Desconto Especial (50%)</span>
-                     <span>- R$ {(fees?.totalOriginal ? fees.totalOriginal * 0.5 : 0).toFixed(2)}</span>
+                     <span>Desconto Especial (75%)</span>
+                     <span>- R$ {(fees?.totalOriginal ? fees.totalOriginal * 0.75 : 0).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between items-center pt-4 mt-2 border-t border-white/5">
                      <span className="text-sm font-black text-white uppercase italic">Total do Investimento</span>

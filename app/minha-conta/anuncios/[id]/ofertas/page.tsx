@@ -24,6 +24,14 @@ type Offer = {
   };
 };
 
+function getWhatsAppUrl(phoneStr: string | null | undefined) {
+  if (!phoneStr) return null;
+  const digits = phoneStr.replace(/\D/g, "");
+  if (!digits) return null;
+  const fullPhone = digits.length >= 10 && !digits.startsWith("55") ? `55${digits}` : digits;
+  return `https://wa.me/${fullPhone}`;
+}
+
 export default function GerenciarOfertasPage() {
   const { status } = useSession();
   const router = useRouter();
@@ -284,7 +292,20 @@ export default function GerenciarOfertasPage() {
                       {offer.contactReleased ? (
                         <>
                           <div>📧 {offer.buyer?.email || "-"}</div>
-                          <div>📱 {offer.buyer?.phone || "-"}</div>
+                          <div className="flex items-center gap-2">
+                            <span>📱 {offer.buyer?.phone || "-"}</span>
+                            {offer.buyer?.phone && getWhatsAppUrl(offer.buyer.phone) && (
+                              <a
+                                href={getWhatsAppUrl(offer.buyer.phone)!}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 text-[11px] font-bold text-emerald-400 hover:bg-emerald-500/30 hover:scale-105 transition shadow cursor-pointer"
+                                title="Abrir conversa no WhatsApp"
+                              >
+                                <span>💬 WhatsApp</span>
+                              </a>
+                            )}
+                          </div>
                           <div>📷 {offer.buyer?.instagram || "-"}</div>
                         </>
                       ) : (

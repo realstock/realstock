@@ -58,7 +58,7 @@ export async function GET(req: Request) {
 
 
     const totalOriginal = result.reduce((acc, curr) => acc + curr.value, 0);
-    const totalFinal = totalOriginal * 0.5;
+    const totalFinal = totalOriginal * 0.25;
 
     return NextResponse.json({
       success: true,

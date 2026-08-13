@@ -99,11 +99,40 @@ export async function GET() {
       },
     });
 
+    const userConversations = await prisma.conversation.findMany({
+      where: {
+        OR: [{ buyerId: userId }, { sellerId: userId }],
+      },
+      select: {
+        id: true,
+        propertyId: true,
+        buyerId: true,
+        sellerId: true,
+      },
+    });
+
+    const getConversationId = (propertyId: number, buyerId: number, ownerId: number) => {
+      const found = userConversations.find(
+        (c) => c.propertyId === propertyId && c.buyerId === buyerId && c.sellerId === ownerId
+      );
+      return found ? found.id : null;
+    };
+
+    const mappedGuestOffers = guestOffers.map((o) => ({
+      ...o,
+      conversationId: getConversationId(o.propertyId, o.buyerId, o.property.ownerId),
+    }));
+
+    const mappedHostOffers = hostOffers.map((o) => ({
+      ...o,
+      conversationId: getConversationId(o.propertyId, o.buyerId, o.property.ownerId),
+    }));
+
     return NextResponse.json({
       success: true,
-      guestOffers,
-      hostOffers,
-      offers: guestOffers,
+      guestOffers: mappedGuestOffers,
+      hostOffers: mappedHostOffers,
+      offers: mappedGuestOffers,
     });
   } catch (error: any) {
     console.error("MINHA CONTA OFERTAS ERROR:", error);

@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     const amount = viralizarServices.reduce((acc, v) => {
       const found = services.find(s => v.keywords.some(k => s.name.toLowerCase().includes(k)));
       return acc + (found && found.fee ? Number(found.fee.value) : v.defaultValue);
-    }, 0) * 0.5;
+    }, 0) * 0.25;
 
     const accessToken = await getAccessToken();
     const response = await fetch(`${PAYPAL_API}/v2/checkout/orders`, {

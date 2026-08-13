@@ -118,6 +118,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Abrir/Criar o Chat automaticamente e enviar a mensagem inicial do hóspede
+    let createdConversationId: number | null = null;
     try {
       let conversation = await prisma.conversation.findFirst({
         where: {
@@ -136,6 +137,8 @@ export async function POST(req: NextRequest) {
           },
         });
       }
+
+      createdConversationId = conversation.id;
 
       const checkInFormatted = offer.startDate
         ? new Date(offer.startDate).toLocaleDateString("pt-BR")
@@ -187,6 +190,7 @@ export async function POST(req: NextRequest) {
       success: true,
       message: "Reserva aceita e taxa paga com sucesso! Dados de contato liberados.",
       offer: updatedOffer,
+      conversationId: createdConversationId,
     });
   } catch (error: any) {
     console.error("PAYPAL CAPTURE HOST FEE ERROR:", error);
