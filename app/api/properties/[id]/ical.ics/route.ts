@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateIcalResponse } from "../route";
+import { generateIcalResponse } from "../ical/route";
 
 export async function GET(
   req: NextRequest,
@@ -9,7 +9,7 @@ export async function GET(
     const { id } = await params;
     return await generateIcalResponse(Number(id), false);
   } catch (error: any) {
-    console.error("ERRO /api/properties/[id]/ical/ical.ics:", error);
+    console.error("ERRO /api/properties/[id]/ical.ics:", error);
     return new NextResponse("Erro ao gerar arquivo iCal", { status: 500 });
   }
 }
