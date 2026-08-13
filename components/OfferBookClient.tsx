@@ -417,63 +417,65 @@ export default function OfferBookClient({
         </div>
       )}
 
-      <div className="mt-6">
-        <div className="mb-3 text-sm font-medium text-slate-300">
-          Histórico de solicitações
+      {!isSeasonal && (
+        <div className="mt-6">
+          <div className="mb-3 text-sm font-medium text-slate-300">
+            Histórico de solicitações
+          </div>
+
+          {offers.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-400">
+              Ainda não há solicitações para este imóvel.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {offers.map((offer) => (
+                <div
+                  key={offer.id}
+                  className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-sm text-slate-400">
+                        Interessado
+                      </div>
+                      <div className="font-medium text-white">
+                        {getInitials(offer.buyer_name)}
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <div className="font-semibold text-emerald-400">
+                        {Number(offer.offer_price) === 0 ? (
+                          "Agendar Visita"
+                        ) : offer.startDate && offer.endDate ? (
+                          <div className="flex flex-col items-end">
+                            <span className="text-xs text-emerald-300 font-bold">Reserva de Estadia</span>
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              {new Date(offer.startDate).toLocaleDateString("pt-BR")} a {new Date(offer.endDate).toLocaleDateString("pt-BR")}
+                              {offer.guests && ` • ${offer.guests} ${offer.guests === 1 ? 'hóspede' : 'hóspedes'}`}
+                            </span>
+                            <span>R$ {formatMoney(offer.offer_price)}</span>
+                          </div>
+                        ) : (
+                          `R$ ${formatMoney(offer.offer_price)}`
+                        )}
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        {formatStatus(offer.status)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 text-xs text-slate-500">
+                    {new Date(offer.created_at).toLocaleString("pt-BR")}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-
-        {offers.length === 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-400">
-            Ainda não há solicitações para este imóvel.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {offers.map((offer) => (
-              <div
-                key={offer.id}
-                className="rounded-2xl border border-white/10 bg-white/5 p-4"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-sm text-slate-400">
-                      Interessado
-                    </div>
-                    <div className="font-medium text-white">
-                      {getInitials(offer.buyer_name)}
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <div className="font-semibold text-emerald-400">
-                      {Number(offer.offer_price) === 0 ? (
-                        "Agendar Visita"
-                      ) : offer.startDate && offer.endDate ? (
-                        <div className="flex flex-col items-end">
-                          <span className="text-xs text-emerald-300 font-bold">Reserva de Estadia</span>
-                          <span className="text-[10px] text-slate-400 font-medium">
-                            {new Date(offer.startDate).toLocaleDateString("pt-BR")} a {new Date(offer.endDate).toLocaleDateString("pt-BR")}
-                            {offer.guests && ` • ${offer.guests} ${offer.guests === 1 ? 'hóspede' : 'hóspedes'}`}
-                          </span>
-                          <span>R$ {formatMoney(offer.offer_price)}</span>
-                        </div>
-                      ) : (
-                        `R$ ${formatMoney(offer.offer_price)}`
-                      )}
-                    </div>
-                    <div className="text-xs text-slate-400">
-                      {formatStatus(offer.status)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-2 text-xs text-slate-500">
-                  {new Date(offer.created_at).toLocaleString("pt-BR")}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
