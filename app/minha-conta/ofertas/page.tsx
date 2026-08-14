@@ -1241,6 +1241,9 @@ export default function MinhasReservasPage() {
                 const isCancelled = statusStr === "CANCELLED";
 
                 const currentPhase = getStepPhase(offer);
+                const isCheckInDateOrLater = offer.startDate
+                  ? new Date().setHours(0, 0, 0, 0) >= new Date(offer.startDate).setHours(0, 0, 0, 0)
+                  : false;
 
                 return (
                   <div
@@ -1274,18 +1277,29 @@ export default function MinhasReservasPage() {
                           {currentSteps.map((st) => {
                             const isDone = currentPhase > st.num;
                             const isCurrent = currentPhase === st.num;
+
+                            let leftLineClass = "bg-slate-800";
+                            if (st.num === 1) {
+                              leftLineClass = "bg-transparent";
+                            } else if (currentPhase >= st.num) {
+                              leftLineClass = "bg-emerald-500";
+                            } else if (st.num === 5 && currentPhase === 4 && isCheckInDateOrLater) {
+                              leftLineClass = "bg-[linear-gradient(to_right,#10b981_50%,#1e293b_50%)]";
+                            }
+
+                            let rightLineClass = "bg-slate-800";
+                            if (st.num === 5) {
+                              rightLineClass = "bg-transparent";
+                            } else if (currentPhase > st.num) {
+                              rightLineClass = "bg-emerald-500";
+                            } else if (st.num === 4 && currentPhase === 4 && isCheckInDateOrLater) {
+                              rightLineClass = "bg-[linear-gradient(to_right,#10b981_50%,#1e293b_50%)]";
+                            }
+
                             return (
                               <div key={st.num} className="flex-1 flex flex-col items-center">
                                 <div className="flex items-center w-full">
-                                  <div
-                                    className={`h-1 flex-1 rounded-l ${
-                                      st.num === 1
-                                        ? "bg-transparent"
-                                        : isDone || (isCurrent && currentPhase >= 5)
-                                        ? "bg-emerald-500"
-                                        : "bg-slate-800"
-                                    }`}
-                                  />
+                                  <div className={`h-1 flex-1 rounded-l ${leftLineClass}`} />
                                   <div
                                     className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-black border transition-all ${
                                       isDone || (isCurrent && currentPhase >= 5)
@@ -1297,15 +1311,7 @@ export default function MinhasReservasPage() {
                                   >
                                     {isDone ? "✓" : st.num}
                                   </div>
-                                  <div
-                                    className={`h-1 flex-1 rounded-r ${
-                                      st.num === 5
-                                        ? "bg-transparent"
-                                        : isDone
-                                        ? "bg-emerald-500"
-                                        : "bg-slate-800"
-                                    }`}
-                                  />
+                                  <div className={`h-1 flex-1 rounded-r ${rightLineClass}`} />
                                 </div>
                                 <span
                                   className={`mt-1.5 text-[10px] md:text-xs font-bold text-center leading-tight whitespace-normal w-full px-0.5 ${
