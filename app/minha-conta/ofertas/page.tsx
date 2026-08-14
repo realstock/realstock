@@ -215,6 +215,8 @@ const CHECK_FAILURE_HINTS: Record<string, string> = {
 };
 
 function PixValidationPanel({ validation, perspective }: { validation: PixValidation; perspective: "VIAJANDO" | "HOSPEDANDO" }) {
+  const [showDetails, setShowDetails] = useState(!validation.allPassed);
+
   const checkList = [
     {
       key: "recipientData",
@@ -251,136 +253,77 @@ function PixValidationPanel({ validation, perspective }: { validation: PixValida
   const failedChecks = checkList.filter(c => !c.check.passed);
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-950/80 p-4 space-y-2">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-          <ShieldCheck size={14} className="text-sky-400" />
-          Verificação Automática do Comprovante
-        </span>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-          validation.allPassed
-            ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-300"
-            : "bg-amber-500/20 border-amber-500/30 text-amber-300"
-        }`}>
-          {validation.passedCount}/{validation.totalChecks} aprovados
-        </span>
-      </div>
-
-      {/* Check cards in a grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 pt-1">
-        {checkList.map(({ key, check, detail }) => (
-          <div
-            key={key}
-            className={`flex flex-col justify-between rounded-xl p-3 border text-xs transition-all ${
-              check.passed
-                ? "bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/15"
-                : "bg-red-500/10 border-red-500/20 hover:bg-red-500/15"
-            }`}
-          >
-            <div className="space-y-1">
-              <div className="flex items-center justify-between gap-1">
-                <span className={`font-bold text-[11px] leading-tight ${check.passed ? "text-emerald-300" : "text-red-300"}`}>
-                  {check.label}
-                </span>
-                <span className="text-sm shrink-0">
-                  {check.passed ? "✅" : "❌"}
-                </span>
-              </div>
-              {detail && (
-                <p className="text-[11px] text-slate-300 font-medium break-all leading-tight pt-1">
-                  {detail}
-                </p>
-              )}
-            </div>
-
-            {!check.passed && perspective === "VIAJANDO" && CHECK_FAILURE_HINTS[key] && (
-              <div className="mt-2 text-[10px] text-amber-300 leading-snug pt-1 border-t border-red-500/20">
-                ⚠️ {CHECK_FAILURE_HINTS[key]}
-              </div>
-            )}
-          </div>
-        ))}
-
-        {/* 6th Slot: Receipt Sum Card */}
-        <div className="flex flex-col justify-between rounded-xl p-3 border text-xs bg-slate-900/90 border-emerald-500/30 text-slate-200 shadow-md hover:bg-slate-900 transition-all">
-          <div className="space-y-1">
-            <div className="flex items-center justify-between gap-1">
-              <span className="font-bold text-[11px] leading-tight text-emerald-300 flex items-center gap-1">
-                🧮 Soma dos Comprovantes
-              </span>
-              <span className="text-[10px] text-emerald-400 font-extrabold">
-                {validation.checks.depositValue?.isPartial ? "⚠️ Parcial" : "✅ Quitado"}
-              </span>
-            </div>
-            
-            {/* Show individual amounts breakdown if receiptHistory exists */}
-            {validation.receiptHistory && validation.receiptHistory.length > 0 ? (
-              <div className="text-[11px] text-slate-300 font-semibold truncate pt-1" title={validation.receiptHistory.map(h => `R$ ${Number(h.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`).join(" + ")}>
-                {validation.receiptHistory.map(h => `R$ ${Number(h.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`).join(" + ")}
-              </div>
-            ) : (
-              <div className="text-[11px] text-slate-400 pt-1">
-                Cálculo do valor total pago
-              </div>
-            )}
-          </div>
-
-          <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between text-[11px]">
-            <span className="text-slate-400 font-medium">Acumulado:</span>
-            <span className="font-black text-emerald-400 text-xs">
-              R$ {Number(validation.checks.depositValue?.accumulatedPaidAmount || validation.checks.depositValue?.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Partial payment guidance for guest */}
-      {perspective === "VIAJANDO" && validation.checks.depositValue?.isPartial && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/15 p-3.5 text-xs text-amber-200 space-y-1.5 shadow-md">
-          <div className="font-extrabold text-amber-300 flex items-center gap-1.5 text-sm">
-            <span>⚠️ Pagamento Parcial do Sinal Detectado</span>
-          </div>
-          <p className="leading-relaxed">
-            Você acumulou <strong>R$ {Number(validation.checks.depositValue.accumulatedPaidAmount || validation.checks.depositValue.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong> pagos do sinal exigido de <strong>R$ {Number(validation.checks.depositValue.expected || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>.
-          </p>
-          <div className="p-2.5 rounded-xl bg-amber-950/70 border border-amber-500/40 text-amber-300 font-bold">
-            👉 Valor restante a ser pago via Pix: <span className="text-emerald-400 font-black text-sm">R$ {Number(validation.checks.depositValue.remaining || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-          </div>
-          <p className="text-[11px] text-slate-300">
-            Por favor, faça a transferência do valor restante de <strong>R$ {Number(validation.checks.depositValue.remaining || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong> para a chave Pix do anfitrião e envie o novo comprovante abaixo.
-          </p>
-        </div>
-      )}
-
-      {/* Summary guidance for guest */}
-      {perspective === "VIAJANDO" && !validation.allPassed && !validation.checks.depositValue?.isPartial && (
-        <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-200 leading-relaxed">
-          <strong className="text-amber-300">O que fazer?</strong> Corrija os itens marcados com ❌ e envie um novo comprovante. Certifique-se de usar o comprovante oficial gerado pelo app do seu banco (não capturas de tela parciais ou recibos de agendamento).
-        </div>
-      )}
-
-      {/* Confirmed message for guest */}
-      {perspective === "VIAJANDO" && validation.allPassed && (
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-200 font-bold text-center">
-          🎉 Comprovante aprovado automaticamente! Sua reserva foi confirmada.
-        </div>
-      )}
-
-      {/* Footer: confidence + value */}
-      <div className="flex items-center justify-between pt-1">
-        <span className="text-[10px] text-slate-500">
-          Confiança: <span className={`font-bold ${
-            validation.confidence === "HIGH" ? "text-emerald-400" :
-            validation.confidence === "MEDIUM" ? "text-amber-400" : "text-red-400"
-          }`}>{validation.confidence}</span>
-        </span>
-        {validation.transactionValue && (
-          <span className="text-[11px] font-bold text-emerald-400">
-            Valor detectado: R$ {validation.transactionValue}
+    <div className="rounded-xl border border-white/10 bg-slate-950/60 p-3.5 space-y-2">
+      {/* Compact Header Summary */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ShieldCheck size={16} className={validation.allPassed ? "text-emerald-400" : "text-amber-400"} />
+          <span className="text-xs font-bold text-slate-200">
+            {validation.allPassed
+              ? "✅ Verificação Automática do Comprovante (5/5 Aprovados)"
+              : `⚠️ Verificação Automática (${validation.passedCount}/${validation.totalChecks} Aprovados)`}
           </span>
-        )}
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowDetails(!showDetails)}
+          className="text-[11px] font-bold text-sky-400 hover:underline"
+        >
+          {showDetails ? "Ocultar Detalhes ▲" : "Ver Detalhes ▼"}
+        </button>
       </div>
+
+      {/* Expanded Grid */}
+      {showDetails && (
+        <div className="pt-2 border-t border-white/10 space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2">
+            {checkList.map(({ key, check, detail }) => (
+              <div
+                key={key}
+                className={`flex flex-col justify-between rounded-lg p-2.5 border text-xs transition-all ${
+                  check.passed
+                    ? "bg-emerald-500/10 border-emerald-500/20"
+                    : "bg-red-500/10 border-red-500/20"
+                }`}
+              >
+                <div className="space-y-0.5">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className={`font-bold text-[10px] leading-tight ${check.passed ? "text-emerald-300" : "text-red-300"}`}>
+                      {check.label}
+                    </span>
+                    <span className="text-xs shrink-0">{check.passed ? "✅" : "❌"}</span>
+                  </div>
+                  {detail && (
+                    <p className="text-[10px] text-slate-300 font-medium truncate pt-0.5">
+                      {detail}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {/* 6th Slot: Receipt Sum Card */}
+            <div className="flex flex-col justify-between rounded-lg p-2.5 border text-xs bg-slate-900 border-emerald-500/30 text-slate-200">
+              <div className="flex items-center justify-between gap-1">
+                <span className="font-bold text-[10px] leading-tight text-emerald-300">🧮 Soma Comprovantes</span>
+                <span className="text-[9px] text-emerald-400 font-extrabold">
+                  {validation.checks.depositValue?.isPartial ? "⚠️ Parcial" : "✅ Quitado"}
+                </span>
+              </div>
+              <div className="text-[10px] text-emerald-400 font-black pt-1">
+                R$ {Number(validation.checks.depositValue?.accumulatedPaidAmount || validation.checks.depositValue?.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </div>
+            </div>
+          </div>
+
+          {/* Partial payment guidance for guest */}
+          {perspective === "VIAJANDO" && validation.checks.depositValue?.isPartial && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/15 p-2.5 text-xs text-amber-200">
+              ⚠️ Pagamento Parcial: Acumulado <strong>R$ {Number(validation.checks.depositValue.accumulatedPaidAmount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong> de <strong>R$ {Number(validation.checks.depositValue.expected || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>. Falta: <strong className="text-emerald-300">R$ {Number(validation.checks.depositValue.remaining || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -525,270 +468,182 @@ function CheckInReleasePanel({
   const [checkOutTime, setCheckOutTime] = useState(offer.property?.checkOutTime || "12:00");
   const [isEditingInstructions, setIsEditingInstructions] = useState(false);
 
-  return (
-    <div className={`mt-5 rounded-2xl border p-5 transition-all shadow-xl ${
-      isCheckInReleased
-        ? "border-emerald-500/50 bg-gradient-to-br from-emerald-950/60 via-slate-900 to-emerald-950/40 shadow-[0_0_30px_rgba(16,185,129,0.15)]"
-        : "border-amber-500/30 bg-slate-950/80"
-    }`}>
-      {/* HEADER BANNER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
-        <div className="flex items-center gap-3">
-          <div className={`flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shrink-0 ${
-            isCheckInReleased ? "bg-emerald-500/20 text-emerald-300 ring-2 ring-emerald-500/40" : "bg-amber-500/20 text-amber-300"
-          }`}>
-            {isCheckInReleased ? "🔑" : "🔒"}
+  if (isCheckInReleased) {
+    return (
+      <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 space-y-3 shadow-md">
+        <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2.5">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🎉</span>
+            <div>
+              <h4 className="text-xs font-black text-emerald-300 uppercase tracking-wider">
+                Check-in Liberado com Sucesso!
+              </h4>
+              <p className="text-[11px] text-emerald-200">
+                Estadia 100% quitada. Endereço e instruções de entrada liberados.
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className={`text-base font-black uppercase tracking-wider ${
-              isCheckInReleased ? "text-emerald-400" : "text-amber-300"
-            }`}>
-              {isCheckInReleased ? "🎉 Check-in Liberado!" : "🔒 Check-in Bloqueado — Quitação do Saldo Pendente"}
-            </h3>
-            <p className="text-xs text-slate-300 mt-0.5">
-              {isCheckInReleased
-                ? "O saldo da estadia foi 100% quitado. As instruções de entrada, chaves e endereço completo estão desbloqueados!"
-                : `A regra do site exige a quitação do saldo restante de R$ ${remainingBalance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} antes da data/horário de check-in para liberar a chave e instruções de entrada.`}
-            </p>
-          </div>
-        </div>
-
-        {/* STATUS BADGE */}
-        <div className="shrink-0">
-          <span className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-xs font-black uppercase tracking-wider ${
-            isCheckInReleased
-              ? "border-emerald-500/40 bg-emerald-500/20 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)] animate-pulse"
-              : "border-amber-500/30 bg-amber-500/10 text-amber-300"
-          }`}>
-            {isCheckInReleased ? "✅ CHECK-IN LIBERADO" : "⏳ SALDO PENDENTE"}
+          <span className="rounded-xl bg-emerald-500/20 border border-emerald-500/30 px-3 py-1 text-xs font-black text-emerald-300">
+            ✅ CONFIRMADO
           </span>
         </div>
-      </div>
 
-      {/* SUMMARY CARDS (STAY TOTAL vs DEPOSIT PAID vs REMAINING BALANCE) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-4">
-        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total da Estadia</div>
-          <div className="text-lg font-black text-white">R$ {totalStay.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
-        </div>
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Sinal Pago ({depositPct}%)</div>
-          <div className="text-lg font-black text-emerald-300">R$ {depositPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
-        </div>
-        <div className={`rounded-xl border p-3 ${
-          isCheckInReleased ? "border-emerald-500/30 bg-emerald-500/20" : "border-amber-500/30 bg-amber-500/15"
-        }`}>
-          <div className={`text-[10px] font-bold uppercase tracking-wider ${isCheckInReleased ? "text-emerald-300" : "text-amber-300"}`}>
-            {isCheckInReleased ? "Saldo Restante Quitado" : "Saldo Restante Exigido"}
-          </div>
-          <div className={`text-lg font-black ${isCheckInReleased ? "text-emerald-400" : "text-amber-400"}`}>
-            R$ {remainingBalance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-          </div>
-        </div>
-      </div>
-
-      {/* IF CHECK-IN IS NOT RELEASED */}
-      {!isCheckInReleased && (
-        <div className="space-y-4">
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs text-amber-200 leading-relaxed">
-            <div className="font-extrabold text-amber-300 flex items-center gap-2 text-sm mb-1">
-              <span>⏱️ Data e Horário Máximo para Quitação do Saldo:</span>
+        <div className="grid gap-3 sm:grid-cols-2 text-xs text-slate-200 pt-1">
+          <div className="space-y-1">
+            <div className="font-bold text-emerald-300 flex items-center gap-1">🔑 Instruções & Wi-Fi:</div>
+            <p className="text-slate-300 leading-relaxed">
+              {offer.property?.checkInInstructions || "Consulte o anfitrião no WhatsApp para chaves e portaria."}
+            </p>
+            <div className="text-[11px] text-slate-400 pt-1">
+              Check-in: <strong>{offer.property?.checkInTime || "14:00"}</strong> | Check-out: <strong>{offer.property?.checkOutTime || "12:00"}</strong>
             </div>
-            <p>
-              O check-in está agendado para <strong className="text-white">{offer.startDate ? new Date(offer.startDate).toLocaleDateString("pt-BR") : "Data a definir"} às {offer.property?.checkInTime || "14:00"}</strong>.
-              O pagamento do saldo restante de <strong className="text-emerald-400">R$ {remainingBalance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong> deve ser efetuado <strong>antes deste horário</strong>.
+          </div>
+
+          <div className="space-y-1">
+            <div className="font-bold text-emerald-300 flex items-center gap-1">📍 Endereço Completo:</div>
+            <p className="text-slate-300 leading-relaxed">
+              {[
+                offer.property?.street ? `${offer.property.street}, ${offer.property.addressNumber || "s/n"}` : null,
+                offer.property?.neighborhood,
+                offer.property?.city && offer.property?.state ? `${offer.property.city} - ${offer.property.state}` : null,
+                offer.property?.zipCode ? `CEP: ${offer.property.zipCode}` : null,
+              ].filter(Boolean).join(" • ") || "Endereço cadastrado no imóvel."}
+            </p>
+            {(offer.property?.googleMapsLink || (offer.property?.city && offer.property?.street)) && (
+              <div className="pt-1">
+                <a
+                  href={offer.property?.googleMapsLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${offer.property?.street || ""}, ${offer.property?.addressNumber || ""}, ${offer.property?.city || ""}`)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-300 hover:underline"
+                >
+                  🗺️ Ver Rota no Google Maps →
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3 shadow-md">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/15 pb-2.5">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">🔒</span>
+          <div>
+            <h4 className="text-xs font-black text-amber-300 uppercase tracking-wider">
+              Check-in Bloqueado — Quitação do Saldo Pendente
+            </h4>
+            <p className="text-[11px] text-slate-300">
+              Quite o saldo restante antes do check-in ({offer.startDate ? new Date(offer.startDate).toLocaleDateString("pt-BR") : "A definir"} às {offer.property?.checkInTime || "14:00"}) para liberar o endereço e chave.
             </p>
           </div>
+        </div>
 
-          {/* FOR GUEST (VIAJANDO) */}
-          {perspective === "VIAJANDO" && (
-            <div className="rounded-xl border border-white/10 bg-slate-900 p-4 space-y-3">
-              <div className="text-xs font-extrabold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
-                <Upload size={16} />
-                <span>Efetuar Quitação do Saldo Restante (Pix)</span>
-              </div>
-              <p className="text-xs text-slate-300">
-                Faça o Pix de <strong>R$ {remainingBalance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong> para a chave Pix do anfitrião (<code className="bg-emerald-500/20 px-2 py-0.5 rounded text-emerald-300 font-bold">{offer.property?.pixKey || "Consulte o anfitrião"}</code>) e anexe o comprovante abaixo:
-              </p>
-              
-              <div className="flex flex-wrap items-center gap-3 pt-2">
-                <label className={`rounded-xl px-5 py-3 text-xs font-black text-slate-950 transition cursor-pointer flex items-center justify-center gap-2 shadow-lg ${
-                  uploadingId === offer.id || validatingId === offer.id
-                    ? "bg-slate-600 cursor-not-allowed shadow-none"
-                    : "bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 shadow-emerald-500/20"
-                }`}>
-                  <Upload size={16} />
-                  {uploadingId === offer.id
-                    ? "Enviando comprovante..."
-                    : validatingId === offer.id
-                    ? "⏳ Analisando quitação do saldo..."
-                    : "📎 Anexar Comprovante do Saldo Restante (Pix)"}
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    className="hidden"
-                    disabled={uploadingId === offer.id || validatingId === offer.id}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) onUploadRemainingPix(offer.id, file);
-                    }}
-                  />
-                </label>
-              </div>
+        <div className="shrink-0 text-right">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Saldo Restante</span>
+          <span className="text-base font-black text-amber-400">R$ {remainingBalance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+        </div>
+      </div>
 
-              {/* Remaining balance validation result if present */}
-              {offer.remainingBalanceValidation && (
-                <div className="pt-3 border-t border-white/10">
-                  <PixValidationPanel
-                    validation={offer.remainingBalanceValidation}
-                    perspective="VIAJANDO"
-                  />
-                </div>
-              )}
-            </div>
-          )}
+      {perspective === "VIAJANDO" && (
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <div className="text-xs text-slate-300">
+            Chave Pix: <code className="bg-emerald-500/20 px-2 py-0.5 rounded text-emerald-300 font-bold">{offer.property?.pixKey || "Consulte o anfitrião"}</code>
+          </div>
 
-          {/* FOR HOST (HOSPEDANDO) */}
-          {perspective === "HOSPEDANDO" && (
-            <div className="space-y-3">
-              {/* Host manual release button */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-emerald-950/50 p-4 rounded-2xl border border-emerald-500/30">
-                <div className="text-xs text-emerald-200 leading-relaxed">
-                  <strong className="text-emerald-300 block mb-0.5 font-extrabold text-sm">💡 Confirmar Quitação & Liberar Check-in</strong>
-                  O hóspede realizou o pagamento do saldo restante fora da plataforma ou você deseja liberar o check-in manualmente?
-                </div>
-                <button
-                  onClick={() => onManualRelease(offer.id)}
-                  className="w-full sm:w-auto shrink-0 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-3 text-xs font-black text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <CheckCircle2 size={16} />
-                  <span>Liberar Check-in Agora</span>
-                </button>
-              </div>
-
-              {/* Host Edit Check-in Instructions Section */}
-              <div className="rounded-xl border border-white/10 bg-slate-900 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-2">
-                    <FileText size={16} />
-                    <span>Configurar Instruções de Check-in e Wi-Fi</span>
-                  </div>
-                  <button
-                    onClick={() => setIsEditingInstructions(!isEditingInstructions)}
-                    className="text-xs font-bold text-sky-300 hover:underline flex items-center gap-1"
-                  >
-                    {isEditingInstructions ? "Cancelar" : "✏️ Editar Instruções"}
-                  </button>
-                </div>
-
-                {isEditingInstructions ? (
-                  <div className="space-y-3 pt-2">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Horário de Check-in</label>
-                        <input
-                          type="text"
-                          value={checkInTime}
-                          onChange={(e) => setCheckInTime(e.target.value)}
-                          placeholder="Ex: 14:00"
-                          className="w-full rounded-xl bg-slate-950 border border-white/10 p-2.5 text-xs text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Horário de Check-out</label>
-                        <input
-                          type="text"
-                          value={checkOutTime}
-                          onChange={(e) => setCheckOutTime(e.target.value)}
-                          placeholder="Ex: 12:00"
-                          className="w-full rounded-xl bg-slate-950 border border-white/10 p-2.5 text-xs text-white"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Instruções de Entrada, Senha do Wi-Fi e Fechadura Digital</label>
-                      <textarea
-                        rows={3}
-                        value={instructions}
-                        onChange={(e) => setInstructions(e.target.value)}
-                        placeholder="Ex: Wi-Fi: CasaPraia5G / Senha: 12345678. Fechadura digital: digitar 9876# na portaria."
-                        className="w-full rounded-xl bg-slate-950 border border-white/10 p-2.5 text-xs text-white"
-                      />
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        if (offer.propertyId) {
-                          onSaveInstructions(offer.propertyId, instructions, checkInTime, checkOutTime);
-                          setIsEditingInstructions(false);
-                        }
-                      }}
-                      className="rounded-xl bg-sky-500 px-4 py-2 text-xs font-bold text-white hover:bg-sky-400 transition"
-                    >
-                      Salvar Instruções
-                    </button>
-                  </div>
-                ) : (
-                  <div className="text-xs text-slate-300 space-y-1">
-                    <div><strong>Check-in:</strong> {offer.property?.checkInTime || "14:00"} | <strong>Check-out:</strong> {offer.property?.checkOutTime || "12:00"}</div>
-                    <div><strong>Instruções Cadastradas:</strong> {offer.property?.checkInInstructions || "Nenhuma instrução específica cadastrada."}</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          <label className={`rounded-xl px-4 py-2 text-xs font-black text-slate-950 transition cursor-pointer flex items-center justify-center gap-2 shadow-md ${
+            uploadingId === offer.id || validatingId === offer.id
+              ? "bg-slate-600 cursor-not-allowed shadow-none"
+              : "bg-emerald-400 hover:bg-emerald-300 shadow-emerald-500/20"
+          }`}>
+            <Upload size={14} />
+            {uploadingId === offer.id ? "Enviando..." : validatingId === offer.id ? "⏳ Analisando..." : `📎 Anexar Comprovante do Saldo (R$ ${remainingBalance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`}
+            <input
+              type="file"
+              accept="image/*,.pdf"
+              className="hidden"
+              disabled={uploadingId === offer.id || validatingId === offer.id}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) onUploadRemainingPix(offer.id, file);
+              }}
+            />
+          </label>
         </div>
       )}
 
-      {/* IF CHECK-IN IS RELEASED 🎉 */}
-      {isCheckInReleased && (
-        <div className="space-y-4 pt-2">
-          {/* UNLOCKED CHECK-IN DETAILS GRID */}
-          <div className="grid gap-3 sm:grid-cols-2 text-xs text-slate-200">
-            {/* INSTRUCTIONS & WI-FI */}
-            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-2">
-              <div className="font-black text-emerald-300 text-sm flex items-center gap-2">
-                🔑 <span>Instruções de Entrada & Wi-Fi</span>
-              </div>
-              <p className="text-slate-200 leading-relaxed font-medium">
-                {offer.property?.checkInInstructions || "Consulte o anfitrião no WhatsApp para informações sobre a retirada de chaves e controle de entrada."}
-              </p>
-              <div className="pt-2 border-t border-emerald-500/20 text-emerald-400 font-bold flex items-center gap-4 text-[11px]">
-                <span>🕒 Check-in: {offer.property?.checkInTime || "14:00"}</span>
-                <span>🕛 Check-out: {offer.property?.checkOutTime || "12:00"}</span>
-              </div>
-            </div>
+      {perspective === "HOSPEDANDO" && (
+        <div className="space-y-3 pt-1">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => setIsEditingInstructions(!isEditingInstructions)}
+              className="text-xs font-bold text-sky-300 hover:underline flex items-center gap-1"
+            >
+              ✏️ {isEditingInstructions ? "Cancelar Edição" : "Configurar Instruções & Wi-Fi"}
+            </button>
 
-            {/* COMPLETE ADDRESS */}
-            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-2">
-              <div className="font-black text-emerald-300 text-sm flex items-center gap-2">
-                📍 <span>Endereço Completo do Imóvel</span>
-              </div>
-              <p className="text-slate-200 leading-relaxed font-medium">
-                {[
-                  offer.property?.street ? `${offer.property.street}, ${offer.property.addressNumber || "s/n"}` : null,
-                  offer.property?.neighborhood,
-                  offer.property?.city && offer.property?.state ? `${offer.property.city} - ${offer.property.state}` : null,
-                  offer.property?.zipCode ? `CEP: ${offer.property.zipCode}` : null,
-                ].filter(Boolean).join(" • ") || "Endereço em processamento."}
-              </p>
-
-              {/* GOOGLE MAPS LINK */}
-              {(offer.property?.googleMapsLink || (offer.property?.city && offer.property?.street)) && (
-                <div className="pt-2">
-                  <a
-                    href={offer.property?.googleMapsLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${offer.property?.street || ""}, ${offer.property?.addressNumber || ""}, ${offer.property?.city || ""}`)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-3.5 py-2 text-xs font-black text-slate-950 hover:bg-emerald-400 transition shadow-md"
-                  >
-                    🗺️ Abrir Rota no Google Maps
-                  </a>
-                </div>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={() => onManualRelease(offer.id)}
+              className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2 text-xs font-black text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-md transition cursor-pointer flex items-center gap-1.5"
+            >
+              <CheckCircle2 size={14} />
+              <span>Confirmar Quitação & Liberar Check-in</span>
+            </button>
           </div>
+
+          {isEditingInstructions && (
+            <div className="space-y-2 pt-2 border-t border-white/10">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Check-in</label>
+                  <input
+                    type="text"
+                    value={checkInTime}
+                    onChange={(e) => setCheckInTime(e.target.value)}
+                    placeholder="Ex: 14:00"
+                    className="w-full rounded-lg bg-slate-950 border border-white/10 p-2 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Check-out</label>
+                  <input
+                    type="text"
+                    value={checkOutTime}
+                    onChange={(e) => setCheckOutTime(e.target.value)}
+                    placeholder="Ex: 12:00"
+                    className="w-full rounded-lg bg-slate-950 border border-white/10 p-2 text-xs text-white"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Instruções e Senha do Wi-Fi</label>
+                <textarea
+                  rows={2}
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
+                  placeholder="Ex: Wi-Fi: CasaPraia5G / Senha: 12345678"
+                  className="w-full rounded-lg bg-slate-950 border border-white/10 p-2 text-xs text-white"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (offer.propertyId) {
+                    onSaveInstructions(offer.propertyId, instructions, checkInTime, checkOutTime);
+                    setIsEditingInstructions(false);
+                  }
+                }}
+                className="rounded-lg bg-sky-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-sky-400 transition"
+              >
+                Salvar Instruções
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
