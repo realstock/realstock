@@ -18,7 +18,8 @@ import {
   DollarSign,
   AlertCircle,
   Star,
-  QrCode
+  QrCode,
+  Archive
 } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useListingType } from "@/context/ListingTypeContext";
@@ -709,6 +710,7 @@ export default function MinhasReservasPage() {
 
   // QR Code Popup Modal state
   const [selectedQrCodeModalUrl, setSelectedQrCodeModalUrl] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
 
   const isSeasonal = listingType === "ALUGUEL_TEMPORADA";
 
@@ -1111,9 +1113,436 @@ export default function MinhasReservasPage() {
       : o.property?.listingType !== "ALUGUEL_TEMPORADA"
   );
 
-  const activeOffersList = activeTab === "VIAJANDO" ? filteredGuestOffers : filteredHostOffers;
+  const allOffersForTab = activeTab === "VIAJANDO" ? filteredGuestOffers : filteredHostOffers;
   const currentSteps = activeTab === "VIAJANDO" ? GUEST_STEPS : HOST_STEPS;
 
+  // Categorization helpers
+  function isPastReservation(offer: OfferItem): boolean {
+    const statusStr = String(offer.status).toUpperCase();
+    if (statusStr === "CANCELLED" || statusStr === "REJECTED") return true;
+
+    if (offer.endDate) {
+      const end = new Date(offer.endDate);
+      end.setHours(23, 59, 59, 999);
+      return end.getTime() < Date.now();
+    }
+    return false;
+  }
+
+  function isPendingConfirmation(offer: OfferItem): boolean {
+    const statusStr = String(offer.status).toUpperCase();
+    if (statusStr === "PENDING_HOST_APPROVAL" || statusStr === "OPEN") return true;
+    if (statusStr === "ACCEPTED_WAITING_PAYMENT" && !offer.pixValidation?.allPassed) return true;
+    return false;
+  }
+
+  // 1. Past / Archived reservations (Check-out date passed OR cancelled/rejected)
+  const archivedOffers = allOffersForTab.filter((o) => isPastReservation(o));
+
+  // 2. Active (non-archived) reservations
+  const activeOffers = allOffersForTab.filter((o) => !isPastReservation(o));
+
+  // Group 2a: Pending Confirmation (STAYS AT THE TOP OF ALL OTHERS)
+  const pendingConfirmationOffers = activeOffers
+    .filter((o) => isPendingConfirmation(o))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  // Group 2b: Confirmed Reservations (Sorted by check-in date ASCENDING - closest check-in date first!)
+  const confirmedOffers = activeOffers
+    .filter((o) => !isPendingConfirmation(o))
+    .sort((a, b) => {
+      const dateA = a.startDate ? new Date(a.startDate).getTime() : Number.MAX_SAFE_INTEGER;
+      const dateB = b.startDate ? new Date(b.startDate).getTime() : Number.MAX_SAFE_INTEGER;
+      if (dateA !== dateB) return dateA - dateB;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+  const activeOffersList = [...pendingConfirmationOffers, ...confirmedOffers];
+
+  function renderOfferCard(offer: OfferItem, isArchived = false) {
+    const statusStr = String(offer.status).toUpperCase();
+    const isPending = statusStr === "PENDING_HOST_APPROVAL";
+    const isAcceptedWaiting = statusStr === "ACCEPTED_WAITING_PAYMENT";
+    const isConfirmed = statusStr === "RESERVA_CONFIRMADA" || statusStr === "ACCEPTED" || statusStr === "MATCHED";
+    const isDepositFullyPaid = statusStr === "RESERVA_CONFIRMADA" || !!offer.pixValidation?.allPassed;
+    const isCheckInReleased = statusStr === "CHECKIN_LIBERADO" || !!offer.checkInReleasedAt;
+    const isRejected = statusStr === "REJECTED";
+    const isCancelled = statusStr === "CANCELLED";
+
+    const currentPhase = getStepPhase(offer);
+    const isCheckInDateOrLater = offer.startDate
+      ? new Date().setHours(0, 0, 0, 0) >= new Date(offer.startDate).setHours(0, 0, 0, 0)
+      : false;
+
+    return (
+      <div
+        key={offer.id}
+        className={`rounded-3xl border border-white/10 bg-slate-900/90 p-5 md:p-6 transition-all shadow-xl backdrop-blur-md ${
+          isCancelled || isArchived ? "opacity-60 grayscale-[0.3]" : ""
+        }`}
+      >
+        {/* CARD MINI STEPPER PROGRESS ARROW BAR */}
+        {!isCancelled && !isRejected && (
+          <div className="mb-5 border-b border-white/5 pb-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                <span>{currentPhase >= 5 ? "🔑" : currentSteps[Math.min(currentPhase - 1, 4)]?.icon}</span>
+                <span>
+                  {currentPhase >= 5
+                    ? "Check-in Liberado! (5 de 5 Etapas Concluídas)"
+                    : `Etapa ${currentPhase} de 5: ${currentSteps[currentPhase - 1]?.title}`}
+                </span>
+              </span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                currentPhase >= 5
+                  ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-300"
+                  : "bg-amber-500/20 border-amber-500/30 text-amber-300"
+              }`}>
+                {currentPhase >= 5 ? "5/5 Concluído" : `${currentPhase - 1}/5 Concluído`}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-1">
+              {currentSteps.map((st) => {
+                const isDone = currentPhase > st.num;
+                const isCurrent = currentPhase === st.num;
+
+                let leftLineClass = "bg-slate-800";
+                if (st.num === 1) {
+                  leftLineClass = "bg-transparent";
+                } else if (currentPhase >= st.num) {
+                  leftLineClass = "bg-emerald-500";
+                } else if (st.num === 5 && currentPhase === 4 && isCheckInDateOrLater) {
+                  leftLineClass = "bg-[linear-gradient(to_right,#10b981_50%,#1e293b_50%)]";
+                }
+
+                let rightLineClass = "bg-slate-800";
+                if (st.num === 5) {
+                  rightLineClass = "bg-transparent";
+                } else if (currentPhase > st.num) {
+                  rightLineClass = "bg-emerald-500";
+                } else if (st.num === 4 && currentPhase === 4 && isCheckInDateOrLater) {
+                  rightLineClass = "bg-[linear-gradient(to_right,#10b981_50%,#1e293b_50%)]";
+                }
+
+                return (
+                  <div key={st.num} className="flex-1 flex flex-col items-center">
+                    <div className="flex items-center w-full">
+                      <div className={`h-1 flex-1 rounded-l ${leftLineClass}`} />
+                      <div
+                        className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-black border transition-all ${
+                          isDone || (isCurrent && currentPhase >= 5)
+                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold"
+                            : isCurrent
+                            ? "bg-emerald-500 text-slate-950 border-emerald-400 ring-4 ring-emerald-500/20 font-bold scale-110"
+                            : "bg-slate-800 text-slate-500 border-white/10"
+                        }`}
+                      >
+                        {isDone ? "✓" : st.num}
+                      </div>
+                      <div className={`h-1 flex-1 rounded-r ${rightLineClass}`} />
+                    </div>
+                    <span
+                      className={`mt-1.5 text-[10px] md:text-xs font-bold text-center leading-tight whitespace-normal w-full px-0.5 ${
+                        isCurrent
+                          ? "text-emerald-400"
+                          : isDone
+                          ? "text-slate-300"
+                          : "text-slate-500"
+                      }`}
+                    >
+                      {st.title}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* PROPERTY INFORMATION CARD */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+          <div className="flex items-center gap-4">
+            {offer.property?.images && offer.property.images.length > 0 ? (
+              <div className="relative h-20 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 shadow-md">
+                <img
+                  src={offer.property.images[0].imageUrl}
+                  alt={offer.property.title}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="flex h-20 w-24 shrink-0 items-center justify-center rounded-2xl bg-slate-800 border border-white/10 text-slate-500">
+                Sem Foto
+              </div>
+            )}
+
+            <div>
+              <span className="inline-block rounded-md bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-300 uppercase tracking-wider mb-1">
+                {offer.property?.listingType === "ALUGUEL_TEMPORADA" ? "Temporada" : "Venda"}
+              </span>
+              <h3 className="text-base font-extrabold text-white leading-snug">
+                {offer.property?.title || "Imóvel Sem Título"}
+              </h3>
+              <p className="text-xs text-slate-400">
+                {offer.property?.city} {offer.property?.neighborhood ? `• ${offer.property.neighborhood}` : ""}
+              </p>
+            </div>
+          </div>
+
+          <div className="text-left sm:text-right shrink-0">
+            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Valor Total da Estadia</div>
+            <div className="text-xl font-black text-emerald-400">
+              R$ {Number(offer.totalStayPrice || offer.offerPrice).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            </div>
+            {offer.depositAmount && (
+              <div className="text-[11px] font-semibold text-slate-300 mt-0.5">
+                Sinal ({offer.property?.depositPercentage || 20}%): <strong className="text-white">R$ {Number(offer.depositAmount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* DATES & CONTACT PANEL */}
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-300">
+          <div>
+            <strong>Período Agendado:</strong>{" "}
+            {offer.startDate ? new Date(offer.startDate).toLocaleDateString("pt-BR") : "N/A"}{" "}
+            até {offer.endDate ? new Date(offer.endDate).toLocaleDateString("pt-BR") : "N/A"}
+          </div>
+          <div>
+            <strong>Hóspedes:</strong> {offer.guests || 1} pessoa{(offer.guests || 1) > 1 ? "s" : ""}
+          </div>
+        </div>
+
+        {/* HOST CONTACT BOX */}
+        {activeTab === "VIAJANDO" && (isAcceptedWaiting || isConfirmed) && (
+          <div className="mt-5 border-t border-white/10 pt-4 space-y-3 rounded-2xl bg-slate-950/70 p-4 border border-white/5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                <ShieldCheck size={16} />
+                <span>Dados de Contato e Pagamento do Anfitrião</span>
+              </div>
+
+              {/* Step 4 Button: Remaining Balance receipt upload button top right */}
+              {isDepositFullyPaid && !isCheckInReleased && (
+                <div className="shrink-0">
+                  <label className="cursor-pointer inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-3 py-1.5 text-[11px] font-black text-slate-950 hover:from-amber-400 hover:to-amber-500 shadow-md shadow-amber-500/20 transition">
+                    <span>📎 Anexar Comprovante do Saldo (R$ {Number(Number(offer.totalStayPrice || offer.offerPrice) - Number(offer.depositAmount || 0)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })})</span>
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      className="hidden"
+                      disabled={uploadingOfferId === offer.id || validatingOfferId === offer.id}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleUploadRemainingBalancePix(offer.id, f);
+                      }}
+                    />
+                  </label>
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2 text-xs text-slate-300">
+              <div><strong>Anfitrião:</strong> {offer.property?.owner?.name || "Não informado"}</div>
+              <div><strong>E-mail:</strong> {offer.property?.owner?.email || "Não informado"}</div>
+              <div>
+                <strong>Telefone / WhatsApp:</strong>{" "}
+                {offer.property?.owner?.phone ? (
+                  getWhatsAppUrl(offer.property.owner.phone) ? (
+                    <a
+                      href={getWhatsAppUrl(offer.property.owner.phone)!}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 font-bold text-emerald-400 hover:text-emerald-300 underline transition cursor-pointer"
+                      title="Abrir no WhatsApp"
+                    >
+                      <span>{offer.property.owner.phone}</span>
+                      <span className="no-underline bg-emerald-500/20 border border-emerald-500/40 rounded px-1.5 py-0.5 text-[11px]">💬 WhatsApp</span>
+                    </a>
+                  ) : (
+                    <span>{offer.property.owner.phone}</span>
+                  )
+                ) : (
+                  "Não informado"
+                )}
+              </div>
+              {offer.property?.pixKey && (
+                <div>
+                  <strong>Chave Pix do Anfitrião:</strong>{" "}
+                  <span className="font-mono text-emerald-300 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">{offer.property.pixKey}</span>
+                </div>
+              )}
+            </div>
+
+            {/* PIX QR CODE DISPLAY IF AVAILABLE */}
+            {offer.property?.pixQrCodeUrl && (
+              <div className="pt-2 border-t border-white/5 flex items-center justify-between gap-3">
+                <div className="text-xs text-slate-300 flex items-center gap-2">
+                  <QrCode size={16} className="text-emerald-400" />
+                  <span>QR Code Pix do Anfitrião disponível para pagamento</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedQrCodeModalUrl(offer.property!.pixQrCodeUrl!)}
+                  className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500/20 transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <QrCode size={14} />
+                  <span>Ver QR Code Pix 📱</span>
+                </button>
+              </div>
+            )}
+
+            {/* STEP 3 RECEIPT UPLOAD & AI VALIDATION PANEL */}
+            {!isDepositFullyPaid ? (
+              <div className="pt-3 border-t border-white/10 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-900/90 p-3 rounded-xl border border-white/5">
+                  <div className="text-xs text-slate-300">
+                    <strong className="text-emerald-400 font-bold">Sinal a ser pago via Pix:</strong>{" "}
+                    R$ {Number(offer.depositAmount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </div>
+
+                  <label className="cursor-pointer rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2 text-xs font-black text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-md shadow-emerald-500/20 transition flex items-center justify-center gap-1.5 shrink-0">
+                    <Upload size={14} />
+                    <span>📎 Incluir comprovante Pix do Sinal</span>
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      className="hidden"
+                      disabled={uploadingOfferId === offer.id || validatingOfferId === offer.id}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleUploadPixReceipt(offer.id, f);
+                      }}
+                    />
+                  </label>
+                </div>
+
+                {/* AI Validation Panel */}
+                {offer.pixValidation && (
+                  <PixValidationPanel
+                    validation={offer.pixValidation}
+                    perspective="VIAJANDO"
+                    receiptUrls={getOfferReceiptUrls(offer)}
+                  />
+                )}
+              </div>
+            ) : (
+              /* Deposit fully paid -> render collapsible validation panel */
+              offer.pixValidation && (
+                <div className="pt-3 border-t border-white/10">
+                  <PixValidationPanel
+                    validation={offer.pixValidation}
+                    perspective="VIAJANDO"
+                    receiptUrls={getOfferReceiptUrls(offer)}
+                  />
+                </div>
+              )
+            )}
+          </div>
+        )}
+
+        {/* HOST VIEW DETAILS */}
+        {activeTab === "HOSPEDANDO" && (isAcceptedWaiting || isConfirmed) && (
+          <div className="mt-5 border-t border-white/10 pt-4 space-y-3 rounded-2xl bg-slate-950/70 p-4 border border-white/5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-2">
+                <ShieldCheck size={16} />
+                <span>Dados de Contato do Hóspede (Liberado)</span>
+              </div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2 text-xs text-slate-300">
+              <div><strong>Hóspede:</strong> {offer.buyer?.name || "Não informado"}</div>
+              <div><strong>E-mail:</strong> {offer.buyer?.email || "Não informado"}</div>
+              <div>
+                <strong>Telefone / WhatsApp:</strong>{" "}
+                {offer.buyer?.phone ? (
+                  getWhatsAppUrl(offer.buyer.phone) ? (
+                    <a
+                      href={getWhatsAppUrl(offer.buyer.phone)!}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 font-bold text-emerald-400 hover:text-emerald-300 underline transition cursor-pointer"
+                      title="Abrir no WhatsApp"
+                    >
+                      <span>{offer.buyer.phone}</span>
+                      <span className="no-underline bg-emerald-500/20 border border-emerald-500/40 rounded px-1.5 py-0.5 text-[11px]">💬 WhatsApp</span>
+                    </a>
+                  ) : (
+                    <span>{offer.buyer.phone}</span>
+                  )
+                ) : (
+                  "Não informado"
+                )}
+              </div>
+              {offer.depositAmount && (
+                <div>
+                  <strong>Sinal Pix Solicitado:</strong>{" "}
+                  <span className="font-extrabold text-emerald-400">R$ {Number(offer.depositAmount).toLocaleString("pt-BR")}</span>
+                </div>
+              )}
+            </div>
+
+            {getOfferReceiptUrls(offer).length > 0 ? (
+              <div className="pt-3 border-t border-white/10 space-y-3">
+                {/* AI Validation Panel (includes receipt links inside Ver Detalhes) */}
+                {offer.pixValidation ? (
+                  <PixValidationPanel
+                    validation={offer.pixValidation}
+                    perspective="HOSPEDANDO"
+                    receiptUrls={getOfferReceiptUrls(offer)}
+                  />
+                ) : (
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-300 flex items-center gap-2">
+                    <Clock size={13} />
+                    <span>Verificação automática em processamento...</span>
+                  </div>
+                )}
+
+                {/* Manual Host Approval Button if receipt sent but status not RESERVA_CONFIRMADA */}
+                {statusStr !== "RESERVA_CONFIRMADA" && !offer.pixValidation?.allPassed && (
+                  <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 bg-emerald-950/40 p-3.5 rounded-2xl border border-emerald-500/30">
+                    <div className="text-xs text-emerald-200 leading-relaxed">
+                      <strong className="text-emerald-300 block mb-0.5 font-extrabold text-sm">💡 Aprovação Manual do Anfitrião</strong>
+                      Deseja validar os comprovantes enviados e confirmar esta reserva agora?
+                    </div>
+                    <button
+                      onClick={() => handleManualConfirmPix(offer.id)}
+                      disabled={actionLoadingId === offer.id}
+                      className="w-full sm:w-auto shrink-0 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2.5 text-xs font-black text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    >
+                      <CheckCircle2 size={16} />
+                      <span>Aceitar & Confirmar Reserva</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="pt-2 border-t border-white/5 text-xs text-amber-300 flex items-center gap-2">
+                <Clock size={14} />
+                <span>Etapa 2: Taxa de 1% paga com sucesso. Aguardando o hóspede enviar o comprovante Pix do sinal.</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* CHECK-IN & REMAINING BALANCE PANEL FOR CONFIRMED RESERVATIONS */}
+        {((isConfirmed && activeTab === "HOSPEDANDO") || statusStr === "CHECKIN_LIBERADO" || offer.checkInReleasedAt) && (
+          <CheckInReleasePanel
+            offer={offer}
+            perspective={activeTab}
+            onUploadRemainingPix={handleUploadRemainingBalancePix}
+            onManualRelease={handleManualReleaseCheckin}
+            onSaveInstructions={handleSaveCheckInInstructions}
+            uploadingId={uploadingOfferId}
+            validatingId={validatingOfferId}
+          />
+        )}
+      </div>
+    );
+  }
   return (
     <PayPalScriptProvider options={{ clientId: PAYPAL_CLIENT_ID, currency: "BRL" }}>
       <main className="min-h-screen bg-slate-950 px-4 py-8 md:px-8 text-white">
@@ -1222,12 +1651,12 @@ export default function MinhasReservasPage() {
             </div>
           )}
 
-          {/* RESERVATIONS LIST */}
+          {/* RESERVATIONS LIST GROUPED */}
           {activeOffersList.length === 0 ? (
             <div className="rounded-3xl border border-white/10 bg-white/5 p-12 text-center text-slate-400 backdrop-blur-md">
               <div className="text-4xl mb-3">{activeTab === "VIAJANDO" ? "🧳" : "🏠"}</div>
               <h3 className="text-lg font-bold text-white mb-1">
-                {activeTab === "VIAJANDO" ? "Nenhuma reserva encontrada como viajante." : "Nenhum pedido de reserva recebido para seus imóveis."}
+                {activeTab === "VIAJANDO" ? "Nenhuma reserva ativa como viajante." : "Nenhum pedido de reserva ativo para seus imóveis."}
               </h3>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
                 {activeTab === "VIAJANDO"
@@ -1236,556 +1665,82 @@ export default function MinhasReservasPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-5">
-              {activeOffersList.map((offer) => {
-                const statusStr = String(offer.status).toUpperCase();
-                const isPending = statusStr === "PENDING_HOST_APPROVAL";
-                const isAcceptedWaiting = statusStr === "ACCEPTED_WAITING_PAYMENT";
-                const isConfirmed = statusStr === "RESERVA_CONFIRMADA" || statusStr === "ACCEPTED" || statusStr === "MATCHED";
-                const isDepositFullyPaid = statusStr === "RESERVA_CONFIRMADA" || !!offer.pixValidation?.allPassed;
-                const isCheckInReleased = statusStr === "CHECKIN_LIBERADO" || !!offer.checkInReleasedAt;
-                const isRejected = statusStr === "REJECTED";
-                const isCancelled = statusStr === "CANCELLED";
-
-                const currentPhase = getStepPhase(offer);
-                const isCheckInDateOrLater = offer.startDate
-                  ? new Date().setHours(0, 0, 0, 0) >= new Date(offer.startDate).setHours(0, 0, 0, 0)
-                  : false;
-
-                return (
-                  <div
-                    key={offer.id}
-                    className={`rounded-3xl border border-white/10 bg-slate-900/90 p-5 md:p-6 transition-all shadow-xl backdrop-blur-md ${
-                      isCancelled ? "opacity-40 grayscale-[0.5]" : ""
-                    }`}
-                  >
-                    {/* CARD MINI STEPPER PROGRESS ARROW BAR */}
-                    {!isCancelled && !isRejected && (
-                      <div className="mb-5 border-b border-white/5 pb-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                            <span>{currentPhase >= 5 ? "🔑" : currentSteps[Math.min(currentPhase - 1, 4)]?.icon}</span>
-                            <span>
-                              {currentPhase >= 5
-                                ? "Check-in Liberado! (5 de 5 Etapas Concluídas)"
-                                : `Etapa ${currentPhase} de 5: ${currentSteps[currentPhase - 1]?.title}`}
-                            </span>
-                          </span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                            currentPhase >= 5
-                              ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-300"
-                              : "bg-amber-500/20 border-amber-500/30 text-amber-300"
-                          }`}>
-                            {currentPhase >= 5 ? "5/5 Concluído" : `${currentPhase - 1}/5 Concluído`}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center justify-between gap-1">
-                          {currentSteps.map((st) => {
-                            const isDone = currentPhase > st.num;
-                            const isCurrent = currentPhase === st.num;
-
-                            let leftLineClass = "bg-slate-800";
-                            if (st.num === 1) {
-                              leftLineClass = "bg-transparent";
-                            } else if (currentPhase >= st.num) {
-                              leftLineClass = "bg-emerald-500";
-                            } else if (st.num === 5 && currentPhase === 4 && isCheckInDateOrLater) {
-                              leftLineClass = "bg-[linear-gradient(to_right,#10b981_50%,#1e293b_50%)]";
-                            }
-
-                            let rightLineClass = "bg-slate-800";
-                            if (st.num === 5) {
-                              rightLineClass = "bg-transparent";
-                            } else if (currentPhase > st.num) {
-                              rightLineClass = "bg-emerald-500";
-                            } else if (st.num === 4 && currentPhase === 4 && isCheckInDateOrLater) {
-                              rightLineClass = "bg-[linear-gradient(to_right,#10b981_50%,#1e293b_50%)]";
-                            }
-
-                            return (
-                              <div key={st.num} className="flex-1 flex flex-col items-center">
-                                <div className="flex items-center w-full">
-                                  <div className={`h-1 flex-1 rounded-l ${leftLineClass}`} />
-                                  <div
-                                    className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-black border transition-all ${
-                                      isDone || (isCurrent && currentPhase >= 5)
-                                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold"
-                                        : isCurrent
-                                        ? "bg-emerald-500 text-slate-950 border-emerald-400 ring-4 ring-emerald-500/20 font-bold scale-110"
-                                        : "bg-slate-800 text-slate-500 border-white/10"
-                                    }`}
-                                  >
-                                    {isDone ? "✓" : st.num}
-                                  </div>
-                                  <div className={`h-1 flex-1 rounded-r ${rightLineClass}`} />
-                                </div>
-                                <span
-                                  className={`mt-1.5 text-[10px] md:text-xs font-bold text-center leading-tight whitespace-normal w-full px-0.5 ${
-                                    isCurrent
-                                      ? "text-emerald-400"
-                                      : isDone
-                                      ? "text-slate-300"
-                                      : "text-slate-500"
-                                  }`}
-                                >
-                                  {st.title}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div className="flex gap-4">
-                        <div className="h-24 w-32 overflow-hidden rounded-2xl border border-white/10 bg-slate-950 flex-shrink-0">
-                          {offer.property?.images?.[0]?.imageUrl ? (
-                            <img
-                              src={offer.property.images[0].imageUrl}
-                              alt={offer.property?.title || "Imóvel"}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full items-center justify-center text-xs text-slate-500">
-                              Sem foto
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="space-y-1">
-                          <div className={`text-lg font-bold ${isCancelled ? "text-slate-500" : "text-white"}`}>
-                            {offer.property?.title || "Imóvel"}
-                          </div>
-                          <div className="text-xs text-slate-400">
-                            {[
-                              offer.property?.neighborhood,
-                              offer.property?.city,
-                              offer.property?.state,
-                            ]
-                              .filter(Boolean)
-                              .join(" • ") || "-"}
-                          </div>
-
-                          {offer.startDate && offer.endDate && (
-                            <div className="text-xs text-emerald-400 font-bold flex items-center gap-1 pt-1">
-                              📅 {new Date(offer.startDate).toLocaleDateString("pt-BR")} → {new Date(offer.endDate).toLocaleDateString("pt-BR")}
-                              <span className="ml-1 text-slate-400 font-normal">({offer.guests || 1} hóspedes)</span>
-                            </div>
-                          )}
-
-                          <div className="mt-2 text-sm text-slate-300">
-                            Valor Total:{" "}
-                            <span className={`font-black ${isCancelled ? "text-slate-500 line-through" : "text-emerald-400"}`}>
-                              R$ {Number(offer.totalStayPrice || offer.offerPrice).toLocaleString("pt-BR")}
-                            </span>
-                          </div>
-
-                          {/* Badges de Status */}
-                          {(isPending || isRejected) && (
-                            <div className="pt-2">
-                              {isPending && (
-                                <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300">
-                                  ⏳ {activeTab === "VIAJANDO" ? "Pedido enviado (Aguardando anfitrião por 24h)" : "Pedido recebido (Aguardando sua aprovação)"}
-                                </span>
-                              )}
-
-                              {isRejected && (
-                                <span className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-bold text-red-400">
-                                  ❌ Pedido recusado
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* RIGHT COLUMN: 10-STARS RATING ON TOP + ACTION BUTTONS BELOW */}
-                      <div className="flex flex-col items-start sm:items-end gap-3 shrink-0">
-                        {/* 10-STARS RATING */}
-                        {!isRejected && !isCancelled && (
-                          <RatingStars
-                            offerId={offer.id}
-                            currentRating={activeTab === "VIAJANDO" ? offer.guestRating : offer.hostRating}
-                            perspective={activeTab}
-                            startDateStr={offer.startDate}
-                            onRatingSaved={(newRating) => {
-                              if (activeTab === "VIAJANDO") {
-                                setGuestOffers((prev) =>
-                                  prev.map((o) => (o.id === offer.id ? { ...o, guestRating: newRating } : o))
-                                );
-                              } else {
-                                setHostOffers((prev) =>
-                                  prev.map((o) => (o.id === offer.id ? { ...o, hostRating: newRating } : o))
-                                );
-                              }
-                            }}
-                          />
-                        )}
-
-                        {/* ACTIONS PER PERSPECTIVE */}
-                        <div className="flex flex-col gap-2 w-full sm:w-auto">
-                        {offer.property?.id && (
-                          <Link
-                            href={`/imovel/${offer.property.id}`}
-                            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white hover:bg-white/10 text-center transition"
-                          >
-                            Ver anúncio
-                          </Link>
-                        )}
-
-                        {(isAcceptedWaiting || isConfirmed) && (
-                          <Link
-                            href={
-                              offer.conversationId
-                                ? `/minha-conta/chat?conversationId=${offer.conversationId}`
-                                : `/minha-conta/chat?propertyId=${offer.propertyId}&buyerId=${offer.buyerId}`
-                            }
-                            className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 text-center transition flex items-center justify-center gap-1.5"
-                          >
-                            💬 Abrir Chat
-                          </Link>
-                        )}
-
-                        {!isPending && !isCancelled && !isRejected && !isConfirmed && !offer.pixValidation?.allPassed && (
-                          <button
-                            onClick={() => handleCancel(offer.id)}
-                            className="rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-2 text-xs font-bold text-red-300 hover:bg-red-400/15 text-center cursor-pointer transition flex items-center justify-center gap-1.5"
-                          >
-                            <Ban size={13} />
-                            <span>Cancelar reserva</span>
-                          </button>
-                        )}
-
-                        {activeTab === "HOSPEDANDO" && isPending && (
-                          <div className="flex flex-col gap-2 mt-1">
-                            <button
-                              onClick={() => prepararPaypalHost(offer.id)}
-                              disabled={actionLoadingId === offer.id}
-                              className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2.5 text-xs font-black text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-1.5"
-                            >
-                              <CheckCircle2 size={14} />
-                              Aceitar a reserva
-                            </button>
-                            <button
-                              onClick={() => recusarOfertaHost(offer.id)}
-                              disabled={actionLoadingId === offer.id}
-                              className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs font-bold text-red-400 hover:bg-red-500/20 text-center cursor-pointer transition flex items-center justify-center gap-1.5"
-                            >
-                              <Ban size={14} />
-                              Recusar a reserva
-                            </button>
-                          </div>
-                        )}
-                      </div>
+            <div className="space-y-8">
+              {/* GROUP 1: PENDING CONFIRMATION (STAYS ABOVE ALL OTHERS) */}
+              {pendingConfirmationOffers.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between border-b border-amber-500/30 pb-2">
+                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-400">
+                      <Clock size={16} />
+                      <span>⏳ Em Processo de Confirmação ({pendingConfirmationOffers.length})</span>
                     </div>
+                    <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2.5 py-0.5 rounded-full">
+                      Topo das Reservas · Aguardando Sinal
+                    </span>
                   </div>
-
-                    {/* DETAILS BOX FOR GUEST ("VIAJANDO") */}
-                    {activeTab === "VIAJANDO" && (isAcceptedWaiting || isConfirmed) && (
-                      <div className="mt-5 border-t border-white/10 pt-4 space-y-3 rounded-2xl bg-slate-950/70 p-4 border border-white/5">
-                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-3">
-                          <div className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
-                            <ShieldCheck size={16} />
-                            <span>Dados de Contato e Pagamento do Anfitrião</span>
-                          </div>
-
-                          {/* Top-Right Remaining Balance Upload Button (Only AFTER deposit is 100% paid) */}
-                          {isDepositFullyPaid && !isCheckInReleased && (
-                            <label className={`rounded-xl px-4 py-2 text-xs font-black text-slate-950 transition cursor-pointer flex items-center justify-center gap-2 shadow-lg shrink-0 ${
-                              uploadingOfferId === offer.id || validatingOfferId === offer.id
-                                ? "bg-slate-600 cursor-not-allowed shadow-none"
-                                : "bg-emerald-400 hover:bg-emerald-300 shadow-emerald-500/20"
-                            }`}>
-                              <Upload size={14} />
-                              {uploadingOfferId === offer.id
-                                ? "Enviando..."
-                                : validatingOfferId === offer.id
-                                ? "⏳ Analisando..."
-                                : `📎 Anexar Comprovante do Saldo (R$ ${Math.max(0, Number(offer.totalStayPrice || offer.offerPrice || 0) - Number(offer.depositAmount || 0)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`}
-                              <input
-                                type="file"
-                                accept="image/*,.pdf"
-                                className="hidden"
-                                disabled={uploadingOfferId === offer.id || validatingOfferId === offer.id}
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) handleUploadRemainingBalancePix(offer.id, file);
-                                }}
-                              />
-                            </label>
-                          )}
-                        </div>
-
-                        <div className="grid gap-2 sm:grid-cols-2 text-xs text-slate-300">
-                          <div><strong>Anfitrião:</strong> {offer.property?.owner?.name || "Não informado"}</div>
-                          <div><strong>E-mail:</strong> {offer.property?.owner?.email || "Não informado"}</div>
-                          <div>
-                            <strong>Telefone / WhatsApp:</strong>{" "}
-                            {offer.property?.owner?.phone ? (
-                              getWhatsAppUrl(offer.property.owner.phone) ? (
-                                <a
-                                  href={getWhatsAppUrl(offer.property.owner.phone)!}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="inline-flex items-center gap-1.5 font-bold text-emerald-400 hover:text-emerald-300 underline transition cursor-pointer"
-                                  title="Abrir no WhatsApp"
-                                >
-                                  <span>{offer.property.owner.phone}</span>
-                                  <span className="no-underline bg-emerald-500/20 border border-emerald-500/40 rounded px-1.5 py-0.5 text-[11px]">💬 WhatsApp</span>
-                                </a>
-                              ) : (
-                                <span>{offer.property.owner.phone}</span>
-                              )
-                            ) : (
-                              "Não informado"
-                            )}
-                          </div>
-                          <div>
-                            <strong>Chave Pix:</strong>{" "}
-                            <span className="font-mono text-emerald-300 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                              {offer.property?.pixKey || "Consulte o anfitrião"}
-                            </span>
-                            {offer.property?.pixQrCodeUrl && (
-                              <div className="pt-2">
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedQrCodeModalUrl(offer.property!.pixQrCodeUrl!)}
-                                  className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500/20 transition cursor-pointer shadow-sm"
-                                >
-                                  <QrCode size={15} />
-                                  <span>Visualizar QR Code Pix</span>
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                          {!isDepositFullyPaid && offer.depositAmount && (
-                            <div className="col-span-full pt-1 text-sm font-extrabold text-emerald-400">
-                              Sinal a ser pago via Pix: R$ {Number(offer.depositAmount).toLocaleString("pt-BR")}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Receipt + Validation for GUEST */}
-                        {isAcceptedWaiting && !offer.pixReceiptUrl && (
-                          <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-white/5">
-                            <span className="text-xs text-amber-300 font-medium">
-                              Após realizar o pagamento do sinal via Pix, anexe o comprovante para confirmar a reserva:
-                            </span>
-                            <div className="flex items-center gap-2 w-full sm:w-auto">
-                              <button
-                                onClick={() => handleCancel(offer.id)}
-                                className="rounded-xl border border-red-400/20 bg-red-400/10 px-3 py-2.5 text-xs font-bold text-red-300 hover:bg-red-400/15 transition cursor-pointer whitespace-nowrap"
-                              >
-                                Cancelar reserva
-                              </button>
-                              <label className={`rounded-xl px-4 py-2.5 text-xs font-black text-slate-950 transition cursor-pointer flex items-center justify-center gap-2 shadow-lg whitespace-nowrap ${
-                                uploadingOfferId === offer.id || validatingOfferId === offer.id
-                                  ? "bg-slate-600 cursor-not-allowed shadow-none"
-                                  : "bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20"
-                              }`}>
-                                <Upload size={14} />
-                                {uploadingOfferId === offer.id
-                                  ? "Enviando..."
-                                  : validatingOfferId === offer.id
-                                  ? "⏳ Analisando comprovante..."
-                                  : "📎 Incluir comprovante Pix"}
-                                <input
-                                  type="file"
-                                  accept="image/*,.pdf"
-                                  className="hidden"
-                                  disabled={uploadingOfferId === offer.id || validatingOfferId === offer.id}
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) handleUploadPixReceipt(offer.id, file);
-                                  }}
-                                />
-                              </label>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* After receipt sent — show validation result & all receipt links to guest */}
-                        {getOfferReceiptUrls(offer).length > 0 && (
-                          <div className="pt-3 border-t border-white/5 space-y-3">
-                            {/* Validation analyzing state */}
-                            {validatingOfferId === offer.id && (
-                              <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 p-3 text-xs text-sky-300 flex items-center gap-2 animate-pulse">
-                                <ShieldCheck size={14} />
-                                <span>⏳ Analisando comprovante automaticamente...</span>
-                              </div>
-                            )}
-
-                            {/* Validation result panel (includes receipt links inside Ver Detalhes) */}
-                            {offer.pixValidation && validatingOfferId !== offer.id && (
-                              <PixValidationPanel
-                                validation={offer.pixValidation}
-                                perspective="VIAJANDO"
-                                receiptUrls={getOfferReceiptUrls(offer)}
-                              />
-                            )}
-
-                            {/* No validation result yet (edge case: API failed) */}
-                            {!offer.pixValidation && validatingOfferId !== offer.id && (
-                              <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-300 space-y-1">
-                                <div className="font-bold">⚠️ Verificação automática não foi concluída</div>
-                                <div className="text-amber-200 leading-relaxed">Seu comprovante foi recebido, mas a verificação automática não pôde ser processada. O anfitrião irá analisar manualmente. Caso queira, você pode tentar reenviar um comprovante mais legível.</div>
-                                {isAcceptedWaiting && (
-                                  <label className="mt-2 inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-xs font-black text-slate-950 hover:bg-amber-400 transition cursor-pointer">
-                                    <Upload size={13} />
-                                    Reenviar comprovante
-                                    <input
-                                      type="file"
-                                      accept="image/*,.pdf"
-                                      className="hidden"
-                                      disabled={uploadingOfferId === offer.id || validatingOfferId === offer.id}
-                                      onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) handleUploadPixReceipt(offer.id, file);
-                                      }}
-                                    />
-                                  </label>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Re-upload button if validation failed */}
-                            {offer.pixValidation && !offer.pixValidation.allPassed && isAcceptedWaiting && validatingOfferId !== offer.id && (
-                              <label className="flex items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs font-black text-amber-300 hover:bg-amber-500/20 transition cursor-pointer">
-                                <Upload size={13} />
-                                Reenviar comprovante corrigido
-                                <input
-                                  type="file"
-                                  accept="image/*,.pdf"
-                                  className="hidden"
-                                  disabled={uploadingOfferId === offer.id || validatingOfferId === offer.id}
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) handleUploadPixReceipt(offer.id, file);
-                                  }}
-                                />
-                              </label>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* DETAILS BOX FOR HOST ("HOSPEDANDO") */}
-                    {activeTab === "HOSPEDANDO" && isPending && (
-                      <div className="mt-5 border-t border-white/10 pt-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 p-4">
-                        <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
-                          <Clock size={16} />
-                          <span>Etapa 1: Pedido de Reserva Recebido (Prazo: 24h)</span>
-                        </div>
-                        <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
-                          🔒 <strong>Contato do hóspede bloqueado.</strong> Clique em <strong>"Aceitar a reserva"</strong> acima para efetuar o pagamento da taxa de 1% via PayPal. Após a confirmação, os dados de contato do hóspede serão liberados e o pedido avançará para a <strong>Etapa 2: Aguardando Pagamento do Hóspede</strong>.
-                        </p>
-                      </div>
-                    )}
-
-                    {activeTab === "HOSPEDANDO" && (isAcceptedWaiting || isConfirmed) && (
-                      <div className="mt-5 border-t border-white/10 pt-4 space-y-3 rounded-2xl bg-slate-950/70 p-4 border border-white/5">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-2">
-                            <ShieldCheck size={16} />
-                            <span>Dados de Contato do Hóspede (Liberado)</span>
-                          </div>
-                        </div>
-
-                        <div className="grid gap-2 sm:grid-cols-2 text-xs text-slate-300">
-                          <div><strong>Hóspede:</strong> {offer.buyer?.name || "Não informado"}</div>
-                          <div><strong>E-mail:</strong> {offer.buyer?.email || "Não informado"}</div>
-                          <div>
-                            <strong>Telefone / WhatsApp:</strong>{" "}
-                            {offer.buyer?.phone ? (
-                              getWhatsAppUrl(offer.buyer.phone) ? (
-                                <a
-                                  href={getWhatsAppUrl(offer.buyer.phone)!}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="inline-flex items-center gap-1.5 font-bold text-emerald-400 hover:text-emerald-300 underline transition cursor-pointer"
-                                  title="Abrir no WhatsApp"
-                                >
-                                  <span>{offer.buyer.phone}</span>
-                                  <span className="no-underline bg-emerald-500/20 border border-emerald-500/40 rounded px-1.5 py-0.5 text-[11px]">💬 WhatsApp</span>
-                                </a>
-                              ) : (
-                                <span>{offer.buyer.phone}</span>
-                              )
-                            ) : (
-                              "Não informado"
-                            )}
-                          </div>
-                          {offer.depositAmount && (
-                            <div>
-                              <strong>Sinal Pix Solicitado:</strong>{" "}
-                              <span className="font-extrabold text-emerald-400">R$ {Number(offer.depositAmount).toLocaleString("pt-BR")}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {getOfferReceiptUrls(offer).length > 0 ? (
-                          <div className="pt-3 border-t border-white/10 space-y-3">
-                            {/* AI Validation Panel (includes receipt links inside Ver Detalhes) */}
-                            {offer.pixValidation ? (
-                              <PixValidationPanel
-                                validation={offer.pixValidation}
-                                perspective="HOSPEDANDO"
-                                receiptUrls={getOfferReceiptUrls(offer)}
-                              />
-                            ) : (
-                              <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-300 flex items-center gap-2">
-                                <Clock size={13} />
-                                <span>Verificação automática em processamento...</span>
-                              </div>
-                            )}
-
-                            {/* Manual Host Approval Button if receipt sent but status not RESERVA_CONFIRMADA */}
-                            {statusStr !== "RESERVA_CONFIRMADA" && !offer.pixValidation?.allPassed && (
-                              <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 bg-emerald-950/40 p-3.5 rounded-2xl border border-emerald-500/30">
-                                <div className="text-xs text-emerald-200 leading-relaxed">
-                                  <strong className="text-emerald-300 block mb-0.5 font-extrabold text-sm">💡 Aprovação Manual do Anfitrião</strong>
-                                  Deseja validar os comprovantes enviados e confirmar esta reserva agora?
-                                </div>
-                                <button
-                                  onClick={() => handleManualConfirmPix(offer.id)}
-                                  disabled={actionLoadingId === offer.id}
-                                  className="w-full sm:w-auto shrink-0 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2.5 text-xs font-black text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
-                                >
-                                  <CheckCircle2 size={16} />
-                                  <span>Aceitar & Confirmar Reserva</span>
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="pt-2 border-t border-white/5 text-xs text-amber-300 flex items-center gap-2">
-                            <Clock size={14} />
-                            <span>Etapa 2: Taxa de 1% paga com sucesso. Aguardando o hóspede enviar o comprovante Pix do sinal.</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* CHECK-IN & REMAINING BALANCE PANEL FOR CONFIRMED RESERVATIONS */}
-                    {((isConfirmed && activeTab === "HOSPEDANDO") || statusStr === "CHECKIN_LIBERADO" || offer.checkInReleasedAt) && (
-                      <CheckInReleasePanel
-                        offer={offer}
-                        perspective={activeTab}
-                        onUploadRemainingPix={handleUploadRemainingBalancePix}
-                        onManualRelease={handleManualReleaseCheckin}
-                        onSaveInstructions={handleSaveCheckInInstructions}
-                        uploadingId={uploadingOfferId}
-                        validatingId={validatingOfferId}
-                      />
-                    )}
+                  <div className="space-y-5">
+                    {pendingConfirmationOffers.map((offer) => renderOfferCard(offer, false))}
                   </div>
-                );
-              })}
+                </div>
+              )}
+
+              {/* GROUP 2: CONFIRMED RESERVATIONS (SORTED BY CHECK-IN DATE ASCENDING - CLOSEST FIRST) */}
+              {confirmedOffers.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between border-b border-emerald-500/30 pb-2">
+                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-400">
+                      <Sparkles size={16} />
+                      <span>📅 Reservas Confirmadas (Ordem por Proximidade do Check-in) ({confirmedOffers.length})</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+                      Check-in Mais Próximo Primeiro
+                    </span>
+                  </div>
+                  <div className="space-y-5">
+                    {confirmedOffers.map((offer) => renderOfferCard(offer, false))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
+
+          {/* FOOTER LINK FOR ARCHIVED / PAST RESERVATIONS */}
+          <div className="mt-14 pt-8 border-t border-white/10 flex flex-col items-center justify-center space-y-6">
+            <button
+              type="button"
+              onClick={() => setShowArchived((prev) => !prev)}
+              className="rounded-2xl border border-white/10 bg-slate-900/90 hover:bg-slate-800 px-6 py-3.5 text-xs font-black uppercase tracking-wider text-slate-300 hover:text-white transition cursor-pointer flex items-center gap-2.5 shadow-xl border border-white/10 hover:border-emerald-500/40"
+            >
+              <Archive size={16} className="text-emerald-400" />
+              <span>
+                {showArchived
+                  ? "Ocultar Reservas Arquivadas"
+                  : `📦 Ver Reservas Arquivadas / Concluídas (${archivedOffers.length})`}
+              </span>
+            </button>
+
+            {showArchived && (
+              <div className="w-full space-y-5 animate-fadeIn">
+                <div className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center justify-between border-b border-white/10 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Archive size={16} className="text-emerald-400" />
+                    <span>Histórico de Reservas Concluídas e Arquivadas ({archivedOffers.length})</span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-bold">Check-out Finalizado ou Canceladas</span>
+                </div>
+
+                {archivedOffers.length === 0 ? (
+                  <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-8 text-center text-xs text-slate-500">
+                    Nenhuma reserva arquivada até o momento.
+                  </div>
+                ) : (
+                  <div className="space-y-5 opacity-75 hover:opacity-100 transition-opacity">
+                    {archivedOffers.map((offer) => renderOfferCard(offer, true))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* PAYPAL MODAL FOR HOST 1% FEE PAYMENT */}
