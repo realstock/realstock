@@ -537,7 +537,7 @@ function CheckInReleasePanel({
               Check-in Bloqueado — Quitação do Saldo Pendente
             </h4>
             <p className="text-[11px] text-slate-300">
-              Quite o saldo restante antes do check-in ({offer.startDate ? new Date(offer.startDate).toLocaleDateString("pt-BR") : "A definir"} às {offer.property?.checkInTime || "14:00"}) para liberar o endereço e chave.
+              Quite o saldo restante antes de ({offer.startDate ? new Date(offer.startDate).toLocaleDateString("pt-BR") : "A definir"} às {offer.property?.checkInTime || "14:00"}) para liberar as informações para checkin.
             </p>
           </div>
         </div>
