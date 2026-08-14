@@ -1356,8 +1356,9 @@ function EditarAnuncioContent() {
                                   formData.append("file", file);
                                   const res = await fetch("/api/upload-image", { method: "POST", body: formData });
                                   const data = await res.json();
-                                  if (!res.ok || !data.url) throw new Error(data.error || "Falha ao enviar imagem.");
-                                  setPixQrCodeUrl(data.url);
+                                  const uploadedUrl = data.imageUrl || data.url;
+                                  if (!res.ok || !uploadedUrl) throw new Error(data.error || "Falha ao enviar imagem.");
+                                  setPixQrCodeUrl(uploadedUrl);
                                 } catch (err: any) {
                                   alert("Erro ao subir QR Code: " + err.message);
                                 } finally {

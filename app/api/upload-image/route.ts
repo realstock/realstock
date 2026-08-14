@@ -91,6 +91,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
+      url: data.publicUrl,
       imageUrl: data.publicUrl,
       path: filePath,
     });
