@@ -80,6 +80,7 @@ export default function OfferBookClient({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [docRequiredError, setDocRequiredError] = useState(false);
 
   useEffect(() => {
     if (defaultCheckIn) setCheckIn(defaultCheckIn);
@@ -194,6 +195,7 @@ export default function OfferBookClient({
     if (e && e.preventDefault) e.preventDefault();
     setError("");
     setMessage("");
+    setDocRequiredError(false);
 
     if (status === "loading") return;
 
@@ -282,6 +284,9 @@ export default function OfferBookClient({
       }
 
       if (!res.ok || !data.success) {
+        if (data.code === "DOCUMENT_REQUIRED" || String(data.error || "").includes("Documento de Identidade")) {
+          setDocRequiredError(true);
+        }
         throw new Error(data.error || "Erro ao enviar solicitação.");
       }
 
@@ -331,6 +336,23 @@ export default function OfferBookClient({
       {error && (
         <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-300">
           {error}
+        </div>
+      )}
+
+      {docRequiredError && (
+        <div className="mt-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-2.5 text-amber-300 text-xs">
+          <div className="font-bold text-sm flex items-center gap-1.5">
+            <span>📄</span> Documento de Identidade (PDF) Obrigatório
+          </div>
+          <p>Você precisa enviar o seu Documento de Identidade em PDF no seu cadastro antes de solicitar reservas.</p>
+          <a
+            href="/minha-conta/perfil"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block rounded-xl bg-amber-400 px-4 py-2 text-xs font-black text-slate-950 hover:bg-amber-300 transition shadow-md"
+          >
+            Ir para Meu Cadastro e Carregar PDF →
+          </a>
         </div>
       )}
 

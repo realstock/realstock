@@ -785,6 +785,10 @@ export default function MinhasReservasPage() {
       }
 
       if (!res.ok || !data.success) {
+        if (data.code === "DOCUMENT_REQUIRED" || String(data.error || "").includes("Documento de Identidade")) {
+          setPaypalError("📄 DOCUMENTO OBRIGATÓRIO: É necessário enviar seu Documento de Identidade em PDF no seu cadastro para aceitar reservas.");
+          return;
+        }
         throw new Error(data.error || "Erro ao preparar pagamento PayPal.");
       }
 
@@ -1768,8 +1772,18 @@ export default function MinhasReservasPage() {
               </div>
 
               {paypalError && (
-                <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-400">
-                  {paypalError}
+                <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3.5 text-xs text-red-300 space-y-2">
+                  <p>{paypalError}</p>
+                  {paypalError.includes("Documento de Identidade") && (
+                    <a
+                      href="/minha-conta/perfil"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-block rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-black text-slate-950 hover:bg-amber-300 transition"
+                    >
+                      Ir para Meu Cadastro e Carregar PDF →
+                    </a>
+                  )}
                 </div>
               )}
 

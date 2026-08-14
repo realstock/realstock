@@ -72,6 +72,8 @@ model User {
   updatedAt                   DateTime   @updatedAt
   verified                    Boolean    @default(false)
   companyLogo                 String?    @map("company_logo")
+  identityDocumentUrl         String?    @map("identity_document_url")
+  identityDocumentVerified    Boolean    @default(false) @map("identity_document_verified")
   logoBoostedUntil            DateTime?  @map("logo_boosted_until")
   portfolioBoostedUntil       DateTime?  @map("portfolio_boosted_until")
   googlePortfolioBoostedUntil DateTime?  @map("google_portfolio_boosted_until")

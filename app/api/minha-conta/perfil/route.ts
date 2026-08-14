@@ -33,6 +33,8 @@ export async function GET() {
         avatar: true,
         role: true,
         verified: true,
+        identityDocumentUrl: true,
+        identityDocumentVerified: true,
         createdAt: true,
         youtubeRefreshToken: true,
       },

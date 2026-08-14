@@ -16,12 +16,28 @@ export async function POST(req: NextRequest) {
 
     const offer = await prisma.offer.findUnique({
       where: { id: offerId },
+      include: {
+        property: {
+          include: { owner: true },
+        },
+      },
     });
 
     if (!offer) {
       return NextResponse.json(
         { success: false, error: "Oferta não encontrada." },
         { status: 404 }
+      );
+    }
+
+    if (!offer.property?.owner?.identityDocumentUrl) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "É necessário enviar seu Documento de Identidade em PDF no seu cadastro para aceitar reservas.",
+          code: "DOCUMENT_REQUIRED",
+        },
+        { status: 400 }
       );
     }
 

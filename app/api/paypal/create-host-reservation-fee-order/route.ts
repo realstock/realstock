@@ -50,6 +50,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Apenas o proprietário/anfitrião pode aceitar este pedido." }, { status: 403 });
     }
 
+    if (!user.identityDocumentUrl) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "É necessário enviar seu Documento de Identidade em PDF no seu cadastro para aceitar reservas.",
+          code: "DOCUMENT_REQUIRED",
+        },
+        { status: 400 }
+      );
+    }
+
     const totalStay = Number(offer.totalStayPrice || offer.offerPrice || 0);
 
     // Consultar taxa configurada no administrativo (slug: taxa-aceite-reserva ou 1%)

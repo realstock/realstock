@@ -27,6 +27,10 @@ export default function PerfilPage() {
   const [stateName, setStateName] = useState("");
   const [city, setCity] = useState("");
   const [avatar, setAvatar] = useState("");
+  const [identityDocumentUrl, setIdentityDocumentUrl] = useState("");
+  const [identityDocumentVerified, setIdentityDocumentVerified] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [docSuccessMessage, setDocSuccessMessage] = useState("");
 
   async function loadProfile() {
     try {
@@ -53,6 +57,8 @@ export default function PerfilPage() {
       setStateName(user.state || "");
       setCity(user.city || "");
       setAvatar(user.avatar || "");
+      setIdentityDocumentUrl(user.identityDocumentUrl || "");
+      setIdentityDocumentVerified(!!user.identityDocumentVerified);
     } catch (err: any) {
       setError(err.message || "Erro ao carregar perfil.");
     } finally {
@@ -65,6 +71,55 @@ export default function PerfilPage() {
       loadProfile();
     }
   }, [status]);
+
+  async function handleDocUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      setError("Por favor, selecione um arquivo no formato PDF.");
+      return;
+    }
+
+    try {
+      setUploadingDoc(true);
+      setError("");
+      setDocSuccessMessage("");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/minha-conta/identity-document", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Erro ao enviar documento de identidade.");
+      }
+
+      setIdentityDocumentUrl(data.identityDocumentUrl);
+      setIdentityDocumentVerified(true);
+
+      if (data.user?.name) setName(data.user.name);
+      if (data.user?.cpfCnpj) setCpfCnpj(data.user.cpfCnpj);
+
+      let msg = "✅ Documento de Identidade em PDF carregado e verificado com sucesso!";
+      if (data.nameUpdated || data.cpfUpdated) {
+        const changes = [];
+        if (data.nameUpdated) changes.push(`Nome (${data.extractedName})`);
+        if (data.cpfUpdated) changes.push(`CPF (${data.extractedCpf})`);
+        msg += ` Atualizamos automaticamente: ${changes.join(" e ")}.`;
+      }
+      setDocSuccessMessage(msg);
+    } catch (err: any) {
+      setError(err.message || "Erro ao enviar documento.");
+    } finally {
+      setUploadingDoc(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -232,6 +287,62 @@ export default function PerfilPage() {
               className="input"
             />
           </Field>
+
+          {/* Identity Document PDF Section */}
+          <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-5 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold text-sky-300 flex items-center gap-2">
+                  <span>📄</span> Documento de Identidade (PDF)
+                </h3>
+                <p className="text-xs text-slate-300 mt-1">
+                  Exigido em PDF para solicitar ou aceitar reservas no site. Ao enviar, seu Nome Completo e CPF são verificados e ajustados automaticamente.
+                </p>
+              </div>
+
+              {identityDocumentUrl && (
+                <a
+                  href={identityDocumentUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-xl border border-sky-400/40 bg-sky-500/20 px-3.5 py-1.5 text-xs font-bold text-sky-200 hover:bg-sky-500/30 transition shrink-0"
+                >
+                  📄 Visualizar PDF 🔗
+                </a>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4 pt-2">
+              <label className={`rounded-xl px-4 py-2.5 text-xs font-black text-slate-950 transition cursor-pointer flex items-center gap-2 shadow-md ${
+                uploadingDoc ? "bg-slate-600 cursor-not-allowed" : "bg-sky-400 hover:bg-sky-300 shadow-sky-500/20"
+              }`}>
+                <span>{uploadingDoc ? "⏳ Analisando PDF via IA..." : "📎 Upload Documento de Identidade (PDF)"}</span>
+                <input
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  className="hidden"
+                  disabled={uploadingDoc}
+                  onChange={handleDocUpload}
+                />
+              </label>
+
+              {identityDocumentUrl ? (
+                <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
+                  ✓ Documento Carregado e Verificado
+                </span>
+              ) : (
+                <span className="text-xs font-bold text-amber-300 flex items-center gap-1">
+                  ⚠️ Nenhum PDF carregado (Exigido para reservas)
+                </span>
+              )}
+            </div>
+
+            {docSuccessMessage && (
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/15 p-3 text-xs font-bold text-emerald-300">
+                {docSuccessMessage}
+              </div>
+            )}
+          </div>
 
           {message && (
             <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-emerald-300">
