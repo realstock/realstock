@@ -16,7 +16,8 @@ import {
   ChevronRight,
   Ban,
   DollarSign,
-  AlertCircle
+  AlertCircle,
+  Star
 } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useListingType } from "@/context/ListingTypeContext";
@@ -71,6 +72,8 @@ type OfferItem = {
   guests?: number | null;
   pixReceiptUrl?: string | null;
   pixValidation?: PixValidation | null;
+  guestRating?: number | null;
+  hostRating?: number | null;
   conversationId?: number | null;
   createdAt: string;
   buyer?: {
@@ -86,6 +89,7 @@ type OfferItem = {
     state?: string | null;
     neighborhood?: string | null;
     pixKey?: string | null;
+    pixQrCodeUrl?: string | null;
     listingType?: string | null;
     images?: { imageUrl: string }[];
     owner?: {
@@ -273,6 +277,116 @@ function PixValidationPanel({ validation, perspective }: { validation: PixValida
           </span>
         )}
       </div>
+    </div>
+  );
+}
+
+function RatingStars({
+  offerId,
+  currentRating,
+  perspective,
+  startDateStr,
+  onRatingSaved,
+}: {
+  offerId: number;
+  currentRating: number | null | undefined;
+  perspective: "VIAJANDO" | "HOSPEDANDO";
+  startDateStr?: string | null;
+  onRatingSaved: (newRating: number) => void;
+}) {
+  const [hoverRating, setHoverRating] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [selectedRating, setSelectedRating] = useState<number | null>(currentRating || null);
+  const [feedbackMsg, setFeedbackMsg] = useState("");
+
+  useEffect(() => {
+    setSelectedRating(currentRating || null);
+  }, [currentRating]);
+
+  const checkInDate = startDateStr ? new Date(startDateStr) : null;
+  const today = new Date();
+
+  // Rating is enabled if check-in date has arrived or passed (or if no startDate set)
+  const isUnlocked = checkInDate
+    ? new Date(today.getFullYear(), today.getMonth(), today.getDate()) >=
+      new Date(checkInDate.getFullYear(), checkInDate.getMonth(), checkInDate.getDate())
+    : true;
+
+  const handleRate = async (starValue: number) => {
+    if (!isUnlocked || saving) return;
+    try {
+      setSaving(true);
+      setFeedbackMsg("");
+      const res = await fetch("/api/minha-conta/ofertas/avaliar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ offerId, rating: starValue, perspective }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Erro ao salvar avaliação.");
+      }
+      setSelectedRating(starValue);
+      onRatingSaved(starValue);
+      setFeedbackMsg(`⭐ Nota ${starValue}/10 salva!`);
+      setTimeout(() => setFeedbackMsg(""), 3000);
+    } catch (err: any) {
+      alert(err.message || "Erro ao salvar avaliação.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const activeStars = hoverRating !== null ? hoverRating : (selectedRating || 0);
+
+  return (
+    <div className="inline-flex flex-col sm:flex-row items-start sm:items-center gap-1.5 sm:gap-2.5 bg-slate-950/80 border border-white/10 rounded-2xl px-3 py-1.5 shadow-inner">
+      <div className="flex items-center gap-0.5 sm:gap-1">
+        {Array.from({ length: 10 }, (_, i) => i + 1).map((starNum) => {
+          const isFilled = starNum <= activeStars;
+          return (
+            <button
+              key={starNum}
+              type="button"
+              disabled={!isUnlocked || saving}
+              onClick={() => handleRate(starNum)}
+              onMouseEnter={() => isUnlocked && setHoverRating(starNum)}
+              onMouseLeave={() => setHoverRating(null)}
+              className={`p-0.5 rounded transition-all ${
+                isUnlocked
+                  ? "hover:scale-125 cursor-pointer"
+                  : "opacity-40 cursor-not-allowed"
+              }`}
+              title={
+                isUnlocked
+                  ? `Dar nota ${starNum} de 10`
+                  : `Avaliação liberada a partir do check-in (${checkInDate ? checkInDate.toLocaleDateString("pt-BR") : ""})`
+              }
+            >
+              <Star
+                size={16}
+                className={`transition-colors ${
+                  isFilled
+                    ? "text-amber-400 fill-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)]"
+                    : isUnlocked
+                    ? "text-slate-600 hover:text-amber-300"
+                    : "text-slate-700"
+                }`}
+              />
+            </button>
+          );
+        })}
+      </div>
+
+      {isUnlocked ? (
+        <span className="text-[11px] font-extrabold text-amber-400 shrink-0">
+          {feedbackMsg || (activeStars > 0 ? `${activeStars}/10 ⭐` : "Avaliar (1-10)")}
+        </span>
+      ) : (
+        <span className="text-[10px] font-bold text-amber-300/80 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full shrink-0">
+          🔒 Liberado no check-in ({checkInDate ? checkInDate.toLocaleDateString("pt-BR") : ""})
+        </span>
+      )}
     </div>
   );
 }
@@ -803,8 +917,31 @@ export default function MinhasReservasPage() {
                         </div>
                       </div>
 
-                      {/* ACTIONS PER PERSPECTIVE */}
-                      <div className="flex flex-col gap-2">
+                      {/* RIGHT COLUMN: 10-STARS RATING ON TOP + ACTION BUTTONS BELOW */}
+                      <div className="flex flex-col items-start sm:items-end gap-3 shrink-0">
+                        {/* 10-STARS RATING */}
+                        {!isRejected && !isCancelled && (
+                          <RatingStars
+                            offerId={offer.id}
+                            currentRating={activeTab === "VIAJANDO" ? offer.guestRating : offer.hostRating}
+                            perspective={activeTab}
+                            startDateStr={offer.startDate}
+                            onRatingSaved={(newRating) => {
+                              if (activeTab === "VIAJANDO") {
+                                setGuestOffers((prev) =>
+                                  prev.map((o) => (o.id === offer.id ? { ...o, guestRating: newRating } : o))
+                                );
+                              } else {
+                                setHostOffers((prev) =>
+                                  prev.map((o) => (o.id === offer.id ? { ...o, hostRating: newRating } : o))
+                                );
+                              }
+                            }}
+                          />
+                        )}
+
+                        {/* ACTIONS PER PERSPECTIVE */}
+                        <div className="flex flex-col gap-2 w-full sm:w-auto">
                         {offer.property?.id && (
                           <Link
                             href={`/imovel/${offer.property.id}`}
@@ -858,6 +995,7 @@ export default function MinhasReservasPage() {
                         )}
                       </div>
                     </div>
+                  </div>
 
                     {/* DETAILS BOX FOR GUEST ("VIAJANDO") */}
                     {activeTab === "VIAJANDO" && (isAcceptedWaiting || isConfirmed) && (
@@ -912,6 +1050,35 @@ export default function MinhasReservasPage() {
                           {offer.depositAmount && (
                             <div className="col-span-full pt-1 text-sm font-extrabold text-emerald-400">
                               Sinal a ser pago via Pix: R$ {Number(offer.depositAmount).toLocaleString("pt-BR")}
+                            </div>
+                          )}
+
+                          {/* DISPLAY PIX QR CODE IMAGE FOR GUEST */}
+                          {offer.property?.pixQrCodeUrl && (
+                            <div className="col-span-full mt-2 flex flex-col sm:flex-row items-center gap-4 bg-slate-900/90 border border-emerald-500/30 rounded-2xl p-3.5 shadow-lg">
+                              <div className="relative group shrink-0">
+                                <img
+                                  src={offer.property.pixQrCodeUrl}
+                                  alt="QR Code Pix do Anfitrião"
+                                  className="h-36 w-36 object-contain bg-white p-2 rounded-xl border border-white/20 shadow-md"
+                                />
+                              </div>
+                              <div className="space-y-1 text-left">
+                                <div className="text-xs font-bold text-emerald-300 flex items-center gap-1.5 uppercase tracking-wider">
+                                  <span>📲 QR Code Pix para Pagamento do Sinal</span>
+                                </div>
+                                <p className="text-xs text-slate-300 leading-relaxed">
+                                  Abra o aplicativo do seu banco, selecione a opção <strong>"Pagar com QR Code"</strong> e escaneie a imagem ao lado para realizar o pagamento do sinal de <strong>R$ {Number(offer.depositAmount || offer.offerPrice).toLocaleString("pt-BR")}</strong>.
+                                </p>
+                                <a
+                                  href={offer.property.pixQrCodeUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-block mt-1 text-[11px] font-bold text-sky-400 hover:text-sky-300 underline"
+                                >
+                                  Abrir QR Code em tamanho original ↗
+                                </a>
+                              </div>
                             </div>
                           )}
                         </div>

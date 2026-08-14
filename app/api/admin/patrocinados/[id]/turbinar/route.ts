@@ -33,6 +33,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
         pub.name || "Patrocínio Admin",
         Number(dailyBudget) || 50,
         targetUrl,
+        5, // durationDays
         undefined, // city
         undefined, // state
         undefined, // category

@@ -1,4 +1,5 @@
 import { GoogleAdsApi, enums } from 'google-ads-api';
+import { prisma } from '@/lib/prisma';
 
 const client = new GoogleAdsApi({
   client_id: process.env.GOOGLE_ADS_CLIENT_ID || '',
@@ -28,11 +29,21 @@ export async function createRealStockGoogleCampaign(
   try {
     const customer = getGoogleAdsCustomer();
 
-    // Calcular datas de início e término (formato YYYYMMDD exigido pelo Google)
+    // Safely parse durationDays to prevent invalid dates or budget overruns
+    let validDurationDays = 5;
+    if (typeof durationDays === "number" && !isNaN(durationDays) && durationDays > 0) {
+      validDurationDays = durationDays;
+    } else if (typeof durationDays === "string" && !isNaN(Number(durationDays)) && Number(durationDays) > 0) {
+      validDurationDays = Number(durationDays);
+    }
+
+    // Calculate start and end dates (YYYYMMDD required by Google Ads API)
     const formatDate = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
-    const startDate = formatDate(new Date());
-    const endDate = formatDate(new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000));
-    console.log(`[GoogleAds] Campaign period: ${startDate} → ${endDate} (${durationDays} days)`);
+    const now = new Date();
+    const startDate = formatDate(now);
+    const endDateObj = new Date(now.getTime() + validDurationDays * 24 * 60 * 60 * 1000);
+    const endDate = formatDate(endDateObj);
+    console.log(`[GoogleAds] Campaign period: ${startDate} → ${endDate} (${validDurationDays} days)`);
 
     // 1. Create Budget (dailyBudgetBrl in micro-reais)
     const microAmount = Math.floor(dailyBudgetBrl * 1000000);
@@ -304,8 +315,54 @@ export async function createRealStockGoogleCampaign(
   }
 }
 
+export async function pauseExpiredGoogleAdsCampaigns() {
+  try {
+    const customer = getGoogleAdsCustomer();
+    const activeSessions = await prisma.googleAdsSession.findMany({
+      where: {
+        status: { in: ["ACTIVE", "ENABLED"] }
+      }
+    });
+
+    const now = new Date();
+
+    for (const session of activeSessions) {
+      const duration = session.budgetDays || 5;
+      const expireDate = new Date(session.createdAt.getTime() + duration * 24 * 60 * 60 * 1000);
+
+      if (now > expireDate) {
+        console.log(`[GoogleAds Auto-Pause] Campaign ${session.campaignId || "N/A"} expired on ${expireDate.toISOString()}. Pausing...`);
+        try {
+          if (session.campaignId && !session.campaignId.startsWith("MOCK_")) {
+            const resourceName = session.campaignId.includes("/")
+              ? session.campaignId
+              : `customers/${process.env.GOOGLE_ADS_TARGET_CUSTOMER_ID}/campaigns/${session.campaignId}`;
+
+            await customer.campaigns.update([
+              {
+                resource_name: resourceName,
+                status: enums.CampaignStatus.PAUSED,
+              },
+            ]);
+          }
+        } catch (pauseErr) {
+          console.error(`[GoogleAds Auto-Pause Error] Could not pause campaign ${session.campaignId}:`, pauseErr);
+        }
+
+        await prisma.googleAdsSession.update({
+          where: { id: session.id },
+          data: { status: "EXPIRED" }
+        });
+      }
+    }
+  } catch (err) {
+    console.error("[GoogleAds Auto-Pause Error]:", err);
+  }
+}
+
 export async function getGoogleAdsCampaignInsights(campaignId: string) {
   try {
+    await pauseExpiredGoogleAdsCampaigns();
     const customer = getGoogleAdsCustomer();
 
     // GAQL query to fetch metrics for a specific campaign

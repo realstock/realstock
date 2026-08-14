@@ -300,6 +300,7 @@ export async function POST(req: NextRequest) {
         maxGuests,
         depositPercentage,
         pixKey: pixKey || null,
+        pixQrCodeUrl: String(body.pix_qrcode_url || body.pixQrCodeUrl || "").trim() || null,
         icalFeeds,
 
         acceptsFinancing,

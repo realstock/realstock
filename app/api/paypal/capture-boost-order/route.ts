@@ -160,6 +160,7 @@ export async function POST(req: NextRequest) {
             property.title,
             Number(dailyBudget),
             propertyLink,
+            5, // durationDays
             property?.city || undefined,
             property?.state || undefined,
             property?.category || undefined,

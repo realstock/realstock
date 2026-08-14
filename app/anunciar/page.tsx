@@ -375,6 +375,8 @@ function AnunciarFormContent() {
   const [maxGuests, setMaxGuests] = useState("");
   const [depositPercentage, setDepositPercentage] = useState("20");
   const [pixKey, setPixKey] = useState("");
+  const [pixQrCodeUrl, setPixQrCodeUrl] = useState("");
+  const [uploadingQrCode, setUploadingQrCode] = useState(false);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -533,6 +535,7 @@ function AnunciarFormContent() {
         setMaxGuests(p.maxGuests?.toString() || "");
         setDepositPercentage(p.depositPercentage?.toString() || "20");
         setPixKey(p.pixKey || "");
+        setPixQrCodeUrl(p.pixQrCodeUrl || p.pix_qrcode_url || "");
         setIcalFeeds(p.icalFeeds ? (p.icalFeeds as any) : []);
       }
     } catch (e) {
@@ -1118,6 +1121,7 @@ function AnunciarFormContent() {
         max_guests: listingType === "ALUGUEL_TEMPORADA" && maxGuests ? Number(maxGuests) : null,
         deposit_percentage: listingType === "ALUGUEL_TEMPORADA" && depositPercentage ? Number(depositPercentage) : 20,
         pix_key: listingType === "ALUGUEL_TEMPORADA" ? pixKey : "",
+        pix_qrcode_url: listingType === "ALUGUEL_TEMPORADA" ? pixQrCodeUrl : "",
 
         legal_status: legalStatus,
         area_total: areaTotal,
@@ -1734,6 +1738,59 @@ function AnunciarFormContent() {
                                 className="input border-emerald-500/20 focus:border-emerald-500"
                                 placeholder="CPF, E-mail, Celular ou Chave Aleatória"
                               />
+                            </Field>
+
+                            <Field label="Imagem do QR Code Pix (JPG / PNG)">
+                              <div className="flex flex-wrap items-center gap-3">
+                                <label className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold cursor-pointer transition">
+                                  <Upload size={16} />
+                                  <span>{uploadingQrCode ? "Enviando..." : pixQrCodeUrl ? "Alterar QR Code JPG" : "Subir QR Code JPG"}</span>
+                                  <input
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/jpg"
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+                                      try {
+                                        setUploadingQrCode(true);
+                                        const formData = new FormData();
+                                        formData.append("file", file);
+                                        const res = await fetch("/api/upload-image", { method: "POST", body: formData });
+                                        const data = await res.json();
+                                        if (!res.ok || !data.url) throw new Error(data.error || "Falha ao enviar imagem.");
+                                        setPixQrCodeUrl(data.url);
+                                      } catch (err: any) {
+                                        alert("Erro ao subir QR Code: " + err.message);
+                                      } finally {
+                                        setUploadingQrCode(false);
+                                      }
+                                    }}
+                                    className="hidden"
+                                    disabled={uploadingQrCode}
+                                  />
+                                </label>
+
+                                {pixQrCodeUrl && (
+                                  <div className="relative flex items-center gap-2 bg-slate-900 border border-white/10 rounded-xl p-1.5">
+                                    <img
+                                      src={pixQrCodeUrl}
+                                      alt="QR Code Pix"
+                                      className="h-12 w-12 object-cover rounded-lg border border-white/10"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => setPixQrCodeUrl("")}
+                                      className="p-1 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition text-xs"
+                                      title="Remover QR Code"
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-slate-400 mt-1">
+                                Suba a imagem/print do QR Code do seu Pix para o hóspede escanear e pagar diretamente no app do banco.
+                              </p>
                             </Field>
                           </Grid2>
                         </>

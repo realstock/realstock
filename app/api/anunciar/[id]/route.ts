@@ -90,6 +90,7 @@ export async function PUT(
           maxGuests: body.max_guests !== null && body.max_guests !== undefined && body.max_guests !== "" ? Number(body.max_guests) : null,
           depositPercentage: body.deposit_percentage !== null && body.deposit_percentage !== undefined && body.deposit_percentage !== "" ? Number(body.deposit_percentage) : 20,
           pixKey: String(body.pix_key || "").trim() || null,
+          pixQrCodeUrl: String(body.pix_qrcode_url || body.pixQrCodeUrl || "").trim() || null,
           icalFeeds: body.ical_feeds || [],
           title,
           description,
