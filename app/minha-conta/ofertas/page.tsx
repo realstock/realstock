@@ -1199,6 +1199,7 @@ export default function MinhasReservasPage() {
                 const isPending = statusStr === "PENDING_HOST_APPROVAL";
                 const isAcceptedWaiting = statusStr === "ACCEPTED_WAITING_PAYMENT";
                 const isConfirmed = statusStr === "RESERVA_CONFIRMADA" || statusStr === "ACCEPTED" || statusStr === "MATCHED";
+                const isCheckInReleased = statusStr === "CHECKIN_LIBERADO" || !!offer.checkInReleasedAt;
                 const isRejected = statusStr === "REJECTED";
                 const isCancelled = statusStr === "CANCELLED";
 
@@ -1434,11 +1435,37 @@ export default function MinhasReservasPage() {
                     {/* DETAILS BOX FOR GUEST ("VIAJANDO") */}
                     {activeTab === "VIAJANDO" && (isAcceptedWaiting || isConfirmed) && (
                       <div className="mt-5 border-t border-white/10 pt-4 space-y-3 rounded-2xl bg-slate-950/70 p-4 border border-white/5">
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-3">
                           <div className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
                             <ShieldCheck size={16} />
                             <span>Dados de Contato e Pagamento do Anfitrião</span>
                           </div>
+
+                          {/* Top-Right Remaining Balance Upload Button */}
+                          {isConfirmed && !isCheckInReleased && (
+                            <label className={`rounded-xl px-4 py-2 text-xs font-black text-slate-950 transition cursor-pointer flex items-center justify-center gap-2 shadow-lg shrink-0 ${
+                              uploadingOfferId === offer.id || validatingOfferId === offer.id
+                                ? "bg-slate-600 cursor-not-allowed shadow-none"
+                                : "bg-emerald-400 hover:bg-emerald-300 shadow-emerald-500/20"
+                            }`}>
+                              <Upload size={14} />
+                              {uploadingOfferId === offer.id
+                                ? "Enviando..."
+                                : validatingOfferId === offer.id
+                                ? "⏳ Analisando..."
+                                : `📎 Anexar Comprovante do Saldo (R$ ${Math.max(0, Number(offer.totalStayPrice || offer.offerPrice || 0) - Number(offer.depositAmount || 0)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`}
+                              <input
+                                type="file"
+                                accept="image/*,.pdf"
+                                className="hidden"
+                                disabled={uploadingOfferId === offer.id || validatingOfferId === offer.id}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleUploadRemainingBalancePix(offer.id, file);
+                                }}
+                              />
+                            </label>
+                          )}
                         </div>
 
                         <div className="grid gap-2 sm:grid-cols-2 text-xs text-slate-300">
@@ -1486,6 +1513,14 @@ export default function MinhasReservasPage() {
                           {offer.depositAmount && (
                             <div className="col-span-full pt-1 text-sm font-extrabold text-emerald-400">
                               Sinal a ser pago via Pix: R$ {Number(offer.depositAmount).toLocaleString("pt-BR")}
+                            </div>
+                          )}
+                          {isConfirmed && !isCheckInReleased && (
+                            <div className="col-span-full pt-2 border-t border-amber-500/20 text-xs text-amber-300 font-medium flex items-center gap-2">
+                              <span>🔒</span>
+                              <span>
+                                Quite o saldo restante antes de ({offer.startDate ? new Date(offer.startDate).toLocaleDateString("pt-BR") : "A definir"} às {offer.property?.checkInTime || "14:00"}) para liberar as informações para checkin.
+                              </span>
                             </div>
                           )}
                         </div>
@@ -1746,7 +1781,7 @@ export default function MinhasReservasPage() {
                     )}
 
                     {/* CHECK-IN & REMAINING BALANCE PANEL FOR CONFIRMED RESERVATIONS */}
-                    {(isConfirmed || statusStr === "CHECKIN_LIBERADO" || offer.checkInReleasedAt) && (
+                    {((isConfirmed && activeTab === "HOSPEDANDO") || statusStr === "CHECKIN_LIBERADO" || offer.checkInReleasedAt) && (
                       <CheckInReleasePanel
                         offer={offer}
                         perspective={activeTab}
