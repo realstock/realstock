@@ -49,6 +49,7 @@ type PixValidation = {
   totalChecks: number;
   transactionValue: string | null;
   receiptUrls?: string[];
+  receiptHistory?: Array<{ url: string; amount: number; authCode?: string | null; date?: string | null }>;
   checks: {
     recipientData: PixCheckItem;
     payerData?: PixCheckItem;
@@ -277,6 +278,38 @@ function PixValidationPanel({ validation, perspective }: { validation: PixValida
             )}
           </div>
         ))}
+
+        {/* 6th Slot: Receipt Sum Card */}
+        <div className="flex flex-col justify-between rounded-xl p-3 border text-xs bg-slate-900/90 border-emerald-500/30 text-slate-200 shadow-md hover:bg-slate-900 transition-all">
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-1">
+              <span className="font-bold text-[11px] leading-tight text-emerald-300 flex items-center gap-1">
+                🧮 Soma dos Comprovantes
+              </span>
+              <span className="text-[10px] text-emerald-400 font-extrabold">
+                {validation.checks.depositValue?.isPartial ? "⚠️ Parcial" : "✅ Quitado"}
+              </span>
+            </div>
+            
+            {/* Show individual amounts breakdown if receiptHistory exists */}
+            {validation.receiptHistory && validation.receiptHistory.length > 0 ? (
+              <div className="text-[11px] text-slate-300 font-semibold truncate pt-1" title={validation.receiptHistory.map(h => `R$ ${Number(h.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`).join(" + ")}>
+                {validation.receiptHistory.map(h => `R$ ${Number(h.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`).join(" + ")}
+              </div>
+            ) : (
+              <div className="text-[11px] text-slate-400 pt-1">
+                Cálculo do valor total pago
+              </div>
+            )}
+          </div>
+
+          <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between text-[11px]">
+            <span className="text-slate-400 font-medium">Acumulado:</span>
+            <span className="font-black text-emerald-400 text-xs">
+              R$ {Number(validation.checks.depositValue?.accumulatedPaidAmount || validation.checks.depositValue?.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Partial payment guidance for guest */}
