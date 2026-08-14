@@ -200,12 +200,24 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      const previousValidation = (offer.pixValidation as any) || {};
+      const previousUrls: string[] = Array.isArray(previousValidation.receiptUrls)
+        ? previousValidation.receiptUrls.filter((u: any) => typeof u === "string" && u.trim().length > 0)
+        : offer.pixReceiptUrl
+        ? [offer.pixReceiptUrl]
+        : [];
+      const updatedReceiptUrls = Array.from(new Set([...previousUrls, pixReceiptUrl]));
+
       // If skip_confirm, just save the URL; AI validation will advance the status.
       // Otherwise (legacy), mark as confirmed immediately.
       const updatedOffer = await prisma.offer.update({
         where: { id: offerId },
         data: {
           pixReceiptUrl,
+          pixValidation: {
+            ...previousValidation,
+            receiptUrls: updatedReceiptUrls,
+          },
           ...(skipConfirm ? {} : { status: "RESERVA_CONFIRMADA" }),
         },
       });
