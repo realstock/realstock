@@ -297,21 +297,22 @@ export async function POST(req: NextRequest) {
       offer.depositAmount || (Number(offer.offerPrice) * (depositPct / 100))
     );
 
-    // Check if there was a previous valid partial payment in offer.pixValidation
+    // Load existing receipt history from previousValidation
     const previousValidation = (offer.pixValidation as any) || null;
-    let previousAccumulatedPaid = 0;
-    
-    if (
-      previousValidation?.checks?.depositValue?.accumulatedPaidAmount &&
-      typeof previousValidation.checks.depositValue.accumulatedPaidAmount === "number"
-    ) {
-      previousAccumulatedPaid = previousValidation.checks.depositValue.accumulatedPaidAmount;
-    } else if (
-      previousValidation?.checks?.depositValue?.passed === false &&
-      previousValidation?.checks?.depositValue?.isPartial &&
-      typeof previousValidation?.checks?.depositValue?.amount === "number"
-    ) {
-      previousAccumulatedPaid = previousValidation.checks.depositValue.amount;
+    let existingHistory: Array<{ url: string; amount: number; authCode?: string | null; date?: string | null }> = [];
+
+    if (Array.isArray(previousValidation?.receiptHistory)) {
+      existingHistory = previousValidation.receiptHistory.filter(
+        (item: any) => item && typeof item.url === "string" && typeof item.amount === "number" && item.amount > 0
+      );
+    } else if (previousValidation?.checks?.depositValue?.accumulatedPaidAmount) {
+      // Fallback for legacy records without receiptHistory
+      if (offer.pixReceiptUrl) {
+        existingHistory.push({
+          url: offer.pixReceiptUrl,
+          amount: Number(previousValidation.checks.depositValue.accumulatedPaidAmount),
+        });
+      }
     }
 
     // Parse transaction date and check if it's recent (on or after offer creation date - 24h grace)
@@ -351,28 +352,41 @@ export async function POST(req: NextRequest) {
     // Parse extracted transaction value amount of current receipt
     const extractedAmount = parseMoneyValue(analysis.transactionValue);
 
+    // Update receiptHistory array with current receipt
+    let updatedHistory = [...existingHistory];
+    if (extractedAmount !== null && extractedAmount > 0) {
+      const existingIndex = updatedHistory.findIndex((item) => item.url === imageUrl);
+      const newEntry = {
+        url: imageUrl,
+        amount: extractedAmount,
+        authCode: analysis.authCode || null,
+        date: analysis.transactionDate || analysis.debitDate || null,
+      };
+      if (existingIndex >= 0) {
+        updatedHistory[existingIndex] = newEntry;
+      } else {
+        updatedHistory.push(newEntry);
+      }
+    }
+
+    // Calculate total accumulated paid by summing all receipt amounts in history
+    const totalAccumulatedPaid = Number(
+      updatedHistory.reduce((sum, item) => sum + (item.amount || 0), 0).toFixed(2)
+    );
+
     let isValueMatching = false;
     let remainingAmount: number | null = null;
     let isPartialPayment = false;
-    let totalAccumulatedPaid = extractedAmount !== null ? Number((previousAccumulatedPaid + extractedAmount).toFixed(2)) : previousAccumulatedPaid;
 
-    if (extractedAmount !== null) {
-      if (totalAccumulatedPaid >= requiredDepositAmount - 0.05) {
-        // Total accumulated meets or exceeds required deposit -> VALUE CHECK PASSED!
-        isValueMatching = true;
-        remainingAmount = 0;
-        isPartialPayment = false;
-      } else {
-        // Total accumulated is smaller than required deposit -> PARTIAL PAYMENT
-        remainingAmount = Number((requiredDepositAmount - totalAccumulatedPaid).toFixed(2));
-        isPartialPayment = true;
-        isValueMatching = false;
-      }
+    if (totalAccumulatedPaid >= requiredDepositAmount - 0.05) {
+      // Total accumulated meets or exceeds required deposit -> VALUE CHECK PASSED!
+      isValueMatching = true;
+      remainingAmount = 0;
+      isPartialPayment = false;
     } else {
-      if (previousAccumulatedPaid > 0) {
-        remainingAmount = Number((requiredDepositAmount - previousAccumulatedPaid).toFixed(2));
-        isPartialPayment = true;
-      }
+      // Total accumulated is smaller than required deposit -> PARTIAL PAYMENT
+      remainingAmount = Number((requiredDepositAmount - totalAccumulatedPaid).toFixed(2));
+      isPartialPayment = true;
       isValueMatching = false;
     }
 
@@ -420,8 +434,8 @@ export async function POST(req: NextRequest) {
         remaining: remainingAmount,
         isPartial: isPartialPayment,
         label: isValueMatching
-          ? previousAccumulatedPaid > 0
-            ? `Sinal Quitado (R$ ${totalAccumulatedPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} acumulados)`
+          ? updatedHistory.length > 1
+            ? `Sinal Quitado (R$ ${totalAccumulatedPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} acumulados via ${updatedHistory.length} comprovantes)`
             : `Valor do Sinal Pago (R$ ${extractedAmount?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`
           : isPartialPayment
           ? `Sinal Parcial (Pago R$ ${totalAccumulatedPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} de R$ ${requiredDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`
@@ -433,13 +447,14 @@ export async function POST(req: NextRequest) {
     const passedCount = Object.values(checks).filter((c) => c.passed).length;
 
     // Collect all receipt URLs for this offer
-    const previousReceiptUrls: string[] = Array.isArray(previousValidation?.receiptUrls)
-      ? previousValidation.receiptUrls.filter((u: any) => typeof u === "string" && u.trim().length > 0)
-      : offer.pixReceiptUrl
-      ? [offer.pixReceiptUrl]
-      : [];
-
-    const newReceiptUrls = Array.from(new Set([...previousReceiptUrls, imageUrl]));
+    const newReceiptUrls = Array.from(
+      new Set([
+        ...updatedHistory.map((item) => item.url),
+        ...(Array.isArray(previousValidation?.receiptUrls) ? previousValidation.receiptUrls : []),
+        ...(offer.pixReceiptUrl ? [offer.pixReceiptUrl] : []),
+        imageUrl,
+      ])
+    ).filter((u) => typeof u === "string" && u.trim().length > 0);
 
     const validation = {
       analyzedAt: new Date().toISOString(),
@@ -448,6 +463,7 @@ export async function POST(req: NextRequest) {
       passedCount,
       totalChecks: 6,
       receiptUrls: newReceiptUrls,
+      receiptHistory: updatedHistory,
       checks,
       transactionValue: analysis.transactionValue || (extractedAmount ? `R$ ${extractedAmount}` : null),
       rawText: analysis.rawText,
@@ -474,8 +490,8 @@ export async function POST(req: NextRequest) {
 
     let responseMessage = "";
     if (allPassed) {
-      if (previousAccumulatedPaid > 0) {
-        responseMessage = `✅ Comprovante complementar validado! Com este pagamento de R$ ${extractedAmount?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}, o sinal de R$ ${requiredDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} foi totalmente quitado (Total acumulado: R$ ${totalAccumulatedPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}). Reserva confirmada com sucesso!`;
+      if (updatedHistory.length > 1) {
+        responseMessage = `✅ Comprovante complementar validado! Com este pagamento de R$ ${extractedAmount?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}, o sinal de R$ ${requiredDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} foi totalmente quitado via ${updatedHistory.length} comprovantes (Total acumulado: R$ ${totalAccumulatedPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}). Reserva confirmada com sucesso!`;
       } else {
         responseMessage = "✅ Comprovante validado com sucesso! Reserva confirmada.";
       }
