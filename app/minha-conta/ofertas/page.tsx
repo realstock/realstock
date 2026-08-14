@@ -906,12 +906,6 @@ export default function MinhasReservasPage() {
                               </span>
                             )}
 
-                            {isConfirmed && (
-                              <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-400/40 bg-emerald-400/20 px-3 py-1 text-xs font-black text-emerald-300">
-                                🎉 Reserva Confirmada!
-                              </span>
-                            )}
-
                             {isRejected && (
                               <span className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-bold text-red-400">
                                 ❌ Pedido recusado
@@ -1009,16 +1003,6 @@ export default function MinhasReservasPage() {
                             <ShieldCheck size={16} />
                             <span>Dados de Contato e Pagamento do Anfitrião</span>
                           </div>
-                          <Link
-                            href={
-                              offer.conversationId
-                                ? `/minha-conta/chat?conversationId=${offer.conversationId}`
-                                : `/minha-conta/chat?propertyId=${offer.propertyId}&buyerId=${offer.buyerId}`
-                            }
-                            className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/20 transition"
-                          >
-                            💬 Ir para o Chat
-                          </Link>
                         </div>
 
                         <div className="grid gap-2 sm:grid-cols-2 text-xs text-slate-300">
@@ -1209,16 +1193,6 @@ export default function MinhasReservasPage() {
                             <ShieldCheck size={16} />
                             <span>Dados de Contato do Hóspede (Liberado)</span>
                           </div>
-                          <Link
-                            href={
-                              offer.conversationId
-                                ? `/minha-conta/chat?conversationId=${offer.conversationId}`
-                                : `/minha-conta/chat?propertyId=${offer.propertyId}&buyerId=${offer.buyerId}`
-                            }
-                            className="inline-flex items-center gap-1 rounded-lg border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-[11px] font-bold text-sky-300 hover:bg-sky-500/20 transition"
-                          >
-                            💬 Ir para o Chat
-                          </Link>
                         </div>
 
                         <div className="grid gap-2 sm:grid-cols-2 text-xs text-slate-300">
