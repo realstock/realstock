@@ -1180,28 +1180,28 @@ export default function MinhasReservasPage() {
                 <Sparkles size={16} />
                 <span>Fases para Conclusão da Reserva</span>
               </div>
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Fluxo em 4 Etapas</span>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Fluxo em 5 Etapas</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2.5">
               {currentSteps.map((step) => (
                 <div
                   key={step.num}
-                  className="relative group flex flex-col justify-between rounded-2xl border border-white/10 bg-gradient-to-b from-slate-800/60 to-slate-900/80 p-4 transition-all hover:border-emerald-500/40"
+                  className="relative group flex flex-col justify-between rounded-2xl border border-white/10 bg-gradient-to-b from-slate-800/60 to-slate-900/80 p-3.5 transition-all hover:border-emerald-500/40"
                 >
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-black border border-emerald-500/30">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-black border border-emerald-500/30">
                         {step.num}
                       </span>
-                      <span className="text-lg">{step.icon}</span>
+                      <span className="text-base">{step.icon}</span>
                     </div>
-                    <h4 className="text-xs font-black uppercase tracking-wider text-white mb-1">{step.title}</h4>
-                    <p className="text-[11px] leading-relaxed text-slate-400">{step.desc}</p>
+                    <h4 className="text-[11px] font-black uppercase tracking-wider text-white mb-1 leading-tight">{step.title}</h4>
+                    <p className="text-[10px] leading-relaxed text-slate-400">{step.desc}</p>
                   </div>
-                  {step.num < 4 && (
-                    <div className="hidden lg:block absolute -right-3 top-1/2 -translate-y-1/2 z-20">
-                      <ChevronRight size={20} className="text-emerald-500/40" />
+                  {step.num < 5 && (
+                    <div className="hidden xl:block absolute -right-3 top-1/2 -translate-y-1/2 z-20">
+                      <ChevronRight size={18} className="text-emerald-500/40" />
                     </div>
                   )}
                 </div>
@@ -1254,11 +1254,11 @@ export default function MinhasReservasPage() {
                       <div className="mb-5 border-b border-white/5 pb-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                            <span>{currentPhase >= 5 ? "🎉" : currentSteps[Math.min(currentPhase - 1, 3)]?.icon}</span>
+                            <span>{currentPhase >= 5 ? "🔑" : currentSteps[Math.min(currentPhase - 1, 4)]?.icon}</span>
                             <span>
                               {currentPhase >= 5
-                                ? "Reserva Confirmada (4 de 4 Etapas Concluídas)"
-                                : `Etapa ${currentPhase} de 4: ${currentSteps[currentPhase - 1]?.title}`}
+                                ? "Check-in Liberado! (5 de 5 Etapas Concluídas)"
+                                : `Etapa ${currentPhase} de 5: ${currentSteps[currentPhase - 1]?.title}`}
                             </span>
                           </span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
@@ -1266,7 +1266,7 @@ export default function MinhasReservasPage() {
                               ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-300"
                               : "bg-amber-500/20 border-amber-500/30 text-amber-300"
                           }`}>
-                            {currentPhase >= 5 ? "4/4 Concluído" : `${currentPhase - 1}/4 Concluído`}
+                            {currentPhase >= 5 ? "5/5 Concluído" : `${currentPhase - 1}/5 Concluído`}
                           </span>
                         </div>
 
@@ -1299,7 +1299,7 @@ export default function MinhasReservasPage() {
                                   </div>
                                   <div
                                     className={`h-1 flex-1 rounded-r ${
-                                      st.num === 4
+                                      st.num === 5
                                         ? "bg-transparent"
                                         : isDone
                                         ? "bg-emerald-500"
