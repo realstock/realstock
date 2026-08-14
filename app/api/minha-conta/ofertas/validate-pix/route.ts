@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma";
 
 function parsePtBrDate(dateStr: string | null | undefined): Date | null {
   if (!dateStr) return null;
-  const match = String(dateStr).match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  const cleaned = String(dateStr).trim();
+  const match = cleaned.match(/(\d{2})\/(\d{2})\/(\d{4})(?:[^\d]+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
   if (match) {
     const [_, d, m, y, hh = "0", mm = "0", ss = "0"] = match;
     const dt = new Date(Number(y), Number(m) - 1, Number(d), Number(hh), Number(mm), Number(ss));
@@ -315,10 +316,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Parse transaction date and check if it's recent (on or after offer creation date - 24h grace)
+    // Parse transaction date and check if it's after the host approval date & time (hostFeePaidAt or createdAt)
     const txDate = parsePtBrDate(analysis.transactionDate || analysis.debitDate);
-    const offerCreatedAt = new Date(offer.createdAt);
-    const minAllowedTxDate = new Date(offerCreatedAt.getTime() - 24 * 60 * 60 * 1000); // Allow max 24h prior to reservation creation
+    const hostApprovedAt = offer.hostFeePaidAt ? new Date(offer.hostFeePaidAt) : new Date(offer.createdAt);
+    // Allow 2 minutes grace period for clock differences between bank server and local server
+    const minAllowedTxDate = new Date(hostApprovedAt.getTime() - 2 * 60 * 1000); 
     
     const isDateValid = !!(
       txDate &&
@@ -407,7 +409,9 @@ export async function POST(req: NextRequest) {
         passed: isDateValid,
         date: analysis.transactionDate,
         debitDate: analysis.debitDate,
-        label: isDateValid ? "Data da Operação (Válida)" : "Data Anterior à Reserva",
+        label: isDateValid
+          ? "Data/Hora da Operação (Válida)"
+          : "Data/Hora Anterior à Aprovação do Anfitrião",
       },
       authCode: {
         passed: isUniqueAuthCode,
