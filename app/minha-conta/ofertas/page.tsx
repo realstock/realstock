@@ -17,7 +17,8 @@ import {
   Ban,
   DollarSign,
   AlertCircle,
-  Star
+  Star,
+  QrCode
 } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useListingType } from "@/context/ListingTypeContext";
@@ -411,6 +412,9 @@ export default function MinhasReservasPage() {
   const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
   const [paypalError, setPaypalError] = useState("");
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
+
+  // QR Code Popup Modal state
+  const [selectedQrCodeModalUrl, setSelectedQrCodeModalUrl] = useState<string | null>(null);
 
   const isSeasonal = listingType === "ALUGUEL_TEMPORADA";
 
@@ -1046,39 +1050,22 @@ export default function MinhasReservasPage() {
                             <span className="font-mono text-emerald-300 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                               {offer.property?.pixKey || "Consulte o anfitrião"}
                             </span>
+                            {offer.property?.pixQrCodeUrl && (
+                              <div className="pt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedQrCodeModalUrl(offer.property!.pixQrCodeUrl!)}
+                                  className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500/20 transition cursor-pointer shadow-sm"
+                                >
+                                  <QrCode size={15} />
+                                  <span>Visualizar QR Code Pix</span>
+                                </button>
+                              </div>
+                            )}
                           </div>
                           {offer.depositAmount && (
                             <div className="col-span-full pt-1 text-sm font-extrabold text-emerald-400">
                               Sinal a ser pago via Pix: R$ {Number(offer.depositAmount).toLocaleString("pt-BR")}
-                            </div>
-                          )}
-
-                          {/* DISPLAY PIX QR CODE IMAGE FOR GUEST */}
-                          {offer.property?.pixQrCodeUrl && (
-                            <div className="col-span-full mt-2 flex flex-col sm:flex-row items-center gap-4 bg-slate-900/90 border border-emerald-500/30 rounded-2xl p-3.5 shadow-lg">
-                              <div className="relative group shrink-0">
-                                <img
-                                  src={offer.property.pixQrCodeUrl}
-                                  alt="QR Code Pix do Anfitrião"
-                                  className="h-36 w-36 object-contain bg-white p-2 rounded-xl border border-white/20 shadow-md"
-                                />
-                              </div>
-                              <div className="space-y-1 text-left">
-                                <div className="text-xs font-bold text-emerald-300 flex items-center gap-1.5 uppercase tracking-wider">
-                                  <span>📲 QR Code Pix para Pagamento do Sinal</span>
-                                </div>
-                                <p className="text-xs text-slate-300 leading-relaxed">
-                                  Abra o aplicativo do seu banco, selecione a opção <strong>"Pagar com QR Code"</strong> e escaneie a imagem ao lado para realizar o pagamento do sinal de <strong>R$ {Number(offer.depositAmount || offer.offerPrice).toLocaleString("pt-BR")}</strong>.
-                                </p>
-                                <a
-                                  href={offer.property.pixQrCodeUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="inline-block mt-1 text-[11px] font-bold text-sky-400 hover:text-sky-300 underline"
-                                >
-                                  Abrir QR Code em tamanho original ↗
-                                </a>
-                              </div>
                             </div>
                           )}
                         </div>
@@ -1384,6 +1371,63 @@ export default function MinhasReservasPage() {
                   />
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* QR CODE POPUP MODAL */}
+        {selectedQrCodeModalUrl && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn"
+            onClick={() => setSelectedQrCodeModalUrl(null)}
+          >
+            <div
+              className="relative max-w-md w-full rounded-3xl border border-emerald-500/30 bg-slate-900 p-6 shadow-2xl space-y-4 text-center border border-white/10"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => setSelectedQrCodeModalUrl(null)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 transition"
+                title="Fechar"
+              >
+                <X size={18} />
+              </button>
+
+              <div className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-center gap-2">
+                <QrCode size={18} />
+                <span>QR Code Pix do Anfitrião</span>
+              </div>
+
+              <div className="flex justify-center p-2">
+                <img
+                  src={selectedQrCodeModalUrl}
+                  alt="QR Code Pix do Anfitrião"
+                  className="max-h-[60vh] max-w-full object-contain rounded-2xl border border-white/20 bg-white p-4 shadow-xl"
+                />
+              </div>
+
+              <p className="text-xs text-slate-300 leading-relaxed px-2">
+                Abra o aplicativo do seu banco, selecione <strong>"Pagar com QR Code"</strong> e escaneie a imagem acima.
+              </p>
+
+              <div className="pt-2 flex items-center justify-center gap-3">
+                <a
+                  href={selectedQrCodeModalUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-2.5 text-xs font-bold text-sky-400 transition"
+                >
+                  Baixar / Abrir Original ↗
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setSelectedQrCodeModalUrl(null)}
+                  className="rounded-xl bg-emerald-500 hover:bg-emerald-400 px-5 py-2.5 text-xs font-black text-slate-950 transition cursor-pointer shadow-lg shadow-emerald-500/20"
+                >
+                  Fechar
+                </button>
+              </div>
             </div>
           </div>
         )}
