@@ -297,23 +297,21 @@ export async function POST(req: NextRequest) {
       offer.depositAmount || (Number(offer.offerPrice) * (depositPct / 100))
     );
 
-    // Parse extracted transaction value amount
-    const extractedAmount = parseMoneyValue(analysis.transactionValue);
+    // Check if there was a previous valid partial payment in offer.pixValidation
+    const previousValidation = (offer.pixValidation as any) || null;
+    let previousAccumulatedPaid = 0;
     
-    let isValueMatching = false;
-    let remainingAmount: number | null = null;
-    let isPartialPayment = false;
-
-    if (extractedAmount !== null) {
-      if (extractedAmount >= requiredDepositAmount - 0.50) {
-        // Value is equal to or greater than required deposit -> VALID
-        isValueMatching = true;
-      } else {
-        // Value is smaller than required deposit -> PARTIAL PAYMENT
-        remainingAmount = Number((requiredDepositAmount - extractedAmount).toFixed(2));
-        isPartialPayment = true;
-        isValueMatching = false;
-      }
+    if (
+      previousValidation?.checks?.depositValue?.accumulatedPaidAmount &&
+      typeof previousValidation.checks.depositValue.accumulatedPaidAmount === "number"
+    ) {
+      previousAccumulatedPaid = previousValidation.checks.depositValue.accumulatedPaidAmount;
+    } else if (
+      previousValidation?.checks?.depositValue?.passed === false &&
+      previousValidation?.checks?.depositValue?.isPartial &&
+      typeof previousValidation?.checks?.depositValue?.amount === "number"
+    ) {
+      previousAccumulatedPaid = previousValidation.checks.depositValue.amount;
     }
 
     // Parse transaction date and check if it's recent (on or after offer creation date - 24h grace)
@@ -348,6 +346,51 @@ export async function POST(req: NextRequest) {
     } else {
       isUniqueAuthCode = false;
       authCodeReason = "Código de autenticação não identificado no comprovante";
+    }
+
+    // Parse extracted transaction value amount of current receipt
+    const extractedAmount = parseMoneyValue(analysis.transactionValue);
+
+    // Check if current receipt passes all basic verification checks
+    const isCurrentReceiptAuthentic = !!(
+      isDateValid &&
+      isUniqueAuthCode &&
+      analysis.isCompleted === true &&
+      analysis.isScheduled !== true &&
+      analysis.recipientName &&
+      (analysis.recipientCpfCnpj || analysis.recipientBank) &&
+      analysis.payerName &&
+      analysis.payerCpfCnpj
+    );
+
+    let isValueMatching = false;
+    let remainingAmount: number | null = null;
+    let isPartialPayment = false;
+    let totalAccumulatedPaid = extractedAmount || 0;
+
+    if (extractedAmount !== null && isCurrentReceiptAuthentic) {
+      // Accumulate current valid receipt with previous valid partial payments
+      totalAccumulatedPaid = Number((previousAccumulatedPaid + extractedAmount).toFixed(2));
+
+      if (totalAccumulatedPaid >= requiredDepositAmount - 0.50) {
+        // Total accumulated (previous + current) is equal to or greater than required deposit -> VALID!
+        isValueMatching = true;
+        remainingAmount = 0;
+        isPartialPayment = false;
+      } else {
+        // Total accumulated is still smaller than required deposit -> PARTIAL PAYMENT
+        remainingAmount = Number((requiredDepositAmount - totalAccumulatedPaid).toFixed(2));
+        isPartialPayment = true;
+        isValueMatching = false;
+      }
+    } else {
+      // If current receipt failed or was unparseable, preserve previous accumulated paid amount if present
+      totalAccumulatedPaid = previousAccumulatedPaid > 0 ? previousAccumulatedPaid : (extractedAmount || 0);
+      if (requiredDepositAmount > totalAccumulatedPaid) {
+        remainingAmount = Number((requiredDepositAmount - totalAccumulatedPaid).toFixed(2));
+        isPartialPayment = true;
+      }
+      isValueMatching = false;
     }
 
     // Build 6 strict validation check objects
@@ -388,13 +431,16 @@ export async function POST(req: NextRequest) {
       depositValue: {
         passed: isValueMatching,
         amount: extractedAmount,
+        accumulatedPaidAmount: totalAccumulatedPaid,
         expected: requiredDepositAmount,
         remaining: remainingAmount,
         isPartial: isPartialPayment,
         label: isValueMatching
-          ? `Valor do Sinal Pago (R$ ${extractedAmount?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`
+          ? previousAccumulatedPaid > 0
+            ? `Sinal Quitado (R$ ${totalAccumulatedPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} acumulados)`
+            : `Valor do Sinal Pago (R$ ${extractedAmount?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`
           : isPartialPayment
-          ? `Sinal Parcial (Faltam R$ ${remainingAmount?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`
+          ? `Sinal Parcial (Pago R$ ${totalAccumulatedPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} de R$ ${requiredDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`
           : `Valor Incorreto (Esperado R$ ${requiredDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`,
       },
     };
@@ -434,9 +480,13 @@ export async function POST(req: NextRequest) {
 
     let responseMessage = "";
     if (allPassed) {
-      responseMessage = "✅ Comprovante validado com sucesso! Reserva confirmada.";
+      if (previousAccumulatedPaid > 0) {
+        responseMessage = `✅ Comprovante complementar validado! Com este pagamento de R$ ${extractedAmount?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}, o sinal de R$ ${requiredDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} foi totalmente quitado (Total acumulado: R$ ${totalAccumulatedPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}). Reserva confirmada com sucesso!`;
+      } else {
+        responseMessage = "✅ Comprovante validado com sucesso! Reserva confirmada.";
+      }
     } else if (isPartialPayment && remainingAmount && passedCount === 5) {
-      responseMessage = `⚠️ Pagamento parcial detectado! Você pagou R$ ${extractedAmount?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} dos R$ ${requiredDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} do sinal. Faça um Pix de R$ ${remainingAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} para complementar o sinal restante e anexe o novo comprovante.`;
+      responseMessage = `⚠️ Pagamento parcial detectado! Você pagou R$ ${extractedAmount?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} neste comprovante (Total acumulado: R$ ${totalAccumulatedPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} dos R$ ${requiredDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} do sinal). Faça um Pix de R$ ${remainingAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} para complementar o valor restante e anexe o novo comprovante.`;
     } else {
       responseMessage = `⚠️ ${passedCount} de 6 verificações passaram. O anfitrião analisará manualmente.`;
     }

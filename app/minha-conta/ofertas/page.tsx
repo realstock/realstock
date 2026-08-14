@@ -35,6 +35,7 @@ type PixCheckItem = {
   code?: string | null;
   transactionType?: string | null;
   amount?: number | null;
+  accumulatedPaidAmount?: number | null;
   expected?: number | null;
   remaining?: number | null;
   isPartial?: boolean;
@@ -273,7 +274,7 @@ function PixValidationPanel({ validation, perspective }: { validation: PixValida
             <span>⚠️ Pagamento Parcial do Sinal Detectado</span>
           </div>
           <p className="leading-relaxed">
-            Você pagou <strong>R$ {Number(validation.checks.depositValue.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong> do sinal exigido de <strong>R$ {Number(validation.checks.depositValue.expected || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>.
+            Você acumulou <strong>R$ {Number(validation.checks.depositValue.accumulatedPaidAmount || validation.checks.depositValue.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong> pagos do sinal exigido de <strong>R$ {Number(validation.checks.depositValue.expected || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>.
           </p>
           <div className="p-2.5 rounded-xl bg-amber-950/70 border border-amber-500/40 text-amber-300 font-bold">
             👉 Valor restante a ser pago via Pix: <span className="text-emerald-400 font-black text-sm">R$ {Number(validation.checks.depositValue.remaining || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
