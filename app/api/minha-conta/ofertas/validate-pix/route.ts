@@ -432,12 +432,22 @@ export async function POST(req: NextRequest) {
     const allPassed = Object.values(checks).every((c) => c.passed);
     const passedCount = Object.values(checks).filter((c) => c.passed).length;
 
+    // Collect all receipt URLs for this offer
+    const previousReceiptUrls: string[] = Array.isArray(previousValidation?.receiptUrls)
+      ? previousValidation.receiptUrls.filter((u: any) => typeof u === "string" && u.trim().length > 0)
+      : offer.pixReceiptUrl
+      ? [offer.pixReceiptUrl]
+      : [];
+
+    const newReceiptUrls = Array.from(new Set([...previousReceiptUrls, imageUrl]));
+
     const validation = {
       analyzedAt: new Date().toISOString(),
       confidence: analysis.confidence,
       allPassed,
       passedCount,
       totalChecks: 6,
+      receiptUrls: newReceiptUrls,
       checks,
       transactionValue: analysis.transactionValue || (extractedAmount ? `R$ ${extractedAmount}` : null),
       rawText: analysis.rawText,

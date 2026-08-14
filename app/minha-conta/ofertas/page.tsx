@@ -48,6 +48,7 @@ type PixValidation = {
   passedCount: number;
   totalChecks: number;
   transactionValue: string | null;
+  receiptUrls?: string[];
   checks: {
     recipientData: PixCheckItem;
     payerData: PixCheckItem;
@@ -70,13 +71,14 @@ type OfferItem = {
   id: number;
   propertyId: number;
   buyerId: number;
-  offerPrice: string | number;
-  totalStayPrice?: string | number | null;
-  depositAmount?: string | number | null;
+  offerPrice: number;
   status: string;
   startDate?: string | null;
   endDate?: string | null;
   guests?: number | null;
+  depositAmount?: number | null;
+  totalStayPrice?: number | null;
+  hostFeePaidAt?: string | null;
   pixReceiptUrl?: string | null;
   pixValidation?: PixValidation | null;
   guestRating?: number | null;
@@ -107,6 +109,21 @@ type OfferItem = {
     };
   };
 };
+
+function getOfferReceiptUrls(offer: OfferItem): string[] {
+  const urls: string[] = [];
+  if (Array.isArray(offer.pixValidation?.receiptUrls) && offer.pixValidation.receiptUrls.length > 0) {
+    for (const url of offer.pixValidation.receiptUrls) {
+      if (typeof url === "string" && url.trim() && !urls.includes(url.trim())) {
+        urls.push(url.trim());
+      }
+    }
+  }
+  if (offer.pixReceiptUrl && !urls.includes(offer.pixReceiptUrl.trim())) {
+    urls.push(offer.pixReceiptUrl.trim());
+  }
+  return urls;
+}
 
 const PAYPAL_CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "sb";
 
@@ -1143,22 +1160,34 @@ export default function MinhasReservasPage() {
                           </div>
                         )}
 
-                        {/* After receipt sent — show validation result to guest */}
-                        {offer.pixReceiptUrl && (
+                        {/* After receipt sent — show validation result & all receipt links to guest */}
+                        {getOfferReceiptUrls(offer).length > 0 && (
                           <div className="pt-3 border-t border-white/5 space-y-3">
-                            <div className="flex items-center justify-between">
+                            <div className="space-y-2">
                               <div className="flex items-center gap-2 text-xs text-slate-300">
                                 <FileText size={14} className="text-emerald-400" />
-                                <span>Comprovante enviado:</span>
+                                <span>
+                                  {getOfferReceiptUrls(offer).length > 1
+                                    ? `Comprovantes enviados (${getOfferReceiptUrls(offer).length}):`
+                                    : "Comprovante enviado:"}
+                                </span>
                               </div>
-                              <a
-                                href={offer.pixReceiptUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-emerald-400 underline font-bold text-xs"
-                              >
-                                Ver comprovante
-                              </a>
+                              <div className="flex flex-wrap gap-2">
+                                {getOfferReceiptUrls(offer).map((url, idx) => (
+                                  <a
+                                    key={url}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="rounded-lg bg-emerald-500/20 border border-emerald-500/30 px-3 py-1 text-xs text-emerald-300 font-bold hover:bg-emerald-500/30 transition flex items-center gap-1.5"
+                                  >
+                                    <FileText size={12} />
+                                    <span>
+                                      Comprovante {getOfferReceiptUrls(offer).length > 1 ? `#${idx + 1}` : ""}
+                                    </span>
+                                  </a>
+                                ))}
+                              </div>
                             </div>
 
                             {/* Validation analyzing state */}
@@ -1277,22 +1306,34 @@ export default function MinhasReservasPage() {
                           )}
                         </div>
 
-                        {offer.pixReceiptUrl ? (
+                        {getOfferReceiptUrls(offer).length > 0 ? (
                           <div className="pt-3 border-t border-white/10 space-y-3">
-                            {/* Receipt link */}
-                            <div className="flex items-center justify-between">
+                            {/* Receipt links */}
+                            <div className="space-y-2">
                               <div className="flex items-center gap-2 text-xs text-slate-300">
                                 <FileText size={14} className="text-emerald-400" />
-                                <span>Comprovante Pix enviado pelo hóspede:</span>
+                                <span>
+                                  {getOfferReceiptUrls(offer).length > 1
+                                    ? `Comprovantes Pix enviados pelo hóspede (${getOfferReceiptUrls(offer).length}):`
+                                    : "Comprovante Pix enviado pelo hóspede:"}
+                                </span>
                               </div>
-                              <a
-                                href={offer.pixReceiptUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="rounded-lg bg-emerald-500/20 border border-emerald-500/30 px-3 py-1 text-xs text-emerald-300 font-bold hover:bg-emerald-500/30"
-                              >
-                                Ver Comprovante
-                              </a>
+                              <div className="flex flex-wrap gap-2">
+                                {getOfferReceiptUrls(offer).map((url, idx) => (
+                                  <a
+                                    key={url}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="rounded-lg bg-emerald-500/20 border border-emerald-500/30 px-3 py-1 text-xs text-emerald-300 font-bold hover:bg-emerald-500/30 transition flex items-center gap-1.5"
+                                  >
+                                    <FileText size={12} />
+                                    <span>
+                                      Comprovante {getOfferReceiptUrls(offer).length > 1 ? `#${idx + 1}` : ""}
+                                    </span>
+                                  </a>
+                                ))}
+                              </div>
                             </div>
 
                             {/* AI Validation Panel */}
