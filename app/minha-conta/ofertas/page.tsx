@@ -927,25 +927,21 @@ export default function MinhasReservasPage() {
                           </div>
 
                           {/* Badges de Status */}
-                          <div className="pt-2">
-                            {isPending && (
-                              <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300">
-                                ⏳ {activeTab === "VIAJANDO" ? "Pedido enviado (Aguardando anfitrião por 24h)" : "Pedido recebido (Aguardando sua aprovação)"}
-                              </span>
-                            )}
+                          {(isPending || isRejected) && (
+                            <div className="pt-2">
+                              {isPending && (
+                                <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300">
+                                  ⏳ {activeTab === "VIAJANDO" ? "Pedido enviado (Aguardando anfitrião por 24h)" : "Pedido recebido (Aguardando sua aprovação)"}
+                                </span>
+                              )}
 
-                            {isAcceptedWaiting && (
-                              <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-300">
-                                ✅ {activeTab === "VIAJANDO" ? "Pedido aceito! Aguardando pagamento do sinal via Pix." : "Pedido aceito por você! Aguardando Pix do hóspede."}
-                              </span>
-                            )}
-
-                            {isRejected && (
-                              <span className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-bold text-red-400">
-                                ❌ Pedido recusado
-                              </span>
-                            )}
-                          </div>
+                              {isRejected && (
+                                <span className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-bold text-red-400">
+                                  ❌ Pedido recusado
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
 
