@@ -47,22 +47,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const buyer = await prisma.user.findUnique({
-      where: { id: buyerId },
-      select: { identityDocumentUrl: true },
-    });
-
-    if (!buyer?.identityDocumentUrl) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "É necessário enviar seu Documento de Identidade em PDF no seu cadastro para solicitar reservas.",
-          code: "DOCUMENT_REQUIRED",
-        },
-        { status: 400 }
-      );
-    }
-
     const property = await prisma.property.findUnique({
       where: { id: propertyId },
       include: {
@@ -74,6 +58,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { success: false, error: "Imóvel não encontrado." },
         { status: 404 }
+      );
+    }
+
+    const buyer = await prisma.user.findUnique({
+      where: { id: buyerId },
+      select: { identityDocumentUrl: true },
+    });
+
+    if (!buyer?.identityDocumentUrl) {
+      const isSeasonal = property.listingType === "ALUGUEL_TEMPORADA";
+      return NextResponse.json(
+        {
+          success: false,
+          error: isSeasonal
+            ? "É necessário enviar seu Documento de Identidade em PDF no seu cadastro para solicitar reservas."
+            : "É necessário enviar seu Documento de Identidade em PDF no seu cadastro para fazer ofertas",
+          code: "DOCUMENT_REQUIRED",
+        },
+        { status: 400 }
       );
     }
 

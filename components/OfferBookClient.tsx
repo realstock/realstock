@@ -344,7 +344,11 @@ export default function OfferBookClient({
           <div className="font-bold text-sm flex items-center gap-1.5">
             <span>📄</span> Documento de Identidade (PDF) Obrigatório
           </div>
-          <p>Você precisa enviar o seu Documento de Identidade em PDF no seu cadastro antes de solicitar reservas.</p>
+          <p>
+            {isSeasonal
+              ? "É necessário enviar seu Documento de Identidade em PDF no seu cadastro para solicitar reservas."
+              : "É necessário enviar seu Documento de Identidade em PDF no seu cadastro para fazer ofertas"}
+          </p>
           <a
             href="/minha-conta/perfil"
             target="_blank"
