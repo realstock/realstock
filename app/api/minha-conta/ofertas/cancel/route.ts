@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
 
     const offer = await prisma.offer.findUnique({
       where: { id: offerId },
+      include: { property: true },
     });
 
     if (!offer) {
@@ -26,19 +27,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (offer.buyerId !== buyerId) {
+    const isBuyer = offer.buyerId === buyerId;
+    const isHost = offer.property?.ownerId === buyerId;
+
+    if (!isBuyer && !isHost) {
       return NextResponse.json(
         { success: false, error: "Acesso não autorizado." },
         { status: 403 }
       );
     }
 
-    const hasReceipt = !!(offer.pixReceiptUrl || (offer as any).payment_receipt_url);
-    const isConfirmed = offer.status === "RESERVA_CONFIRMADA";
+    const isFullyConfirmed =
+      offer.status === "RESERVA_CONFIRMADA" ||
+      (offer.pixValidation as any)?.allPassed === true;
 
-    if (hasReceipt || isConfirmed) {
+    if (isFullyConfirmed) {
       return NextResponse.json(
-        { success: false, error: "Não é possível cancelar a reserva após o envio do comprovante." },
+        { success: false, error: "Não é possível cancelar a reserva após a quitação completa do sinal." },
         { status: 400 }
       );
     }
@@ -46,7 +51,7 @@ export async function POST(req: NextRequest) {
     await prisma.offer.update({
       where: { id: offerId },
       data: {
-        status: "cancelled",
+        status: "CANCELLED",
       },
     });
 

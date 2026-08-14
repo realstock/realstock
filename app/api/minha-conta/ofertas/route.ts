@@ -297,6 +297,7 @@ export async function POST(req: NextRequest) {
     if (action === "cancel") {
       const offer = await prisma.offer.findUnique({
         where: { id: offerId },
+        include: { property: true },
       });
 
       if (!offer) {
@@ -306,7 +307,10 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      if (offer.buyerId !== userId) {
+      const isBuyer = offer.buyerId === userId;
+      const isHost = offer.property?.ownerId === userId;
+
+      if (!isBuyer && !isHost) {
         return NextResponse.json(
           { success: false, error: "Sem permissão para cancelar esta oferta." },
           { status: 403 }
@@ -321,12 +325,13 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const hasReceipt = !!(offer.pixReceiptUrl || (offer as any).payment_receipt_url);
-      const isConfirmed = offer.status === "RESERVA_CONFIRMADA";
+      const isFullyConfirmed =
+        offer.status === "RESERVA_CONFIRMADA" ||
+        (offer.pixValidation as any)?.allPassed === true;
 
-      if (hasReceipt || isConfirmed) {
+      if (isFullyConfirmed) {
         return NextResponse.json(
-          { success: false, error: "Não é possível cancelar a reserva após o envio do comprovante." },
+          { success: false, error: "Não é possível cancelar uma reserva com sinal totalmente pago e verificado." },
           { status: 400 }
         );
       }
