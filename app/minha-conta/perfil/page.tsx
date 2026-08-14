@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
+import { X, Download, FileText } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 
 export default function PerfilPage() {
@@ -301,14 +301,27 @@ export default function PerfilPage() {
               </div>
 
               {identityDocumentUrl && (
-                <a
-                  href={identityDocumentUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-xl border border-sky-400/40 bg-sky-500/20 px-3.5 py-1.5 text-xs font-bold text-sky-200 hover:bg-sky-500/30 transition shrink-0"
-                >
-                  📄 Visualizar PDF 🔗
-                </a>
+                <div className="flex items-center gap-2 shrink-0">
+                  <a
+                    href={identityDocumentUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-xl border border-sky-400/40 bg-sky-500/20 px-3.5 py-1.5 text-xs font-bold text-sky-200 hover:bg-sky-500/30 transition flex items-center gap-1.5"
+                  >
+                    <FileText size={14} />
+                    <span>Visualizar PDF</span>
+                  </a>
+                  <a
+                    href={identityDocumentUrl}
+                    download="documento-identidade.pdf"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-xl bg-emerald-500 hover:bg-emerald-400 px-3.5 py-1.5 text-xs font-black text-slate-950 transition flex items-center gap-1.5 shadow-md shadow-emerald-500/20"
+                  >
+                    <Download size={14} />
+                    <span>Baixar PDF</span>
+                  </a>
+                </div>
               )}
             </div>
 
