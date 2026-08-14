@@ -299,9 +299,22 @@ export async function POST(req: NextRequest) {
 
     // Parse extracted transaction value amount
     const extractedAmount = parseMoneyValue(analysis.transactionValue);
-    const isValueMatching =
-      extractedAmount !== null &&
-      Math.abs(extractedAmount - requiredDepositAmount) <= 2.0; // Allow 2.0 reais rounding tolerance
+    
+    let isValueMatching = false;
+    let remainingAmount: number | null = null;
+    let isPartialPayment = false;
+
+    if (extractedAmount !== null) {
+      if (extractedAmount >= requiredDepositAmount - 0.50) {
+        // Value is equal to or greater than required deposit -> VALID
+        isValueMatching = true;
+      } else {
+        // Value is smaller than required deposit -> PARTIAL PAYMENT
+        remainingAmount = Number((requiredDepositAmount - extractedAmount).toFixed(2));
+        isPartialPayment = true;
+        isValueMatching = false;
+      }
+    }
 
     // Parse transaction date and check if it's recent (on or after offer creation date - 24h grace)
     const txDate = parsePtBrDate(analysis.transactionDate || analysis.debitDate);
@@ -376,8 +389,12 @@ export async function POST(req: NextRequest) {
         passed: isValueMatching,
         amount: extractedAmount,
         expected: requiredDepositAmount,
+        remaining: remainingAmount,
+        isPartial: isPartialPayment,
         label: isValueMatching
-          ? `Valor do Sinal (R$ ${requiredDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`
+          ? `Valor do Sinal Pago (R$ ${extractedAmount?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`
+          : isPartialPayment
+          ? `Sinal Parcial (Faltam R$ ${remainingAmount?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`
           : `Valor Incorreto (Esperado R$ ${requiredDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`,
       },
     };
@@ -415,14 +432,23 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    let responseMessage = "";
+    if (allPassed) {
+      responseMessage = "✅ Comprovante validado com sucesso! Reserva confirmada.";
+    } else if (isPartialPayment && remainingAmount && passedCount === 5) {
+      responseMessage = `⚠️ Pagamento parcial detectado! Você pagou R$ ${extractedAmount?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} dos R$ ${requiredDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} do sinal. Faça um Pix de R$ ${remainingAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} para complementar o sinal restante e anexe o novo comprovante.`;
+    } else {
+      responseMessage = `⚠️ ${passedCount} de 6 verificações passaram. O anfitrião analisará manualmente.`;
+    }
+
     return NextResponse.json({
       success: true,
       validation,
       allPassed,
       advanced: allPassed,
-      message: allPassed
-        ? "✅ Comprovante validado com sucesso! Reserva confirmada."
-        : `⚠️ ${passedCount} de 6 verificações passaram. O anfitrião analisará manualmente.`,
+      isPartialPayment,
+      remainingAmount,
+      message: responseMessage,
     });
   } catch (error: any) {
     console.error("PIX VALIDATE ERROR:", error);

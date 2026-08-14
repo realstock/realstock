@@ -36,6 +36,8 @@ type PixCheckItem = {
   transactionType?: string | null;
   amount?: number | null;
   expected?: number | null;
+  remaining?: number | null;
+  isPartial?: boolean;
 };
 
 type PixValidation = {
@@ -264,8 +266,26 @@ function PixValidationPanel({ validation, perspective }: { validation: PixValida
         ))}
       </div>
 
+      {/* Partial payment guidance for guest */}
+      {perspective === "VIAJANDO" && validation.checks.depositValue?.isPartial && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/15 p-3.5 text-xs text-amber-200 space-y-1.5 shadow-md">
+          <div className="font-extrabold text-amber-300 flex items-center gap-1.5 text-sm">
+            <span>⚠️ Pagamento Parcial do Sinal Detectado</span>
+          </div>
+          <p className="leading-relaxed">
+            Você pagou <strong>R$ {Number(validation.checks.depositValue.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong> do sinal exigido de <strong>R$ {Number(validation.checks.depositValue.expected || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>.
+          </p>
+          <div className="p-2.5 rounded-xl bg-amber-950/70 border border-amber-500/40 text-amber-300 font-bold">
+            👉 Valor restante a ser pago via Pix: <span className="text-emerald-400 font-black text-sm">R$ {Number(validation.checks.depositValue.remaining || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+          </div>
+          <p className="text-[11px] text-slate-300">
+            Por favor, faça a transferência do valor restante de <strong>R$ {Number(validation.checks.depositValue.remaining || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong> para a chave Pix do anfitrião e envie o novo comprovante abaixo.
+          </p>
+        </div>
+      )}
+
       {/* Summary guidance for guest */}
-      {perspective === "VIAJANDO" && !validation.allPassed && (
+      {perspective === "VIAJANDO" && !validation.allPassed && !validation.checks.depositValue?.isPartial && (
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-200 leading-relaxed">
           <strong className="text-amber-300">O que fazer?</strong> Corrija os itens marcados com ❌ e envie um novo comprovante. Certifique-se de usar o comprovante oficial gerado pelo app do seu banco (não capturas de tela parciais ou recibos de agendamento).
         </div>
