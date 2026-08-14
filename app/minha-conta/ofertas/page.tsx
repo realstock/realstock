@@ -51,7 +51,7 @@ type PixValidation = {
   receiptUrls?: string[];
   checks: {
     recipientData: PixCheckItem;
-    payerData: PixCheckItem;
+    payerData?: PixCheckItem;
     transactionDateTime: PixCheckItem;
     authCode: PixCheckItem;
     isEffective: PixCheckItem;
@@ -195,29 +195,24 @@ function PixValidationPanel({ validation, perspective }: { validation: PixValida
     {
       key: "recipientData",
       check: validation.checks.recipientData,
-      detail: [validation.checks.recipientData.name, validation.checks.recipientData.cpfCnpj, validation.checks.recipientData.bank].filter(Boolean).join(" • "),
-    },
-    {
-      key: "payerData",
-      check: validation.checks.payerData,
-      detail: [validation.checks.payerData.name, validation.checks.payerData.cpfCnpj].filter(Boolean).join(" • "),
+      detail: [validation.checks.recipientData?.name, validation.checks.recipientData?.cpfCnpj, validation.checks.recipientData?.bank].filter(Boolean).join(" • "),
     },
     {
       key: "transactionDateTime",
       check: validation.checks.transactionDateTime,
-      detail: validation.checks.transactionDateTime.date || "",
+      detail: validation.checks.transactionDateTime?.date || "",
     },
     {
       key: "authCode",
       check: validation.checks.authCode,
-      detail: validation.checks.authCode.code ? `${String(validation.checks.authCode.code).slice(0, 30)}...` : "",
+      detail: validation.checks.authCode?.code ? `${String(validation.checks.authCode.code).slice(0, 30)}...` : "",
     },
     {
       key: "isEffective",
       check: validation.checks.isEffective,
       detail: validation.checks.isEffective?.transactionType || "",
     },
-  ] as { key: string; check: PixCheckItem; detail: string }[];
+  ].filter((item) => !!item.check) as { key: string; check: PixCheckItem; detail: string }[];
 
   if (validation.checks.depositValue) {
     checkList.push({

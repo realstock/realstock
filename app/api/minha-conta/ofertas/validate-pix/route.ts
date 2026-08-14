@@ -390,7 +390,7 @@ export async function POST(req: NextRequest) {
       isValueMatching = false;
     }
 
-    // Build 6 strict validation check objects - EACH EVALUATED INDEPENDENTLY
+    // Build 5 strict validation check objects - EACH EVALUATED INDEPENDENTLY
     const checks = {
       recipientData: {
         passed: !!(
@@ -402,12 +402,6 @@ export async function POST(req: NextRequest) {
         cpfCnpj: analysis.recipientCpfCnpj,
         bank: analysis.recipientBank,
         label: "Dados do Destinatário",
-      },
-      payerData: {
-        passed: true,
-        name: analysis.payerName || "Pagador",
-        cpfCnpj: analysis.payerCpfCnpj || null,
-        label: "Dados do Pagador (Aceito)",
       },
       transactionDateTime: {
         passed: isDateValid,
@@ -461,7 +455,7 @@ export async function POST(req: NextRequest) {
       confidence: analysis.confidence,
       allPassed,
       passedCount,
-      totalChecks: 6,
+      totalChecks: 5,
       receiptUrls: newReceiptUrls,
       receiptHistory: updatedHistory,
       checks,
@@ -495,10 +489,10 @@ export async function POST(req: NextRequest) {
       } else {
         responseMessage = "✅ Comprovante validado com sucesso! Reserva confirmada.";
       }
-    } else if (isPartialPayment && remainingAmount && passedCount === 5) {
+    } else if (isPartialPayment && remainingAmount && passedCount === 4) {
       responseMessage = `⚠️ Pagamento parcial detectado! Você pagou R$ ${extractedAmount?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} neste comprovante (Total acumulado: R$ ${totalAccumulatedPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} dos R$ ${requiredDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} do sinal). Faça um Pix de R$ ${remainingAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} para complementar o valor restante e anexe o novo comprovante.`;
     } else {
-      responseMessage = `⚠️ ${passedCount} de 6 verificações passaram. O anfitrião analisará manualmente.`;
+      responseMessage = `⚠️ ${passedCount} de 5 verificações passaram. O anfitrião analisará manualmente.`;
     }
 
     return NextResponse.json({
