@@ -351,54 +351,38 @@ export async function POST(req: NextRequest) {
     // Parse extracted transaction value amount of current receipt
     const extractedAmount = parseMoneyValue(analysis.transactionValue);
 
-    // Check if current receipt passes all basic verification checks
-    const isCurrentReceiptAuthentic = !!(
-      isDateValid &&
-      isUniqueAuthCode &&
-      analysis.isCompleted === true &&
-      analysis.isScheduled !== true &&
-      analysis.recipientName &&
-      (analysis.recipientCpfCnpj || analysis.recipientBank) &&
-      analysis.payerName &&
-      analysis.payerCpfCnpj
-    );
-
     let isValueMatching = false;
     let remainingAmount: number | null = null;
     let isPartialPayment = false;
-    let totalAccumulatedPaid = extractedAmount || 0;
+    let totalAccumulatedPaid = extractedAmount !== null ? Number((previousAccumulatedPaid + extractedAmount).toFixed(2)) : previousAccumulatedPaid;
 
-    if (extractedAmount !== null && isCurrentReceiptAuthentic) {
-      // Accumulate current valid receipt with previous valid partial payments
-      totalAccumulatedPaid = Number((previousAccumulatedPaid + extractedAmount).toFixed(2));
-
+    if (extractedAmount !== null) {
       if (totalAccumulatedPaid >= requiredDepositAmount - 0.50) {
-        // Total accumulated (previous + current) is equal to or greater than required deposit -> VALID!
+        // Value (alone or accumulated) meets or exceeds required deposit -> VALUE CHECK PASSED!
         isValueMatching = true;
         remainingAmount = 0;
         isPartialPayment = false;
       } else {
-        // Total accumulated is still smaller than required deposit -> PARTIAL PAYMENT
+        // Value is smaller than required deposit -> PARTIAL PAYMENT
         remainingAmount = Number((requiredDepositAmount - totalAccumulatedPaid).toFixed(2));
         isPartialPayment = true;
         isValueMatching = false;
       }
     } else {
-      // If current receipt failed or was unparseable, preserve previous accumulated paid amount if present
-      totalAccumulatedPaid = previousAccumulatedPaid > 0 ? previousAccumulatedPaid : (extractedAmount || 0);
-      if (requiredDepositAmount > totalAccumulatedPaid) {
-        remainingAmount = Number((requiredDepositAmount - totalAccumulatedPaid).toFixed(2));
+      if (previousAccumulatedPaid > 0) {
+        remainingAmount = Number((requiredDepositAmount - previousAccumulatedPaid).toFixed(2));
         isPartialPayment = true;
       }
       isValueMatching = false;
     }
 
-    // Build 6 strict validation check objects
+    // Build 6 strict validation check objects - EACH EVALUATED INDEPENDENTLY
     const checks = {
       recipientData: {
         passed: !!(
-          analysis.recipientName &&
-          (analysis.recipientCpfCnpj || analysis.recipientBank)
+          analysis.recipientName ||
+          analysis.recipientCpfCnpj ||
+          analysis.recipientBank
         ),
         name: analysis.recipientName,
         cpfCnpj: analysis.recipientCpfCnpj,
@@ -406,7 +390,7 @@ export async function POST(req: NextRequest) {
         label: "Dados do Destinatário",
       },
       payerData: {
-        passed: !!(analysis.payerName && analysis.payerCpfCnpj),
+        passed: !!(analysis.payerName || analysis.payerCpfCnpj),
         name: analysis.payerName,
         cpfCnpj: analysis.payerCpfCnpj,
         label: "Dados do Pagador",
