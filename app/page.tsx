@@ -837,7 +837,7 @@ export default function HomePage() {
                     )}
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
                       <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Check-in</label>
                       <input

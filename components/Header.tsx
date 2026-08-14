@@ -43,24 +43,24 @@ export default function Header() {
 
   return (
     <header className="border-b border-white/10 bg-slate-950 text-white">
-      <div className="mx-auto flex max-w-[1600px] h-[70px] lg:h-[90px] items-center justify-between px-4 lg:px-6">
-        <div className="flex items-center gap-3 md:gap-5">
-          <Link href="/" className="block w-[110px] md:w-[150px] lg:w-[190px]">
+      <div className="mx-auto flex max-w-[1600px] h-[70px] lg:h-[90px] items-center justify-between px-2.5 sm:px-4 lg:px-6 gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-3 md:gap-5 min-w-0">
+          <Link href="/" className="block shrink-0 w-[85px] xs:w-[105px] md:w-[150px] lg:w-[190px]">
             <Image
               src="/logo-realstock.jpg"
               alt="RealStock"
               width={500}
               height={120}
-              className="h-[35px] lg:h-[55px] w-full object-fill"
+              className="h-[30px] sm:h-[35px] lg:h-[55px] w-full object-fill"
               priority
             />
           </Link>
 
           {/* Switcher Compra e Venda / Temporada */}
-          <div className="flex rounded-xl bg-slate-900 border border-white/10 p-[3px] select-none scale-90 md:scale-100 origin-left">
+          <div className="flex rounded-xl bg-slate-900 border border-white/10 p-[2px] sm:p-[3px] select-none shrink-0">
             <button
               onClick={() => handleTypeSwitch("COMPRA_VENDA")}
-              className={`rounded-lg px-2.5 py-1 md:px-3.5 md:py-1.5 text-[10px] md:text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+              className={`rounded-lg px-1.5 sm:px-3.5 py-1 sm:py-1.5 text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 listingType === "COMPRA_VENDA"
                   ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/20"
                   : "text-slate-400 hover:text-white"
@@ -70,7 +70,7 @@ export default function Header() {
             </button>
             <button
               onClick={() => handleTypeSwitch("ALUGUEL_TEMPORADA")}
-              className={`rounded-lg px-2.5 py-1 md:px-3.5 md:py-1.5 text-[10px] md:text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+              className={`rounded-lg px-1.5 sm:px-3.5 py-1 sm:py-1.5 text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 listingType === "ALUGUEL_TEMPORADA"
                   ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20"
                   : "text-slate-400 hover:text-white"
@@ -92,19 +92,21 @@ export default function Header() {
           />
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 shrink-0">
           {status === "loading" ? null : user ? (
             <div className="z-[9999] flex items-center gap-2">
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setMenuOpen((prev) => !prev)}
-                  className="flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm hover:bg-white/10"
+                  className="flex items-center gap-1.5 rounded-xl border border-white/10 px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm hover:bg-white/10 cursor-pointer"
                 >
-                  <span>Olá, {user.name || user.email}</span>
+                  <span className="truncate max-w-[85px] xs:max-w-[120px] sm:max-w-[180px] md:max-w-none">
+                    Olá, {user.name ? user.name.split(" ")[0] : (user.email?.split("@")[0] || "Conta")}
+                  </span>
                 </button>
 
                 {menuOpen && (
-                  <div className="absolute left-0 top-full z-[9999] mt-2 w-56 rounded-2xl border border-white/10 bg-slate-900 p-2 shadow-2xl">
+                  <div className="absolute right-0 top-full z-[9999] mt-2 w-56 rounded-2xl border border-white/10 bg-slate-900 p-2 shadow-2xl">
                     <Link
                       href="/anunciar"
                       className="block rounded-xl px-4 py-3 text-sm hover:bg-white/10"
@@ -163,18 +165,29 @@ export default function Header() {
                         >
                           Administração
                         </Link>
-                        <span className="text-xs text-yellow-300">
+                        <span className="text-xs text-yellow-300 block px-4 py-1">
                           role: {debugRole || "sem-role"}
                         </span>
                       </>
                     )}
+
+                    <div className="my-2 h-px bg-white/10" />
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        signOut({ callbackUrl: "/" });
+                      }}
+                      className="w-full text-left rounded-xl px-4 py-2.5 text-sm text-red-400 font-bold hover:bg-white/10 transition cursor-pointer"
+                    >
+                      Sair da conta
+                    </button>
                   </div>
                 )}
               </div>
 
               <button
                 onClick={() => signOut({ callbackUrl: "/" })}
-                className="rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-2 text-sm text-red-300 hover:bg-red-400/15"
+                className="hidden sm:block rounded-xl border border-red-400/20 bg-red-400/10 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-red-300 hover:bg-red-400/15"
               >
                 Sair
               </button>
@@ -182,7 +195,7 @@ export default function Header() {
           ) : (
             <Link
               href="/login"
-              className="rounded-xl border border-white/10 px-4 py-2 text-sm hover:bg-white/10"
+              className="rounded-xl border border-white/10 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm hover:bg-white/10"
             >
               Entrar
             </Link>
