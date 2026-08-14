@@ -214,7 +214,15 @@ const CHECK_FAILURE_HINTS: Record<string, string> = {
   depositValue: "O valor transferido no comprovante não corresponde ao valor do sinal exigido. O valor pago deve ser exatamente o valor do sinal da reserva.",
 };
 
-function PixValidationPanel({ validation, perspective }: { validation: PixValidation; perspective: "VIAJANDO" | "HOSPEDANDO" }) {
+function PixValidationPanel({
+  validation,
+  perspective,
+  receiptUrls,
+}: {
+  validation: PixValidation;
+  perspective: "VIAJANDO" | "HOSPEDANDO";
+  receiptUrls?: string[];
+}) {
   const [showDetails, setShowDetails] = useState(!validation.allPassed);
 
   const checkList = [
@@ -275,7 +283,35 @@ function PixValidationPanel({ validation, perspective }: { validation: PixValida
 
       {/* Expanded Grid */}
       {showDetails && (
-        <div className="pt-2 border-t border-white/10 space-y-2">
+        <div className="pt-2 border-t border-white/10 space-y-3">
+          {/* Receipt Links inside Ver Detalhes */}
+          {receiptUrls && receiptUrls.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+                <FileText size={13} className="text-emerald-400" />
+                <span>
+                  {receiptUrls.length > 1
+                    ? `Comprovantes enviados (${receiptUrls.length}):`
+                    : "Comprovante enviado:"}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {receiptUrls.map((url, idx) => (
+                  <a
+                    key={url}
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-lg bg-emerald-500/20 border border-emerald-500/30 px-2.5 py-1 text-[11px] text-emerald-300 font-bold hover:bg-emerald-500/30 transition flex items-center gap-1"
+                  >
+                    <FileText size={12} />
+                    <span>Comprovante #{idx + 1}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2">
             {checkList.map(({ key, check, detail }) => (
               <div
@@ -1511,17 +1547,9 @@ export default function MinhasReservasPage() {
                               </div>
                             )}
                           </div>
-                          {offer.depositAmount && (
+                          {!isDepositFullyPaid && offer.depositAmount && (
                             <div className="col-span-full pt-1 text-sm font-extrabold text-emerald-400">
                               Sinal a ser pago via Pix: R$ {Number(offer.depositAmount).toLocaleString("pt-BR")}
-                            </div>
-                          )}
-                          {isDepositFullyPaid && !isCheckInReleased && (
-                            <div className="col-span-full pt-2 border-t border-amber-500/20 text-xs text-amber-300 font-medium flex items-center gap-2">
-                              <span>🔒</span>
-                              <span>
-                                Quite o saldo restante antes de ({offer.startDate ? new Date(offer.startDate).toLocaleDateString("pt-BR") : "A definir"} às {offer.property?.checkInTime || "14:00"}) para liberar as informações para checkin.
-                              </span>
                             </div>
                           )}
                         </div>
@@ -1568,33 +1596,6 @@ export default function MinhasReservasPage() {
                         {/* After receipt sent — show validation result & all receipt links to guest */}
                         {getOfferReceiptUrls(offer).length > 0 && (
                           <div className="pt-3 border-t border-white/5 space-y-3">
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2 text-xs text-slate-300">
-                                <FileText size={14} className="text-emerald-400" />
-                                <span>
-                                  {getOfferReceiptUrls(offer).length > 1
-                                    ? `Comprovantes enviados (${getOfferReceiptUrls(offer).length}):`
-                                    : "Comprovante enviado:"}
-                                </span>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {getOfferReceiptUrls(offer).map((url, idx) => (
-                                  <a
-                                    key={url}
-                                    href={url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="rounded-lg bg-emerald-500/20 border border-emerald-500/30 px-3 py-1 text-xs text-emerald-300 font-bold hover:bg-emerald-500/30 transition flex items-center gap-1.5"
-                                  >
-                                    <FileText size={12} />
-                                    <span>
-                                      Comprovante {getOfferReceiptUrls(offer).length > 1 ? `#${idx + 1}` : ""}
-                                    </span>
-                                  </a>
-                                ))}
-                              </div>
-                            </div>
-
                             {/* Validation analyzing state */}
                             {validatingOfferId === offer.id && (
                               <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 p-3 text-xs text-sky-300 flex items-center gap-2 animate-pulse">
@@ -1603,11 +1604,12 @@ export default function MinhasReservasPage() {
                               </div>
                             )}
 
-                            {/* Validation result panel */}
+                            {/* Validation result panel (includes receipt links inside Ver Detalhes) */}
                             {offer.pixValidation && validatingOfferId !== offer.id && (
                               <PixValidationPanel
                                 validation={offer.pixValidation}
                                 perspective="VIAJANDO"
+                                receiptUrls={getOfferReceiptUrls(offer)}
                               />
                             )}
 
@@ -1713,39 +1715,12 @@ export default function MinhasReservasPage() {
 
                         {getOfferReceiptUrls(offer).length > 0 ? (
                           <div className="pt-3 border-t border-white/10 space-y-3">
-                            {/* Receipt links */}
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2 text-xs text-slate-300">
-                                <FileText size={14} className="text-emerald-400" />
-                                <span>
-                                  {getOfferReceiptUrls(offer).length > 1
-                                    ? `Comprovantes Pix enviados pelo hóspede (${getOfferReceiptUrls(offer).length}):`
-                                    : "Comprovante Pix enviado pelo hóspede:"}
-                                </span>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {getOfferReceiptUrls(offer).map((url, idx) => (
-                                  <a
-                                    key={url}
-                                    href={url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="rounded-lg bg-emerald-500/20 border border-emerald-500/30 px-3 py-1 text-xs text-emerald-300 font-bold hover:bg-emerald-500/30 transition flex items-center gap-1.5"
-                                  >
-                                    <FileText size={12} />
-                                    <span>
-                                      Comprovante {getOfferReceiptUrls(offer).length > 1 ? `#${idx + 1}` : ""}
-                                    </span>
-                                  </a>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* AI Validation Panel */}
+                            {/* AI Validation Panel (includes receipt links inside Ver Detalhes) */}
                             {offer.pixValidation ? (
                               <PixValidationPanel
                                 validation={offer.pixValidation}
                                 perspective="HOSPEDANDO"
+                                receiptUrls={getOfferReceiptUrls(offer)}
                               />
                             ) : (
                               <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-300 flex items-center gap-2">
