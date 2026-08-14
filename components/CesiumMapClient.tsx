@@ -42,11 +42,17 @@ export default function CesiumMapClient({
   onBoundsChange,
   clusterZoomTarget,
   onClusterZoomRequest,
+  checkInDate = "",
+  checkOutDate = "",
+  guestsCount = "1",
 }: {
   properties: PropertyPin[];
   onBoundsChange?: (bounds: MapBounds) => void;
   clusterZoomTarget?: ClusterZoomTarget | null;
   onClusterZoomRequest?: (target: ClusterZoomTarget) => void;
+  checkInDate?: string;
+  checkOutDate?: string;
+  guestsCount?: string;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const viewerRef = useRef<any>(null);
@@ -497,21 +503,29 @@ export default function CesiumMapClient({
               </div>
             </div>
 
-            <div className="mt-4 flex gap-3">
-              <Link
-                href={`/imovel/${selectedProperty.id}`}
-                className="flex-1 rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-slate-900"
-              >
-                Ver anúncio
-              </Link>
+            {(() => {
+              const querySuffix = selectedProperty.listingType === "ALUGUEL_TEMPORADA" && (checkInDate || checkOutDate || (guestsCount && guestsCount !== "1"))
+                ? `?checkin=${encodeURIComponent(checkInDate || "")}&checkout=${encodeURIComponent(checkOutDate || "")}&guests=${encodeURIComponent(guestsCount || "1")}`
+                : "";
 
-              <Link
-                href={`/imovel/${selectedProperty.id}`}
-                className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm text-white hover:bg-white/10 transition"
-              >
-                {selectedProperty.listingType === "ALUGUEL_TEMPORADA" ? "Reservar" : "Fazer oferta"}
-              </Link>
-            </div>
+              return (
+                <div className="mt-4 flex gap-3">
+                  <Link
+                    href={`/imovel/${selectedProperty.id}${querySuffix}`}
+                    className="flex-1 rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-slate-900"
+                  >
+                    Ver anúncio
+                  </Link>
+
+                  <Link
+                    href={`/imovel/${selectedProperty.id}${querySuffix}`}
+                    className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm text-white hover:bg-white/10 transition"
+                  >
+                    {selectedProperty.listingType === "ALUGUEL_TEMPORADA" ? "Reservar" : "Fazer oferta"}
+                  </Link>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -76,10 +76,16 @@ export default function OfferBookClient({
   const [offerPrice, setOfferPrice] = useState("");
   const [checkIn, setCheckIn] = useState(defaultCheckIn);
   const [checkOut, setCheckOut] = useState(defaultCheckOut);
-  const [guestsCount, setGuestsCount] = useState(defaultGuests);
+  const [guestsCount, setGuestsCount] = useState(defaultGuests || "1");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (defaultCheckIn) setCheckIn(defaultCheckIn);
+    if (defaultCheckOut) setCheckOut(defaultCheckOut);
+    if (defaultGuests) setGuestsCount(defaultGuests);
+  }, [defaultCheckIn, defaultCheckOut, defaultGuests]);
 
   const userId = Number((session?.user as any)?.id);
 

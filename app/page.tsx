@@ -1159,6 +1159,9 @@ export default function HomePage() {
               onBoundsChange={handleBoundsChange}
               clusterZoomTarget={clusterZoomTarget}
               onClusterZoomRequest={handleClusterZoomRequest}
+              checkInDate={checkInDate}
+              checkOutDate={checkOutDate}
+              guestsCount={guestsCount}
             />
 
             <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
@@ -1216,8 +1219,8 @@ export default function HomePage() {
                         >
                           <Link 
                             href={`/imovel/${property.id}${
-                              property.listingType === "ALUGUEL_TEMPORADA" && checkInDate && checkOutDate
-                                ? `?checkin=${checkInDate}&checkout=${checkOutDate}&guests=${guestsCount}`
+                              property.listingType === "ALUGUEL_TEMPORADA" && (checkInDate || checkOutDate || (guestsCount && guestsCount !== "1"))
+                                ? `?checkin=${encodeURIComponent(checkInDate || "")}&checkout=${encodeURIComponent(checkOutDate || "")}&guests=${encodeURIComponent(guestsCount || "1")}`
                                 : ""
                             }`}
                             className={`h-full w-full rounded-[1.8rem] overflow-hidden flex flex-col pt-0 ${
