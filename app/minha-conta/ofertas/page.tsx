@@ -34,6 +34,8 @@ type PixCheckItem = {
   debitDate?: string | null;
   code?: string | null;
   transactionType?: string | null;
+  amount?: number | null;
+  expected?: number | null;
 };
 
 type PixValidation = {
@@ -49,6 +51,7 @@ type PixValidation = {
     transactionDateTime: PixCheckItem;
     authCode: PixCheckItem;
     isEffective: PixCheckItem;
+    depositValue?: PixCheckItem;
   };
 };
 
@@ -161,9 +164,10 @@ const HOST_STEPS = [
 const CHECK_FAILURE_HINTS: Record<string, string> = {
   recipientData: "O comprovante não mostra claramente o nome e o banco do destinatário. Certifique-se de enviar o comprovante completo, não apenas o recibo de confirmação de envio.",
   payerData: "O nome ou CPF/CNPJ de quem realizou a transferência não está visível. Envie o comprovante original gerado pelo seu banco.",
-  transactionDateTime: "A data e hora da transação não foram identificadas. O comprovante precisa conter a data exata da operação.",
-  authCode: "O código de autenticação (E2E ID ou hash) não foi encontrado. Este código fica no rodapé do comprovante oficial do banco.",
+  transactionDateTime: "A data da transação é anterior ao pedido de reserva ou não foi identificada. O comprovante precisa ser da transação atual.",
+  authCode: "O código de autenticação (E2E ID) já foi utilizado em outro comprovante ou não foi encontrado. Cada transferência possui um código único.",
   isEffective: "O comprovante parece ser de um agendamento, não de uma transferência efetivada. Envie o comprovante somente após a transferência ser concluída e processada.",
+  depositValue: "O valor transferido no comprovante não corresponde ao valor do sinal exigido. O valor pago deve ser exatamente o valor do sinal da reserva.",
 };
 
 function PixValidationPanel({ validation, perspective }: { validation: PixValidation; perspective: "VIAJANDO" | "HOSPEDANDO" }) {
@@ -191,9 +195,19 @@ function PixValidationPanel({ validation, perspective }: { validation: PixValida
     {
       key: "isEffective",
       check: validation.checks.isEffective,
-      detail: validation.checks.isEffective.transactionType || "",
+      detail: validation.checks.isEffective?.transactionType || "",
     },
   ] as { key: string; check: PixCheckItem; detail: string }[];
+
+  if (validation.checks.depositValue) {
+    checkList.push({
+      key: "depositValue",
+      check: validation.checks.depositValue,
+      detail: validation.checks.depositValue.amount
+        ? `Pago: R$ ${validation.checks.depositValue.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+        : "",
+    });
+  }
 
   const failedChecks = checkList.filter(c => !c.check.passed);
 
@@ -214,8 +228,8 @@ function PixValidationPanel({ validation, perspective }: { validation: PixValida
         </span>
       </div>
 
-      {/* Check cards in a horizontal row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 pt-1">
+      {/* Check cards in a grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 pt-1">
         {checkList.map(({ key, check, detail }) => (
           <div
             key={key}

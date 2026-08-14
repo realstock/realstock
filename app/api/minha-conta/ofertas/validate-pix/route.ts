@@ -3,6 +3,34 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+function parsePtBrDate(dateStr: string | null | undefined): Date | null {
+  if (!dateStr) return null;
+  const match = String(dateStr).match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (match) {
+    const [_, d, m, y, hh = "0", mm = "0", ss = "0"] = match;
+    const dt = new Date(Number(y), Number(m) - 1, Number(d), Number(hh), Number(mm), Number(ss));
+    if (!isNaN(dt.getTime())) return dt;
+  }
+  const directDate = new Date(dateStr);
+  if (!isNaN(directDate.getTime())) return directDate;
+  return null;
+}
+
+function parseMoneyValue(val: any): number | null {
+  if (typeof val === "number" && !isNaN(val)) return val;
+  if (!val) return null;
+  const str = String(val).replace(/[^\d,. ]/g, "").trim();
+  if (!str) return null;
+  let normalized = str;
+  if (str.includes(",") && str.includes(".")) {
+    normalized = str.replace(/\./g, "").replace(",", ".");
+  } else if (str.includes(",")) {
+    normalized = str.replace(",", ".");
+  }
+  const num = parseFloat(normalized);
+  return isNaN(num) ? null : num;
+}
+
 // Gemini Vision API para analisar comprovante Pix
 async function analyzePixReceiptWithGemini(imageUrl: string): Promise<{
   recipientName: string | null;
@@ -48,10 +76,10 @@ Analise este comprovante de Pix e extraia as seguintes informações em formato 
   "recipientBank": "Nome da instituição financeira do destinatário",
   "payerName": "Nome completo de QUEM FEZ A TRANSFERÊNCIA (pagador/remetente)",
   "payerCpfCnpj": "CPF ou CNPJ de quem fez a transferência (parcial/mascarado)",
-  "transactionDate": "Data e hora exata da transação (ex: 12/08/2025 14:32:05)",
+  "transactionDate": "Data e hora exata da transação (ex: 12/08/2026 14:32:05)",
   "debitDate": "Data do débito se diferente da transação",
   "authCode": "Código de autenticação / hash / ID da transação ou E2E ID",
-  "transactionValue": "Valor transferido em reais",
+  "transactionValue": "Valor transferido em reais (ex: R$ 683,50 ou 683.50)",
   "transactionType": "TIPO da transação: exatamente 'EFETIVADA', 'AGENDADA', 'PENDENTE' ou 'OUTRO'",
   "isCompleted": true ou false (true se for efetivada/concluída, false se for agendada ou pendente),
   "isScheduled": true ou false (true se for agendamento),
@@ -247,7 +275,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verify ownership
+    // Verify ownership & load offer + property
     const offer = await prisma.offer.findUnique({
       where: { id: offerId },
       include: { property: true },
@@ -263,7 +291,53 @@ export async function POST(req: NextRequest) {
     // Run Gemini analysis
     const analysis = await analyzePixReceiptWithGemini(imageUrl);
 
-    // Build validation result object
+    // Calculate required deposit amount for this reservation
+    const depositPct = Number(offer.property?.depositPercentage || 20);
+    const requiredDepositAmount = Number(
+      offer.depositAmount || (Number(offer.offerPrice) * (depositPct / 100))
+    );
+
+    // Parse extracted transaction value amount
+    const extractedAmount = parseMoneyValue(analysis.transactionValue);
+    const isValueMatching =
+      extractedAmount !== null &&
+      Math.abs(extractedAmount - requiredDepositAmount) <= 2.0; // Allow 2.0 reais rounding tolerance
+
+    // Parse transaction date and check if it's recent (on or after offer creation date - 24h grace)
+    const txDate = parsePtBrDate(analysis.transactionDate || analysis.debitDate);
+    const offerCreatedAt = new Date(offer.createdAt);
+    const minAllowedTxDate = new Date(offerCreatedAt.getTime() - 24 * 60 * 60 * 1000); // Allow max 24h prior to reservation creation
+    
+    const isDateValid = !!(
+      txDate &&
+      !isNaN(txDate.getTime()) &&
+      txDate >= minAllowedTxDate
+    );
+
+    // Check authCode uniqueness across ALL offers in database (prevent receipt reuse)
+    let isUniqueAuthCode = true;
+    let authCodeReason = "";
+    if (analysis.authCode && String(analysis.authCode).trim().length >= 6) {
+      const cleanCode = String(analysis.authCode).trim();
+      const existingDuplicate = await prisma.offer.findFirst({
+        where: {
+          id: { not: offerId },
+          pixValidation: {
+            path: ["checks", "authCode", "code"],
+            equals: cleanCode,
+          },
+        },
+      });
+      if (existingDuplicate) {
+        isUniqueAuthCode = false;
+        authCodeReason = "Código de autenticação já utilizado em outra reserva";
+      }
+    } else {
+      isUniqueAuthCode = false;
+      authCodeReason = "Código de autenticação não identificado no comprovante";
+    }
+
+    // Build 6 strict validation check objects
     const checks = {
       recipientData: {
         passed: !!(
@@ -282,20 +356,29 @@ export async function POST(req: NextRequest) {
         label: "Dados do Pagador",
       },
       transactionDateTime: {
-        passed: !!(analysis.transactionDate),
+        passed: isDateValid,
         date: analysis.transactionDate,
         debitDate: analysis.debitDate,
-        label: "Data e Hora da Operação",
+        label: isDateValid ? "Data da Operação (Válida)" : "Data Anterior à Reserva",
       },
       authCode: {
-        passed: !!(analysis.authCode),
+        passed: isUniqueAuthCode,
         code: analysis.authCode,
-        label: "Código de Autenticação",
+        reason: authCodeReason || undefined,
+        label: isUniqueAuthCode ? "Código de Autenticação Único" : "Código Reutilizado ou Inválido",
       },
       isEffective: {
         passed: analysis.isCompleted === true && analysis.isScheduled !== true,
         transactionType: analysis.transactionType,
         label: "Tipo de Comprovante (Efetivado)",
+      },
+      depositValue: {
+        passed: isValueMatching,
+        amount: extractedAmount,
+        expected: requiredDepositAmount,
+        label: isValueMatching
+          ? `Valor do Sinal (R$ ${requiredDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`
+          : `Valor Incorreto (Esperado R$ ${requiredDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`,
       },
     };
 
@@ -307,21 +390,22 @@ export async function POST(req: NextRequest) {
       confidence: analysis.confidence,
       allPassed,
       passedCount,
-      totalChecks: 5,
+      totalChecks: 6,
       checks,
-      transactionValue: (analysis as any).transactionValue || null,
+      transactionValue: analysis.transactionValue || (extractedAmount ? `R$ ${extractedAmount}` : null),
       rawText: analysis.rawText,
     };
 
-    // Save validation to offer
+    // Save validation & pixReceiptUrl to offer
     await prisma.offer.update({
       where: { id: offerId },
       data: {
+        pixReceiptUrl: imageUrl,
         pixValidation: validation as any,
       },
     });
 
-    // If all passed, advance to phase 3 (RESERVA_CONFIRMADA)
+    // If ALL 6 checks passed strictly, advance to RESERVA_CONFIRMADA
     if (allPassed) {
       await prisma.offer.update({
         where: { id: offerId },
@@ -337,8 +421,8 @@ export async function POST(req: NextRequest) {
       allPassed,
       advanced: allPassed,
       message: allPassed
-        ? "✅ Comprovante validado! Reserva confirmada."
-        : `⚠️ ${passedCount} de 5 verificações passaram. O anfitrião irá analisar manualmente.`,
+        ? "✅ Comprovante validado com sucesso! Reserva confirmada."
+        : `⚠️ ${passedCount} de 6 verificações passaram. O anfitrião analisará manualmente.`,
     });
   } catch (error: any) {
     console.error("PIX VALIDATE ERROR:", error);
