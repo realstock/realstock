@@ -505,184 +505,64 @@ function CheckInReleasePanel({
   const [checkOutTime, setCheckOutTime] = useState(offer.property?.checkOutTime || "12:00");
   const [isEditingInstructions, setIsEditingInstructions] = useState(false);
 
-  if (isCheckInReleased) {
-    return (
-      <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 space-y-3 shadow-md">
-        <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2.5">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🎉</span>
-            <div>
-              <h4 className="text-xs font-black text-emerald-300 uppercase tracking-wider">
-                Check-in Liberado com Sucesso!
-              </h4>
-              <p className="text-[11px] text-emerald-200">
-                Estadia 100% quitada. Endereço e instruções de entrada liberados.
-              </p>
-            </div>
-          </div>
-          <span className="rounded-xl bg-emerald-500/20 border border-emerald-500/30 px-3 py-1 text-xs font-black text-emerald-300">
-            ✅ CONFIRMADO
-          </span>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 text-xs text-slate-200 pt-1">
-          <div className="space-y-1">
-            <div className="font-bold text-emerald-300 flex items-center gap-1">🔑 Instruções & Wi-Fi:</div>
-            <p className="text-slate-300 leading-relaxed">
-              {offer.property?.checkInInstructions || "Consulte o anfitrião no WhatsApp para chaves e portaria."}
-            </p>
-            <div className="text-[11px] text-slate-400 pt-1">
-              Check-in: <strong>{offer.property?.checkInTime || "14:00"}</strong> | Check-out: <strong>{offer.property?.checkOutTime || "12:00"}</strong>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <div className="font-bold text-emerald-300 flex items-center gap-1">📍 Endereço Completo:</div>
-            <p className="text-slate-300 leading-relaxed">
-              {[
-                offer.property?.street ? `${offer.property.street}, ${offer.property.addressNumber || "s/n"}` : null,
-                offer.property?.neighborhood,
-                offer.property?.city && offer.property?.state ? `${offer.property.city} - ${offer.property.state}` : null,
-                offer.property?.zipCode ? `CEP: ${offer.property.zipCode}` : null,
-              ].filter(Boolean).join(" • ") || "Endereço cadastrado no imóvel."}
-            </p>
-            {(offer.property?.googleMapsLink || (offer.property?.city && offer.property?.street)) && (
-              <div className="pt-1">
-                <a
-                  href={offer.property?.googleMapsLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${offer.property?.street || ""}, ${offer.property?.addressNumber || ""}, ${offer.property?.city || ""}`)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-300 hover:underline"
-                >
-                  🗺️ Ver Rota no Google Maps →
-                </a>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
+  if (!isCheckInReleased) {
+    return null;
   }
 
   return (
-    <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3 shadow-md">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/15 pb-2.5">
+    <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 space-y-3 shadow-md">
+      <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2.5">
         <div className="flex items-center gap-2">
-          <span className="text-xl">🔒</span>
+          <span className="text-xl">🎉</span>
           <div>
-            <h4 className="text-xs font-black text-amber-300 uppercase tracking-wider">
-              Check-in Bloqueado — Quitação do Saldo Pendente
+            <h4 className="text-xs font-black text-emerald-300 uppercase tracking-wider">
+              Check-in Liberado com Sucesso!
             </h4>
-            <p className="text-[11px] text-slate-300">
-              Quite o saldo restante antes de ({offer.startDate ? new Date(offer.startDate).toLocaleDateString("pt-BR") : "A definir"} às {offer.property?.checkInTime || "14:00"}) para liberar as informações para checkin.
+            <p className="text-[11px] text-emerald-200">
+              Estadia 100% quitada. Endereço e instruções de entrada liberados.
             </p>
           </div>
         </div>
-
-        <div className="shrink-0 text-right">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Saldo Restante</span>
-          <span className="text-base font-black text-amber-400">R$ {remainingBalance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-        </div>
+        <span className="rounded-xl bg-emerald-500/20 border border-emerald-500/30 px-3 py-1 text-xs font-black text-emerald-300">
+          ✅ CONFIRMADO
+        </span>
       </div>
 
-      {perspective === "VIAJANDO" && (
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-          <div className="text-xs text-slate-300">
-            Chave Pix: <code className="bg-emerald-500/20 px-2 py-0.5 rounded text-emerald-300 font-bold">{offer.property?.pixKey || "Consulte o anfitrião"}</code>
+      <div className="grid gap-3 sm:grid-cols-2 text-xs text-slate-200 pt-1">
+        <div className="space-y-1">
+          <div className="font-bold text-emerald-300 flex items-center gap-1">🔑 Instruções & Wi-Fi:</div>
+          <p className="text-slate-300 leading-relaxed">
+            {offer.property?.checkInInstructions || "Consulte o anfitrião no WhatsApp para chaves e portaria."}
+          </p>
+          <div className="text-[11px] text-slate-400 pt-1">
+            Check-in: <strong>{offer.property?.checkInTime || "14:00"}</strong> | Check-out: <strong>{offer.property?.checkOutTime || "12:00"}</strong>
           </div>
-
-          <label className={`rounded-xl px-4 py-2 text-xs font-black text-slate-950 transition cursor-pointer flex items-center justify-center gap-2 shadow-md ${
-            uploadingId === offer.id || validatingId === offer.id
-              ? "bg-slate-600 cursor-not-allowed shadow-none"
-              : "bg-emerald-400 hover:bg-emerald-300 shadow-emerald-500/20"
-          }`}>
-            <Upload size={14} />
-            {uploadingId === offer.id ? "Enviando..." : validatingId === offer.id ? "⏳ Analisando..." : `📎 Anexar Comprovante do Saldo (R$ ${remainingBalance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`}
-            <input
-              type="file"
-              accept="image/*,.pdf"
-              className="hidden"
-              disabled={uploadingId === offer.id || validatingId === offer.id}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) onUploadRemainingPix(offer.id, file);
-              }}
-            />
-          </label>
         </div>
-      )}
 
-      {perspective === "HOSPEDANDO" && (
-        <div className="space-y-3 pt-1">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={() => setIsEditingInstructions(!isEditingInstructions)}
-              className="text-xs font-bold text-sky-300 hover:underline flex items-center gap-1"
-            >
-              ✏️ {isEditingInstructions ? "Cancelar Edição" : "Configurar Instruções & Wi-Fi"}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onManualRelease(offer.id)}
-              className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2 text-xs font-black text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-md transition cursor-pointer flex items-center gap-1.5"
-            >
-              <CheckCircle2 size={14} />
-              <span>Confirmar Quitação & Liberar Check-in</span>
-            </button>
-          </div>
-
-          {isEditingInstructions && (
-            <div className="space-y-2 pt-2 border-t border-white/10">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Check-in</label>
-                  <input
-                    type="text"
-                    value={checkInTime}
-                    onChange={(e) => setCheckInTime(e.target.value)}
-                    placeholder="Ex: 14:00"
-                    className="w-full rounded-lg bg-slate-950 border border-white/10 p-2 text-xs text-white"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Check-out</label>
-                  <input
-                    type="text"
-                    value={checkOutTime}
-                    onChange={(e) => setCheckOutTime(e.target.value)}
-                    placeholder="Ex: 12:00"
-                    className="w-full rounded-lg bg-slate-950 border border-white/10 p-2 text-xs text-white"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Instruções e Senha do Wi-Fi</label>
-                <textarea
-                  rows={2}
-                  value={instructions}
-                  onChange={(e) => setInstructions(e.target.value)}
-                  placeholder="Ex: Wi-Fi: CasaPraia5G / Senha: 12345678"
-                  className="w-full rounded-lg bg-slate-950 border border-white/10 p-2 text-xs text-white"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (offer.propertyId) {
-                    onSaveInstructions(offer.propertyId, instructions, checkInTime, checkOutTime);
-                    setIsEditingInstructions(false);
-                  }
-                }}
-                className="rounded-lg bg-sky-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-sky-400 transition"
+        <div className="space-y-1">
+          <div className="font-bold text-emerald-300 flex items-center gap-1">📍 Endereço Completo:</div>
+          <p className="text-slate-300 leading-relaxed">
+            {[
+              offer.property?.street ? `${offer.property.street}, ${offer.property.addressNumber || "s/n"}` : null,
+              offer.property?.neighborhood,
+              offer.property?.city && offer.property?.state ? `${offer.property.city} - ${offer.property.state}` : null,
+              offer.property?.zipCode ? `CEP: ${offer.property.zipCode}` : null,
+            ].filter(Boolean).join(" • ") || "Endereço cadastrado no imóvel."}
+          </p>
+          {(offer.property?.googleMapsLink || (offer.property?.city && offer.property?.street)) && (
+            <div className="pt-1">
+              <a
+                href={offer.property?.googleMapsLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${offer.property?.street || ""}, ${offer.property?.addressNumber || ""}, ${offer.property?.city || ""}`)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-300 hover:underline"
               >
-                Salvar Instruções
-              </button>
+                🗺️ Ver Rota no Google Maps →
+              </a>
             </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -711,6 +591,12 @@ export default function MinhasReservasPage() {
   // QR Code Popup Modal state
   const [selectedQrCodeModalUrl, setSelectedQrCodeModalUrl] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+
+  // Host inline instructions editing state
+  const [editingInstructionsOfferId, setEditingInstructionsOfferId] = useState<number | null>(null);
+  const [checkInTime, setCheckInTime] = useState("14:00");
+  const [checkOutTime, setCheckOutTime] = useState("12:00");
+  const [instructions, setInstructions] = useState("");
 
   const isSeasonal = listingType === "ALUGUEL_TEMPORADA";
 
@@ -1394,6 +1280,19 @@ export default function MinhasReservasPage() {
               </div>
             )}
 
+            {/* Remaining balance notice for guest */}
+            {isDepositFullyPaid && !isCheckInReleased && (
+              <div className="pt-2.5 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs text-amber-300">
+                <span className="flex items-center gap-1.5">
+                  <span>🔒</span>
+                  <span>Quite o saldo restante antes de ({offer.startDate ? new Date(offer.startDate).toLocaleDateString("pt-BR") : "A definir"} às {offer.property?.checkInTime || "14:00"}) para liberar as informações para checkin.</span>
+                </span>
+                <span className="font-bold text-amber-400 shrink-0">
+                  Saldo Restante: R$ {Number(Number(offer.totalStayPrice || offer.offerPrice) - Number(offer.depositAmount || 0)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            )}
+
             {/* STEP 3 RECEIPT UPLOAD & AI VALIDATION PANEL */}
             {!isDepositFullyPaid ? (
               <div className="pt-3 border-t border-white/10 space-y-3">
@@ -1446,12 +1345,98 @@ export default function MinhasReservasPage() {
         {/* HOST VIEW DETAILS */}
         {activeTab === "HOSPEDANDO" && (isAcceptedWaiting || isConfirmed) && (
           <div className="mt-5 border-t border-white/10 pt-4 space-y-3 rounded-2xl bg-slate-950/70 p-4 border border-white/5">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
               <div className="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-2">
                 <ShieldCheck size={16} />
                 <span>Dados de Contato do Hóspede (Liberado)</span>
               </div>
+
+              {/* Host Quick Actions Header Buttons */}
+              {isConfirmed && !isCheckInReleased && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (editingInstructionsOfferId === offer.id) {
+                        setEditingInstructionsOfferId(null);
+                      } else {
+                        setEditingInstructionsOfferId(offer.id);
+                        setCheckInTime(offer.property?.checkInTime || "14:00");
+                        setCheckOutTime(offer.property?.checkOutTime || "12:00");
+                        setInstructions(offer.property?.checkInInstructions || "");
+                      }
+                    }}
+                    className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-1.5 text-xs font-bold text-sky-300 hover:bg-sky-500/20 transition cursor-pointer flex items-center gap-1"
+                  >
+                    ✏️ {editingInstructionsOfferId === offer.id ? "Fechar Edição" : "Configurar Instruções & Wi-Fi"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleManualReleaseCheckin(offer.id)}
+                    className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-3.5 py-1.5 text-xs font-black text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-md transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 size={14} />
+                    <span>Confirmar Quitação & Liberar Check-in</span>
+                  </button>
+                </div>
+              )}
             </div>
+
+            {/* Editable instructions form for host if toggled */}
+            {editingInstructionsOfferId === offer.id && (
+              <div className="space-y-3 p-3.5 rounded-xl bg-slate-900 border border-sky-500/30 mb-3">
+                <div className="text-xs font-bold text-sky-300 flex items-center gap-1.5">
+                  ✏️ Configurar Instruções de Entrada e Wi-Fi do Imóvel
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Horário de Check-in</label>
+                    <input
+                      type="text"
+                      value={checkInTime}
+                      onChange={(e) => setCheckInTime(e.target.value)}
+                      placeholder="Ex: 14:00"
+                      className="w-full rounded-lg bg-slate-950 border border-white/10 p-2 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Horário de Check-out</label>
+                    <input
+                      type="text"
+                      value={checkOutTime}
+                      onChange={(e) => setCheckOutTime(e.target.value)}
+                      placeholder="Ex: 12:00"
+                      className="w-full rounded-lg bg-slate-950 border border-white/10 p-2 text-xs text-white"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Instruções de Acesso & Senha do Wi-Fi</label>
+                  <textarea
+                    rows={2}
+                    value={instructions}
+                    onChange={(e) => setInstructions(e.target.value)}
+                    placeholder="Ex: Rede Wi-Fi: Praia5G / Senha: 12345678. Chaves na portaria."
+                    className="w-full rounded-lg bg-slate-950 border border-white/10 p-2 text-xs text-white"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (offer.propertyId) {
+                        handleSaveCheckInInstructions(offer.propertyId, instructions, checkInTime, checkOutTime);
+                        setEditingInstructionsOfferId(null);
+                      }
+                    }}
+                    className="rounded-xl bg-sky-500 px-4 py-2 text-xs font-bold text-white hover:bg-sky-400 transition cursor-pointer"
+                  >
+                    Salvar Instruções
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="grid gap-2 sm:grid-cols-2 text-xs text-slate-300">
               <div><strong>Hóspede:</strong> {offer.buyer?.name || "Não informado"}</div>
@@ -1484,6 +1469,19 @@ export default function MinhasReservasPage() {
                 </div>
               )}
             </div>
+
+            {/* Remaining balance notice for host */}
+            {isConfirmed && !isCheckInReleased && (
+              <div className="pt-2 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs text-amber-300">
+                <span className="flex items-center gap-1.5">
+                  <span>🔒</span>
+                  <span>Quite o saldo restante antes de ({offer.startDate ? new Date(offer.startDate).toLocaleDateString("pt-BR") : "A definir"} às {offer.property?.checkInTime || "14:00"}) para liberar as informações para checkin.</span>
+                </span>
+                <span className="font-bold text-amber-400 shrink-0">
+                  Saldo Restante: R$ {Number(Number(offer.totalStayPrice || offer.offerPrice) - Number(offer.depositAmount || 0)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            )}
 
             {getOfferReceiptUrls(offer).length > 0 ? (
               <div className="pt-3 border-t border-white/10 space-y-3">
