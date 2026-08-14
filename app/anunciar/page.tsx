@@ -139,7 +139,7 @@ const MAX_IMAGE_SIZE_BYTES = 500 * 1024;
 const MAX_DIMENSION = 1920;
 
 function formatLabel(value: string) {
-  if (value === "APARTAMENTOS_URBANOS_STUDIOS") return "Apartamentos urbanos e studios";
+  if (value === "APARTAMENTOS_URBANOS_STUDIOS") return "Apartamentos";
   if (value === "FLATS_APART_HOTEIS") return "Flats e apart-hotéis";
   if (value === "CASAS_DE_PRAIA") return "Casas de praia";
   if (value === "CASAS_DE_CAMPO_CHACARAS") return "Casas de campo e chácaras";
