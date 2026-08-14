@@ -726,6 +726,13 @@ export default function MinhasReservasPage() {
 
       setGuestOffers(data.guestOffers || data.offers || []);
       setHostOffers(data.hostOffers || []);
+
+      // Default active tab: HOSPEDANDO if user has registered properties, else VIAJANDO
+      if (data.hasProperties || (data.userPropertiesCount && data.userPropertiesCount > 0)) {
+        setActiveTab("HOSPEDANDO");
+      } else {
+        setActiveTab("VIAJANDO");
+      }
     } catch (err: any) {
       setError(err.message || "Erro ao carregar ofertas.");
     } finally {

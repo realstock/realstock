@@ -128,8 +128,14 @@ export async function GET() {
       conversationId: getConversationId(o.propertyId, o.buyerId, o.property.ownerId),
     }));
 
+    const userPropertiesCount = await prisma.property.count({
+      where: { ownerId: userId },
+    });
+
     return NextResponse.json({
       success: true,
+      userPropertiesCount,
+      hasProperties: userPropertiesCount > 0,
       guestOffers: mappedGuestOffers,
       hostOffers: mappedHostOffers,
       offers: mappedGuestOffers,
