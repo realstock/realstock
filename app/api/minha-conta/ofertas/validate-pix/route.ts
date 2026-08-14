@@ -404,10 +404,10 @@ export async function POST(req: NextRequest) {
         label: "Dados do Destinatário",
       },
       payerData: {
-        passed: !!(analysis.payerName || analysis.payerCpfCnpj),
-        name: analysis.payerName,
-        cpfCnpj: analysis.payerCpfCnpj,
-        label: "Dados do Pagador",
+        passed: true,
+        name: analysis.payerName || "Pagador",
+        cpfCnpj: analysis.payerCpfCnpj || null,
+        label: "Dados do Pagador (Aceito)",
       },
       transactionDateTime: {
         passed: isDateValid,
