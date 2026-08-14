@@ -357,13 +357,13 @@ export async function POST(req: NextRequest) {
     let totalAccumulatedPaid = extractedAmount !== null ? Number((previousAccumulatedPaid + extractedAmount).toFixed(2)) : previousAccumulatedPaid;
 
     if (extractedAmount !== null) {
-      if (totalAccumulatedPaid >= requiredDepositAmount - 0.50) {
-        // Value (alone or accumulated) meets or exceeds required deposit -> VALUE CHECK PASSED!
+      if (totalAccumulatedPaid >= requiredDepositAmount - 0.05) {
+        // Total accumulated meets or exceeds required deposit -> VALUE CHECK PASSED!
         isValueMatching = true;
         remainingAmount = 0;
         isPartialPayment = false;
       } else {
-        // Value is smaller than required deposit -> PARTIAL PAYMENT
+        // Total accumulated is smaller than required deposit -> PARTIAL PAYMENT
         remainingAmount = Number((requiredDepositAmount - totalAccumulatedPaid).toFixed(2));
         isPartialPayment = true;
         isValueMatching = false;
