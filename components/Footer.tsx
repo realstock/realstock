@@ -27,6 +27,7 @@ export default function Footer() {
           <ul className="space-y-2 text-sm">
             <li><Link href="/" className="hover:text-white transition-colors">Início</Link></li>
             <li><Link href="/anunciar" className="hover:text-white transition-colors">Anunciar Imóvel</Link></li>
+            <li><Link href="/" className="hover:text-white transition-colors">Pesquisar Imóvel</Link></li>
             <li><Link href="/anuncios-turbinados" className="hover:text-white transition-colors">Vitrine de Destaques</Link></li>
             <li><Link href="/instrucoes" className="hover:text-white transition-colors">Como funciona o portal?</Link></li>
           </ul>

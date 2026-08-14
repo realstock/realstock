@@ -116,6 +116,14 @@ export default function Header() {
                     </Link>
 
                     <Link
+                      href="/"
+                      className="block rounded-xl px-4 py-3 text-sm hover:bg-white/10"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Pesquisar imóvel
+                    </Link>
+
+                    <Link
                       href="/minha-conta/anuncios"
                       className="block rounded-xl px-4 py-3 text-sm hover:bg-white/10"
                       onClick={() => setMenuOpen(false)}
