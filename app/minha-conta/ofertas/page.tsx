@@ -82,6 +82,9 @@ type OfferItem = {
   hostFeePaidAt?: string | null;
   pixReceiptUrl?: string | null;
   pixValidation?: PixValidation | null;
+  checkInReleasedAt?: string | null;
+  remainingBalanceReceiptUrl?: string | null;
+  remainingBalanceValidation?: PixValidation | null;
   guestRating?: number | null;
   hostRating?: number | null;
   conversationId?: number | null;
@@ -97,10 +100,18 @@ type OfferItem = {
     title?: string;
     city?: string | null;
     state?: string | null;
+    street?: string | null;
     neighborhood?: string | null;
+    addressNumber?: string | null;
+    zipCode?: string | null;
     pixKey?: string | null;
     pixQrCodeUrl?: string | null;
+    googleMapsLink?: string | null;
     listingType?: string | null;
+    checkInInstructions?: string | null;
+    checkInTime?: string | null;
+    checkOutTime?: string | null;
+    depositPercentage?: number | null;
     images?: { imageUrl: string }[];
     owner?: {
       id?: number;
@@ -143,15 +154,21 @@ const GUEST_STEPS = [
   },
   {
     num: 3,
-    title: "3. Comprovante Anexado",
-    desc: "Você enviou o comprovante Pix do sinal para verificação do anfitrião.",
+    title: "3. Comprovante do Sinal",
+    desc: "Você enviou o comprovante Pix do sinal para verificação.",
     icon: "📎"
   },
   {
     num: 4,
-    title: "4. Reserva Confirmada!",
-    desc: "Sua estadia está 100% garantida e o imóvel bloqueado nas suas datas.",
+    title: "4. Reserva Confirmada",
+    desc: "Sinal quitado! Quite o saldo restante da estadia antes do check-in.",
     icon: "🎉"
+  },
+  {
+    num: 5,
+    title: "5. Check-in Liberado!",
+    desc: "Saldo restante quitado! Chaves, Wi-Fi e endereço completo liberados.",
+    icon: "🔑"
   }
 ];
 
@@ -164,21 +181,27 @@ const HOST_STEPS = [
   },
   {
     num: 2,
-    title: "2. Aguardando Hóspede",
-    desc: "Pedido aceito! O hóspede deve realizar a transferência Pix do sinal estipulado.",
+    title: "2. Aguardando Sinal",
+    desc: "Pedido aceito! O hóspede deve realizar a transferência Pix do sinal.",
     icon: "⏳"
   },
   {
     num: 3,
-    title: "3. Comprovante Recebido",
-    desc: "O hóspede anexou o comprovante Pix. Verifique o recebimento do sinal.",
+    title: "3. Comprovante do Sinal",
+    desc: "O hóspede anexou o comprovante Pix do sinal. Verifique o recebimento.",
     icon: "🔍"
   },
   {
     num: 4,
-    title: "4. Reserva Confirmada!",
-    desc: "Estadia confirmada com sucesso! Prepare a recepção para o hóspede.",
+    title: "4. Reserva Confirmada",
+    desc: "Sinal quitado! O hóspede deverá quitar o saldo restante antes do check-in.",
     icon: "🏠"
+  },
+  {
+    num: 5,
+    title: "5. Check-in Liberado!",
+    desc: "Estadia 100% quitada! Instruções de entrada e chaves liberadas.",
+    icon: "🔑"
   }
 ];
 
@@ -472,6 +495,306 @@ function RatingStars({
   );
 }
 
+function CheckInReleasePanel({
+  offer,
+  perspective,
+  onUploadRemainingPix,
+  onManualRelease,
+  onSaveInstructions,
+  uploadingId,
+  validatingId,
+}: {
+  offer: OfferItem;
+  perspective: "VIAJANDO" | "HOSPEDANDO";
+  onUploadRemainingPix: (offerId: number, file: File) => void;
+  onManualRelease: (offerId: number) => void;
+  onSaveInstructions: (propertyId: number, instructions: string, checkInTime: string, checkOutTime: string) => void;
+  uploadingId: number | null;
+  validatingId: number | null;
+}) {
+  const statusStr = String(offer.status).toUpperCase();
+  const isCheckInReleased = statusStr === "CHECKIN_LIBERADO" || !!offer.checkInReleasedAt;
+
+  const totalStay = Number(offer.totalStayPrice || offer.offerPrice || 0);
+  const depositPct = Number(offer.property?.depositPercentage || 20);
+  const depositPaid = Number(offer.depositAmount || (totalStay * (depositPct / 100)));
+  const remainingBalance = Math.max(0, Number((totalStay - depositPaid).toFixed(2)));
+
+  const [instructions, setInstructions] = useState(offer.property?.checkInInstructions || "");
+  const [checkInTime, setCheckInTime] = useState(offer.property?.checkInTime || "14:00");
+  const [checkOutTime, setCheckOutTime] = useState(offer.property?.checkOutTime || "12:00");
+  const [isEditingInstructions, setIsEditingInstructions] = useState(false);
+
+  return (
+    <div className={`mt-5 rounded-2xl border p-5 transition-all shadow-xl ${
+      isCheckInReleased
+        ? "border-emerald-500/50 bg-gradient-to-br from-emerald-950/60 via-slate-900 to-emerald-950/40 shadow-[0_0_30px_rgba(16,185,129,0.15)]"
+        : "border-amber-500/30 bg-slate-950/80"
+    }`}>
+      {/* HEADER BANNER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+        <div className="flex items-center gap-3">
+          <div className={`flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shrink-0 ${
+            isCheckInReleased ? "bg-emerald-500/20 text-emerald-300 ring-2 ring-emerald-500/40" : "bg-amber-500/20 text-amber-300"
+          }`}>
+            {isCheckInReleased ? "🔑" : "🔒"}
+          </div>
+          <div>
+            <h3 className={`text-base font-black uppercase tracking-wider ${
+              isCheckInReleased ? "text-emerald-400" : "text-amber-300"
+            }`}>
+              {isCheckInReleased ? "🎉 Check-in Liberado!" : "🔒 Check-in Bloqueado — Quitação do Saldo Pendente"}
+            </h3>
+            <p className="text-xs text-slate-300 mt-0.5">
+              {isCheckInReleased
+                ? "O saldo da estadia foi 100% quitado. As instruções de entrada, chaves e endereço completo estão desbloqueados!"
+                : `A regra do site exige a quitação do saldo restante de R$ ${remainingBalance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} antes da data/horário de check-in para liberar a chave e instruções de entrada.`}
+            </p>
+          </div>
+        </div>
+
+        {/* STATUS BADGE */}
+        <div className="shrink-0">
+          <span className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-xs font-black uppercase tracking-wider ${
+            isCheckInReleased
+              ? "border-emerald-500/40 bg-emerald-500/20 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)] animate-pulse"
+              : "border-amber-500/30 bg-amber-500/10 text-amber-300"
+          }`}>
+            {isCheckInReleased ? "✅ CHECK-IN LIBERADO" : "⏳ SALDO PENDENTE"}
+          </span>
+        </div>
+      </div>
+
+      {/* SUMMARY CARDS (STAY TOTAL vs DEPOSIT PAID vs REMAINING BALANCE) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-4">
+        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total da Estadia</div>
+          <div className="text-lg font-black text-white">R$ {totalStay.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Sinal Pago ({depositPct}%)</div>
+          <div className="text-lg font-black text-emerald-300">R$ {depositPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+        </div>
+        <div className={`rounded-xl border p-3 ${
+          isCheckInReleased ? "border-emerald-500/30 bg-emerald-500/20" : "border-amber-500/30 bg-amber-500/15"
+        }`}>
+          <div className={`text-[10px] font-bold uppercase tracking-wider ${isCheckInReleased ? "text-emerald-300" : "text-amber-300"}`}>
+            {isCheckInReleased ? "Saldo Restante Quitado" : "Saldo Restante Exigido"}
+          </div>
+          <div className={`text-lg font-black ${isCheckInReleased ? "text-emerald-400" : "text-amber-400"}`}>
+            R$ {remainingBalance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+          </div>
+        </div>
+      </div>
+
+      {/* IF CHECK-IN IS NOT RELEASED */}
+      {!isCheckInReleased && (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs text-amber-200 leading-relaxed">
+            <div className="font-extrabold text-amber-300 flex items-center gap-2 text-sm mb-1">
+              <span>⏱️ Data e Horário Máximo para Quitação do Saldo:</span>
+            </div>
+            <p>
+              O check-in está agendado para <strong className="text-white">{offer.startDate ? new Date(offer.startDate).toLocaleDateString("pt-BR") : "Data a definir"} às {offer.property?.checkInTime || "14:00"}</strong>.
+              O pagamento do saldo restante de <strong className="text-emerald-400">R$ {remainingBalance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong> deve ser efetuado <strong>antes deste horário</strong>.
+            </p>
+          </div>
+
+          {/* FOR GUEST (VIAJANDO) */}
+          {perspective === "VIAJANDO" && (
+            <div className="rounded-xl border border-white/10 bg-slate-900 p-4 space-y-3">
+              <div className="text-xs font-extrabold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                <Upload size={16} />
+                <span>Efetuar Quitação do Saldo Restante (Pix)</span>
+              </div>
+              <p className="text-xs text-slate-300">
+                Faça o Pix de <strong>R$ {remainingBalance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong> para a chave Pix do anfitrião (<code className="bg-emerald-500/20 px-2 py-0.5 rounded text-emerald-300 font-bold">{offer.property?.pixKey || "Consulte o anfitrião"}</code>) e anexe o comprovante abaixo:
+              </p>
+              
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <label className={`rounded-xl px-5 py-3 text-xs font-black text-slate-950 transition cursor-pointer flex items-center justify-center gap-2 shadow-lg ${
+                  uploadingId === offer.id || validatingId === offer.id
+                    ? "bg-slate-600 cursor-not-allowed shadow-none"
+                    : "bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 shadow-emerald-500/20"
+                }`}>
+                  <Upload size={16} />
+                  {uploadingId === offer.id
+                    ? "Enviando comprovante..."
+                    : validatingId === offer.id
+                    ? "⏳ Analisando quitação do saldo..."
+                    : "📎 Anexar Comprovante do Saldo Restante (Pix)"}
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    className="hidden"
+                    disabled={uploadingId === offer.id || validatingId === offer.id}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) onUploadRemainingPix(offer.id, file);
+                    }}
+                  />
+                </label>
+              </div>
+
+              {/* Remaining balance validation result if present */}
+              {offer.remainingBalanceValidation && (
+                <div className="pt-3 border-t border-white/10">
+                  <PixValidationPanel
+                    validation={offer.remainingBalanceValidation}
+                    perspective="VIAJANDO"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* FOR HOST (HOSPEDANDO) */}
+          {perspective === "HOSPEDANDO" && (
+            <div className="space-y-3">
+              {/* Host manual release button */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-emerald-950/50 p-4 rounded-2xl border border-emerald-500/30">
+                <div className="text-xs text-emerald-200 leading-relaxed">
+                  <strong className="text-emerald-300 block mb-0.5 font-extrabold text-sm">💡 Confirmar Quitação & Liberar Check-in</strong>
+                  O hóspede realizou o pagamento do saldo restante fora da plataforma ou você deseja liberar o check-in manualmente?
+                </div>
+                <button
+                  onClick={() => onManualRelease(offer.id)}
+                  className="w-full sm:w-auto shrink-0 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-3 text-xs font-black text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 size={16} />
+                  <span>Liberar Check-in Agora</span>
+                </button>
+              </div>
+
+              {/* Host Edit Check-in Instructions Section */}
+              <div className="rounded-xl border border-white/10 bg-slate-900 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-2">
+                    <FileText size={16} />
+                    <span>Configurar Instruções de Check-in e Wi-Fi</span>
+                  </div>
+                  <button
+                    onClick={() => setIsEditingInstructions(!isEditingInstructions)}
+                    className="text-xs font-bold text-sky-300 hover:underline flex items-center gap-1"
+                  >
+                    {isEditingInstructions ? "Cancelar" : "✏️ Editar Instruções"}
+                  </button>
+                </div>
+
+                {isEditingInstructions ? (
+                  <div className="space-y-3 pt-2">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Horário de Check-in</label>
+                        <input
+                          type="text"
+                          value={checkInTime}
+                          onChange={(e) => setCheckInTime(e.target.value)}
+                          placeholder="Ex: 14:00"
+                          className="w-full rounded-xl bg-slate-950 border border-white/10 p-2.5 text-xs text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Horário de Check-out</label>
+                        <input
+                          type="text"
+                          value={checkOutTime}
+                          onChange={(e) => setCheckOutTime(e.target.value)}
+                          placeholder="Ex: 12:00"
+                          className="w-full rounded-xl bg-slate-950 border border-white/10 p-2.5 text-xs text-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Instruções de Entrada, Senha do Wi-Fi e Fechadura Digital</label>
+                      <textarea
+                        rows={3}
+                        value={instructions}
+                        onChange={(e) => setInstructions(e.target.value)}
+                        placeholder="Ex: Wi-Fi: CasaPraia5G / Senha: 12345678. Fechadura digital: digitar 9876# na portaria."
+                        className="w-full rounded-xl bg-slate-950 border border-white/10 p-2.5 text-xs text-white"
+                      />
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        if (offer.propertyId) {
+                          onSaveInstructions(offer.propertyId, instructions, checkInTime, checkOutTime);
+                          setIsEditingInstructions(false);
+                        }
+                      }}
+                      className="rounded-xl bg-sky-500 px-4 py-2 text-xs font-bold text-white hover:bg-sky-400 transition"
+                    >
+                      Salvar Instruções
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-300 space-y-1">
+                    <div><strong>Check-in:</strong> {offer.property?.checkInTime || "14:00"} | <strong>Check-out:</strong> {offer.property?.checkOutTime || "12:00"}</div>
+                    <div><strong>Instruções Cadastradas:</strong> {offer.property?.checkInInstructions || "Nenhuma instrução específica cadastrada."}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* IF CHECK-IN IS RELEASED 🎉 */}
+      {isCheckInReleased && (
+        <div className="space-y-4 pt-2">
+          {/* UNLOCKED CHECK-IN DETAILS GRID */}
+          <div className="grid gap-3 sm:grid-cols-2 text-xs text-slate-200">
+            {/* INSTRUCTIONS & WI-FI */}
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-2">
+              <div className="font-black text-emerald-300 text-sm flex items-center gap-2">
+                🔑 <span>Instruções de Entrada & Wi-Fi</span>
+              </div>
+              <p className="text-slate-200 leading-relaxed font-medium">
+                {offer.property?.checkInInstructions || "Consulte o anfitrião no WhatsApp para informações sobre a retirada de chaves e controle de entrada."}
+              </p>
+              <div className="pt-2 border-t border-emerald-500/20 text-emerald-400 font-bold flex items-center gap-4 text-[11px]">
+                <span>🕒 Check-in: {offer.property?.checkInTime || "14:00"}</span>
+                <span>🕛 Check-out: {offer.property?.checkOutTime || "12:00"}</span>
+              </div>
+            </div>
+
+            {/* COMPLETE ADDRESS */}
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-2">
+              <div className="font-black text-emerald-300 text-sm flex items-center gap-2">
+                📍 <span>Endereço Completo do Imóvel</span>
+              </div>
+              <p className="text-slate-200 leading-relaxed font-medium">
+                {[
+                  offer.property?.street ? `${offer.property.street}, ${offer.property.addressNumber || "s/n"}` : null,
+                  offer.property?.neighborhood,
+                  offer.property?.city && offer.property?.state ? `${offer.property.city} - ${offer.property.state}` : null,
+                  offer.property?.zipCode ? `CEP: ${offer.property.zipCode}` : null,
+                ].filter(Boolean).join(" • ") || "Endereço em processamento."}
+              </p>
+
+              {/* GOOGLE MAPS LINK */}
+              {(offer.property?.googleMapsLink || (offer.property?.city && offer.property?.street)) && (
+                <div className="pt-2">
+                  <a
+                    href={offer.property?.googleMapsLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${offer.property?.street || ""}, ${offer.property?.addressNumber || ""}, ${offer.property?.city || ""}`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-3.5 py-2 text-xs font-black text-slate-950 hover:bg-emerald-400 transition shadow-md"
+                  >
+                    🗺️ Abrir Rota no Google Maps
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MinhasReservasPage() {
   const { status } = useSession();
   const router = useRouter();
@@ -722,6 +1045,137 @@ export default function MinhasReservasPage() {
     }
   }
 
+  // Guest upload remaining balance Pix receipt
+  async function handleUploadRemainingBalancePix(offerId: number, file: File) {
+    try {
+      setUploadingOfferId(offerId);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      // Step 1: Upload image
+      const uploadRes = await fetch("/api/upload-image", {
+        method: "POST",
+        body: formData,
+      });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok || !uploadData.imageUrl) {
+        throw new Error(uploadData.error || "Erro ao fazer upload do comprovante.");
+      }
+
+      // Step 2: Save receipt URL
+      const saveRes = await fetch("/api/minha-conta/ofertas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "upload_remaining_balance_pix",
+          offer_id: offerId,
+          remainingBalanceReceiptUrl: uploadData.imageUrl,
+          skipConfirm: true,
+        }),
+      });
+      const saveData = await saveRes.json();
+      if (!saveRes.ok || !saveData.success) {
+        throw new Error(saveData.error || "Erro ao salvar comprovante.");
+      }
+
+      // Step 3: Run AI validation
+      setUploadingOfferId(null);
+      setValidatingOfferId(offerId);
+
+      const validateRes = await fetch("/api/minha-conta/ofertas/validate-pix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          offerId: offerId,
+          imageUrl: uploadData.imageUrl,
+          isRemainingBalance: true,
+        }),
+      });
+      const validateData = await validateRes.json();
+
+      if (!validateRes.ok || !validateData.success) {
+        alert(validateData.error || "Falha na verificação automática do comprovante de quitação.");
+      } else {
+        if (validateData.allPassed) {
+          alert("✅ Comprovante de quitação do saldo da estadia validado com sucesso! Check-in LIBERADO 🎉");
+        } else {
+          alert(`⚠️ Comprovante enviado. ${validateData.validation?.passedCount || 0} de 5 verificações passaram. O anfitrião analisará.`);
+        }
+      }
+
+      await loadOffers();
+    } catch (err: any) {
+      alert(err?.message || "Erro ao enviar comprovante de quitação.");
+    } finally {
+      setUploadingOfferId(null);
+      setValidatingOfferId(null);
+    }
+  }
+
+  // Host manual release checkin
+  async function handleManualReleaseCheckin(offerId: number) {
+    const confirmed = window.confirm(
+      "Você deseja confirmar a quitação do saldo restante e liberar o check-in para este hóspede?"
+    );
+    if (!confirmed) return;
+
+    try {
+      setActionLoadingId(offerId);
+      const res = await fetch("/api/minha-conta/ofertas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "manual_release_checkin",
+          offer_id: offerId,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Erro ao liberar check-in.");
+      }
+
+      alert("🎉 Check-in liberado manualmente com sucesso!");
+      await loadOffers();
+    } catch (err: any) {
+      alert(err.message || "Erro ao liberar check-in.");
+    } finally {
+      setActionLoadingId(null);
+    }
+  }
+
+  // Host save check-in instructions
+  async function handleSaveCheckInInstructions(
+    propertyId: number,
+    checkInInstructions: string,
+    checkInTime: string,
+    checkOutTime: string
+  ) {
+    try {
+      const res = await fetch("/api/minha-conta/ofertas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update_checkin_instructions",
+          propertyId,
+          checkInInstructions,
+          checkInTime,
+          checkOutTime,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Erro ao salvar instruções.");
+      }
+
+      alert("✅ Instruções de Check-in salvas com sucesso!");
+      await loadOffers();
+    } catch (err: any) {
+      alert(err.message || "Erro ao salvar instruções.");
+    }
+  }
+
   function closePaypalModal() {
     setPaypalOfferId(null);
     setPaypalOrderId(null);
@@ -730,7 +1184,8 @@ export default function MinhasReservasPage() {
 
   function getStepPhase(offer: OfferItem): number {
     const s = String(offer.status).toUpperCase();
-    if (s === "RESERVA_CONFIRMADA" || s === "ACCEPTED" || s === "MATCHED" || offer.pixValidation?.allPassed) return 5;
+    if (s === "CHECKIN_LIBERADO" || offer.checkInReleasedAt) return 5;
+    if (s === "RESERVA_CONFIRMADA" || s === "ACCEPTED" || s === "MATCHED" || offer.pixValidation?.allPassed) return 4;
     if (offer.pixReceiptUrl) return 3;
     if (s === "ACCEPTED_WAITING_PAYMENT") return 2;
     if (s === "PENDING_HOST_APPROVAL" || s === "OPEN") return 1;
@@ -1433,6 +1888,19 @@ export default function MinhasReservasPage() {
                           </div>
                         )}
                       </div>
+                    )}
+
+                    {/* CHECK-IN & REMAINING BALANCE PANEL FOR CONFIRMED RESERVATIONS */}
+                    {(isConfirmed || statusStr === "CHECKIN_LIBERADO" || offer.checkInReleasedAt) && (
+                      <CheckInReleasePanel
+                        offer={offer}
+                        perspective={activeTab}
+                        onUploadRemainingPix={handleUploadRemainingBalancePix}
+                        onManualRelease={handleManualReleaseCheckin}
+                        onSaveInstructions={handleSaveCheckInInstructions}
+                        uploadingId={uploadingOfferId}
+                        validatingId={validatingOfferId}
+                      />
                     )}
                   </div>
                 );

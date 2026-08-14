@@ -259,12 +259,11 @@ export async function POST(req: NextRequest) {
 
     const userId = Number((session.user as any).id);
     const body = await req.json();
-    const offerId = Number(body.offer_id);
-    const imageUrl = String(body.image_url || "").trim();
+    const { offerId, imageUrl, isRemainingBalance } = body;
 
-    if (!offerId || Number.isNaN(offerId)) {
+    if (!offerId || typeof offerId !== "number") {
       return NextResponse.json(
-        { success: false, error: "offer_id inválido." },
+        { success: false, error: "ID da oferta inválido." },
         { status: 400 }
       );
     }
@@ -292,14 +291,20 @@ export async function POST(req: NextRequest) {
     // Run Gemini analysis
     const analysis = await analyzePixReceiptWithGemini(imageUrl);
 
-    // Calculate required deposit amount for this reservation
+    // Calculate required target amount (Deposit vs Remaining Balance)
     const depositPct = Number(offer.property?.depositPercentage || 20);
     const requiredDepositAmount = Number(
       offer.depositAmount || (Number(offer.offerPrice) * (depositPct / 100))
     );
+    const totalStayPrice = Number(offer.totalStayPrice || offer.offerPrice || 0);
+
+    const requiredTargetAmount = isRemainingBalance
+      ? Math.max(0, Number((totalStayPrice - requiredDepositAmount).toFixed(2)))
+      : requiredDepositAmount;
 
     // Load existing receipt history from previousValidation
-    const previousValidation = (offer.pixValidation as any) || null;
+    const targetValidationField = isRemainingBalance ? "remainingBalanceValidation" : "pixValidation";
+    const previousValidation = ((offer as any)[targetValidationField] as any) || null;
     let existingHistory: Array<{ url: string; amount: number; authCode?: string | null; date?: string | null }> = [];
 
     if (Array.isArray(previousValidation?.receiptHistory)) {
@@ -307,10 +312,10 @@ export async function POST(req: NextRequest) {
         (item: any) => item && typeof item.url === "string" && typeof item.amount === "number" && item.amount > 0
       );
     } else if (previousValidation?.checks?.depositValue?.accumulatedPaidAmount) {
-      // Fallback for legacy records without receiptHistory
-      if (offer.pixReceiptUrl) {
+      const fallbackUrl = isRemainingBalance ? offer.remainingBalanceReceiptUrl : offer.pixReceiptUrl;
+      if (fallbackUrl) {
         existingHistory.push({
-          url: offer.pixReceiptUrl,
+          url: fallbackUrl,
           amount: Number(previousValidation.checks.depositValue.accumulatedPaidAmount),
         });
       }
@@ -336,10 +341,20 @@ export async function POST(req: NextRequest) {
       const existingDuplicate = await prisma.offer.findFirst({
         where: {
           id: { not: offerId },
-          pixValidation: {
-            path: ["checks", "authCode", "code"],
-            equals: cleanCode,
-          },
+          OR: [
+            {
+              pixValidation: {
+                path: ["checks", "authCode", "code"],
+                equals: cleanCode,
+              },
+            },
+            {
+              remainingBalanceValidation: {
+                path: ["checks", "authCode", "code"],
+                equals: cleanCode,
+              },
+            },
+          ],
         },
       });
       if (existingDuplicate) {
@@ -380,14 +395,14 @@ export async function POST(req: NextRequest) {
     let remainingAmount: number | null = null;
     let isPartialPayment = false;
 
-    if (totalAccumulatedPaid >= requiredDepositAmount - 0.05) {
-      // Total accumulated meets or exceeds required deposit -> VALUE CHECK PASSED!
+    if (totalAccumulatedPaid >= requiredTargetAmount - 0.05) {
+      // Total accumulated meets or exceeds required target -> VALUE CHECK PASSED!
       isValueMatching = true;
       remainingAmount = 0;
       isPartialPayment = false;
     } else {
-      // Total accumulated is smaller than required deposit -> PARTIAL PAYMENT
-      remainingAmount = Number((requiredDepositAmount - totalAccumulatedPaid).toFixed(2));
+      // Total accumulated is smaller than required target -> PARTIAL PAYMENT
+      remainingAmount = Number((requiredTargetAmount - totalAccumulatedPaid).toFixed(2));
       isPartialPayment = true;
       isValueMatching = false;
     }
@@ -428,16 +443,16 @@ export async function POST(req: NextRequest) {
         passed: isValueMatching,
         amount: extractedAmount,
         accumulatedPaidAmount: totalAccumulatedPaid,
-        expected: requiredDepositAmount,
+        expected: requiredTargetAmount,
         remaining: remainingAmount,
         isPartial: isPartialPayment,
         label: isValueMatching
           ? updatedHistory.length > 1
-            ? `Sinal Quitado (R$ ${totalAccumulatedPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} acumulados via ${updatedHistory.length} comprovantes)`
-            : `Valor do Sinal Pago (R$ ${extractedAmount?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`
+            ? `${isRemainingBalance ? "Saldo Restante Quitado" : "Sinal Quitado"} (R$ ${totalAccumulatedPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} acumulados via ${updatedHistory.length} comprovantes)`
+            : `Valor Pago (R$ ${extractedAmount?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`
           : isPartialPayment
-          ? `Sinal Parcial (Pago R$ ${totalAccumulatedPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} de R$ ${requiredDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`
-          : `Valor Incorreto (Esperado R$ ${requiredDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`,
+          ? `Pagamento Parcial (Pago R$ ${totalAccumulatedPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} de R$ ${requiredTargetAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`
+          : `Valor Incorreto (Esperado R$ ${requiredTargetAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`,
       },
     };
 
@@ -445,11 +460,12 @@ export async function POST(req: NextRequest) {
     const passedCount = Object.values(checks).filter((c) => c.passed).length;
 
     // Collect all receipt URLs for this offer
+    const currentUrlField = isRemainingBalance ? offer.remainingBalanceReceiptUrl : offer.pixReceiptUrl;
     const newReceiptUrls = Array.from(
       new Set([
         ...updatedHistory.map((item) => item.url),
         ...(Array.isArray(previousValidation?.receiptUrls) ? previousValidation.receiptUrls : []),
-        ...(offer.pixReceiptUrl ? [offer.pixReceiptUrl] : []),
+        ...(currentUrlField ? [currentUrlField] : []),
         imageUrl,
       ])
     ).filter((u) => typeof u === "string" && u.trim().length > 0);
@@ -467,34 +483,47 @@ export async function POST(req: NextRequest) {
       rawText: analysis.rawText,
     };
 
-    // Save validation & pixReceiptUrl to offer
-    await prisma.offer.update({
-      where: { id: offerId },
-      data: {
-        pixReceiptUrl: imageUrl,
-        pixValidation: validation as any,
-      },
-    });
+    // Save validation & receiptUrl to offer
+    if (isRemainingBalance) {
+      await prisma.offer.update({
+        where: { id: offerId },
+        data: {
+          remainingBalanceReceiptUrl: imageUrl,
+          remainingBalanceValidation: validation as any,
+        },
+      });
+    } else {
+      await prisma.offer.update({
+        where: { id: offerId },
+        data: {
+          pixReceiptUrl: imageUrl,
+          pixValidation: validation as any,
+        },
+      });
+    }
 
-    // If ALL 6 checks passed strictly, advance to RESERVA_CONFIRMADA
+    // If ALL 5 checks passed strictly, advance status
     if (allPassed) {
       await prisma.offer.update({
         where: { id: offerId },
         data: {
-          status: "RESERVA_CONFIRMADA",
+          status: isRemainingBalance ? "CHECKIN_LIBERADO" : "RESERVA_CONFIRMADA",
+          ...(isRemainingBalance ? { checkInReleasedAt: new Date() } : {}),
         },
       });
     }
 
     let responseMessage = "";
     if (allPassed) {
-      if (updatedHistory.length > 1) {
-        responseMessage = `✅ Comprovante complementar validado! Com este pagamento de R$ ${extractedAmount?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}, o sinal de R$ ${requiredDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} foi totalmente quitado via ${updatedHistory.length} comprovantes (Total acumulado: R$ ${totalAccumulatedPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}). Reserva confirmada com sucesso!`;
+      if (isRemainingBalance) {
+        responseMessage = "✅ Comprovante de quitação do saldo da estadia validado com sucesso! Check-in LIBERADO com sucesso 🎉";
+      } else if (updatedHistory.length > 1) {
+        responseMessage = `✅ Comprovante complementar validado! Com este pagamento de R$ ${extractedAmount?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}, o sinal de R$ ${requiredTargetAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} foi totalmente quitado via ${updatedHistory.length} comprovantes (Total acumulado: R$ ${totalAccumulatedPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}). Reserva confirmada com sucesso!`;
       } else {
         responseMessage = "✅ Comprovante validado com sucesso! Reserva confirmada.";
       }
     } else if (isPartialPayment && remainingAmount && passedCount === 4) {
-      responseMessage = `⚠️ Pagamento parcial detectado! Você pagou R$ ${extractedAmount?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} neste comprovante (Total acumulado: R$ ${totalAccumulatedPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} dos R$ ${requiredDepositAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} do sinal). Faça um Pix de R$ ${remainingAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} para complementar o valor restante e anexe o novo comprovante.`;
+      responseMessage = `⚠️ Pagamento parcial detectado! Você pagou R$ ${extractedAmount?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} neste comprovante (Total acumulado: R$ ${totalAccumulatedPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} dos R$ ${requiredTargetAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}). Faça um Pix de R$ ${remainingAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} para complementar o valor restante.`;
     } else {
       responseMessage = `⚠️ ${passedCount} de 5 verificações passaram. O anfitrião analisará manualmente.`;
     }

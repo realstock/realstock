@@ -404,10 +404,127 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return NextResponse.json(
-      { success: false, error: "Ação inválida." },
-      { status: 400 }
-    );
+    if (action === "upload_remaining_balance_pix") {
+      const { remainingBalanceReceiptUrl, skipConfirm } = body;
+
+      if (!remainingBalanceReceiptUrl) {
+        return NextResponse.json(
+          { success: false, error: "URL do comprovante não informada." },
+          { status: 400 }
+        );
+      }
+
+      const offer = await prisma.offer.findUnique({
+        where: { id: offerId },
+      });
+
+      if (!offer) {
+        return NextResponse.json(
+          { success: false, error: "Reserva não encontrada." },
+          { status: 404 }
+        );
+      }
+
+      const previousValidation = (offer.remainingBalanceValidation as any) || {};
+      const previousUrls: string[] = Array.isArray(previousValidation.receiptUrls)
+        ? previousValidation.receiptUrls.filter((u: any) => typeof u === "string" && u.trim().length > 0)
+        : offer.remainingBalanceReceiptUrl
+        ? [offer.remainingBalanceReceiptUrl]
+        : [];
+      const updatedReceiptUrls = Array.from(new Set([...previousUrls, remainingBalanceReceiptUrl]));
+
+      const updatedOffer = await prisma.offer.update({
+        where: { id: offerId },
+        data: {
+          remainingBalanceReceiptUrl,
+          remainingBalanceValidation: {
+            ...previousValidation,
+            receiptUrls: updatedReceiptUrls,
+          },
+          ...(skipConfirm ? {} : { status: "CHECKIN_LIBERADO", checkInReleasedAt: new Date() }),
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        offer: updatedOffer,
+        message: skipConfirm
+          ? "Comprovante do saldo salvo. Iniciando verificação automática..."
+          : "Comprovante do saldo enviado! Check-in LIBERADO 🎉",
+      });
+    }
+
+    if (action === "manual_release_checkin") {
+      const offer = await prisma.offer.findUnique({
+        where: { id: offerId },
+        include: { property: true },
+      });
+
+      if (!offer) {
+        return NextResponse.json(
+          { success: false, error: "Pedido de reserva não encontrado." },
+          { status: 404 }
+        );
+      }
+
+      if (offer.property?.ownerId !== userId) {
+        return NextResponse.json(
+          { success: false, error: "Apenas o anfitrião pode liberar o check-in manualmente." },
+          { status: 403 }
+        );
+      }
+
+      const updatedOffer = await prisma.offer.update({
+        where: { id: offerId },
+        data: {
+          status: "CHECKIN_LIBERADO",
+          checkInReleasedAt: new Date(),
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        offer: updatedOffer,
+        message: "Check-in liberado manualmente pelo anfitrião com sucesso! 🎉",
+      });
+    }
+
+    if (action === "update_checkin_instructions") {
+      const { propertyId, checkInInstructions, checkInTime, checkOutTime } = body;
+
+      if (!propertyId) {
+        return NextResponse.json(
+          { success: false, error: "Imóvel não especificado." },
+          { status: 400 }
+        );
+      }
+
+      const property = await prisma.property.findUnique({
+        where: { id: Number(propertyId) },
+      });
+
+      if (!property || property.ownerId !== userId) {
+        return NextResponse.json(
+          { success: false, error: "Sem permissão para alterar as instruções deste imóvel." },
+          { status: 403 }
+        );
+      }
+
+      const updatedProperty = await prisma.property.update({
+        where: { id: Number(propertyId) },
+        data: {
+          checkInInstructions: checkInInstructions || null,
+          checkInTime: checkInTime || "14:00",
+          checkOutTime: checkOutTime || "12:00",
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        property: updatedProperty,
+        message: "Instruções de Check-in salvas com sucesso!",
+      });
+    }
   } catch (error: any) {
     console.error("MINHA CONTA OFERTAS POST ERROR:", error);
 
