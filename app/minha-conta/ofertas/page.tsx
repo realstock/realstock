@@ -1363,26 +1363,32 @@ export default function MinhasReservasPage() {
                     style={{ layout: "vertical", shape: "rect", label: "paypal" }}
                     createOrder={async () => paypalOrderId}
                     onApprove={async (data) => {
-                      const res = await fetch("/api/paypal/capture-host-reservation-fee-order", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          orderID: data.orderID,
-                          offerId: paypalOfferId,
-                        }),
-                      });
+                      try {
+                        const res = await fetch("/api/paypal/capture-host-reservation-fee-order", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            orderID: data.orderID,
+                            offerId: paypalOfferId,
+                          }),
+                        });
 
-                      const result = await res.json();
-                      if (!res.ok || !result.success) {
-                        throw new Error(result.error || "Erro ao capturar pagamento.");
-                      }
+                        const result = await res.json();
+                        if (!res.ok || !result.success) {
+                          throw new Error(result.error || "Erro ao capturar pagamento.");
+                        }
 
-                      alert("🎉 Pedido aceito com sucesso! O chat com o hóspede foi liberado.");
-                      closePaypalModal();
-                      if (result.conversationId) {
-                        router.push(`/minha-conta/chat?conversationId=${result.conversationId}`);
-                      } else {
-                        await loadOffers();
+                        // Close modal immediately to unmount PayPal overlay and unfreeze UI
+                        closePaypalModal();
+
+                        if (result.conversationId) {
+                          router.push(`/minha-conta/chat?conversationId=${result.conversationId}`);
+                        } else {
+                          await loadOffers();
+                        }
+                      } catch (err: any) {
+                        console.error("PAYPAL MODAL CAPTURE ERROR:", err);
+                        setPaypalError(err?.message || "Erro ao processar pagamento no PayPal.");
                       }
                     }}
                     onError={(err) => {
