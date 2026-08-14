@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { X, Calendar, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 
 type Block = {
@@ -238,7 +239,14 @@ export default function CalendarioReservasModal({ propertyId, propertyTitle, onC
               <div className="flex items-center gap-5 mt-4">
                 <div className="flex items-center gap-2">
                   <div className="h-3 w-5 rounded bg-emerald-500/40" />
-                  <span className="text-[10px] text-slate-400 font-medium">Reservado no site</span>
+                  <Link
+                    href="/minha-conta/ofertas"
+                    onClick={onClose}
+                    className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 hover:text-emerald-300 underline transition cursor-pointer"
+                  >
+                    <span>Reserva do Site</span>
+                    <span className="no-underline bg-emerald-500/20 border border-emerald-500/40 rounded px-1.5 py-0.5 text-[9px] uppercase font-black">Abrir Minhas Reservas 🔗</span>
+                  </Link>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="h-3 w-5 rounded bg-rose-500/30" />
@@ -272,13 +280,20 @@ export default function CalendarioReservasModal({ propertyId, propertyTitle, onC
                           {new Date(b.start + "T12:00:00").toLocaleDateString("pt-BR")} → {new Date(b.end + "T12:00:00").toLocaleDateString("pt-BR")}
                         </p>
                       </div>
-                      <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${
-                        b.source === "local"
-                          ? "border-emerald-500/30 text-emerald-400"
-                          : "border-rose-500/30 text-rose-400"
-                      }`}>
-                        {b.source === "local" ? "Site" : "iCal"}
-                      </span>
+                      {b.source === "local" ? (
+                        <Link
+                          href="/minha-conta/ofertas"
+                          onClick={onClose}
+                          className="inline-flex items-center gap-1 border border-emerald-500/40 text-emerald-300 hover:text-white bg-emerald-500/20 hover:bg-emerald-500/30 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider transition cursor-pointer shrink-0"
+                          title="Abrir Minhas Reservas"
+                        >
+                          <span>Abrir Minhas Reservas 🔗</span>
+                        </Link>
+                      ) : (
+                        <span className="border border-rose-500/30 text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0">
+                          iCal
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>

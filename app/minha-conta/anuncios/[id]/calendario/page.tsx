@@ -730,7 +730,13 @@ export default function CalendarioPropertyPage() {
             <div className="flex flex-wrap items-center gap-5">
               <div className="flex items-center gap-2">
                 <div className="h-3.5 w-3.5 rounded-md bg-emerald-500/30 border border-emerald-500/50" />
-                <span>Reserva efetuada no site</span>
+                <Link
+                  href="/minha-conta/ofertas"
+                  className="inline-flex items-center gap-1.5 font-bold text-emerald-400 hover:text-emerald-300 underline transition cursor-pointer"
+                >
+                  <span>Reserva do Site</span>
+                  <span className="no-underline bg-emerald-500/20 border border-emerald-500/40 rounded px-1.5 py-0.5 text-[10px] uppercase font-black">Abrir Minhas Reservas 🔗</span>
+                </Link>
               </div>
               <div className="flex items-center gap-2">
                 <div className="h-3.5 w-3.5 rounded-md bg-rose-500/30 border border-rose-500/50" />
@@ -858,15 +864,19 @@ export default function CalendarioPropertyPage() {
                         {isoToDate(b.start).toLocaleDateString("pt-BR")} → {isoToDate(b.end).toLocaleDateString("pt-BR")}
                       </p>
                     </div>
-                    <span
-                      className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md border ${
-                        b.source === "local"
-                          ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
-                          : "border-rose-500/30 text-rose-400 bg-rose-500/10"
-                      }`}
-                    >
-                      {b.source === "local" ? "Reserva do Site" : "Feed iCal"}
-                    </span>
+                    {b.source === "local" ? (
+                      <Link
+                        href="/minha-conta/ofertas"
+                        className="inline-flex items-center gap-1 border border-emerald-500/40 text-emerald-300 hover:text-white bg-emerald-500/20 hover:bg-emerald-500/30 px-2.5 py-1 rounded-lg text-[11px] font-black uppercase tracking-wider transition cursor-pointer shadow-sm shrink-0"
+                        title="Abrir Minhas Reservas"
+                      >
+                        <span>Abrir Minhas Reservas 🔗</span>
+                      </Link>
+                    ) : (
+                      <span className="border border-rose-500/30 text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider shrink-0">
+                        Feed iCal
+                      </span>
+                    )}
                   </div>
                 ))}
             </div>
