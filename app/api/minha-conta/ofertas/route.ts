@@ -335,6 +335,22 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      const hostUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { identityDocumentUrl: true },
+      });
+
+      if (!hostUser?.identityDocumentUrl) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "É necessário enviar seu Documento de Identidade em PDF no seu cadastro para aceitar propostas de compra ou reservas.",
+            code: "DOCUMENT_REQUIRED",
+          },
+          { status: 400 }
+        );
+      }
+
       if (String(offer.status).toLowerCase() !== "open") {
         return NextResponse.json(
           { success: false, error: "Apenas ofertas abertas podem ser aceitas." },

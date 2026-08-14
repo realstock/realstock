@@ -33,6 +33,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!offer.property?.owner?.identityDocumentUrl) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "É necessário enviar seu Documento de Identidade em PDF no seu cadastro para aceitar propostas.",
+          code: "DOCUMENT_REQUIRED",
+        },
+        { status: 400 }
+      );
+    }
+
     if (String(offer.status).toLowerCase() !== "open") {
       return NextResponse.json(
         {

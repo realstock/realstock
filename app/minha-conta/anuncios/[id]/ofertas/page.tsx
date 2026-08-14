@@ -98,6 +98,11 @@ export default function GerenciarOfertasPage() {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
+        if (data.code === "DOCUMENT_REQUIRED" || String(data.error || "").includes("Documento de Identidade")) {
+          alert("📄 DOCUMENTO OBRIGATÓRIO: É necessário enviar seu Documento de Identidade em PDF no seu cadastro ('Meu Cadastro') antes de aceitar propostas de compra.");
+          router.push("/minha-conta/perfil");
+          return;
+        }
         throw new Error(data.error || "Erro ao aceitar oferta.");
       }
 
