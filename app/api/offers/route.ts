@@ -151,6 +151,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Trigger host automatic message for ON_RESERVATION_REQUEST
+    try {
+      const { triggerAutoMessage } = await import("@/lib/auto-messages");
+      await triggerAutoMessage("ON_RESERVATION_REQUEST", offer.id);
+    } catch (autoErr) {
+      console.error("Auto message trigger ON_RESERVATION_REQUEST error:", autoErr);
+    }
+
     if (property.owner?.email || property.owner?.phone) {
       try {
         const { sendNotification } = require("@/lib/messenger");

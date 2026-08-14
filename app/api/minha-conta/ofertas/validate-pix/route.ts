@@ -511,6 +511,18 @@ export async function POST(req: NextRequest) {
           ...(isRemainingBalance ? { checkInReleasedAt: new Date() } : {}),
         },
       });
+
+      // Trigger automatic messages
+      try {
+        const { triggerAutoMessage } = await import("@/lib/auto-messages");
+        if (isRemainingBalance) {
+          await triggerAutoMessage("ON_CHECKIN_RELEASED", offerId);
+        } else {
+          await triggerAutoMessage("ON_DEPOSIT_PAID", offerId);
+        }
+      } catch (autoErr) {
+        console.error("Auto message trigger error:", autoErr);
+      }
     }
 
     let responseMessage = "";

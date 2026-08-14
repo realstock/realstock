@@ -5,7 +5,8 @@ import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { MessageSquare, Send, Building2, User, ArrowLeft, Loader2, RefreshCw } from "lucide-react";
+import { MessageSquare, Send, Building2, User, ArrowLeft, Loader2, RefreshCw, Bot } from "lucide-react";
+import AutoMessagesModal from "./AutoMessagesModal";
 
 type Conversation = {
   id: number;
@@ -68,6 +69,7 @@ function ChatContent() {
   const [loadingConv, setLoadingConv] = useState(true);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [sendingMsg, setSendingMsg] = useState(false);
+  const [isAutoModalOpen, setIsAutoModalOpen] = useState(false);
 
   const currentUserId = session?.user ? Number((session.user as any).id) : null;
 
@@ -293,17 +295,35 @@ function ChatContent() {
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              fetchConversations();
-              if (activeConvId) fetchMessages(activeConvId);
-            }}
-            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/10 transition flex items-center gap-1.5"
-          >
-            <RefreshCw size={14} />
-            <span className="hidden sm:inline">Atualizar</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsAutoModalOpen(true)}
+              className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3.5 py-2 text-xs font-black text-emerald-300 hover:bg-emerald-500/20 shadow-md shadow-emerald-500/10 transition cursor-pointer flex items-center gap-2"
+              title="Configurar Mensagens Automáticas de Anfitrião"
+            >
+              <Bot size={16} className="text-emerald-400" />
+              <span>⚙️ Mensagens Automáticas</span>
+            </button>
+
+            <button
+              onClick={() => {
+                fetchConversations();
+                if (activeConvId) fetchMessages(activeConvId);
+              }}
+              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/10 transition flex items-center gap-1.5"
+            >
+              <RefreshCw size={14} />
+              <span className="hidden sm:inline">Atualizar</span>
+            </button>
+          </div>
         </div>
+
+        {/* AUTOMATIC MESSAGES MODAL */}
+        <AutoMessagesModal
+          isOpen={isAutoModalOpen}
+          onClose={() => setIsAutoModalOpen(false)}
+        />
 
         {/* CHAT CONTAINER */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-220px)] min-h-[500px]">

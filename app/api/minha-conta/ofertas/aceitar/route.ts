@@ -39,6 +39,10 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Trigger host automatic message for ON_HOST_ACCEPT
+    const { triggerAutoMessage } = await import("@/lib/auto-messages");
+    await triggerAutoMessage("ON_HOST_ACCEPT", offerId);
+
     return NextResponse.json({
       success: true,
       message: "Proposta aceita com sucesso.",

@@ -107,6 +107,7 @@ model User {
   buyerConversations          Conversation[]         @relation("BuyerConversations")
   sellerConversations         Conversation[]         @relation("SellerConversations")
   sentMessages                ChatMessage[]          @relation("SentMessages")
+  autoMessageSettings         AutoMessageSetting[]
 
   @@map("users")
 }
@@ -446,5 +447,19 @@ model ChatMessage {
   createdAt      DateTime     @default(now()) @map("created_at")
 
   @@map("chat_messages")
+}
+
+model AutoMessageSetting {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event       String   @map("event") // "ON_RESERVATION_REQUEST", "ON_HOST_ACCEPT", "ON_DEPOSIT_PAID", "ON_CHECKIN_RELEASED", "ON_CHECKIN_DAY", "ON_CHECKOUT_DAY"
+  isEnabled   Boolean  @default(true) @map("is_enabled")
+  messageText String   @map("message_text") @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, event])
+  @@map("auto_message_settings")
 }
 
