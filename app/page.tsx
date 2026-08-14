@@ -1479,10 +1479,17 @@ export default function HomePage() {
               type="button"
               onClick={handleConfirmReservation}
               disabled={submittingReservation}
-              className="flex-1 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white hover:bg-emerald-500 transition text-center shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer"
+              className={`flex-1 rounded-2xl px-4 py-3 text-sm font-black transition text-center shadow-lg flex items-center justify-center gap-2 cursor-pointer ${
+                submittingReservation
+                  ? "bg-transparent border border-emerald-500/40 text-emerald-400 opacity-60 backdrop-blur-sm pointer-events-none"
+                  : "bg-emerald-600 text-white hover:bg-emerald-500 shadow-emerald-600/20"
+              }`}
             >
               {submittingReservation ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin text-emerald-400" />
+                  <span>Aguarde...</span>
+                </>
               ) : (
                 "Sim, confirmar pedido de reserva"
               )}

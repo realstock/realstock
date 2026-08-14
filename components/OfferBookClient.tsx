@@ -398,9 +398,23 @@ export default function OfferBookClient({
               <button
                 type="submit"
                 disabled={loading || status === "loading" || numberOfNights < (minNights ?? 1) || !!dateOverlapError}
-                className="w-full rounded-2xl bg-emerald-500 hover:bg-emerald-400 px-4 py-3 font-semibold text-slate-950 disabled:opacity-60 cursor-pointer transition-all"
+                className={`w-full rounded-2xl px-4 py-3 font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                  loading
+                    ? "bg-transparent border border-emerald-500/40 text-emerald-400 opacity-60 backdrop-blur-sm pointer-events-none"
+                    : "bg-emerald-500 hover:bg-emerald-400 text-slate-950 disabled:opacity-60 shadow-lg shadow-emerald-500/20"
+                }`}
               >
-                {loading ? "Aguarde..." : "Reservar"}
+                {loading ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-emerald-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Aguarde...
+                  </>
+                ) : (
+                  "Reservar"
+                )}
               </button>
             </div>
           ) : (
