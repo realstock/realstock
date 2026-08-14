@@ -522,6 +522,37 @@ export default function MinhasReservasPage() {
     }
   }
 
+  // Host manual approval of Pix receipt
+  async function handleManualConfirmPix(offerId: number) {
+    const confirmed = window.confirm(
+      "Você deseja aprovar manualmente o comprovante Pix e confirmar esta reserva?"
+    );
+    if (!confirmed) return;
+
+    try {
+      setActionLoadingId(offerId);
+      const res = await fetch("/api/minha-conta/ofertas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "manual_confirm_pix",
+          offer_id: offerId,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Erro ao aprovar comprovante.");
+      }
+
+      await loadOffers();
+    } catch (err: any) {
+      alert(err.message || "Erro ao aprovar comprovante.");
+    } finally {
+      setActionLoadingId(null);
+    }
+  }
+
   // Guest upload Pix receipt
   async function handleUploadPixReceipt(offerId: number, file: File) {
     try {
@@ -1346,6 +1377,24 @@ export default function MinhasReservasPage() {
                               <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-300 flex items-center gap-2">
                                 <Clock size={13} />
                                 <span>Verificação automática em processamento...</span>
+                              </div>
+                            )}
+
+                            {/* Manual Host Approval Button if receipt sent but status not RESERVA_CONFIRMADA */}
+                            {statusStr !== "RESERVA_CONFIRMADA" && !offer.pixValidation?.allPassed && (
+                              <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 bg-emerald-950/40 p-3.5 rounded-2xl border border-emerald-500/30">
+                                <div className="text-xs text-emerald-200 leading-relaxed">
+                                  <strong className="text-emerald-300 block mb-0.5 font-extrabold text-sm">💡 Aprovação Manual do Anfitrião</strong>
+                                  Deseja validar os comprovantes enviados e confirmar esta reserva agora?
+                                </div>
+                                <button
+                                  onClick={() => handleManualConfirmPix(offer.id)}
+                                  disabled={actionLoadingId === offer.id}
+                                  className="w-full sm:w-auto shrink-0 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2.5 text-xs font-black text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                                >
+                                  <CheckCircle2 size={16} />
+                                  <span>Aceitar & Confirmar Reserva</span>
+                                </button>
                               </div>
                             )}
                           </div>

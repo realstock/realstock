@@ -264,6 +264,49 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    if (action === "manual_confirm_pix") {
+      const offer = await prisma.offer.findUnique({
+        where: { id: offerId },
+        include: { property: true },
+      });
+
+      if (!offer) {
+        return NextResponse.json(
+          { success: false, error: "Pedido de reserva não encontrado." },
+          { status: 404 }
+        );
+      }
+
+      if (offer.property?.ownerId !== userId) {
+        return NextResponse.json(
+          { success: false, error: "Apenas o anfitrião pode aprovar o comprovante manualmente." },
+          { status: 403 }
+        );
+      }
+
+      const currentValidation = (offer.pixValidation as any) || {};
+      const updatedValidation = {
+        ...currentValidation,
+        allPassed: true,
+        manuallyApprovedByHost: true,
+        manuallyApprovedAt: new Date().toISOString(),
+      };
+
+      const updatedOffer = await prisma.offer.update({
+        where: { id: offerId },
+        data: {
+          status: "RESERVA_CONFIRMADA",
+          pixValidation: updatedValidation as any,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        offer: updatedOffer,
+        message: "Reserva aprovada manualmente pelo anfitrião com sucesso!",
+      });
+    }
+
     if (action === "accept") {
       const offer = await prisma.offer.findUnique({
         where: { id: offerId },
