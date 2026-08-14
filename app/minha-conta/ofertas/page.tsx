@@ -1199,6 +1199,7 @@ export default function MinhasReservasPage() {
                 const isPending = statusStr === "PENDING_HOST_APPROVAL";
                 const isAcceptedWaiting = statusStr === "ACCEPTED_WAITING_PAYMENT";
                 const isConfirmed = statusStr === "RESERVA_CONFIRMADA" || statusStr === "ACCEPTED" || statusStr === "MATCHED";
+                const isDepositFullyPaid = statusStr === "RESERVA_CONFIRMADA" || !!offer.pixValidation?.allPassed;
                 const isCheckInReleased = statusStr === "CHECKIN_LIBERADO" || !!offer.checkInReleasedAt;
                 const isRejected = statusStr === "REJECTED";
                 const isCancelled = statusStr === "CANCELLED";
@@ -1441,8 +1442,8 @@ export default function MinhasReservasPage() {
                             <span>Dados de Contato e Pagamento do Anfitrião</span>
                           </div>
 
-                          {/* Top-Right Remaining Balance Upload Button */}
-                          {isConfirmed && !isCheckInReleased && (
+                          {/* Top-Right Remaining Balance Upload Button (Only AFTER deposit is 100% paid) */}
+                          {isDepositFullyPaid && !isCheckInReleased && (
                             <label className={`rounded-xl px-4 py-2 text-xs font-black text-slate-950 transition cursor-pointer flex items-center justify-center gap-2 shadow-lg shrink-0 ${
                               uploadingOfferId === offer.id || validatingOfferId === offer.id
                                 ? "bg-slate-600 cursor-not-allowed shadow-none"
@@ -1515,7 +1516,7 @@ export default function MinhasReservasPage() {
                               Sinal a ser pago via Pix: R$ {Number(offer.depositAmount).toLocaleString("pt-BR")}
                             </div>
                           )}
-                          {isConfirmed && !isCheckInReleased && (
+                          {isDepositFullyPaid && !isCheckInReleased && (
                             <div className="col-span-full pt-2 border-t border-amber-500/20 text-xs text-amber-300 font-medium flex items-center gap-2">
                               <span>🔒</span>
                               <span>
