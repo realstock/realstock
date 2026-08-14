@@ -1,6 +1,16 @@
 import { prisma } from "@/lib/prisma";
 
-export const AUTO_MESSAGE_EVENTS: Record<string, { title: string; description: string; defaultText: string }> = {
+export const TRIGGER_MOMENT_OPTIONS = [
+  { value: "ON_RESERVATION_REQUEST", label: "1. Na hora do pedido de reserva" },
+  { value: "ON_HOST_ACCEPT", label: "2. Quando o anfitrião aceitar a reserva" },
+  { value: "ON_DEPOSIT_PAID", label: "3. Após a confirmação do sinal" },
+  { value: "ON_CHECKIN_RELEASED", label: "4. Ao liberar o check-in (Quitação total)" },
+  { value: "ON_CHECKIN_DAY", label: "5. No dia do check-in" },
+  { value: "ON_CHECKOUT_DAY", label: "6. No dia do check-out" },
+  { value: "MANUAL_ONLY", label: "⚡ Apenas Resposta Rápida (Envio Manual no Chat)" },
+];
+
+export const AUTO_MESSAGE_EVENTS: Record<string, { title: string; description: string; defaultText: string; isCustom?: boolean }> = {
   ON_RESERVATION_REQUEST: {
     title: "1. Na Hora do Pedido da Reserva",
     description: "Enviado automaticamente assim que o hóspede enviar um pedido de reserva no site.",
@@ -30,11 +40,36 @@ export const AUTO_MESSAGE_EVENTS: Record<string, { title: string; description: s
     title: "6. No Dia do Check-out",
     description: "Lembrete de encerramento enviado no dia da saída do hóspede.",
     defaultText: "Olá {hospede}! Lembrando que hoje é o dia do seu check-out até às {horario_checkout} no imóvel {imovel}. Agradecemos imensamente a sua preferência!"
+  },
+  // 4 MENSAGENS PERSONALIZADAS EXTRAS DO ANFITRIÃO
+  CUSTOM_1: {
+    title: "7. Mensagem Adicional #1 (Personalizada)",
+    description: "Mensagem extra customizável enviada no momento escolhido pelo anfitrião.",
+    defaultText: "Olá {hospede}! Aqui estão informações adicionais sobre a sua estadia no imóvel {imovel}. Se precisar de algo, estou à disposição!",
+    isCustom: true
+  },
+  CUSTOM_2: {
+    title: "8. Mensagem Adicional #2 (Personalizada)",
+    description: "Mensagem extra customizável enviada no momento escolhido pelo anfitrião.",
+    defaultText: "Olá {hospede}! Lembre-se de conferir as regras da casa e dicas de restaurantes perto do imóvel {imovel}.",
+    isCustom: true
+  },
+  CUSTOM_3: {
+    title: "9. Mensagem Adicional #3 (Personalizada)",
+    description: "Mensagem extra customizável enviada no momento escolhido pelo anfitrião.",
+    defaultText: "Olá {hospede}! Seguem informações sobre estacionamento e acesso ao imóvel {imovel}.",
+    isCustom: true
+  },
+  CUSTOM_4: {
+    title: "10. Mensagem Adicional #4 (Personalizada)",
+    description: "Mensagem extra customizável enviada no momento escolhido pelo anfitrião.",
+    defaultText: "Olá {hospede}! Esperamos que esteja aproveitando sua estadia no imóvel {imovel}! Qualquer dúvida, pode nos mandar mensagem.",
+    isCustom: true
   }
 };
 
 /**
- * Triggers an automatic message for a specific reservation event
+ * Triggers automatic messages for a specific reservation event
  */
 export async function triggerAutoMessage(eventKey: string, offerId: number) {
   try {
@@ -56,29 +91,47 @@ export async function triggerAutoMessage(eventKey: string, offerId: number) {
 
     const hostId = offer.property.ownerId;
 
-    // Check host's AutoMessageSetting in DB
-    const setting = await prisma.autoMessageSetting.findUnique({
-      where: {
-        userId_event: {
-          userId: hostId,
-          event: eventKey
+    // Fetch ALL host settings from DB
+    const dbSettings = await prisma.autoMessageSetting.findMany({
+      where: { userId: hostId }
+    });
+
+    const settingsMap = new Map(dbSettings.map(s => [s.event, s]));
+
+    // Determine matching messages to send for this eventKey:
+    // 1) Standard message matching eventKey directly
+    // 2) Any custom message (CUSTOM_1..4) configured with targetEvent === eventKey
+    const messagesToSend: Array<{ key: string; text: string }> = [];
+
+    // Check standard setting
+    const stdSetting = settingsMap.get(eventKey);
+    const stdMeta = AUTO_MESSAGE_EVENTS[eventKey];
+
+    if (stdMeta && (!stdSetting || stdSetting.isEnabled)) {
+      const text = stdSetting?.messageText || stdMeta.defaultText;
+      if (text && text.trim()) {
+        messagesToSend.push({ key: eventKey, text });
+      }
+    }
+
+    // Check custom settings
+    ["CUSTOM_1", "CUSTOM_2", "CUSTOM_3", "CUSTOM_4"].forEach((customKey) => {
+      const customSetting = settingsMap.get(customKey);
+      const customMeta = AUTO_MESSAGE_EVENTS[customKey];
+      if (customSetting && customSetting.isEnabled) {
+        const activeTarget = customSetting.targetEvent || customKey;
+        if (activeTarget === eventKey) {
+          const text = customSetting.messageText || customMeta?.defaultText;
+          if (text && text.trim()) {
+            messagesToSend.push({ key: customKey, text });
+          }
         }
       }
     });
 
-    const eventInfo = AUTO_MESSAGE_EVENTS[eventKey];
-    if (!eventInfo) return;
+    if (messagesToSend.length === 0) return;
 
-    // If setting exists and is explicitly disabled, do not send
-    if (setting && !setting.isEnabled) {
-      return;
-    }
-
-    // Determine template text
-    const templateText = setting?.messageText || eventInfo.defaultText;
-    if (!templateText || !templateText.trim()) return;
-
-    // Format address
+    // Format common placeholders
     const fullAddress = [
       offer.property.street ? `${offer.property.street}, ${offer.property.addressNumber || "s/n"}` : null,
       offer.property.neighborhood,
@@ -86,7 +139,6 @@ export async function triggerAutoMessage(eventKey: string, offerId: number) {
       offer.property.zipCode ? `CEP: ${offer.property.zipCode}` : null,
     ].filter(Boolean).join(" • ") || offer.property.city;
 
-    // Format values and placeholders
     const formattedDeposit = offer.depositAmount
       ? Number(offer.depositAmount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })
       : "0,00";
@@ -94,17 +146,6 @@ export async function triggerAutoMessage(eventKey: string, offerId: number) {
     const formattedStartDate = offer.startDate
       ? new Date(offer.startDate).toLocaleDateString("pt-BR")
       : "Data a definir";
-
-    const formattedMessage = templateText
-      .replaceAll("{hospede}", offer.buyer?.name || "Hóspede")
-      .replaceAll("{imovel}", offer.property.title || "Imóvel")
-      .replaceAll("{valor_sinal}", formattedDeposit)
-      .replaceAll("{chave_pix}", offer.property.pixKey || "Consulte o anfitrião")
-      .replaceAll("{data_checkin}", formattedStartDate)
-      .replaceAll("{horario_checkin}", offer.property.checkInTime || "14:00")
-      .replaceAll("{horario_checkout}", offer.property.checkOutTime || "12:00")
-      .replaceAll("{endereco}", fullAddress)
-      .replaceAll("{wifi_senha}", offer.property.checkInInstructions || "Chave e instruções na recepção.");
 
     // Find or create Conversation
     let conversation = await prisma.conversation.findUnique({
@@ -123,29 +164,48 @@ export async function triggerAutoMessage(eventKey: string, offerId: number) {
           propertyId: offer.propertyId,
           buyerId: offer.buyerId,
           sellerId: hostId,
-          lastMessage: formattedMessage,
+          lastMessage: "",
         }
       });
-    } else {
+    }
+
+    let lastSentMessage = "";
+
+    // Process each message
+    for (const msgItem of messagesToSend) {
+      const formattedMessage = msgItem.text
+        .replaceAll("{hospede}", offer.buyer?.name || "Hóspede")
+        .replaceAll("{imovel}", offer.property.title || "Imóvel")
+        .replaceAll("{valor_sinal}", formattedDeposit)
+        .replaceAll("{chave_pix}", offer.property.pixKey || "Consulte o anfitrião")
+        .replaceAll("{data_checkin}", formattedStartDate)
+        .replaceAll("{horario_checkin}", offer.property.checkInTime || "14:00")
+        .replaceAll("{horario_checkout}", offer.property.checkOutTime || "12:00")
+        .replaceAll("{endereco}", fullAddress)
+        .replaceAll("{wifi_senha}", offer.property.checkInInstructions || "Chave e instruções na recepção.");
+
+      await prisma.chatMessage.create({
+        data: {
+          conversationId: conversation.id,
+          senderId: hostId,
+          text: formattedMessage,
+        }
+      });
+
+      lastSentMessage = formattedMessage;
+      console.log(`[AUTO-MESSAGE] Sent ${msgItem.key} for offer #${offerId} in conv #${conversation.id}`);
+    }
+
+    if (lastSentMessage) {
       await prisma.conversation.update({
         where: { id: conversation.id },
         data: {
-          lastMessage: formattedMessage,
+          lastMessage: lastSentMessage,
           updatedAt: new Date(),
         }
       });
     }
 
-    // Insert ChatMessage from host
-    await prisma.chatMessage.create({
-      data: {
-        conversationId: conversation.id,
-        senderId: hostId,
-        text: formattedMessage,
-      }
-    });
-
-    console.log(`[AUTO-MESSAGE] Sent event ${eventKey} for offer #${offerId} in conv #${conversation.id}`);
   } catch (err) {
     console.error(`[AUTO-MESSAGE ERROR] Failed event ${eventKey} for offer #${offerId}:`, err);
   }

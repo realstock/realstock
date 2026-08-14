@@ -1,13 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bot, Check, X, Loader2, Sparkles, RotateCcw, Info } from "lucide-react";
+import { Bot, Check, X, Loader2, Sparkles, RotateCcw, Info, PlusCircle, Clock, Edit3 } from "lucide-react";
+import { TRIGGER_MOMENT_OPTIONS } from "@/lib/auto-messages";
 
 type AutoSetting = {
   event: string;
   title: string;
+  customTitle?: string;
   description: string;
   defaultText: string;
+  isCustom?: boolean;
+  targetEvent?: string;
   isEnabled: boolean;
   messageText: string;
 };
@@ -104,6 +108,22 @@ export default function AutoMessagesModal({
     );
   }
 
+  function handleTitleChange(eventKey: string, title: string) {
+    setSettings((prev) =>
+      prev.map((item) =>
+        item.event === eventKey ? { ...item, customTitle: title, title: title || item.title } : item
+      )
+    );
+  }
+
+  function handleTargetEventChange(eventKey: string, targetEvent: string) {
+    setSettings((prev) =>
+      prev.map((item) =>
+        item.event === eventKey ? { ...item, targetEvent } : item
+      )
+    );
+  }
+
   function handleInsertVariable(eventKey: string, variableTag: string) {
     setSettings((prev) =>
       prev.map((item) =>
@@ -123,6 +143,9 @@ export default function AutoMessagesModal({
   }
 
   if (!isOpen) return null;
+
+  const standardSettings = settings.filter((s) => !s.isCustom);
+  const customSettings = settings.filter((s) => s.isCustom);
 
   return (
     <div
@@ -148,11 +171,11 @@ export default function AutoMessagesModal({
           <div className="flex items-center gap-2.5 text-emerald-400 mb-1">
             <Bot size={22} />
             <h2 className="text-lg font-black text-white uppercase tracking-wider">
-              Configuração de Mensagens Automáticas
+              Configuração de Mensagens Automáticas (6 Padrões + 4 Personalizadas)
             </h2>
           </div>
           <p className="text-xs text-slate-300">
-            Defina o texto e os momentos em que as mensagens automáticas do anfitrião serão enviadas aos seus hóspedes no chat.
+            Defina o texto, os momentos de envio e crie até 4 mensagens adicionais personalizadas para seus hóspedes.
           </p>
         </div>
 
@@ -163,7 +186,7 @@ export default function AutoMessagesModal({
             <span className="text-xs font-bold">Carregando suas mensagens automáticas...</span>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+          <div className="flex-1 overflow-y-auto pr-1 space-y-6">
             {errorMsg && (
               <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-300">
                 {errorMsg}
@@ -198,9 +221,14 @@ export default function AutoMessagesModal({
               </div>
             </div>
 
-            {/* MOMENTS LIST */}
+            {/* SECTION 1: MENSAGENS PADRÃO DO SISTEMA (1 a 6) */}
             <div className="space-y-4">
-              {settings.map((item) => (
+              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-400 border-b border-white/10 pb-2">
+                <Sparkles size={16} />
+                <span>Mensagens Principais do Fluxo (1 a 6)</span>
+              </div>
+
+              {standardSettings.map((item) => (
                 <div
                   key={item.event}
                   className={`rounded-2xl border p-4 transition-all ${
@@ -270,6 +298,128 @@ export default function AutoMessagesModal({
                         >
                           <RotateCcw size={12} />
                           <span>Restaurar mensagem padrão</span>
+                        </button>
+
+                        <span className="text-slate-500 font-mono text-[10px]">
+                          {item.messageText.length} caracteres
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* SECTION 2: MENSAGENS PERSONALIZADAS EXTRAS (7 a 10) */}
+            <div className="space-y-4 pt-4 border-t border-white/10">
+              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-400">
+                  <PlusCircle size={16} />
+                  <span>Mensagens Adicionais Personalizadas (+4 Vagas)</span>
+                </div>
+                <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                  4 Vagas Disponíveis
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Crie até 4 mensagens extras personalizadas (ex: Regras da Casa, Dicas da Cidade, Estacionamento) e escolha o momento exato em que devem ser enviadas!
+              </p>
+
+              {customSettings.map((item, idx) => (
+                <div
+                  key={item.event}
+                  className={`rounded-2xl border p-4 transition-all ${
+                    item.isEnabled
+                      ? "border-amber-500/40 bg-amber-950/20"
+                      : "border-white/10 bg-slate-950/30 opacity-70"
+                  }`}
+                >
+                  {/* Custom Title & Trigger Moment */}
+                  <div className="space-y-3 border-b border-white/10 pb-3 mb-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1 flex items-center gap-2">
+                        <Edit3 size={14} className="text-amber-400 shrink-0" />
+                        <input
+                          type="text"
+                          value={item.customTitle || item.title}
+                          onChange={(e) => handleTitleChange(item.event, e.target.value)}
+                          placeholder={`Mensagem Personalizada #${idx + 1}`}
+                          className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-1.5 text-xs font-bold text-amber-300 focus:border-amber-400 focus:outline-none"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggle(item.event)}
+                        className={`shrink-0 rounded-xl px-3.5 py-1.5 text-xs font-black transition cursor-pointer border ${
+                          item.isEnabled
+                            ? "bg-amber-400 border-amber-300 text-slate-950 shadow-md shadow-amber-400/20"
+                            : "bg-slate-800 border-white/10 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        {item.isEnabled ? "Ativado ✅" : "Desativado ⏸️"}
+                      </button>
+                    </div>
+
+                    {item.isEnabled && (
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 bg-slate-900/90 p-2.5 rounded-xl border border-white/5 text-xs">
+                        <span className="font-bold text-slate-300 flex items-center gap-1.5 shrink-0">
+                          <Clock size={14} className="text-amber-400" />
+                          <span>Momento do Disparo:</span>
+                        </span>
+                        <select
+                          value={item.targetEvent || "MANUAL_ONLY"}
+                          onChange={(e) => handleTargetEventChange(item.event, e.target.value)}
+                          className="flex-1 rounded-lg bg-slate-950 border border-amber-500/30 px-3 py-1.5 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none"
+                        >
+                          {TRIGGER_MOMENT_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Item Text & Controls */}
+                  {item.isEnabled && (
+                    <div className="space-y-2.5">
+                      {/* Variable Insertion Pills */}
+                      <div className="flex flex-wrap items-center gap-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">
+                          Inserir:
+                        </span>
+                        {VARIABLE_PILLS.map((pill) => (
+                          <button
+                            key={pill.tag}
+                            type="button"
+                            onClick={() => handleInsertVariable(item.event, pill.tag)}
+                            className="rounded-md bg-white/5 hover:bg-amber-500/20 border border-white/10 hover:border-amber-500/40 px-2 py-0.5 text-[10px] font-mono text-amber-300 transition cursor-pointer"
+                            title={`Inserir ${pill.label}`}
+                          >
+                            + {pill.tag}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Textarea */}
+                      <textarea
+                        rows={3}
+                        value={item.messageText}
+                        onChange={(e) => handleTextChange(item.event, e.target.value)}
+                        placeholder="Digite o conteúdo da sua mensagem personalizada..."
+                        className="w-full rounded-xl bg-slate-900 border border-white/10 p-3 text-xs text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none leading-relaxed"
+                      />
+
+                      <div className="flex items-center justify-between text-[11px]">
+                        <button
+                          type="button"
+                          onClick={() => handleResetDefault(item.event)}
+                          className="text-slate-400 hover:text-amber-300 transition flex items-center gap-1"
+                        >
+                          <RotateCcw size={12} />
+                          <span>Restaurar texto inicial</span>
                         </button>
 
                         <span className="text-slate-500 font-mono text-[10px]">

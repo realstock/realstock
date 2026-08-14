@@ -453,7 +453,9 @@ model AutoMessageSetting {
   id          Int      @id @default(autoincrement())
   userId      Int      @map("user_id")
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event       String   @map("event") // "ON_RESERVATION_REQUEST", "ON_HOST_ACCEPT", "ON_DEPOSIT_PAID", "ON_CHECKIN_RELEASED", "ON_CHECKIN_DAY", "ON_CHECKOUT_DAY"
+  event       String   @map("event") // "ON_RESERVATION_REQUEST", "ON_HOST_ACCEPT", etc. or "CUSTOM_1", "CUSTOM_2", "CUSTOM_3", "CUSTOM_4"
+  customTitle String?  @map("custom_title")
+  targetEvent String?  @map("target_event")
   isEnabled   Boolean  @default(true) @map("is_enabled")
   messageText String   @map("message_text") @db.Text
   createdAt   DateTime @default(now()) @map("created_at")
