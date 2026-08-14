@@ -653,7 +653,7 @@ export default function MinhasReservasPage() {
 
   function getStepPhase(offer: OfferItem): number {
     const s = String(offer.status).toUpperCase();
-    if (s === "RESERVA_CONFIRMADA" || s === "ACCEPTED" || s === "MATCHED") return 4;
+    if (s === "RESERVA_CONFIRMADA" || s === "ACCEPTED" || s === "MATCHED" || offer.pixValidation?.allPassed) return 5;
     if (offer.pixReceiptUrl) return 3;
     if (s === "ACCEPTED_WAITING_PAYMENT") return 2;
     if (s === "PENDING_HOST_APPROVAL" || s === "OPEN") return 1;
@@ -826,7 +826,25 @@ export default function MinhasReservasPage() {
                   >
                     {/* CARD MINI STEPPER PROGRESS ARROW BAR */}
                     {!isCancelled && !isRejected && (
-                      <div className="mb-5 border-b border-white/5 pb-4">
+                      <div className="mb-5 border-b border-white/5 pb-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                            <span>{currentPhase >= 5 ? "🎉" : currentSteps[Math.min(currentPhase - 1, 3)]?.icon}</span>
+                            <span>
+                              {currentPhase >= 5
+                                ? "Reserva Confirmada (4 de 4 Etapas Concluídas)"
+                                : `Etapa ${currentPhase} de 4: ${currentSteps[currentPhase - 1]?.title}`}
+                            </span>
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                            currentPhase >= 5
+                              ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-300"
+                              : "bg-amber-500/20 border-amber-500/30 text-amber-300"
+                          }`}>
+                            {currentPhase >= 5 ? "4/4 Concluído" : `${currentPhase - 1}/4 Concluído`}
+                          </span>
+                        </div>
+
                         <div className="flex items-center justify-between gap-1">
                           {currentSteps.map((st) => {
                             const isDone = currentPhase > st.num;
@@ -838,17 +856,17 @@ export default function MinhasReservasPage() {
                                     className={`h-1 flex-1 rounded-l ${
                                       st.num === 1
                                         ? "bg-transparent"
-                                        : isDone || isCurrent
+                                        : isDone || (isCurrent && currentPhase >= 5)
                                         ? "bg-emerald-500"
                                         : "bg-slate-800"
                                     }`}
                                   />
                                   <div
                                     className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-black border transition-all ${
-                                      isCurrent
+                                      isDone || (isCurrent && currentPhase >= 5)
+                                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold"
+                                        : isCurrent
                                         ? "bg-emerald-500 text-slate-950 border-emerald-400 ring-4 ring-emerald-500/20 font-bold scale-110"
-                                        : isDone
-                                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
                                         : "bg-slate-800 text-slate-500 border-white/10"
                                     }`}
                                   >
@@ -873,7 +891,7 @@ export default function MinhasReservasPage() {
                                       : "text-slate-500"
                                   }`}
                                 >
-                                  {st.title.split(". ")[1]}
+                                  {st.title}
                                 </span>
                               </div>
                             );
