@@ -412,7 +412,7 @@ function RatingStars({
       }
       setSelectedRating(starValue);
       onRatingSaved(starValue);
-      setFeedbackMsg(`⭐ Nota ${starValue}/10 salva!`);
+      setFeedbackMsg(`⭐ Nota ${starValue}/5 salva!`);
       setTimeout(() => setFeedbackMsg(""), 3000);
     } catch (err: any) {
       alert(err.message || "Erro ao salvar avaliação.");
@@ -424,9 +424,9 @@ function RatingStars({
   const activeStars = hoverRating !== null ? hoverRating : (selectedRating || 0);
 
   return (
-    <div className="inline-flex flex-col sm:flex-row items-start sm:items-center gap-1.5 sm:gap-2.5 bg-slate-950/80 border border-white/10 rounded-2xl px-3 py-1.5 shadow-inner">
-      <div className="flex items-center gap-0.5 sm:gap-1">
-        {Array.from({ length: 10 }, (_, i) => i + 1).map((starNum) => {
+    <div className="inline-flex items-center gap-2 bg-slate-950/80 border border-white/10 rounded-2xl px-3 py-1.5 shadow-inner">
+      <div className="flex items-center gap-1">
+        {Array.from({ length: 5 }, (_, i) => i + 1).map((starNum) => {
           const isFilled = starNum <= activeStars;
           return (
             <button
@@ -443,12 +443,12 @@ function RatingStars({
               }`}
               title={
                 isUnlocked
-                  ? `Dar nota ${starNum} de 10`
+                  ? `Dar nota ${starNum} de 5 estrelas`
                   : `Avaliação liberada a partir do check-in (${checkInDate ? checkInDate.toLocaleDateString("pt-BR") : ""})`
               }
             >
               <Star
-                size={16}
+                size={20}
                 className={`transition-colors ${
                   isFilled
                     ? "text-amber-400 fill-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)]"
@@ -463,8 +463,8 @@ function RatingStars({
       </div>
 
       {isUnlocked ? (
-        <span className="text-[11px] font-extrabold text-amber-400 shrink-0">
-          {feedbackMsg || (activeStars > 0 ? `${activeStars}/10 ⭐` : "Avaliar (1-10)")}
+        <span className="text-xs font-extrabold text-amber-400 shrink-0">
+          {feedbackMsg || (activeStars > 0 ? `${activeStars}/5 ⭐` : "Avaliar (1-5 estrelas)")}
         </span>
       ) : (
         <span className="text-[10px] font-bold text-amber-300/80 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full shrink-0">
@@ -1204,6 +1204,31 @@ export default function MinhasReservasPage() {
             <strong>Hóspedes:</strong> {offer.guests || 1} pessoa{(offer.guests || 1) > 1 ? "s" : ""}
           </div>
         </div>
+
+        {/* EVALUATION / RATING STARS PANEL */}
+        {(isConfirmed || isCheckInReleased || isAcceptedWaiting) && (
+          <div className="mt-4 border-t border-white/10 pt-3.5 flex flex-wrap items-center justify-between gap-3 bg-slate-950/70 p-3.5 rounded-2xl border border-amber-500/20 shadow-inner">
+            <div className="text-xs text-amber-300 font-bold flex items-center gap-2">
+              <Star size={16} className="text-amber-400 fill-amber-400" />
+              <span>{activeTab === "VIAJANDO" ? "Sua Avaliação da Estadia / Imóvel:" : "Sua Avaliação do Hóspede:"}</span>
+            </div>
+
+            <RatingStars
+              offerId={offer.id}
+              currentRating={activeTab === "VIAJANDO" ? offer.guestRating : offer.hostRating}
+              perspective={activeTab}
+              startDateStr={offer.startDate}
+              onRatingSaved={(newRating) => {
+                if (activeTab === "VIAJANDO") {
+                  offer.guestRating = newRating;
+                } else {
+                  offer.hostRating = newRating;
+                }
+                loadOffers();
+              }}
+            />
+          </div>
+        )}
 
         {/* HOST CONTACT BOX */}
         {activeTab === "VIAJANDO" && (isAcceptedWaiting || isConfirmed) && (

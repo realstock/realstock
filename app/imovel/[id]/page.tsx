@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Globe, CalendarCheck2 } from "lucide-react";
+import { ArrowLeft, Globe, CalendarCheck2, Star } from "lucide-react";
 import OfferBookClient from "@/components/OfferBookClient";
 import AdSenseBanner from "@/components/AdSenseBanner";
 import { fetchICalEvents } from "@/lib/ical-parser";
@@ -220,6 +220,14 @@ export default async function PropertyPage({
     ...property.offers,
     ...parsedICalOffers as any[],
   ];
+
+  const guestRatings = property.offers
+    .map((o) => o.guestRating)
+    .filter((r): r is number => r !== null && r !== undefined && r > 0);
+
+  const avgRating = guestRatings.length > 0
+    ? (guestRatings.reduce((acc, curr) => acc + curr, 0) / guestRatings.length).toFixed(1)
+    : null;
 
   // Fetch social sessions
   const [igSessions, fbSessions, xTransactions, ytSessions] = await Promise.all([
@@ -502,6 +510,22 @@ export default async function PropertyPage({
           <p className="mt-2 text-lg text-slate-400">
             {addressLine || property.city}
           </p>
+
+          {avgRating && (
+            <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-amber-500/10 border border-amber-500/30 px-3.5 py-1.5 text-xs font-bold text-amber-300">
+              <div className="flex items-center gap-0.5">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <Star
+                    key={i}
+                    size={14}
+                    className={i < Math.round(Number(avgRating)) ? "text-amber-400 fill-amber-400" : "text-slate-600"}
+                  />
+                ))}
+              </div>
+              <span>{avgRating} / 5.0</span>
+              <span className="text-slate-400 font-normal">({guestRatings.length} {guestRatings.length === 1 ? "avaliação" : "avaliações"})</span>
+            </div>
+          )}
         </div>
 
         <div className="grid gap-8 lg:grid-cols-[1.35fr_420px]">
