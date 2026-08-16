@@ -186,42 +186,47 @@ export default function FacebookPublisherPage() {
               
               <div className="aspect-square w-full rounded-xl bg-slate-900 border border-white/10 overflow-hidden relative mb-4">
                  {postType === "reels" ? (
-                    property.reelsVideoUrl ? (
-                      <div className="relative w-full h-full">
-                        <video 
-                          ref={videoRef}
-                          key={property.reelsVideoUrl}
-                          className="w-full h-full object-cover" 
-                          autoPlay 
-                          loop 
-                          muted={isMuted}
-                          playsInline 
-                        >
-                          <source src={property.reelsVideoUrl ? `/api/proxy-video?url=${encodeURIComponent(property.reelsVideoUrl)}#t=0.001` : undefined} type={property.reelsVideoUrl.includes('.mp4') ? 'video/mp4' : 'video/webm'} />
-                        </video>
-                        <button 
-                            onClick={() => setIsMuted(!isMuted)}
-                            className="absolute bottom-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md transition hover:bg-black/70"
-                            title={isMuted ? "Ligar som" : "Desligar som"}
-                          >
-                            {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                          </button>
-                      </div>
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-slate-900">
-                         <div className="w-16 h-16 bg-blue-500/20 text-blue-400 rounded-2xl flex items-center justify-center mb-4">
-                            <Video size={32} />
-                         </div>
-                         <h4 className="text-sm font-bold text-white mb-2">Vídeo IA não gerado</h4>
-                         <p className="text-[10px] text-slate-400 mb-6">Gere um vídeo profissional com inteligência artificial para postar no Facebook.</p>
+                     (property.customVideoUrl || property.reelsVideoUrl) ? (
+                       <div className="relative w-full h-full">
+                         {(() => {
+                           const activeVideoUrl = property.customVideoUrl || property.reelsVideoUrl;
+                           return (
+                             <video 
+                               ref={videoRef}
+                               key={activeVideoUrl}
+                               className="w-full h-full object-cover" 
+                               autoPlay 
+                               loop 
+                               muted={isMuted}
+                               playsInline 
+                             >
+                               <source src={activeVideoUrl ? `/api/proxy-video?url=${encodeURIComponent(activeVideoUrl)}#t=0.001` : undefined} type={(activeVideoUrl || '').includes('.mp4') ? 'video/mp4' : 'video/webm'} />
+                             </video>
+                           );
+                         })()}
                          <button 
-                           onClick={() => setIsViralizarOpen(true)}
-                           className="px-6 py-2 bg-blue-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-400 transition-all shadow-lg shadow-blue-500/20"
-                         >
-                           Gerar Vídeo Agora
-                         </button>
-                      </div>
-                    )
+                             onClick={() => setIsMuted(!isMuted)}
+                             className="absolute bottom-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md transition hover:bg-black/70"
+                             title={isMuted ? "Ligar som" : "Desligar som"}
+                           >
+                             {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                           </button>
+                       </div>
+                     ) : (
+                       <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-slate-900">
+                          <div className="w-16 h-16 bg-blue-500/20 text-blue-400 rounded-2xl flex items-center justify-center mb-4">
+                             <Video size={32} />
+                          </div>
+                          <h4 className="text-sm font-bold text-white mb-2">Vídeo IA não gerado</h4>
+                          <p className="text-[10px] text-slate-400 mb-6">Gere um vídeo profissional com inteligência artificial para publicar no Facebook Reels.</p>
+                          <button 
+                            onClick={() => setIsViralizarOpen(true)}
+                            className="px-6 py-2 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20"
+                          >
+                            Gerar Vídeo Agora
+                          </button>
+                       </div>
+                     )
                  ) : (
                    <div className="w-full h-full relative">
                       {property.images?.map((img: any, idx: number) => (
@@ -277,7 +282,7 @@ export default function FacebookPublisherPage() {
                      >
                         <div className="text-xs font-bold text-indigo-400 uppercase">Vídeo IA</div>
                         <div className="text-[10px] text-slate-500">
-                           {!property.reelsVideoUrl ? "Gerar vídeo primeiro" : (publishedSessions.find(s => s.postType === "reels") ? "✅ Publicado" : "Vídeo Dinâmico")}
+                           {!(property.customVideoUrl || property.reelsVideoUrl) ? "Gerar vídeo primeiro" : (publishedSessions.find(s => s.postType === "reels") ? "✅ Publicado" : "Vídeo Dinâmico")}
                         </div>
                      </button>
                   </div>
