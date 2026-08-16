@@ -171,28 +171,33 @@ export default function YouTubePublisherPage({ params }: { params: Promise<{ id:
               <h2 className="text-xl font-semibold mb-4 text-slate-200">Resumo da Publicação</h2>
               
               <div className="aspect-[9/16] w-full max-w-[280px] mx-auto rounded-xl bg-slate-950 border border-white/5 overflow-hidden relative mb-4">
-                 {property.reelsVideoUrl ? (
-                   <div className="relative w-full h-full">
-                     <video 
-                       ref={videoRef}
-                       key={property.reelsVideoUrl}
-                       className="w-full h-full object-cover" 
-                       autoPlay 
-                       loop 
-                       muted={isMuted}
-                       playsInline 
-                     >
-                       <source src={property.reelsVideoUrl ? `/api/proxy-video?url=${encodeURIComponent(property.reelsVideoUrl)}#t=0.001` : undefined} type={property.reelsVideoUrl.includes('.mp4') ? 'video/mp4' : 'video/webm'} />
-                     </video>
-                     <button 
-                         onClick={() => setIsMuted(!isMuted)}
-                         className="absolute bottom-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md transition hover:bg-black/70"
-                         title={isMuted ? "Ligar som" : "Desligar som"}
-                       >
-                         {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                       </button>
-                   </div>
-                 ) : (
+                  {property.customVideoUrl || property.reelsVideoUrl ? (
+                    <div className="relative w-full h-full">
+                      {(() => {
+                        const activeVideoUrl = property.customVideoUrl || property.reelsVideoUrl;
+                        return (
+                          <video 
+                            ref={videoRef}
+                            key={activeVideoUrl}
+                            className="w-full h-full object-cover" 
+                            autoPlay 
+                            loop 
+                            muted={isMuted}
+                            playsInline 
+                          >
+                            <source src={activeVideoUrl ? `/api/proxy-video?url=${encodeURIComponent(activeVideoUrl)}#t=0.001` : undefined} type={activeVideoUrl.includes('.mp4') ? 'video/mp4' : 'video/webm'} />
+                          </video>
+                        );
+                      })()}
+                      <button 
+                          onClick={() => setIsMuted(!isMuted)}
+                          className="absolute bottom-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md transition hover:bg-black/70"
+                          title={isMuted ? "Ligar som" : "Desligar som"}
+                        >
+                          {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                        </button>
+                    </div>
+                  ) : (
                    <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-slate-950">
                       <div className="w-16 h-16 bg-slate-800 text-slate-400 rounded-2xl flex items-center justify-center mb-4">
                          <Video size={32} />

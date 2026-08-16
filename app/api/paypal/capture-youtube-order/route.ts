@@ -8,6 +8,10 @@ import os from "os";
 import { execSync } from "child_process";
 
 async function downloadToTempFile(url: string): Promise<string> {
+  if (url.startsWith("/")) {
+    const localPath = path.join(process.cwd(), "public", url);
+    if (fs.existsSync(localPath)) return localPath;
+  }
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Falha ao baixar arquivo de mídia: ${response.statusText}`);
   const buffer = await response.arrayBuffer();

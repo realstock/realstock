@@ -95,20 +95,31 @@ export async function GET(req: NextRequest) {
 
         const token = tokenData.refresh_token;
 
+        // Salva credenciais do YouTube no banco de dados do usuário autenticado
+        try {
+          const { prisma } = require("@/lib/prisma");
+          await prisma.user.update({
+            where: { email: session.user.email },
+            data: {
+              youtubeRefreshToken: token || undefined,
+              youtubeAccessToken: tokenData.access_token || undefined,
+              youtubeTokenExpiresAt: tokenData.expires_in
+                ? new Date(Date.now() + tokenData.expires_in * 1000)
+                : undefined,
+            },
+          });
+        } catch (dbErr) {
+          console.error("Erro ao salvar tokens do YouTube no banco do usuário:", dbErr);
+        }
+
         if (!token) {
             return new NextResponse(
                 `<html>
                   <body style="font-family: sans-serif; background: #0f172a; color: white; padding: 40px; text-align: center; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #f59e0b;">Aviso</h2>
-                    <p>O Google não retornou o <strong>refresh_token</strong>. Isso acontece porque o canal já estava conectado anteriormente em sua conta.</p>
-                    <p>Para obter o token novamente:</p>
-                    <ol style="text-align: left; line-height: 1.6;">
-                      <li>Acesse a página de permissões da sua <a href="https://myaccount.google.com/permissions" target="_blank" style="color: #3b82f6; text-decoration: underline;">Conta Google</a>.</li>
-                      <li>Remova o acesso do aplicativo <strong>RealStock</strong>.</li>
-                      <li>Clique no link abaixo para tentar conectar novamente.</li>
-                    </ol>
+                    <p>O Google não retornou um novo <strong>refresh_token</strong> porque seu canal já foi conectado anteriormente ao sistema, mas as permissões e o acesso atual foram atualizados para sua conta!</p>
                     <br/>
-                    <a href="/api/auth/youtube" style="background: #3b82f6; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block; margin-top: 10px;">Tentar Conectar Novamente</a>
+                    <a href="/minha-conta/anuncios" style="background: #3b82f6; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">Voltar para Meus Anúncios</a>
                   </body>
                 </html>`,
                 { headers: { "Content-Type": "text/html; charset=UTF-8" } }
@@ -118,16 +129,11 @@ export async function GET(req: NextRequest) {
         return new NextResponse(
             `<html>
               <body style="font-family: sans-serif; background: #0f172a; color: white; padding: 40px; text-align: center; max-width: 600px; margin: 0 auto;">
-                <h1 style="color: #10b981; margin-bottom: 5px;">🎉 Canal Conectado!</h1>
-                <p style="color: #94a3b8; margin-top: 0;">Conexão realizada com sucesso.</p>
-                
-                <p>Copie o token de atualização abaixo e adicione ao seu arquivo <strong>.env</strong>:</p>
-                <div style="background: #1e293b; border: 1px solid #334155; padding: 15px; border-radius: 8px; font-family: monospace; word-break: break-all; margin: 20px 0; font-size: 14px; user-select: all; color: #38bdf8; text-align: left;">
-                  YOUTUBE_REFRESH_TOKEN=${token}
-                </div>
-                <p style="color: #94a3b8; font-size: 12px;">Depois de colar no arquivo <strong>.env</strong>, reinicie o servidor do projeto para aplicar as configurações.</p>
+                <h1 style="color: #10b981; margin-bottom: 5px;">🎉 Canal YouTube Conectado!</h1>
+                <p style="color: #94a3b8; margin-top: 0;">Seu canal foi vinculado com sucesso à sua conta no RealStock.</p>
+                <p style="color: #cbd5e1; font-size: 14px;">Agora você já pode publicar seus vídeos diretamente no YouTube Shorts!</p>
                 <br/>
-                <a href="/minha-conta/anuncios" style="background: #ffffff; color: #0f172a; padding: 12px 24px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block;">Voltar aos Anúncios</a>
+                <a href="/minha-conta/anuncios" style="background: #ffffff; color: #0f172a; padding: 12px 24px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block;">Voltar para Meus Anúncios</a>
               </body>
             </html>`,
             { headers: { "Content-Type": "text/html; charset=UTF-8" } }
