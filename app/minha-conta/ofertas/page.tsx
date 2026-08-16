@@ -1772,14 +1772,23 @@ export default function MinhasReservasPage() {
               </div>
 
               {paypalError && (
-                <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3.5 text-xs text-red-300 space-y-2">
+                <div className={`mt-4 rounded-2xl p-4 text-xs space-y-2 border ${
+                  paypalError.includes("Documento de Identidade")
+                    ? "border-amber-500/40 bg-amber-500/10 text-amber-300 font-medium"
+                    : "border-red-500/20 bg-red-500/10 text-red-300"
+                }`}>
+                  {paypalError.includes("Documento de Identidade") && (
+                    <div className="font-bold text-sm flex items-center gap-1.5">
+                      <span>📄</span> Documento de Identidade (PDF) Obrigatório
+                    </div>
+                  )}
                   <p>{paypalError}</p>
                   {paypalError.includes("Documento de Identidade") && (
                     <a
                       href="/minha-conta/perfil"
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-block rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-black text-slate-950 hover:bg-amber-300 transition"
+                      className="inline-block rounded-xl bg-amber-400 px-4 py-2 text-xs font-black text-slate-950 hover:bg-amber-300 transition shadow-md"
                     >
                       Ir para Meu Cadastro e Carregar PDF →
                     </a>
