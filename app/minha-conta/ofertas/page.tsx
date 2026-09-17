@@ -206,6 +206,72 @@ const HOST_STEPS = [
   }
 ];
 
+const BUYER_STEPS = [
+  {
+    num: 1,
+    title: "1. Oferta Enviada",
+    desc: "Sua proposta de compra foi enviada. O proprietário tem 24h para analisar.",
+    icon: "📩"
+  },
+  {
+    num: 2,
+    title: "2. Oferta Aceita",
+    desc: "Proprietário aceitou! Dados de contato liberados para negociação direta.",
+    icon: "🤝"
+  },
+  {
+    num: 3,
+    title: "3. Negociação Direta",
+    desc: "Entre em contato via WhatsApp/Telefone para alinhar detalhes de pagamento e documentação.",
+    icon: "💬"
+  },
+  {
+    num: 4,
+    title: "4. Contrato e Sinal",
+    desc: "Elaboração do contrato de compra e venda e transferência do sinal.",
+    icon: "📄"
+  },
+  {
+    num: 5,
+    title: "5. Compra Concluída!",
+    desc: "Transação realizada com sucesso! Escritura e posse do imóvel finalizadas.",
+    icon: "🎉"
+  }
+];
+
+const SELLER_STEPS = [
+  {
+    num: 1,
+    title: "1. Oferta Recebida",
+    desc: "Você recebeu uma proposta de compra. Aceite e pague a taxa de 1% (PayPal) para liberar os contatos.",
+    icon: "📬"
+  },
+  {
+    num: 2,
+    title: "2. Contatos Liberados",
+    desc: "Oferta aceita! Dados do comprador liberados para iniciar a negociação direta.",
+    icon: "📱"
+  },
+  {
+    num: 3,
+    title: "3. Negociação em Andamento",
+    desc: "Combine valores, financiamento ou sinal diretamente com o comprador.",
+    icon: "💬"
+  },
+  {
+    num: 4,
+    title: "4. Contrato e Sinal",
+    desc: "Formalização do contrato de compra e venda e recebimento do sinal acordado.",
+    icon: "📑"
+  },
+  {
+    num: 5,
+    title: "5. Venda Concluída!",
+    desc: "Transferência da escritura finalizada. Imóvel vendido com sucesso!",
+    icon: "🔑"
+  }
+];
+
 const CHECK_FAILURE_HINTS: Record<string, string> = {
   recipientData: "O comprovante não mostra claramente o nome e o banco do destinatário. Certifique-se de enviar o comprovante completo, não apenas o recibo de confirmação de envio.",
   payerData: "O nome ou CPF/CNPJ de quem realizou a transferência não está visível. Envie o comprovante original gerado pelo seu banco.",
@@ -985,8 +1051,12 @@ export default function MinhasReservasPage() {
   if (loading) {
     return (
       <LoadingScreen
-        title="Minhas Reservas"
-        subtitle="Sincronizando seus pedidos de reserva e estadias..."
+        title={isSeasonal ? "Minhas Reservas" : "Minhas Ofertas"}
+        subtitle={
+          isSeasonal
+            ? "Sincronizando seus pedidos de reserva e estadias..."
+            : "Sincronizando suas propostas e ofertas de compra..."
+        }
       />
     );
   }
@@ -1004,7 +1074,9 @@ export default function MinhasReservasPage() {
   );
 
   const allOffersForTab = activeTab === "VIAJANDO" ? filteredGuestOffers : filteredHostOffers;
-  const currentSteps = activeTab === "VIAJANDO" ? GUEST_STEPS : HOST_STEPS;
+  const currentSteps = isSeasonal
+    ? (activeTab === "VIAJANDO" ? GUEST_STEPS : HOST_STEPS)
+    : (activeTab === "VIAJANDO" ? BUYER_STEPS : SELLER_STEPS);
 
   // Categorization helpers
   function isPastReservation(offer: OfferItem): boolean {
@@ -1663,10 +1735,12 @@ export default function MinhasReservasPage() {
 
           <div className="mb-6">
             <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white">
-              Minhas Reservas
+              {isSeasonal ? "Minhas Reservas" : "Minhas Ofertas"}
             </h1>
             <p className="text-sm text-slate-400 mt-1">
-              Gerencie suas estadias como hóspede viajante ou como anfitrião dos seus imóveis.
+              {isSeasonal
+                ? "Gerencie suas estadias como hóspede viajante ou como anfitrião dos seus imóveis."
+                : "Gerencie suas propostas de compra enviadas e ofertas recebidas nos seus imóveis."}
             </p>
           </div>
 
@@ -1680,8 +1754,8 @@ export default function MinhasReservasPage() {
                   : "text-slate-400 hover:text-white hover:bg-white/5"
               }`}
             >
-              <span className="text-base">🧳</span>
-              <span>Estou Viajando</span>
+              <span className="text-base">{isSeasonal ? "🧳" : "🏷️"}</span>
+              <span>{isSeasonal ? "Estou Viajando" : "Ofertas Enviadas"}</span>
               {filteredGuestOffers.length > 0 && (
                 <span className="ml-1 rounded-full bg-emerald-400/20 text-emerald-300 text-[10px] px-2 py-0.5 font-bold border border-emerald-400/30">
                   {filteredGuestOffers.length}
@@ -1697,8 +1771,8 @@ export default function MinhasReservasPage() {
                   : "text-slate-400 hover:text-white hover:bg-white/5"
               }`}
             >
-              <span className="text-base">🏠</span>
-              <span>Estou Hospedando</span>
+              <span className="text-base">{isSeasonal ? "🏠" : "💼"}</span>
+              <span>{isSeasonal ? "Estou Hospedando" : "Ofertas Recebidas"}</span>
               {filteredHostOffers.length > 0 && (
                 <span className="ml-1 rounded-full bg-sky-400/20 text-sky-300 text-[10px] px-2 py-0.5 font-bold border border-sky-400/30">
                   {filteredHostOffers.length}
@@ -1712,9 +1786,11 @@ export default function MinhasReservasPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5 border-b border-white/5 pb-3">
               <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-400">
                 <Sparkles size={16} />
-                <span>Fases para Conclusão da Reserva</span>
+                <span>{isSeasonal ? "Fases para Conclusão da Reserva" : "Fases para Conclusão da Oferta"}</span>
               </div>
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Fluxo em 5 Etapas</span>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                {isSeasonal ? "Fluxo em 5 Etapas (Temporada)" : "Fluxo em 5 Etapas (Compra e Venda)"}
+              </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2.5">
@@ -1749,31 +1825,39 @@ export default function MinhasReservasPage() {
             </div>
           )}
 
-          {/* RESERVATIONS LIST GROUPED */}
+          {/* RESERVATIONS / OFFERS LIST GROUPED */}
           {activeOffersList.length === 0 ? (
             <div className="rounded-3xl border border-white/10 bg-white/5 p-12 text-center text-slate-400 backdrop-blur-md">
-              <div className="text-4xl mb-3">{activeTab === "VIAJANDO" ? "🧳" : "🏠"}</div>
+              <div className="text-4xl mb-3">
+                {activeTab === "VIAJANDO" ? (isSeasonal ? "🧳" : "🏷️") : (isSeasonal ? "🏠" : "💼")}
+              </div>
               <h3 className="text-lg font-bold text-white mb-1">
-                {activeTab === "VIAJANDO" ? "Nenhuma reserva ativa como viajante." : "Nenhum pedido de reserva ativo para seus imóveis."}
+                {activeTab === "VIAJANDO"
+                  ? (isSeasonal ? "Nenhuma reserva ativa como viajante." : "Nenhuma oferta de compra enviada.")
+                  : (isSeasonal ? "Nenhum pedido de reserva ativo para seus imóveis." : "Nenhuma proposta de compra recebida para seus imóveis.")}
               </h3>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
                 {activeTab === "VIAJANDO"
-                  ? "Explore nossos anúncios no mapa da página principal e faça seu primeiro pedido de reserva!"
-                  : "Quando hóspedes enviarem pedidos para seus imóveis cadastrados, eles aparecerão aqui."}
+                  ? (isSeasonal
+                      ? "Explore nossos anúncios no mapa da página principal e faça seu primeiro pedido de reserva!"
+                      : "Navegue pelos imóveis à venda na página principal e faça sua primeira proposta de compra!")
+                  : (isSeasonal
+                      ? "Quando hóspedes enviarem pedidos para seus imóveis cadastrados, eles aparecerão aqui."
+                      : "Quando investidores enviarem propostas para seus imóveis à venda, elas aparecerão aqui.")}
               </p>
             </div>
           ) : (
             <div className="space-y-8">
-              {/* GROUP 1: PENDING CONFIRMATION (STAYS ABOVE ALL OTHERS) */}
+              {/* GROUP 1: PENDING CONFIRMATION */}
               {pendingConfirmationOffers.length > 0 && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between border-b border-amber-500/30 pb-2">
                     <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-400">
                       <Clock size={16} />
-                      <span>⏳ Em Processo de Confirmação ({pendingConfirmationOffers.length})</span>
+                      <span>⏳ {isSeasonal ? "Em Processo de Confirmação" : "Em Análise de Proposta"} ({pendingConfirmationOffers.length})</span>
                     </div>
                     <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2.5 py-0.5 rounded-full">
-                      Topo das Reservas · Aguardando Sinal
+                      {isSeasonal ? "Topo das Reservas · Aguardando Sinal" : "Topo das Ofertas · Em Negociação"}
                     </span>
                   </div>
                   <div className="space-y-5">
@@ -1782,16 +1866,20 @@ export default function MinhasReservasPage() {
                 </div>
               )}
 
-              {/* GROUP 2: CONFIRMED RESERVATIONS (SORTED BY CHECK-IN DATE ASCENDING - CLOSEST FIRST) */}
+              {/* GROUP 2: CONFIRMED RESERVATIONS / DEALS */}
               {confirmedOffers.length > 0 && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between border-b border-emerald-500/30 pb-2">
                     <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-400">
                       <Sparkles size={16} />
-                      <span>📅 Reservas Confirmadas (Ordem por Proximidade do Check-in) ({confirmedOffers.length})</span>
+                      <span>
+                        {isSeasonal
+                          ? `📅 Reservas Confirmadas (Ordem por Proximidade do Check-in) (${confirmedOffers.length})`
+                          : `🤝 Ofertas Aceitas & Negociações em Andamento (${confirmedOffers.length})`}
+                      </span>
                     </div>
                     <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
-                      Check-in Mais Próximo Primeiro
+                      {isSeasonal ? "Check-in Mais Próximo Primeiro" : "Contatos Liberados"}
                     </span>
                   </div>
                   <div className="space-y-5">
@@ -1802,7 +1890,7 @@ export default function MinhasReservasPage() {
             </div>
           )}
 
-          {/* FOOTER LINK FOR ARCHIVED / PAST RESERVATIONS */}
+          {/* FOOTER LINK FOR ARCHIVED / PAST RESERVATIONS OR OFFERS */}
           <div className="mt-14 pt-8 border-t border-white/10 flex flex-col items-center justify-center space-y-6">
             <button
               type="button"
@@ -1812,8 +1900,10 @@ export default function MinhasReservasPage() {
               <Archive size={16} className="text-emerald-400" />
               <span>
                 {showArchived
-                  ? "Ocultar Reservas Arquivadas"
-                  : `📦 Ver Reservas Arquivadas / Concluídas (${archivedOffers.length})`}
+                  ? (isSeasonal ? "Ocultar Reservas Arquivadas" : "Ocultar Ofertas Arquivadas")
+                  : (isSeasonal
+                      ? `📦 Ver Reservas Arquivadas / Concluídas (${archivedOffers.length})`
+                      : `📦 Ver Ofertas Arquivadas / Recusadas (${archivedOffers.length})`)}
               </span>
             </button>
 
@@ -1822,14 +1912,20 @@ export default function MinhasReservasPage() {
                 <div className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center justify-between border-b border-white/10 pb-3">
                   <div className="flex items-center gap-2">
                     <Archive size={16} className="text-emerald-400" />
-                    <span>Histórico de Reservas Concluídas e Arquivadas ({archivedOffers.length})</span>
+                    <span>
+                      {isSeasonal
+                        ? `Histórico de Reservas Concluídas e Arquivadas (${archivedOffers.length})`
+                        : `Histórico de Ofertas Concluídas / Recusadas (${archivedOffers.length})`}
+                    </span>
                   </div>
-                  <span className="text-[10px] text-slate-500 font-bold">Check-out Finalizado ou Canceladas</span>
+                  <span className="text-[10px] text-slate-500 font-bold">
+                    {isSeasonal ? "Check-out Finalizado ou Canceladas" : "Negociações Encerradas ou Recusadas"}
+                  </span>
                 </div>
 
                 {archivedOffers.length === 0 ? (
                   <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-8 text-center text-xs text-slate-500">
-                    Nenhuma reserva arquivada até o momento.
+                    {isSeasonal ? "Nenhuma reserva arquivada até o momento." : "Nenhuma oferta arquivada até o momento."}
                   </div>
                 ) : (
                   <div className="space-y-5 opacity-75 hover:opacity-100 transition-opacity">
