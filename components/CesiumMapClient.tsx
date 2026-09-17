@@ -42,6 +42,7 @@ export default function CesiumMapClient({
   onBoundsChange,
   clusterZoomTarget,
   onClusterZoomRequest,
+  onPinSelect,
   checkInDate = "",
   checkOutDate = "",
   guestsCount = "1",
@@ -50,6 +51,7 @@ export default function CesiumMapClient({
   onBoundsChange?: (bounds: MapBounds) => void;
   clusterZoomTarget?: ClusterZoomTarget | null;
   onClusterZoomRequest?: (target: ClusterZoomTarget) => void;
+  onPinSelect?: (property: PropertyPin | null) => void;
   checkInDate?: string;
   checkOutDate?: string;
   guestsCount?: string;
@@ -63,6 +65,7 @@ export default function CesiumMapClient({
   const propertiesRef = useRef<PropertyPin[]>(properties);
   const onBoundsChangeRef = useRef(onBoundsChange);
   const onClusterZoomRequestRef = useRef(onClusterZoomRequest);
+  const onPinSelectRef = useRef(onPinSelect);
   const boundsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasZoomedToPinsRef = useRef(false);
   const lastClusterZoomTargetRef = useRef<string>("");
@@ -83,6 +86,10 @@ export default function CesiumMapClient({
   useEffect(() => {
     onClusterZoomRequestRef.current = onClusterZoomRequest;
   }, [onClusterZoomRequest]);
+
+  useEffect(() => {
+    onPinSelectRef.current = onPinSelect;
+  }, [onPinSelect]);
 
   function emitBounds(viewer: any, Cesium: any) {
     if (!onBoundsChangeRef.current) return;
@@ -225,6 +232,7 @@ export default function CesiumMapClient({
         if (!Cesium.defined(picked)) {
           setShowMapCard(false);
           setSelectedProperty(null);
+          onPinSelectRef.current?.(null);
           return;
         }
 
@@ -272,6 +280,7 @@ export default function CesiumMapClient({
             });
           }
 
+          onPinSelectRef.current?.(null);
           return;
         }
 
@@ -284,6 +293,7 @@ export default function CesiumMapClient({
           if (selected) {
             setSelectedProperty(selected);
             setShowMapCard(true);
+            onPinSelectRef.current?.(selected);
             return;
           }
         }
@@ -291,6 +301,7 @@ export default function CesiumMapClient({
         // Se clicar em qualquer outra coisa válida mas irrelevante
         setShowMapCard(false);
         setSelectedProperty(null);
+        onPinSelectRef.current?.(null);
       }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
     }
 
@@ -509,19 +520,12 @@ export default function CesiumMapClient({
                 : "";
 
               return (
-                <div className="mt-4 flex gap-3">
+                <div className="mt-4">
                   <Link
                     href={`/imovel/${selectedProperty.id}${querySuffix}`}
-                    className="flex-1 rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-slate-900"
+                    className="block w-full rounded-2xl bg-white px-4 py-3 text-center text-sm font-bold text-slate-900 hover:bg-slate-200 transition"
                   >
-                    Ver anúncio
-                  </Link>
-
-                  <Link
-                    href={`/imovel/${selectedProperty.id}${querySuffix}`}
-                    className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm text-white hover:bg-white/10 transition"
-                  >
-                    {selectedProperty.listingType === "ALUGUEL_TEMPORADA" ? "Reservar" : "Fazer oferta"}
+                    Ver Anúncio
                   </Link>
                 </div>
               );

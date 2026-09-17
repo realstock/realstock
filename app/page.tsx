@@ -517,8 +517,22 @@ export default function HomePage() {
   }
   const [bounds, setBounds] = useState<MapBounds | null>(null);
   const [properties, setProperties] = useState<PropertyPin[]>([]);
+  const [selectedMapPinId, setSelectedMapPinId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!selectedMapPinId) return;
+    function handleOutsideClick(e: MouseEvent) {
+      const target = e.target as HTMLElement;
+      if (target.closest("a") || target.closest("button")) {
+        return;
+      }
+      setSelectedMapPinId(null);
+    }
+    window.addEventListener("click", handleOutsideClick);
+    return () => window.removeEventListener("click", handleOutsideClick);
+  }, [selectedMapPinId]);
   const [boundsReady, setBoundsReady] = useState(false);
   const [clusterZoomTarget, setClusterZoomTarget] =
     useState<ClusterZoomTarget | null>(null);
@@ -1159,19 +1173,31 @@ export default function HomePage() {
               onBoundsChange={handleBoundsChange}
               clusterZoomTarget={clusterZoomTarget}
               onClusterZoomRequest={handleClusterZoomRequest}
+              onPinSelect={(pin) => setSelectedMapPinId(pin ? pin.id : null)}
               checkInDate={checkInDate}
               checkOutDate={checkOutDate}
               guestsCount={guestsCount}
             />
 
             <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
+              {selectedMapPinId && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedMapPinId(null)}
+                  className="mb-4 flex items-center justify-between w-full rounded-2xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-xs font-bold text-sky-300 hover:bg-sky-500/20 transition cursor-pointer"
+                >
+                  <span>📍 Exibindo o imóvel selecionado no mapa</span>
+                  <span className="underline text-white font-extrabold">Mostrar todos no mapa</span>
+                </button>
+              )}
+
               <div className="mb-4 flex items-center justify-between gap-4">
                 <div>
                   <div className="text-sm text-slate-400">
-                    Imóveis na área visível do mapa
+                    {selectedMapPinId ? "Imóvel selecionado no mapa" : "Imóveis na área visível do mapa"}
                   </div>
                   <h3 className="mt-1 text-2xl font-bold">
-                    {properties.length} resultado(s)
+                    {(selectedMapPinId ? properties.filter((p) => p.id === selectedMapPinId) : properties).length} resultado(s)
                   </h3>
                 </div>
 
@@ -1188,7 +1214,7 @@ export default function HomePage() {
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {properties.map((property) => {
+                    {(selectedMapPinId ? properties.filter((p) => p.id === selectedMapPinId) : properties).map((property) => {
                       const isNow = new Date();
                       const isPublishedIG = !!property.instagramMediaId;
                       const isSponsored = !!(property.sponsoredUntil && new Date(property.sponsoredUntil) > isNow);
@@ -1337,35 +1363,6 @@ export default function HomePage() {
                                                   <span className="text-emerald-300 font-black">{property.minNights} {property.minNights === 1 ? 'noite' : 'noites'}</span>
                                               </div>
                                             )}
-
-                                            <div className="mt-3">
-                                              <button
-                                                type="button"
-                                                onClick={(e) => {
-                                                  e.preventDefault();
-                                                  e.stopPropagation();
-                                                  if (!checkInDate || !checkOutDate) {
-                                                    alert("Por favor, selecione as datas de check-in e check-out no topo para reservar este imóvel.");
-                                                    window.scrollTo({ top: 0, behavior: "smooth" });
-                                                    return;
-                                                  }
-                                                  if (!stayInfo || !stayInfo.isAvailable) {
-                                                    alert(stayInfo?.unavailabilityReason || "Imóvel indisponível no período selecionado.");
-                                                    return;
-                                                  }
-                                                  setReservationModalProperty({ property, stayInfo });
-                                                }}
-                                                disabled={stayInfo ? !stayInfo.isAvailable : false}
-                                                className={`w-full rounded-xl py-2.5 px-4 text-xs font-black transition flex items-center justify-center gap-2 shadow-lg ${
-                                                  stayInfo && !stayInfo.isAvailable
-                                                    ? "bg-slate-800 text-slate-500 border border-white/5 cursor-not-allowed"
-                                                    : "bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20 cursor-pointer"
-                                                }`}
-                                              >
-                                                <Calendar className="h-4 w-4" />
-                                                {stayInfo && !stayInfo.isAvailable ? "Indisponível nestas datas" : "Reservar"}
-                                              </button>
-                                            </div>
                                           </>
                                         ) : (
                                           <>
