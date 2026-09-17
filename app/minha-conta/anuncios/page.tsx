@@ -49,6 +49,7 @@ export default function MeusAnunciosPage() {
   const { listingType: listingTypeFilter } = useListingType();
 
   const [properties, setProperties] = useState<PropertyItem[]>([]);
+  const [propertyTab, setPropertyTab] = useState<"TODOS" | "TEMPORADA" | "VENDA">("TODOS");
   const [instagramPosts, setInstagramPosts] = useState<any[]>([]);
   const [facebookPosts, setFacebookPosts] = useState<any[]>([]);
   const [portfolioBoostedUntil, setPortfolioBoostedUntil] = useState<string | null>(null);
@@ -336,22 +337,67 @@ export default function MeusAnunciosPage() {
           </div>
         ) : (
           <div className="mb-8 space-y-4">
-            {properties.filter(p =>
-              listingTypeFilter === "ALUGUEL_TEMPORADA"
-                ? p.listingType === "ALUGUEL_TEMPORADA"
-                : p.listingType !== "ALUGUEL_TEMPORADA"
-            ).length === 0 && (
+            {/* TAB FILTER FOR PROMPT UNRESTRICTED ACCESS */}
+            <div className="flex flex-wrap items-center gap-2 mb-6 bg-slate-900 border border-white/10 p-1.5 rounded-2xl w-fit shadow-lg">
+              <button
+                type="button"
+                onClick={() => setPropertyTab("TODOS")}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  propertyTab === "TODOS"
+                    ? "bg-emerald-500 text-slate-950 font-black shadow-md"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                Todos os Imóveis ({properties.length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPropertyTab("TEMPORADA")}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                  propertyTab === "TEMPORADA"
+                    ? "bg-emerald-500 text-slate-950 font-black shadow-md"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <span>🧳 Aluguel Temporada</span>
+                <span className="rounded-full bg-black/20 px-2 py-0.5 text-[10px]">
+                  {properties.filter((p) => p.listingType === "ALUGUEL_TEMPORADA").length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPropertyTab("VENDA")}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                  propertyTab === "VENDA"
+                    ? "bg-emerald-500 text-slate-950 font-black shadow-md"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <span>🏢 Compra e Venda</span>
+                <span className="rounded-full bg-black/20 px-2 py-0.5 text-[10px]">
+                  {properties.filter((p) => p.listingType !== "ALUGUEL_TEMPORADA").length}
+                </span>
+              </button>
+            </div>
+
+            {properties.filter((p) => {
+              if (propertyTab === "TEMPORADA") return p.listingType === "ALUGUEL_TEMPORADA";
+              if (propertyTab === "VENDA") return p.listingType !== "ALUGUEL_TEMPORADA";
+              return true;
+            }).length === 0 && (
               <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-slate-400 text-sm">
-                Nenhum imóvel encontrado para este tipo de anúncio.
+                Nenhum imóvel encontrado para a categoria selecionada.
               </div>
             )}
 
             {properties
-              .filter(p =>
-                listingTypeFilter === "ALUGUEL_TEMPORADA"
-                  ? p.listingType === "ALUGUEL_TEMPORADA"
-                  : p.listingType !== "ALUGUEL_TEMPORADA"
-              )
+              .filter((p) => {
+                if (propertyTab === "TEMPORADA") return p.listingType === "ALUGUEL_TEMPORADA";
+                if (propertyTab === "VENDA") return p.listingType !== "ALUGUEL_TEMPORADA";
+                return true;
+              })
               .map((property) => {
               const publishedSession = instagramPosts.find(p => p.listingId === property.id);
               const isPublished = !!publishedSession;
