@@ -177,7 +177,7 @@ const HOST_STEPS = [
   {
     num: 1,
     title: "1. Pedido Recebido",
-    desc: "Você recebeu um pedido de reserva. Aceite e pague a taxa de 1% (PayPal) em 24h.",
+    desc: "Você recebeu um pedido de reserva. Aceite e pague a taxa administrativa (PayPal) em 24h.",
     icon: "📬"
   },
   {
@@ -243,7 +243,7 @@ const SELLER_STEPS = [
   {
     num: 1,
     title: "1. Oferta Recebida",
-    desc: "Você recebeu uma proposta de compra. Aceite e pague a taxa de 1% (PayPal) para liberar os contatos.",
+    desc: "Você recebeu uma proposta de compra. Aceite e pague a taxa de oferta (PayPal) para liberar os contatos.",
     icon: "📬"
   },
   {
@@ -1484,8 +1484,8 @@ export default function MinhasReservasPage() {
                 </div>
                 <p className="text-xs text-slate-300 mt-1 leading-relaxed">
                   {isSeasonalItem
-                    ? "Você recebeu um pedido de reserva. Para aceitar o pedido e liberar os dados de contato do hóspede, efetue o pagamento da taxa administrativa do site (1% do valor total da reserva) via PayPal."
-                    : "Você recebeu uma proposta de compra. Para aceitar a oferta e liberar os dados de contato do comprador, efetue o pagamento da taxa administrativa do site (1% do valor da oferta) via PayPal."}
+                    ? "Você recebeu um pedido de reserva. Para aceitar o pedido e liberar os dados de contato do hóspede, efetue o pagamento da taxa administrativa do site via PayPal."
+                    : "Você recebeu uma proposta de compra. Para aceitar a oferta e liberar os dados de contato do comprador, efetue o pagamento da taxa de oferta cadastrada via PayPal."}
                 </p>
               </div>
 
@@ -1497,7 +1497,7 @@ export default function MinhasReservasPage() {
                   className="w-full sm:w-auto rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-2.5 text-xs font-black text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
                   <CheckCircle2 size={16} />
-                  <span>{isSeasonalItem ? "Aceitar Reserva (Pagar Taxa 1% PayPal)" : "Aceitar Oferta (Pagar Taxa 1% PayPal)"}</span>
+                  <span>{isSeasonalItem ? "Aceitar Reserva (Pagar Taxa PayPal)" : "Aceitar Oferta (Pagar Taxa PayPal)"}</span>
                 </button>
 
                 <button
@@ -1961,8 +1961,8 @@ export default function MinhasReservasPage() {
                 <div className="mt-4 text-xs text-slate-300 space-y-2">
                   <p>
                     {isPaypalSeasonal
-                      ? "Para aceitar o pedido e liberar os dados do hóspede, efetue o pagamento da taxa administrativa do site (1% do valor total da reserva) via PayPal."
-                      : "Para aceitar a oferta e liberar os dados do comprador, efetue o pagamento da taxa administrativa do site (1% do valor da oferta) via PayPal."}
+                      ? "Para aceitar o pedido e liberar os dados do hóspede, efetue o pagamento da taxa administrativa do site via PayPal."
+                      : "Para aceitar a oferta e liberar os dados do comprador, efetue o pagamento da taxa de oferta cadastrada via PayPal."}
                   </p>
                   <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 text-emerald-300 font-bold text-center">
                     {isPaypalSeasonal

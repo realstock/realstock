@@ -82,13 +82,17 @@ export async function POST(req: NextRequest) {
           grossAmount = parseFloat(captureInfo.seller_receivable_breakdown.gross_amount.value);
           feeAmount = parseFloat(captureInfo.seller_receivable_breakdown.paypal_fee.value);
 
+          const isCompraVenda = offer.property?.listingType === "COMPRA_VENDA" || offer.property?.listingType === "VENDA";
+
           await prisma.financialTransaction.createMany({
             data: [
               {
                 type: "REVENUE",
                 category: "OFFER",
                 amount: grossAmount,
-                description: `Taxa de Aceite de Reserva (${offer.property.title})`,
+                description: isCompraVenda
+                  ? `Taxa de Aceite de Oferta (${offer.property.title})`
+                  : `Taxa de Aceite de Reserva (${offer.property.title})`,
                 referenceId: captureInfo.id,
                 userId: user.id,
               },
@@ -96,7 +100,9 @@ export async function POST(req: NextRequest) {
                 type: "EXPENSE",
                 category: "PAYPAL_FEE",
                 amount: feeAmount,
-                description: `Tarifa PayPal (Aceite de Reserva)`,
+                description: isCompraVenda
+                  ? `Tarifa PayPal (Aceite de Oferta)`
+                  : `Tarifa PayPal (Aceite de Reserva)`,
                 referenceId: captureInfo.id,
                 userId: user.id,
               },

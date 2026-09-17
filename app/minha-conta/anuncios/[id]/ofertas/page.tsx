@@ -316,7 +316,7 @@ export default function GerenciarOfertasPage() {
                       ) : (
                         <div className="rounded-xl border border-blue-400/20 bg-blue-400/10 px-3 py-2 text-blue-200 mt-2 text-xs">
                           {property?.listingType === "ALUGUEL_TEMPORADA"
-                            ? "Os dados do hóspede serão liberados assim que você aceitar o pedido pagando a taxa de 1% no PayPal."
+                            ? "Os dados do hóspede serão liberados assim que você aceitar o pedido pagando a taxa no PayPal."
                             : "Os dados do comprador serão liberados após a taxa ser paga."}
                         </div>
                       )}
@@ -334,8 +334,8 @@ export default function GerenciarOfertasPage() {
                           {actionLoadingId === offer.id
                             ? "Processando..."
                             : property?.listingType === "ALUGUEL_TEMPORADA"
-                            ? "Aceitar pedido (Pagar taxa 1% PayPal)"
-                            : "Aceitar oferta (Pagar taxa 1% PayPal)"}
+                            ? "Aceitar pedido (Pagar taxa PayPal)"
+                            : "Aceitar oferta (Pagar taxa PayPal)"}
                         </button>
 
                         <button
@@ -383,7 +383,7 @@ export default function GerenciarOfertasPage() {
             <div className="flex justify-between items-center pb-4 border-b border-white/10">
               <div>
                 <h3 className="font-bold text-lg">Pagar Taxa de Aceite</h3>
-                <p className="text-xs text-slate-400">1% do valor total da estadia via PayPal</p>
+                <p className="text-xs text-slate-400">Taxa administrativa do site via PayPal</p>
               </div>
 
               <button

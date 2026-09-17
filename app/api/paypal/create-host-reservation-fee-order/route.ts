@@ -61,27 +61,60 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const totalStay = Number(offer.totalStayPrice || offer.offerPrice || 0);
+    const isCompraVenda = offer.property?.listingType === "COMPRA_VENDA" || offer.property?.listingType === "VENDA";
+    const basePrice = Number(offer.offerPrice || offer.totalStayPrice || offer.property?.price || 0);
 
-    // Consultar taxa configurada no administrativo (slug: taxa-aceite-reserva ou 1%)
-    const service = await prisma.siteService.findUnique({
-      where: { slug: "taxa-aceite-reserva" },
+    // Consultar taxa configurada no administrativo
+    const targetSlugs = isCompraVenda
+      ? ["oferta", "taxa-aceite-oferta", "compra-venda", "taxa-oferta"]
+      : ["aluguel-temporada", "taxa-aceite-reserva", "temporada"];
+
+    let service = await prisma.siteService.findFirst({
+      where: {
+        slug: { in: targetSlugs },
+        isActive: true,
+      },
       include: { fee: true },
     });
 
-    let feeAmount = totalStay * 0.01; // Default 1%
-    if (service?.fee) {
+    if (!service) {
+      const searchTerm = isCompraVenda ? "oferta" : "temporada";
+      service = await prisma.siteService.findFirst({
+        where: {
+          name: { contains: searchTerm, mode: "insensitive" },
+          isActive: true,
+        },
+        include: { fee: true },
+      });
+    }
+
+    let feeAmount = 0;
+    let feePercentage = 0;
+    let isPercentage = false;
+
+    if (service?.fee && service.fee.isActive) {
       if (service.fee.type === "PERCENTAGE") {
-        feeAmount = (totalStay * Number(service.fee.value)) / 100;
+        feePercentage = Number(service.fee.value);
+        isPercentage = true;
+        feeAmount = (basePrice * feePercentage) / 100;
       } else {
         feeAmount = Number(service.fee.value);
       }
+    } else {
+      // Fallback padrão se não houver taxa cadastrada
+      feePercentage = isCompraVenda ? 0.1 : 1;
+      isPercentage = true;
+      feeAmount = (basePrice * feePercentage) / 100;
     }
 
     const finalFee = Math.max(feeAmount, 1.00); // Mínimo R$ 1.00 para cobrança PayPal
 
     const accessToken = await getPayPalAccessToken();
     const base = process.env.PAYPAL_API_BASE!;
+
+    const itemDescription = isCompraVenda
+      ? `Taxa de aceite de oferta de compra e venda - Imóvel ${offer.property.title}`
+      : `Taxa de aceite de reserva de temporada - Imóvel ${offer.property.title}`;
 
     const orderRes = await fetch(`${base}/v2/checkout/orders`, {
       method: "POST",
@@ -95,7 +128,7 @@ export async function POST(req: NextRequest) {
               currency_code: "BRL",
               value: finalFee.toFixed(2),
             },
-            description: `Taxa de aceite de reserva de temporada - Imóvel ${offer.property.title}`,
+            description: itemDescription,
           },
         ],
         application_context: { user_action: "PAY_NOW" },
@@ -107,7 +140,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: order.message || "Erro no PayPal.", detail: order }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true, paypal_order_id: order.id, fee_amount: finalFee });
+    return NextResponse.json({
+      success: true,
+      paypal_order_id: order.id,
+      fee_amount: finalFee,
+      fee_percentage: isPercentage ? feePercentage : null,
+      fee_type: service?.fee?.type || (isPercentage ? "PERCENTAGE" : "FIXED"),
+      is_compra_venda: isCompraVenda,
+    });
   } catch (error: any) {
     console.error("PAYPAL CREATE RESERVATION FEE ORDER ERROR:", error);
     return NextResponse.json({ success: false, error: "Erro interno ao gerar cobrança da taxa." }, { status: 500 });
