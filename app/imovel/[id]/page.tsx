@@ -511,7 +511,7 @@ export default async function PropertyPage({
             {addressLine || property.city}
           </p>
 
-          {avgRating && (
+          {avgRating && isSeasonal && (
             <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-amber-500/10 border border-amber-500/30 px-3.5 py-1.5 text-xs font-bold text-amber-300">
               <div className="flex items-center gap-0.5">
                 {Array.from({ length: 5 }, (_, i) => (

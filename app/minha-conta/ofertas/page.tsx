@@ -1278,8 +1278,8 @@ export default function MinhasReservasPage() {
           </div>
         </div>
 
-        {/* EVALUATION / RATING STARS PANEL */}
-        {(isConfirmed || isCheckInReleased || isAcceptedWaiting) && (
+        {/* EVALUATION / RATING STARS PANEL (SOMENTE PARA ALUGUEL TEMPORADA) */}
+        {isSeasonalItem && (isConfirmed || isCheckInReleased || isAcceptedWaiting) && (
           <div className="mt-4 border-t border-white/10 pt-3.5 flex flex-wrap items-center justify-between gap-3 bg-slate-950/70 p-3.5 rounded-2xl border border-amber-500/20 shadow-inner">
             <div className="text-xs text-amber-300 font-bold flex items-center gap-2">
               <Star size={16} className="text-amber-400 fill-amber-400" />
