@@ -50,6 +50,14 @@ export default function MeusAnunciosPage() {
 
   const [properties, setProperties] = useState<PropertyItem[]>([]);
   const [propertyTab, setPropertyTab] = useState<"TODOS" | "TEMPORADA" | "VENDA">("TODOS");
+
+  useEffect(() => {
+    if (listingTypeFilter === "ALUGUEL_TEMPORADA") {
+      setPropertyTab("TEMPORADA");
+    } else if (listingTypeFilter === "COMPRA_VENDA") {
+      setPropertyTab("VENDA");
+    }
+  }, [listingTypeFilter]);
   const [instagramPosts, setInstagramPosts] = useState<any[]>([]);
   const [facebookPosts, setFacebookPosts] = useState<any[]>([]);
   const [portfolioBoostedUntil, setPortfolioBoostedUntil] = useState<string | null>(null);
