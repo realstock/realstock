@@ -57,7 +57,7 @@ export default function CalendarioReservasModal({ propertyId, propertyTitle, onC
       try {
         setLoading(true);
         setError("");
-        const res = await fetch(`/api/minha-conta/anuncios/${propertyId}/calendario`);
+        const res = await fetch(`/api/properties/${propertyId}/availability`);
         const data = await res.json();
         if (!data.success) throw new Error(data.error || "Erro ao carregar calendário.");
         setBlocks(data.blocks || []);

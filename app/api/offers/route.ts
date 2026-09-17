@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
       const overlappingOffer = await prisma.offer.findFirst({
         where: {
           propertyId,
-          status: { in: ["accepted", "ACCEPTED_WAITING_PAYMENT", "RESERVA_CONFIRMADA", "PENDING_HOST_APPROVAL"] },
+          status: { in: ["accepted", "ACCEPTED", "ACCEPTED_WAITING_PAYMENT", "RESERVA_CONFIRMADA"] },
           OR: [
             { expiresAt: null },
             { expiresAt: { gt: new Date() } },

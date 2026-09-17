@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { Calendar } from "lucide-react";
+import CalendarioReservasModal from "@/components/CalendarioReservasModal";
 
 type OfferItem = {
   id: number;
@@ -81,6 +83,7 @@ export default function OfferBookClient({
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [docRequiredError, setDocRequiredError] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   useEffect(() => {
     if (defaultCheckIn) setCheckIn(defaultCheckIn);
@@ -176,13 +179,22 @@ export default function OfferBookClient({
       cur.setUTCDate(cur.getUTCDate() + 1);
     }
 
-    const activeStatuses = ["accepted", "ACCEPTED_WAITING_PAYMENT", "RESERVA_CONFIRMADA", "PENDING_HOST_APPROVAL"];
     for (const offer of offers) {
-      if (activeStatuses.includes(offer.status) && offer.startDate && offer.endDate) {
-        const oStart = new Date(offer.startDate);
-        const oEnd = new Date(offer.endDate);
+      const st = (offer.status || "").toLowerCase();
+      const isConfirmed = st === "accepted" || st === "accepted_waiting_payment" || st === "reserva_confirmada";
+      
+      if (isConfirmed && offer.startDate && offer.endDate) {
+        if ((offer as any).expiresAt && new Date((offer as any).expiresAt) < new Date()) {
+          continue;
+        }
 
-        // Strict night overlap check: reqStart < existEnd && reqEnd > existStart
+        const [oInY, oInM, oInD] = offer.startDate.split("T")[0].split("-").map(Number);
+        const [oOutY, oOutM, oOutD] = offer.endDate.split("T")[0].split("-").map(Number);
+        if (!oInY || !oInM || !oInD || !oOutY || !oOutM || !oOutD) continue;
+
+        const oStart = new Date(Date.UTC(oInY, oInM - 1, oInD));
+        const oEnd = new Date(Date.UTC(oOutY, oOutM - 1, oOutD));
+
         if (start < oEnd && end > oStart) {
           return `Período indisponível no intervalo selecionado.`;
         }
@@ -422,6 +434,15 @@ export default function OfferBookClient({
               )}
 
               <button
+                type="button"
+                onClick={() => setIsCalendarOpen(true)}
+                className="w-full flex items-center justify-center gap-2 rounded-2xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-xs font-bold text-sky-300 hover:bg-sky-500/20 transition cursor-pointer mb-2"
+              >
+                <Calendar size={15} />
+                Ver Calendário de Disponibilidade
+              </button>
+
+              <button
                 type="submit"
                 disabled={loading || status === "loading" || numberOfNights < (minNights ?? 1) || !!dateOverlapError}
                 className={`w-full rounded-2xl px-4 py-3 font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 ${
@@ -535,6 +556,14 @@ export default function OfferBookClient({
             </div>
           )}
         </div>
+      )}
+
+      {isCalendarOpen && (
+        <CalendarioReservasModal
+          propertyId={propertyId}
+          propertyTitle="Datas Disponíveis para Reserva"
+          onClose={() => setIsCalendarOpen(false)}
+        />
       )}
     </div>
   );
