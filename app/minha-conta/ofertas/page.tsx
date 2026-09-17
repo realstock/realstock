@@ -1050,6 +1050,7 @@ export default function MinhasReservasPage() {
   const activeOffersList = [...pendingConfirmationOffers, ...confirmedOffers];
 
   function renderOfferCard(offer: OfferItem, isArchived = false) {
+    const isSeasonalItem = offer.property?.listingType === "ALUGUEL_TEMPORADA";
     const statusStr = String(offer.status).toUpperCase();
     const isPending = statusStr === "PENDING_HOST_APPROVAL" || statusStr === "OPEN";
     const isAcceptedWaiting = statusStr === "ACCEPTED_WAITING_PAYMENT";
@@ -1378,10 +1379,12 @@ export default function MinhasReservasPage() {
               <div>
                 <div className="text-xs font-bold text-sky-300 uppercase tracking-wider flex items-center gap-2">
                   <Clock size={16} />
-                  <span>Aguardando Aprovação do Anfitrião</span>
+                  <span>{isSeasonalItem ? "Aguardando Aprovação do Anfitrião" : "Aguardando Aprovação do Proprietário"}</span>
                 </div>
                 <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                  Sua solicitação de reserva foi enviada com sucesso! O anfitrião tem até 24 horas para aceitar a reserva e disponibilizar a chave Pix para o pagamento do sinal.
+                  {isSeasonalItem
+                    ? "Sua solicitação de reserva foi enviada com sucesso! O anfitrião tem até 24 horas para aceitar a reserva e disponibilizar a chave Pix para o pagamento do sinal."
+                    : "Sua proposta de compra foi enviada com sucesso! O proprietário tem até 24 horas para analisar e responder a sua oferta."}
                 </p>
               </div>
 
@@ -1392,7 +1395,7 @@ export default function MinhasReservasPage() {
                 className="w-full sm:w-auto shrink-0 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-2 text-xs font-bold text-red-300 hover:bg-red-400/20 transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
                 <Ban size={14} />
-                <span>Cancelar Solicitação</span>
+                <span>{isSeasonalItem ? "Cancelar Reserva" : "Cancelar Oferta"}</span>
               </button>
             </div>
           </div>
@@ -1405,10 +1408,12 @@ export default function MinhasReservasPage() {
               <div>
                 <div className="text-sm font-extrabold text-amber-300 flex items-center gap-2">
                   <Clock size={18} />
-                  <span>Pedido de Reserva Recebido!</span>
+                  <span>{isSeasonalItem ? "Pedido de Reserva Recebido!" : "Proposta de Compra Recebida!"}</span>
                 </div>
                 <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                  Você recebeu um pedido de reserva. Para aceitar o pedido e liberar os dados de contato do hóspede, efetue o pagamento da taxa administrativa do site (1% do valor total da reserva) via PayPal.
+                  {isSeasonalItem
+                    ? "Você recebeu um pedido de reserva. Para aceitar o pedido e liberar os dados de contato do hóspede, efetue o pagamento da taxa administrativa do site (1% do valor total da reserva) via PayPal."
+                    : "Você recebeu uma proposta de compra. Para aceitar a oferta e liberar os dados de contato do comprador, efetue o pagamento da taxa administrativa do site (1% do valor da oferta) via PayPal."}
                 </p>
               </div>
 
@@ -1420,7 +1425,7 @@ export default function MinhasReservasPage() {
                   className="w-full sm:w-auto rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-2.5 text-xs font-black text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
                   <CheckCircle2 size={16} />
-                  <span>Aceitar Reserva (Pagar Taxa 1% PayPal)</span>
+                  <span>{isSeasonalItem ? "Aceitar Reserva (Pagar Taxa 1% PayPal)" : "Aceitar Oferta (Pagar Taxa 1% PayPal)"}</span>
                 </button>
 
                 <button
@@ -1430,7 +1435,7 @@ export default function MinhasReservasPage() {
                   className="w-full sm:w-auto rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-xs font-bold text-red-400 hover:bg-red-500/20 transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
                   <Ban size={15} />
-                  <span>Recusar Reserva</span>
+                  <span>{isSeasonalItem ? "Recusar Reserva" : "Recusar Oferta"}</span>
                 </button>
               </div>
             </div>
@@ -1837,30 +1842,38 @@ export default function MinhasReservasPage() {
         </div>
 
         {/* PAYPAL MODAL FOR HOST 1% FEE PAYMENT */}
-        {paypalOfferId && (
-          <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md">
-            <div className="relative w-full max-w-md rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
-              <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                <div className="flex items-center gap-2 text-emerald-400 font-black text-sm uppercase tracking-wider">
-                  <DollarSign size={18} />
-                  <span>Aceitar Pedido de Reserva</span>
-                </div>
-                <button
-                  onClick={closePaypalModal}
-                  className="rounded-xl border border-white/10 bg-white/5 p-1.5 text-slate-400 hover:text-white"
-                >
-                  <X size={16} />
-                </button>
-              </div>
+        {paypalOfferId && (() => {
+          const paypalTargetOffer = [...guestOffers, ...hostOffers].find((o) => o.id === paypalOfferId);
+          const isPaypalSeasonal = paypalTargetOffer?.property?.listingType === "ALUGUEL_TEMPORADA";
 
-              <div className="mt-4 text-xs text-slate-300 space-y-2">
-                <p>
-                  Para aceitar o pedido e liberar os dados do hóspede, efetue o pagamento da taxa administrativa do site (1% do valor total da reserva) via PayPal.
-                </p>
-                <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 text-emerald-300 font-bold text-center">
-                  Após a confirmação da taxa, o hóspede receberá sua Chave Pix para efetuar o pagamento do sinal da estadia.
+          return (
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md">
+              <div className="relative w-full max-w-md rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  <div className="flex items-center gap-2 text-emerald-400 font-black text-sm uppercase tracking-wider">
+                    <DollarSign size={18} />
+                    <span>{isPaypalSeasonal ? "Aceitar Pedido de Reserva" : "Aceitar Oferta de Compra"}</span>
+                  </div>
+                  <button
+                    onClick={closePaypalModal}
+                    className="rounded-xl border border-white/10 bg-white/5 p-1.5 text-slate-400 hover:text-white"
+                  >
+                    <X size={16} />
+                  </button>
                 </div>
-              </div>
+
+                <div className="mt-4 text-xs text-slate-300 space-y-2">
+                  <p>
+                    {isPaypalSeasonal
+                      ? "Para aceitar o pedido e liberar os dados do hóspede, efetue o pagamento da taxa administrativa do site (1% do valor total da reserva) via PayPal."
+                      : "Para aceitar a oferta e liberar os dados do comprador, efetue o pagamento da taxa administrativa do site (1% do valor da oferta) via PayPal."}
+                  </p>
+                  <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 text-emerald-300 font-bold text-center">
+                    {isPaypalSeasonal
+                      ? "Após a confirmação da taxa, o hóspede receberá sua Chave Pix para efetuar o pagamento do sinal da estadia."
+                      : "Após a confirmação da taxa, os dados de contato do comprador serão liberados para dar andamento à negociação."}
+                  </div>
+                </div>
 
               {paypalError && (
                 <div className={`mt-4 rounded-2xl p-4 text-xs space-y-2 border ${
@@ -1935,7 +1948,8 @@ export default function MinhasReservasPage() {
               )}
             </div>
           </div>
-        )}
+        );
+      })()}
 
         {/* QR CODE POPUP MODAL */}
         {selectedQrCodeModalUrl && (

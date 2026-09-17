@@ -335,7 +335,7 @@ export default function GerenciarOfertasPage() {
                             ? "Processando..."
                             : property?.listingType === "ALUGUEL_TEMPORADA"
                             ? "Aceitar pedido (Pagar taxa 1% PayPal)"
-                            : "Aceitar proposta"}
+                            : "Aceitar oferta (Pagar taxa 1% PayPal)"}
                         </button>
 
                         <button
@@ -343,7 +343,7 @@ export default function GerenciarOfertasPage() {
                           disabled={actionLoadingId === offer.id}
                           className="border border-red-500/30 bg-red-500/10 text-red-300 px-4 py-2 rounded-xl text-xs font-bold hover:bg-red-500/20 transition cursor-pointer"
                         >
-                          Recusar reserva
+                          {property?.listingType === "ALUGUEL_TEMPORADA" ? "Recusar reserva" : "Recusar oferta"}
                         </button>
                       </div>
                     )}
