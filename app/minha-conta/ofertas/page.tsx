@@ -1051,7 +1051,7 @@ export default function MinhasReservasPage() {
 
   function renderOfferCard(offer: OfferItem, isArchived = false) {
     const statusStr = String(offer.status).toUpperCase();
-    const isPending = statusStr === "PENDING_HOST_APPROVAL";
+    const isPending = statusStr === "PENDING_HOST_APPROVAL" || statusStr === "OPEN";
     const isAcceptedWaiting = statusStr === "ACCEPTED_WAITING_PAYMENT";
     const isConfirmed = statusStr === "RESERVA_CONFIRMADA" || statusStr === "ACCEPTED" || statusStr === "MATCHED";
     const isDepositFullyPaid = statusStr === "RESERVA_CONFIRMADA" || !!offer.pixValidation?.allPassed;
@@ -1368,6 +1368,72 @@ export default function MinhasReservasPage() {
                 </div>
               )
             )}
+          </div>
+        )}
+
+        {/* GUEST PENDING APPROVAL PANEL */}
+        {activeTab === "VIAJANDO" && isPending && !isCancelled && !isRejected && (
+          <div className="mt-5 border-t border-white/10 pt-4 space-y-3 rounded-2xl bg-sky-500/10 p-4 border border-sky-500/20">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <div className="text-xs font-bold text-sky-300 uppercase tracking-wider flex items-center gap-2">
+                  <Clock size={16} />
+                  <span>Aguardando Aprovação do Anfitrião</span>
+                </div>
+                <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                  Sua solicitação de reserva foi enviada com sucesso! O anfitrião tem até 24 horas para aceitar a reserva e disponibilizar a chave Pix para o pagamento do sinal.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleCancel(offer.id)}
+                disabled={actionLoadingId === offer.id}
+                className="w-full sm:w-auto shrink-0 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-2 text-xs font-bold text-red-300 hover:bg-red-400/20 transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <Ban size={14} />
+                <span>Cancelar Solicitação</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* HOST PENDING APPROVAL PANEL (ACEITAR E PAGAR TAXA 1% PAYPAL) */}
+        {activeTab === "HOSPEDANDO" && isPending && !isCancelled && !isRejected && (
+          <div className="mt-5 border-t border-white/10 pt-4 space-y-3 rounded-2xl bg-amber-500/10 p-4 border border-amber-500/30">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-extrabold text-amber-300 flex items-center gap-2">
+                  <Clock size={18} />
+                  <span>Pedido de Reserva Recebido!</span>
+                </div>
+                <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                  Você recebeu um pedido de reserva. Para aceitar o pedido e liberar os dados de contato do hóspede, efetue o pagamento da taxa administrativa do site (1% do valor total da reserva) via PayPal.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto shrink-0">
+                <button
+                  type="button"
+                  onClick={() => prepararPaypalHost(offer.id)}
+                  disabled={actionLoadingId === offer.id}
+                  className="w-full sm:w-auto rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-2.5 text-xs font-black text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  <CheckCircle2 size={16} />
+                  <span>Aceitar Reserva (Pagar Taxa 1% PayPal)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => recusarOfertaHost(offer.id)}
+                  disabled={actionLoadingId === offer.id}
+                  className="w-full sm:w-auto rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-xs font-bold text-red-400 hover:bg-red-500/20 transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  <Ban size={15} />
+                  <span>Recusar Reserva</span>
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
