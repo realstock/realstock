@@ -20,10 +20,23 @@ function LoginContent() {
   const [loadingFacebook, setLoadingFacebook] = useState(false);
 
   useEffect(() => {
+    const urlError = searchParams.get("error");
+    if (urlError) {
+      if (urlError === "OAuthSignin" || urlError === "OAuthCallback" || urlError === "Callback") {
+        setError("Erro de autenticação no Google. Verifique se a URL 'http://localhost:3000/api/auth/callback/google' está cadastrada no Google Cloud Console (URIs de redirecionamento autorizados).");
+      } else if (urlError === "OAuthCreateAccount" || urlError === "EmailCreateAccount") {
+        setError("Não foi possível autenticar a conta social. Tente se cadastrar primeiro.");
+      } else if (urlError === "AccessDenied") {
+        setError("Acesso negado pelo serviço de autenticação.");
+      } else {
+        setError(`Erro na autenticação: ${urlError}`);
+      }
+    }
+
     if (status === "authenticated") {
       router.replace(callbackUrl);
     }
-  }, [status, router, callbackUrl]);
+  }, [status, router, callbackUrl, searchParams]);
 
   async function handleEmailLogin(e: FormEvent) {
     e.preventDefault();

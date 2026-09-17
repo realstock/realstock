@@ -48,3 +48,4 @@ data.sql
 .env
 node_modules
 .next
+.env*.local
