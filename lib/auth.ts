@@ -88,28 +88,37 @@ export const authOptions: NextAuthOptions = {
       if ((account?.provider === "google" || account?.provider === "paypal" || account?.provider === "facebook") && user.email) {
         const email = user.email.toLowerCase();
 
-        const existingUser = await prisma.user.findUnique({
+        let existingUser = await prisma.user.findUnique({
           where: { email },
         });
 
         if (!existingUser) {
-          const name = encodeURIComponent(user.name || "");
-          const avatar = encodeURIComponent(user.image || "");
-
-          return `/cadastro?email=${encodeURIComponent(email)}&name=${name}&avatar=${avatar}&from=${account.provider}`;
+          const dummyPassword = await bcrypt.hash(Math.random().toString(36), 10);
+          existingUser = await prisma.user.create({
+            data: {
+              email,
+              name: user.name || "Usuário",
+              password: dummyPassword,
+              companyLogo: user.image || null,
+              role: "USER",
+            },
+          });
         }
+
+        (user as any).id = String(existingUser.id);
+        (user as any).role = existingUser.role;
       }
 
       return true;
     },
 
-    async jwt({ token, user, account }) {
+    async jwt({ token, user }) {
       if (user) {
         (token as any).id = (user as any).id;
         (token as any).role = ((user as any).role || "USER") as "USER" | "ADMIN";
       }
 
-      if ((account?.provider === "google" || account?.provider === "paypal" || account?.provider === "facebook") && token.email) {
+      if (token.email) {
         const dbUser = await prisma.user.findUnique({
           where: { email: token.email.toLowerCase() },
         });
