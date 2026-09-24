@@ -291,7 +291,9 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                             <h3 className="text-[20px] text-[#1a0dab] font-medium hover:underline cursor-pointer mb-1 leading-tight">
                                {id === '0'
                                  ? `RealStock | Confira oportunidades de imóveis em ${[property.city, property.state].filter(Boolean).join(' - ') || 'todo o Brasil'}`
-                                 : `${property.title} | Oportunidade Exclusiva RealStock`
+                                 : property.listingType === "ALUGUEL_TEMPORADA"
+                                   ? `${property.title} | Alugue por Temporada com o menor preço na Realstock.com.br`
+                                   : `${property.title} | Oportunidade Exclusiva RealStock`
                                }
                             </h3>
                             

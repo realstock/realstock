@@ -1565,7 +1565,9 @@ export default function MeusAnunciosPage() {
                     <h4 className="text-[18px] text-[#1a0dab] font-medium hover:underline cursor-pointer mb-1 leading-tight">
                        {googlePreviewProperty.id === 0
                          ? `RealStock | Oportunidades Incríveis de Imóveis no Brasil`
-                         : `${googlePreviewProperty.title} | Oportunidade Exclusiva RealStock`
+                         : (googlePreviewProperty as any).listingType === "ALUGUEL_TEMPORADA"
+                           ? `${googlePreviewProperty.title} | Alugue por Temporada com o menor preço na Realstock.com.br`
+                           : `${googlePreviewProperty.title} | Oportunidade Exclusiva RealStock`
                        }
                     </h4>
                     
