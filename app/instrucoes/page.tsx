@@ -13,8 +13,10 @@ import {
   FiMessageSquare,
   FiShield,
   FiCheckSquare,
+  FiVideo,
+  FiZap
 } from "react-icons/fi";
-import { Rocket } from "lucide-react";
+import { Rocket, Video, Play, Sparkles } from "lucide-react";
 
 const instructionsList = [
   {
@@ -68,9 +70,9 @@ const instructionsList = [
   },
   {
     id: "viralizar",
-    title: "Míssil Viralizar",
+    title: "Míssil Viralizar & YouTube Shorts",
     icon: <Rocket className="w-8 h-8 text-purple-400" />,
-    content: "O botão Viralizar é o seu maior aliado para lançar o imóvel no mercado de forma explosiva! Com apenas um clique, a nossa Inteligência Artificial gera um vídeo animado (Reels) com as fotos e detalhes da sua propriedade, publica automaticamente no Feed e Reels do Instagram, Facebook e X (Twitter). Esse comando deixa o seu anúncio estruturado e perfeitamente pronto para ser impulsionado (Turbinado) em todas as redes sociais.",
+    content: "O Míssil Viralizar é a ferramenta definitiva para pulverizar seu imóvel nas redes sociais! Com 1 clique, publique automaticamente no Instagram (Feed e Reels), Facebook (Feed e Reels), X (Twitter) e YouTube Shorts. Você pode enviar um vídeo próprio do imóvel ou permitir que a Inteligência Artificial crie um vídeo animado em formato Reels/Shorts utilizando as fotos ou os vídeos de 10 segundos cadastrados no anúncio. Após o envio, você pode impulsionar (Turbinar) a publicação para milhares de clientes.",
     link: "/minha-conta/anuncios"
   },
   {
@@ -82,30 +84,30 @@ const instructionsList = [
   },
   {
     id: "google_ads",
-    title: "Turbinando no Google Ads",
+    title: "Turbinando no Google & Redes Sociais",
     icon: <FiTarget className="w-8 h-8 text-orange-400" />,
-    content: "Precisando vender rápido? Com a integração nativa ao Google Ads e Meta Ads construída no RealStock, você não precisa ser um expert em marketing. Basta acessar o painel de Anúncios e clicar em 'Turbinar via Google' ou 'Turbinar via Instagram'. Escolha seu Orçamento Diário, efetue o pagamento seguro via PayPal, e nós arquitetamos campanhas automáticas na rede de pesquisa do Google e Meta, segmentando ativamente clientes do estado do anúncio na mesma hora.",
+    content: "Precisando vender rápido? Com a integração nativa ao Google Ads, Meta Ads e X Ads construída no RealStock, você não precisa ser um expert em tráfego pago. Basta clicar em 'Turbinar' no seu anúncio ou após o Míssil Viralizar, definir o orçamento diário e efetuar o pagamento via PayPal. Nós arquitetamos campanhas patrocinadas automáticas na sua região para capturar compradores interessados.",
     link: "/minha-conta/anuncios"
   },
   {
     id: "instagram",
-    title: "Postando & Impulsionando no Instagram",
+    title: "Postando & Impulsionando no Instagram e Redes",
     icon: <FiShare2 className="w-8 h-8 text-fuchsia-400" />,
-    content: "Transforme o seu imóvel em uma verdadeira obra de arte das redes sociais. Acesse a funcionalidade 'Instagram' ou 'Facebook' do seu anúncio, e o RealStock enviará um incrível carrossel de fotografias acompanhado da Ficha Técnica diretamente para o Perfil Oficial. Além do mais, você pode aplicar taxas de impulsionamento para a API da Meta patrocinar este Carrossel em todo estado do anúncio!",
+    content: "Transforme o seu imóvel em uma verdadeira obra de arte das redes sociais. Acesse a funcionalidade 'Instagram', 'Facebook' ou 'X' do seu anúncio, e o RealStock enviará um incrível carrossel de fotografias ou Reels/Shorts diretamente para os perfis oficiais. Além disso, você pode aplicar taxas de impulsionamento para a API patrocinar este anúncio em todo o seu estado!",
     link: "/minha-conta/anuncios"
   },
   {
     id: "dashboards",
     title: "Análise de Métricas (Insights)",
     icon: <FiTrendingUp className="w-8 h-8 text-indigo-400" />,
-    content: "Um bom investidor possui uma visão além do alcance visual. O RealStock utiliza ferramentas automáticas de GAQL (Google Ads Query Language) e sensores internos para rastrear todo mundo que passar os olhos na sua propriedade. Dentro da visão de Insights do seu painel, revelamos Clíques, CPC, Custo Total de Visualizações por Data, engajamentos com propostas, e toda a telemetria do seu investimento em uma única tela futurista.",
+    content: "Um bom investidor possui uma visão além do alcance visual. O RealStock utiliza ferramentas automáticas de GAQL (Google Ads Query Language) e sensores internos para rastrear todo mundo que passar os olhos na sua propriedade. Dentro da visão de Insights do seu painel, revelamos Cliques, CPC, Custo Total de Visualizações por Data, engajamentos com propostas, e toda a telemetria do seu investimento em uma única tela futurista.",
     link: "/minha-conta/anuncios"
   },
   {
     id: "patrocinar",
     title: "Selo de Imóvel Patrocinado",
     icon: <FiStar className="w-8 h-8 text-amber-400" />,
-    content: "Destaque seu imóvel perante os concorrentes! Ao adquirir o plano de Patrocínio, seu anúncio ganha um selo premium e é automaticamente injetado no pool rotativo de impulsionamentos oficiais da RealStock. Sendo exibido no nosso carrossel principal, postagens oficiais e em todas as campanhas coletivas nas Redes Sociais com altíssima visibilidade, além de er posicionado em destaque no topo dos resultados de busca.",
+    content: "Destaque seu imóvel perante os concorrentes! Ao adquirir o plano de Patrocínio, seu anúncio ganha um selo premium e é automaticamente injetado no pool rotativo de impulsionamentos oficiais da RealStock. Sendo exibido no nosso carrossel principal, postagens oficiais e em todas as campanhas coletivas nas Redes Sociais com altíssima visibilidade, além de ser posicionado em destaque no topo dos resultados de busca.",
     link: "/minha-conta/anuncios"
   }
 ];
@@ -133,6 +135,77 @@ export default function InstrucoesPage() {
           <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto">
             Descubra todos os poderes da plataforma e acelere suas vendas utilizando as tecnologias automáticas e ferramentas da nossa engenharia moderna.
           </p>
+        </div>
+
+        {/* GUIA ESPECIAL: MÍSSIL VIRALIZAR & IMPULSIONAMENTO */}
+        <div className="mb-16 p-8 md:p-10 rounded-3xl bg-gradient-to-br from-purple-950/80 via-slate-900 to-indigo-950/80 border border-purple-500/30 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+            <Rocket size={180} className="text-purple-400" />
+          </div>
+
+          <div className="relative z-10">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-bold uppercase tracking-widest mb-4">
+              <Sparkles size={16} /> Tutorial Avançado
+            </div>
+            
+            <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-4 uppercase italic">
+              Como Funciona o <span className="text-purple-400">Míssil Viralizar</span> & Impulsionamento
+            </h2>
+            
+            <p className="text-slate-300 text-base md:text-lg mb-8 leading-relaxed max-w-3xl">
+              O botão <strong className="text-purple-300">Viralizar</strong> foi criado para simplificar o marketing do seu imóvel em 3 passos simples, integrando automação de vídeo por IA e distribuição multicanal.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Passo 1 */}
+              <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+                <div className="h-10 w-10 rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-400 flex items-center justify-center font-black text-lg mb-4">
+                  1
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                  <Video size={18} className="text-purple-400" /> Opções de Vídeo
+                </h3>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  Você pode <strong>enviar um vídeo próprio</strong> do imóvel ou <strong>deixar a IA gerar automaticamente um vídeo animado (Reels/Shorts)</strong> utilizando as fotos do anúncio ou os vídeos de 10 segundos cadastrados na propriedade.
+                </p>
+              </div>
+
+              {/* Passo 2 */}
+              <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+                <div className="h-10 w-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center font-black text-lg mb-4">
+                  2
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                  <Rocket size={18} className="text-indigo-400" /> Disparo Multicanal
+                </h3>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  Ao acionar o Míssil Viralizar, o sistema publica simultaneamente no <strong>Instagram (Feed e Reels)</strong>, <strong>Facebook (Feed e Reels)</strong>, <strong>X (Twitter)</strong> e <strong>YouTube Shorts</strong>.
+                </p>
+              </div>
+
+              {/* Passo 3 */}
+              <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+                <div className="h-10 w-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-black text-lg mb-4">
+                  3
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                  <FiZap size={18} className="text-emerald-400" /> Impulsionar Anúncio
+                </h3>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  Após o disparo das publicações, clique no botão <strong>"Turbinar Agora"</strong> para patrocinar os posts nas redes sociais (Meta Ads / Google Ads / X Ads) e alcançar potenciais compradores no seu estado.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-8 flex justify-end">
+              <Link 
+                href="/minha-conta/anuncios" 
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm tracking-wide transition shadow-lg shadow-purple-600/30"
+              >
+                Ir para Meus Anúncios & Usar o Míssil →
+              </Link>
+            </div>
+          </div>
         </div>
 
         {/* Content Grid */}

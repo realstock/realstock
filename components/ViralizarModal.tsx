@@ -665,8 +665,13 @@ export default function ViralizarModal(props: ViralizarModalProps) {
             <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-purple-500/20 text-purple-400 mb-6">
               <Rocket size={32} />
             </div>
-            <h1 className="text-4xl font-black text-white mb-4 tracking-tighter uppercase italic">Viralizar Marketing</h1>
-            <p className="text-slate-400 text-lg mb-10 leading-relaxed italic">Pacote de Automação Social RealStock</p>
+            <h1 className="text-4xl font-black text-white mb-2 tracking-tighter uppercase italic">Viralizar Marketing</h1>
+            <p className="text-slate-400 text-lg mb-6 leading-relaxed italic">Pacote de Automação Social RealStock</p>
+            <div className="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-4 mb-8 text-left text-xs text-purple-200 leading-relaxed">
+              ✨ <strong>Automação Multicanal:</strong> Publicação simultânea no <strong>Instagram (Feed e Reels)</strong>, <strong>Facebook (Feed e Reels)</strong>, <strong>X (Twitter)</strong> e <strong>YouTube Shorts</strong>.
+              <br />
+              🎥 <strong>Formatos de Vídeo:</strong> Envie seu vídeo próprio ou deixe a IA gerar automaticamente um Reels/Shorts dinâmico com suas fotos ou os vídeos de 10s cadastrados!
+            </div>
             <div className="bg-white/5 border border-white/10 rounded-3xl p-8 mb-8 text-left">
                <div className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-6 border-b border-white/5 pb-2">Extrato do Pacote</div>
                

@@ -105,6 +105,7 @@ export default function MeusAnunciosPage() {
   const [viralizarTarget, setViralizarTarget] = useState<{id: number, title: string} | null>(null);
 
   const [calendarioProperty, setCalendarioProperty] = useState<{ id: number; title: string } | null>(null);
+  const [googlePreviewProperty, setGooglePreviewProperty] = useState<PropertyItem | null>(null);
 
   const [isMediaCheckOpen, setIsMediaCheckOpen] = useState(false);
   const [pendingVideoProperty, setPendingVideoProperty] = useState<PropertyItem | null>(null);
@@ -785,13 +786,14 @@ export default function MeusAnunciosPage() {
                                 <Rocket size={11} />
                                 Meta Ads
                               </Link>
-                              <Link 
-                                href={`/minha-conta/anuncios/${property.id}/turbinar?platform=google`}
+                              <button 
+                                onClick={() => setGooglePreviewProperty(property)}
                                 className="flex-1 flex items-center justify-center gap-1 text-center rounded-xl border border-emerald-500/40 bg-emerald-500/10 py-2 text-[11px] font-bold text-emerald-300 transition-all hover:bg-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)] animate-pulse"
+                                title="Ver prévia e publicar no Google Ads"
                               >
                                 <Rocket size={11} />
                                 Google
-                              </Link>
+                              </button>
                             </div>
                             {!(property.sponsoredUntil && new Date(property.sponsoredUntil) > new Date()) && (
                               <Link
@@ -1037,13 +1039,14 @@ export default function MeusAnunciosPage() {
                                 <Rocket size={11} />
                                 Meta Ads
                               </Link>
-                              <Link 
-                                href={`/minha-conta/anuncios/0/turbinar?platform=google`}
+                              <button 
+                                onClick={() => setGooglePreviewProperty({ id: 0, title: "Meu Portfólio de Imóveis", price: 0, city: "Brasil", state: "BR" })}
                                 className="flex-1 flex items-center justify-center gap-1 text-center rounded-xl border border-emerald-500/40 bg-emerald-500/10 py-2 text-[11px] font-bold text-emerald-300 transition-all hover:bg-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)] animate-pulse"
+                                title="Ver prévia e publicar no Google Ads"
                               >
                                 <Rocket size={11} />
                                 Google
-                              </Link>
+                              </button>
                             </div>
                             <button
                               disabled
@@ -1511,6 +1514,115 @@ export default function MeusAnunciosPage() {
           propertyTitle={calendarioProperty.title}
           onClose={() => setCalendarioProperty(null)}
         />
+      )}
+
+      {/* MODAL DE PRÉVIA DO GOOGLE ADS */}
+      {googlePreviewProperty && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-xl rounded-3xl border border-emerald-500/30 bg-slate-900 p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400">
+                  <Globe size={18} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Prévia do Anúncio no Google Ads</h3>
+                  <p className="text-xs text-slate-400">Como seu anúncio aparecerá nos resultados de pesquisa do Google</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setGooglePreviewProperty(null)}
+                className="rounded-full bg-white/5 p-2 text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Card Realista de Prévia do Google Search */}
+            <div className="w-full rounded-2xl bg-white p-5 shadow-xl border border-slate-200 text-left my-4">
+               {/* Header: Logo + Business Name */}
+               <div className="flex items-center gap-2 mb-2.5">
+                  <span className="font-bold text-black border border-black rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wider">Patrocinado</span>
+                  <img 
+                    src="/images/logo_realstock_dark.png" 
+                    alt="Logo" 
+                    className="w-5 h-5 rounded object-contain bg-slate-50 p-0.5 border border-slate-200"
+                    onError={(e) => {
+                        (e.target as any).src = "https://www.realstock.com.br/favicon.ico";
+                    }}
+                  />
+                  <div className="flex flex-col">
+                     <span className="text-[12px] text-slate-900 font-bold leading-tight">RealStock Oficial</span>
+                     <span className="text-[11px] text-slate-500 leading-tight">https://www.realstock.com.br › imoveis › {googlePreviewProperty.id}</span>
+                  </div>
+                  <div className="ml-auto text-slate-400">
+                     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                  </div>
+               </div>
+
+               <div className="flex items-start justify-between gap-3 mb-3">
+                 <div className="flex-1">
+                    <h4 className="text-[18px] text-[#1a0dab] font-medium hover:underline cursor-pointer mb-1 leading-tight">
+                       {googlePreviewProperty.id === 0
+                         ? `RealStock | Oportunidades Incríveis de Imóveis no Brasil`
+                         : `${googlePreviewProperty.title} | Oportunidade Exclusiva RealStock`
+                       }
+                    </h4>
+                    
+                    <p className="text-xs text-[#4d5156] leading-relaxed">
+                       <span className="font-bold text-[#4d5156]">Anúncio ·</span>{" "}
+                       {googlePreviewProperty.id === 0
+                         ? "Confira estes imóveis disponíveis na RealStock, acesse o site e faça sua proposta diretamente!"
+                         : (googlePreviewProperty.state || googlePreviewProperty.city ? `📍 Imóvel em ${[googlePreviewProperty.city, googlePreviewProperty.state].filter(Boolean).join(" - ")}. ` : "") + "Fotos exclusivas, detalhes completos e contato direto com o anunciante. Acesse agora!"
+                       }
+                    </p>
+                 </div>
+                 {googlePreviewProperty.images && googlePreviewProperty.images.length > 0 && googlePreviewProperty.images[0].imageUrl && (
+                   <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0 border border-slate-200 shadow-sm">
+                     <img src={googlePreviewProperty.images[0].imageUrl} alt="Foto" className="w-full h-full object-cover" />
+                   </div>
+                 )}
+               </div>
+
+               {/* Callouts */}
+               <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3 text-[12px] text-[#4d5156]">
+                  <span>• Fotos Exclusivas</span>
+                  <span>• Verificado pela IA</span>
+                  <span>• Direto com Anunciante</span>
+                  <span>• Sem Burocracia</span>
+               </div>
+
+               {/* Sitelinks */}
+               <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-slate-100">
+                  <div>
+                     <span className="text-[#1a0dab] text-[13px] font-medium hover:underline cursor-pointer block">Ver Fotos em HD</span>
+                     <span className="text-[11px] text-[#4d5156]">Explore cada detalhe do imóvel.</span>
+                  </div>
+                  <div>
+                     <span className="text-[#1a0dab] text-[13px] font-medium hover:underline cursor-pointer block">Fazer Proposta Online</span>
+                     <span className="text-[11px] text-[#4d5156]">Negocie agora pelo site oficial.</span>
+                  </div>
+               </div>
+            </div>
+
+            {/* Botoes de Ação */}
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
+              <Link
+                href={`/minha-conta/anuncios/${googlePreviewProperty.id}/turbinar?platform=google`}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-95 transition-all"
+              >
+                <Rocket size={16} />
+                Turbinar no Google Ads
+              </Link>
+              <button
+                onClick={() => setGooglePreviewProperty(null)}
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-300 hover:bg-white/10 hover:text-white transition-all"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

@@ -258,14 +258,22 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                 <div className="mb-4">
                   {selectedPlatform === "google" ? (
                     <div className="w-full rounded-2xl bg-white p-6 shadow-xl border border-slate-200 text-left">
+                       {/* Barra de Pesquisa Simulada do Google */}
+                       <div className="mb-4 pb-3 border-b border-slate-100">
+                          <div className="flex items-center gap-2 rounded-full bg-slate-100 border border-slate-200 px-3.5 py-1.5 text-xs text-slate-600 shadow-inner">
+                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400 shrink-0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                             <span className="truncate text-slate-700 font-medium">imóvel {property.title?.toLowerCase() || ''} em {[property.city, property.state].filter(Boolean).join(' - ') || 'brasil'}</span>
+                          </div>
+                       </div>
+
                        {/* Header: Logo + Business Name */}
                        <div className="flex items-center gap-2 mb-3">
+                          <span className="font-bold text-black border border-black rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wider">Patrocinado</span>
                           <img 
                             src="/images/logo_realstock_dark.png" 
                             alt="Logo" 
-                            className="w-7 h-7 rounded-lg object-contain bg-slate-50 p-1 border border-slate-100"
+                            className="w-6 h-6 rounded-md object-contain bg-slate-50 p-0.5 border border-slate-200"
                             onError={(e) => {
-                                // Fallback se a imagem não existir
                                 (e.target as any).src = "https://www.realstock.com.br/favicon.ico";
                             }}
                           />
@@ -278,20 +286,29 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                           </div>
                        </div>
 
-                       <h3 className="text-[20px] text-[#1a0dab] font-medium hover:underline cursor-pointer mb-1 leading-tight">
-                          {id === '0'
-                            ? `RealStock | Confira oportunidades de imóveis em ${[property.city, property.state].filter(Boolean).join(' - ') || 'todo o Brasil'}`
-                            : `${property.title} | Oportunidade Exclusiva RealStock`
-                          }
-                       </h3>
-                       
-                       <p className="text-sm text-[#4d5156] leading-relaxed mb-3">
-                          <span className="font-bold text-[#4d5156]">Anúncio ·</span>{" "}
-                          {id === '0'
-                            ? "Confira estes imóveis disponíveis na RealStock, acesse o site!"
-                            : (property.description || "Confira este excelente imóvel disponível na RealStock. Fotos exclusivas, detalhes completos e contato direto com o anunciante. Acesse agora!")
-                          }
-                       </p>
+                       <div className="flex items-start justify-between gap-4 mb-3">
+                         <div className="flex-1">
+                            <h3 className="text-[20px] text-[#1a0dab] font-medium hover:underline cursor-pointer mb-1 leading-tight">
+                               {id === '0'
+                                 ? `RealStock | Confira oportunidades de imóveis em ${[property.city, property.state].filter(Boolean).join(' - ') || 'todo o Brasil'}`
+                                 : `${property.title} | Oportunidade Exclusiva RealStock`
+                               }
+                            </h3>
+                            
+                            <p className="text-sm text-[#4d5156] leading-relaxed">
+                               <span className="font-bold text-[#4d5156]">Anúncio ·</span>{" "}
+                               {id === '0'
+                                 ? "Confira estes imóveis disponíveis na RealStock, acesse o site e faça sua proposta!"
+                                 : (property.description || "Confira este excelente imóvel disponível na RealStock. Fotos exclusivas, detalhes completos e contato direto com o anunciante. Acesse agora!")
+                               }
+                            </p>
+                         </div>
+                         {property.images && property.images.length > 0 && property.images[0].imageUrl && (
+                           <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0 border border-slate-200 shadow-md">
+                             <img src={property.images[0].imageUrl} alt={property.title} className="w-full h-full object-cover" />
+                           </div>
+                         )}
+                       </div>
 
                        {/* Callouts (Recursos de Frase de Destaque) */}
                        <div className="flex flex-wrap gap-x-4 gap-y-1 mb-4 text-[13px] text-[#4d5156]">
@@ -451,9 +468,62 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                 {/* Formato */}
                 <div className="mt-6 border-t border-white/10 pt-4">
                   <h3 className="text-sm font-bold text-white mb-3">
-                    {selectedPlatform === "google" ? "Destino do Impulsionamento" : "Formato do Impulsionamento"}
+                    Plataforma de Tráfego
                   </h3>
                   
+                  {/* Platform Choice Selector (Google Ads / Instagram / Facebook) */}
+                  <div className="mb-6 bg-white/5 p-4 rounded-xl border border-white/10">
+                    <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 mb-2">1. Selecione a Rede de Anúncio</div>
+                    <div className="flex p-1 bg-slate-950 rounded-xl border border-white/5 flex-wrap gap-1">
+                      <button 
+                        onClick={() => {
+                          setSelectedPlatform("google");
+                          setPaypalOrderId(null);
+                        }}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${selectedPlatform === 'google' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        <Globe size={14} className="text-emerald-400" />
+                        Google Ads (Busca)
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setSelectedPlatform("instagram");
+                          setPaypalOrderId(null);
+                          const availableSessions = igSessions;
+                          if (availableSessions && availableSessions.length > 0) {
+                            const hasCarouselSession = availableSessions.some((s: any) => {
+                              const type = s.postType?.toLowerCase();
+                              return type === "carousel" || (type !== "reels" && type !== "video");
+                            });
+                            setPostType(hasCarouselSession ? "carousel" : "reels");
+                          }
+                        }}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${selectedPlatform === 'instagram' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        <img src="/icones/instagram.jpg" className="w-3.5 h-3.5 rounded-sm object-cover" alt="" />
+                        Instagram
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setSelectedPlatform("facebook");
+                          setPaypalOrderId(null);
+                          const availableSessions = fbSessions;
+                          if (availableSessions && availableSessions.length > 0) {
+                            const hasCarouselSession = availableSessions.some((s: any) => {
+                              const type = s.postType?.toLowerCase();
+                              return type === "carousel" || (type !== "reels" && type !== "video");
+                            });
+                            setPostType(hasCarouselSession ? "carousel" : "reels");
+                          }
+                        }}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${selectedPlatform === 'facebook' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        <img src="/icones/facebook.jpeg" className="w-3.5 h-3.5 rounded-sm object-cover" alt="" />
+                        Facebook
+                      </button>
+                    </div>
+                  </div>
+
                   {selectedPlatform === "google" ? (
                     <div className="flex p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20 w-full mb-6">
                       <span className="text-[11px] text-emerald-300 font-medium">
@@ -462,50 +532,6 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                     </div>
                   ) : (
                     <>
-                      {/* Platform Choice Selector (Instagram / Facebook) */}
-                      <div className="mb-6 bg-white/5 p-4 rounded-xl border border-white/10">
-                        <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 mb-2">1. Selecione a Rede Social</div>
-                        <div className="flex p-1 bg-slate-950 rounded-xl border border-white/5 w-fit">
-                          <button 
-                            onClick={() => {
-                              setSelectedPlatform("instagram");
-                              setPaypalOrderId(null);
-                              // Auto select post type if available
-                              const availableSessions = igSessions;
-                              if (availableSessions && availableSessions.length > 0) {
-                                const hasCarouselSession = availableSessions.some((s: any) => {
-                                  const type = s.postType?.toLowerCase();
-                                  return type === "carousel" || (type !== "reels" && type !== "video");
-                                });
-                                setPostType(hasCarouselSession ? "carousel" : "reels");
-                              }
-                            }}
-                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${selectedPlatform === 'instagram' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
-                          >
-                            <img src="/icones/instagram.jpg" className="w-3.5 h-3.5 rounded-sm object-cover" alt="" />
-                            Instagram
-                          </button>
-                          <button 
-                            onClick={() => {
-                              setSelectedPlatform("facebook");
-                              setPaypalOrderId(null);
-                              // Auto select post type if available
-                              const availableSessions = fbSessions;
-                              if (availableSessions && availableSessions.length > 0) {
-                                const hasCarouselSession = availableSessions.some((s: any) => {
-                                  const type = s.postType?.toLowerCase();
-                                  return type === "carousel" || (type !== "reels" && type !== "video");
-                                });
-                                setPostType(hasCarouselSession ? "carousel" : "reels");
-                              }
-                            }}
-                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${selectedPlatform === 'facebook' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
-                          >
-                            <img src="/icones/facebook.jpeg" className="w-3.5 h-3.5 rounded-sm object-cover" alt="" />
-                            Facebook
-                          </button>
-                        </div>
-                      </div>
 
                       {/* Format Choice Selector */}
                       <div className="mb-6 bg-white/5 p-4 rounded-xl border border-white/10">
