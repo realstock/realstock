@@ -666,6 +666,14 @@ export default function MeusAnunciosPage() {
                               >
                                 <img src="/icones/youtube.png" className="w-7 h-7 rounded-lg object-cover transition-transform group-hover:scale-110" alt="YouTube Shorts" />
                               </Link>
+                              <Link
+                                href={`/minha-conta/anuncios/${property.id}/google-vacation-rentals`}
+                                className="col-span-2 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-xl bg-gradient-to-r from-blue-600/20 to-sky-500/20 border border-sky-400/40 text-[10px] font-extrabold text-sky-300 hover:from-blue-600/30 hover:to-sky-500/30 transition-all shadow-[0_0_12px_rgba(56,189,248,0.15)] group"
+                                title="Cadastrar e sincronizar no Google Vacation Rentals (PMS Channel Manager)"
+                              >
+                                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-3.5 h-3.5" alt="Google" />
+                                Google Vacation Rentals (PMS)
+                              </Link>
                             </div>
                         </div>
 
