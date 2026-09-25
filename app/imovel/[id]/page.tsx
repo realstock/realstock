@@ -473,8 +473,53 @@ export default async function PropertyPage({
     }
   }
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.realstock.com.br";
+  const jsonLd = property.listingType === "ALUGUEL_TEMPORADA" ? {
+    "@context": "https://schema.org",
+    "@type": "VacationRental",
+    "name": property.title,
+    "description": property.description || property.title,
+    "url": propertyUrl,
+    "image": property.images?.map((img) => img.imageUrl) || ["https://www.realstock.com.br/icon.png"],
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": property.city || "Fortaleza",
+      "addressRegion": property.state || "CE",
+      "addressCountry": "BR",
+      "streetAddress": [property.neighborhood, property.city, property.state].filter(Boolean).join(", ")
+    },
+    "containsPlace": {
+      "@type": "Accommodation",
+      "numberOfRooms": property.bedrooms || 1,
+      "numberOfBedrooms": property.bedrooms || 1,
+      "numberOfBathroomsTotal": property.bathrooms || 1,
+      "occupancy": {
+        "@type": "QuantitativeValue",
+        "maxValue": property.maxGuests || 4
+      }
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": property.price.toString(),
+      "priceCurrency": "BRL",
+      "availability": "https://schema.org/InStock",
+      "url": `${propertyUrl}?utm_source=google&utm_medium=vacation_rentals`,
+      "seller": {
+        "@type": "Organization",
+        "name": "RealStock",
+        "url": siteUrl
+      }
+    }
+  } : null;
+
   return (
     <main className="min-h-screen bg-slate-950 text-white overflow-x-hidden">
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
       {property.sold && (
         <div className="w-full bg-gradient-to-r from-emerald-600 to-teal-500 py-4 text-center shadow-lg relative overflow-hidden flex items-center justify-center gap-3">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.3),rgba(255,255,255,0))]" />
