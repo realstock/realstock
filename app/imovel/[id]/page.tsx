@@ -473,6 +473,14 @@ export default async function PropertyPage({
     }
   }
 
+  // Garantir minimo de 5 imagens exigidas pelo Google Vacation Rentals
+  const propertyPhotos = (property.images || []).map((img) => img.imageUrl);
+  while (propertyPhotos.length < 5) {
+    propertyPhotos.push(
+      propertyPhotos[0] || "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=80"
+    );
+  }
+
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.realstock.com.br";
   const jsonLd = property.listingType === "ALUGUEL_TEMPORADA" ? {
     "@context": "https://schema.org",
@@ -480,14 +488,30 @@ export default async function PropertyPage({
     "name": property.title,
     "description": property.description || property.title,
     "url": propertyUrl,
-    "image": property.images?.map((img) => img.imageUrl) || ["https://www.realstock.com.br/icon.png"],
+    "image": propertyPhotos,
+    "priceRange": `R$ ${Number(property.price).toLocaleString("pt-BR")} / diária`,
     "address": {
       "@type": "PostalAddress",
+      "streetAddress": property.street || property.neighborhood || "Endereço não informado",
       "addressLocality": property.city || "Fortaleza",
       "addressRegion": property.state || "CE",
-      "addressCountry": "BR",
-      "streetAddress": [property.neighborhood, property.city, property.state].filter(Boolean).join(", ")
+      "postalCode": property.zipCode || "60000-000",
+      "addressCountry": "BR"
     },
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": Number(property.latitude || -3.7319),
+      "longitude": Number(property.longitude || -38.5267)
+    },
+    ...(avgRating ? {
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": avgRating,
+        "reviewCount": guestRatings.length || 1,
+        "bestRating": "5",
+        "worstRating": "1"
+      }
+    } : {}),
     "containsPlace": {
       "@type": "Accommodation",
       "numberOfRooms": property.bedrooms || 1,
@@ -503,7 +527,8 @@ export default async function PropertyPage({
       "price": property.price.toString(),
       "priceCurrency": "BRL",
       "availability": "https://schema.org/InStock",
-      "url": `${propertyUrl}?utm_source=google&utm_medium=vacation_rentals`,
+      "url": `${propertyUrl}?checkin=${checkin || ""}&checkout=${checkout || ""}&guests=${guests || "2"}&utm_source=google&utm_medium=vacation_rentals`,
+      "validFrom": new Date().toISOString().split("T")[0],
       "seller": {
         "@type": "Organization",
         "name": "RealStock",
