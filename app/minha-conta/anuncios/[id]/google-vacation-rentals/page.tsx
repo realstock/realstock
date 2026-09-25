@@ -19,6 +19,7 @@ export default function GoogleVacationRentalsPage() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [copiedFeed, setCopiedFeed] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedGoogle, setCopiedGoogle] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
 
   async function loadData() {
@@ -95,9 +96,12 @@ export default function GoogleVacationRentalsPage() {
   const mainImage = images[0]?.imageUrl || "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=80";
   const secondImage = images[1]?.imageUrl || mainImage;
   const thirdImage = images[2]?.imageUrl || mainImage;
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.realstock.com.br";
+  
+  // Garantir estritamente que NUNCA use localhost nas URLs oficiais
+  const siteUrl = "https://www.realstock.com.br";
   const directLinkUrl = `${siteUrl}/imovel/${property.id}`;
-  const feedXmlUrl = gvrData?.feedUrlXml || `${siteUrl}/api/properties/${property.id}/gvr-feed?format=xml`;
+  const feedXmlUrl = `${siteUrl}/api/properties/${property.id}/gvr-feed?format=xml`;
+  const googleDirectUrl = gvrData?.googleDirectUrl || `https://www.google.com.br/travel/rentals?q=${encodeURIComponent(property.title + ' ' + (property.city || ''))}`;
 
   return (
     <div className="min-h-screen bg-slate-950 text-white py-10 px-4 sm:px-6 lg:px-8">
@@ -122,21 +126,33 @@ export default function GoogleVacationRentalsPage() {
             </div>
           </div>
 
-          <button
-            onClick={handleRegisterGVR}
-            disabled={isRegistering}
-            className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 text-white text-xs sm:text-sm font-black uppercase tracking-wider hover:opacity-95 transition-all shadow-xl shadow-blue-500/20 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {isRegistering ? (
-              <>
-                <RefreshCw size={16} className="animate-spin" /> Sincronizando...
-              </>
-            ) : (
-              <>
-                <Sparkles size={16} /> Cadastrar & Sincronizar no Google (PMS)
-              </>
-            )}
-          </button>
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+            <a
+              href={googleDirectUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full sm:w-auto px-5 py-3.5 rounded-2xl border border-sky-400/40 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-sky-500/10"
+            >
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 h-4" alt="Google" />
+              Abrir Anúncio Direto no Google <ExternalLink size={14} />
+            </a>
+
+            <button
+              onClick={handleRegisterGVR}
+              disabled={isRegistering}
+              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 text-white text-xs sm:text-sm font-black uppercase tracking-wider hover:opacity-95 transition-all shadow-xl shadow-blue-500/20 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {isRegistering ? (
+                <>
+                  <RefreshCw size={16} className="animate-spin" /> Sincronizando...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={16} /> Cadastrar & Sincronizar no Google (PMS)
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Mensagem de Sucesso */}
@@ -177,18 +193,25 @@ export default function GoogleVacationRentalsPage() {
             </div>
             <div>
               <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reserva Direta (Sem Comissão)</div>
-              <div className="text-sm font-bold text-purple-300">100% Retorno no RealStock</div>
+              <div className="text-sm font-bold text-purple-300">www.realstock.com.br</div>
             </div>
           </div>
         </div>
 
-        {/* SIMULAÇÃO DA INTERFACE DO GOOGLE VACATION RENTALS (IGUAL À CAPTURA DE TELA) */}
+        {/* SIMULAÇÃO DA INTERFACE DO GOOGLE VACATION RENTALS */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-white uppercase italic flex items-center gap-2">
               <Globe size={18} className="text-sky-400" /> Prévia do Anúncio no Google Travel / Vacation Rentals
             </h2>
-            <span className="text-xs text-slate-400">Simulação em Tempo Real do Google</span>
+            <a 
+              href={googleDirectUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-bold text-sky-400 hover:underline flex items-center gap-1"
+            >
+              Abrir busca oficial no Google <ExternalLink size={12} />
+            </a>
           </div>
 
           {/* Container simulando a janela do Google Chrome / Google Travel */}
@@ -200,9 +223,16 @@ export default function GoogleVacationRentalsPage() {
                 <div className="w-3 h-3 rounded-full bg-yellow-400" />
                 <div className="w-3 h-3 rounded-full bg-green-400" />
               </div>
-              <div className="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-1 text-slate-700 flex items-center gap-2 font-mono text-[11px]">
-                <span className="text-emerald-600 font-bold">https://</span>google.com.br/travel/rentals
-              </div>
+              <a 
+                href={googleDirectUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-1 text-slate-700 hover:text-blue-600 hover:border-blue-400 flex items-center gap-2 font-mono text-[11px] transition-colors"
+                title="Clique para abrir diretamente no Google"
+              >
+                <span className="text-emerald-600 font-bold">https://</span>google.com.br/travel/rentals?q={encodeURIComponent(property.title)}
+                <ExternalLink size={12} className="ml-auto text-slate-400" />
+              </a>
               <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
                 Aluguel por temporada
               </span>
@@ -291,7 +321,7 @@ export default function GoogleVacationRentalsPage() {
                       </div>
                       <div>
                         <div className="text-sm font-extrabold text-blue-950 flex items-center gap-2">
-                          RealStock.com.br <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full">Reserva Direta PMS</span>
+                          www.realstock.com.br <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full">Reserva Direta PMS</span>
                         </div>
                         <div className="text-xs text-slate-600">Sem taxa oculta de intermediação</div>
                       </div>
@@ -343,15 +373,36 @@ export default function GoogleVacationRentalsPage() {
         </div>
 
         {/* Caixas de Ação do Channel Manager PMS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
+          {/* Link Direto do Google Travel */}
+          <div className="p-6 rounded-3xl bg-slate-900 border border-white/10 space-y-4">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 h-4" alt="Google" /> Link Direto no Google
+            </h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Abra a pesquisa oficial do imóvel diretamente no ecossistema do Google Travel / Vacation Rentals.
+            </p>
+            <div className="bg-black/50 border border-white/10 rounded-xl p-3 flex items-center justify-between gap-2 font-mono text-xs text-sky-300 overflow-hidden">
+              <span className="truncate">{googleDirectUrl}</span>
+              <a
+                href={googleDirectUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-[10px] font-bold shrink-0 flex items-center gap-1"
+              >
+                Abrir <ExternalLink size={12} />
+              </a>
+            </div>
+          </div>
+
           {/* Feed XML para o Google */}
           <div className="p-6 rounded-3xl bg-slate-900 border border-white/10 space-y-4">
             <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Layers size={18} className="text-sky-400" /> Feed XML de Integração PMS (Google Vacation Rentals)
+              <Layers size={18} className="text-sky-400" /> Feed XML PMS (Google Feed)
             </h3>
             <p className="text-xs text-slate-400 leading-relaxed">
-              O RealStock gera um Feed XML nativo no padrão OpenTravel / Google OTA. Este endpoint é consultado continuamente para atualizar diárias, fotos e disponibilidade.
+              Endpoint XML nativo no padrão OpenTravel consultado pelo Google para atualizar diárias e disponibilidade.
             </p>
             <div className="bg-black/50 border border-white/10 rounded-xl p-3 flex items-center justify-between gap-2 font-mono text-xs text-sky-300 overflow-hidden">
               <span className="truncate">{feedXmlUrl}</span>
@@ -367,10 +418,10 @@ export default function GoogleVacationRentalsPage() {
           {/* Link Direto de Reserva */}
           <div className="p-6 rounded-3xl bg-slate-900 border border-white/10 space-y-4">
             <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <ExternalLink size={18} className="text-emerald-400" /> Link Direto da Reserva (Landing Page)
+              <ExternalLink size={18} className="text-emerald-400" /> Link Direto na RealStock
             </h3>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Quando o cliente clicar no botão <strong>"Acessar site"</strong> no Google Vacation Rentals, ele será redirecionado para esta página no RealStock para reservar via Pix/PayPal sem intermediários.
+              Link direto sem comissão de intermediação (`www.realstock.com.br`) apontado no botão "Acessar site" do Google.
             </p>
             <div className="bg-black/50 border border-white/10 rounded-xl p-3 flex items-center justify-between gap-2 font-mono text-xs text-emerald-300 overflow-hidden">
               <span className="truncate">{directLinkUrl}</span>

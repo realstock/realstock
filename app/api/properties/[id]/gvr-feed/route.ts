@@ -23,7 +23,7 @@ export async function GET(
     }
 
     const isSeasonal = property.listingType === "ALUGUEL_TEMPORADA";
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.realstock.com.br";
+    const siteUrl = "https://www.realstock.com.br";
     const propertyUrl = `${siteUrl}/imovel/${property.id}`;
     const priceVal = Number(property.price || 0);
 

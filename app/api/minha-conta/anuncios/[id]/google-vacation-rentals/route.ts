@@ -24,10 +24,11 @@ export async function GET(
       return NextResponse.json({ success: false, error: "Imóvel não encontrado" }, { status: 404 });
     }
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.realstock.com.br";
+    const siteUrl = "https://www.realstock.com.br";
     const feedUrlXml = `${siteUrl}/api/properties/${property.id}/gvr-feed?format=xml`;
     const feedUrlJson = `${siteUrl}/api/properties/${property.id}/gvr-feed?format=json`;
     const landingPageUrl = `${siteUrl}/imovel/${property.id}`;
+    const googleDirectUrl = `https://www.google.com.br/travel/rentals?q=${encodeURIComponent(property.title + ' ' + (property.city || ''))}`;
 
     // Verificar histórico de transações / habilitação do Google Vacation Rentals
     const gvrTransaction = await prisma.financialTransaction.findFirst({
@@ -48,6 +49,7 @@ export async function GET(
         feedUrlXml,
         feedUrlJson,
         landingPageUrl,
+        googleDirectUrl,
         partnerName: "RealStock PMS Channel Manager",
         otaCode: "REALSTOCK_GVR_2026"
       }
@@ -85,9 +87,10 @@ export async function POST(
       return NextResponse.json({ success: false, error: "Imóvel não encontrado" }, { status: 404 });
     }
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.realstock.com.br";
+    const siteUrl = "https://www.realstock.com.br";
     const landingPageUrl = `${siteUrl}/imovel/${property.id}`;
     const feedUrlXml = `${siteUrl}/api/properties/${property.id}/gvr-feed?format=xml`;
+    const googleDirectUrl = `https://www.google.com.br/travel/rentals?q=${encodeURIComponent(property.title + ' ' + (property.city || ''))}`;
 
     // Registrar/Sincronizar a transação no banco como canal Google Vacation Rentals
     await prisma.financialTransaction.create({
@@ -106,6 +109,7 @@ export async function POST(
       message: "Imóvel cadastrado e sincronizado com sucesso no Google Vacation Rentals (PMS Channel Manager)!",
       landingPageUrl,
       feedUrlXml,
+      googleDirectUrl,
       syncedAt: new Date()
     });
   } catch (error: any) {
