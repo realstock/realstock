@@ -28,7 +28,7 @@ export async function GET(
     const feedUrlXml = `${siteUrl}/api/properties/${property.id}/gvr-feed?format=xml`;
     const feedUrlJson = `${siteUrl}/api/properties/${property.id}/gvr-feed?format=json`;
     const landingPageUrl = `${siteUrl}/imovel/${property.id}`;
-    const googleDirectUrl = `https://www.google.com/search?q=${encodeURIComponent('aluguel temporada ' + property.title + ' ' + (property.city || ''))}`;
+    const googleDirectUrl = `https://www.google.com/travel/hotels?q=${encodeURIComponent('aluguel por temporada ' + property.title + ' ' + (property.city || ''))}`;
 
     // Verificar histórico de transações / habilitação do Google Vacation Rentals
     const gvrTransaction = await prisma.financialTransaction.findFirst({
@@ -90,7 +90,7 @@ export async function POST(
     const siteUrl = "https://www.realstock.com.br";
     const landingPageUrl = `${siteUrl}/imovel/${property.id}`;
     const feedUrlXml = `${siteUrl}/api/properties/${property.id}/gvr-feed?format=xml`;
-    const googleDirectUrl = `https://www.google.com/search?q=${encodeURIComponent('aluguel temporada ' + property.title + ' ' + (property.city || ''))}`;
+    const googleDirectUrl = `https://www.google.com/travel/hotels?q=${encodeURIComponent('aluguel por temporada ' + property.title + ' ' + (property.city || ''))}`;
 
     // Registrar/Sincronizar a transação no banco como canal Google Vacation Rentals
     await prisma.financialTransaction.create({

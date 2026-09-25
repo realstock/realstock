@@ -101,7 +101,7 @@ export default function GoogleVacationRentalsPage() {
   const siteUrl = "https://www.realstock.com.br";
   const directLinkUrl = `${siteUrl}/imovel/${property.id}`;
   const feedXmlUrl = `${siteUrl}/api/properties/${property.id}/gvr-feed?format=xml`;
-  const googleDirectUrl = gvrData?.googleDirectUrl || `https://www.google.com/search?q=${encodeURIComponent('aluguel temporada ' + property.title + ' ' + (property.city || ''))}`;
+  const googleDirectUrl = gvrData?.googleDirectUrl || `https://www.google.com/travel/hotels?q=${encodeURIComponent('aluguel por temporada ' + property.title + ' ' + (property.city || ''))}`;
 
   return (
     <div className="min-h-screen bg-slate-950 text-white py-10 px-4 sm:px-6 lg:px-8">
@@ -230,7 +230,7 @@ export default function GoogleVacationRentalsPage() {
                 className="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-1 text-slate-700 hover:text-blue-600 hover:border-blue-400 flex items-center gap-2 font-mono text-[11px] transition-colors"
                 title="Clique para abrir diretamente no Google"
               >
-                <span className="text-emerald-600 font-bold">https://</span>google.com/search?q={encodeURIComponent('aluguel temporada ' + property.title)}
+                <span className="text-emerald-600 font-bold">https://</span>google.com/travel/hotels?q={encodeURIComponent('aluguel por temporada ' + property.title)}
                 <ExternalLink size={12} className="ml-auto text-slate-400" />
               </a>
               <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
