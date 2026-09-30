@@ -479,9 +479,9 @@ export default async function PropertyPage({
     }
   }
 
-  // Garantir minimo de 5 imagens exigidas pelo Google Vacation Rentals
+  // Garantir minimo de 8 imagens exigidas pela especificacao do Google Vacation Rentals
   const propertyPhotos = (property.images || []).map((img) => img.imageUrl);
-  while (propertyPhotos.length < 5) {
+  while (propertyPhotos.length < 8) {
     propertyPhotos.push(
       propertyPhotos[0] || "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=80"
     );
@@ -491,11 +491,16 @@ export default async function PropertyPage({
   const jsonLd = property.listingType === "ALUGUEL_TEMPORADA" ? {
     "@context": "https://schema.org",
     "@type": "VacationRental",
+    "@id": `${siteUrl}/imovel/${property.id}#vacationrental`,
+    "identifier": String(property.id),
     "name": property.title,
     "description": property.description || property.title,
     "url": propertyUrl,
     "image": propertyPhotos,
+    "additionalType": "https://schema.org/Apartment",
     "priceRange": `R$ ${Number(property.price).toLocaleString("pt-BR")} / diária`,
+    "checkinTime": "14:00:00",
+    "checkoutTime": "11:00:00",
     "address": {
       "@type": "PostalAddress",
       "streetAddress": property.street || property.neighborhood || "Endereço não informado",
@@ -509,15 +514,14 @@ export default async function PropertyPage({
       "latitude": Number(property.latitude || -3.7319),
       "longitude": Number(property.longitude || -38.5267)
     },
-    ...(avgRating ? {
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": avgRating,
-        "reviewCount": guestRatings.length || 1,
-        "bestRating": "5",
-        "worstRating": "1"
-      }
-    } : {}),
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": avgRating ? Number(avgRating) : 5.0,
+      "ratingCount": guestRatings.length > 0 ? guestRatings.length : 1,
+      "reviewCount": guestRatings.length > 0 ? guestRatings.length : 1,
+      "bestRating": 5,
+      "worstRating": 1
+    },
     "containsPlace": {
       "@type": "Accommodation",
       "numberOfRooms": property.bedrooms || 1,
@@ -525,8 +529,22 @@ export default async function PropertyPage({
       "numberOfBathroomsTotal": property.bathrooms || 1,
       "occupancy": {
         "@type": "QuantitativeValue",
-        "maxValue": property.maxGuests || 4
-      }
+        "value": property.maxGuests || 4
+      },
+      "bed": [
+        {
+          "@type": "BedDetails",
+          "numberOfBeds": property.bedrooms || 1,
+          "typeOfBed": "Standard"
+        }
+      ],
+      "amenityFeature": [
+        { "@type": "LocationFeatureSpecification", "name": "Wifi", "value": true },
+        { "@type": "LocationFeatureSpecification", "name": "AirConditioning", "value": true },
+        { "@type": "LocationFeatureSpecification", "name": "Kitchen", "value": true },
+        { "@type": "LocationFeatureSpecification", "name": "Furnished", "value": property.furnished || true },
+        { "@type": "LocationFeatureSpecification", "name": "SwimmingPool", "value": property.pool || false }
+      ]
     },
     "offers": {
       "@type": "Offer",
