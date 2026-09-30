@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import Script from "next/script";
 
 export const metadata = {
+  metadataBase: new URL("https://www.realstock.com.br"),
   title: "RealStock",
   description: "Marketplace de imóveis com negociação em tempo real",
   icons: {

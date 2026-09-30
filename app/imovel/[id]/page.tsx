@@ -112,12 +112,18 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const description = property.description?.substring(0, 160) || "Confira este imóvel incrível na RealStock.";
   const imageUrl = property.images?.[0]?.imageUrl || "https://www.realstock.com.br/icon.png";
 
+  const canonicalUrl = `https://www.realstock.com.br/imovel/${property.id}`;
+
   return {
     title,
     description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title,
       description,
+      url: canonicalUrl,
       images: [
         {
           url: imageUrl,
