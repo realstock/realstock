@@ -4,9 +4,17 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
-      allow: '/',
+      allow: [
+        '/',
+        '/api/google-vacation-rentals/',
+        '/api/properties/*/gvr-feed',
+        '/google-vacation-rentals-feed.xml',
+      ],
       disallow: ['/admin/', '/api/'],
     },
-    sitemap: 'https://www.realstock.com.br/sitemap.xml',
+    sitemap: [
+      'https://www.realstock.com.br/sitemap.xml',
+      'https://www.realstock.com.br/sitemap-vacation-rentals.xml',
+    ],
   };
 }
