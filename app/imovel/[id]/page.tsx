@@ -108,8 +108,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     };
   }
 
-  const title = `${property.title} | RealStock`;
-  const description = property.description?.substring(0, 160) || "Confira este imóvel incrível na RealStock.";
+  const locationSuffix = [property.neighborhood, property.city, property.state].filter(Boolean).join(", ");
+  const isSeasonal = property.listingType === "ALUGUEL_TEMPORADA";
+  const formattedPrice = `R$ ${Number(property.price).toLocaleString("pt-BR")}`;
+  const title = `${property.title}${property.city ? ` em ${property.city}` : ""} | RealStock`;
+  const description = property.description?.trim()
+    ? `${property.title} em ${locationSuffix || "Brasil"}. ${isSeasonal ? "Aluguel por temporada" : "Valor"}: ${formattedPrice}. ${property.description.substring(0, 90)}... Confira fotos e detalhes!`
+    : `${property.title} em ${locationSuffix || "Brasil"}. ${property.bedrooms ? `${property.bedrooms} quartos. ` : ""}${isSeasonal ? "Diárias a partir de" : "À venda por"} ${formattedPrice}. Acesse agora na RealStock.`;
   const imageUrl = property.images?.[0]?.imageUrl || "https://www.realstock.com.br/icon.png";
 
   const canonicalUrl = `https://www.realstock.com.br/imovel/${property.id}`;
@@ -559,6 +564,60 @@ export default async function PropertyPage({
     }
   } : null;
 
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Início",
+        "item": siteUrl,
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": isSeasonal ? "Aluguel por Temporada" : "Imóveis à Venda",
+        "item": siteUrl,
+      },
+      ...(property.city ? [{
+        "@type": "ListItem",
+        "position": 3,
+        "name": `Imóveis em ${property.city}`,
+        "item": `${siteUrl}/?city=${encodeURIComponent(property.city)}`,
+      }] : []),
+      {
+        "@type": "ListItem",
+        "position": property.city ? 4 : 3,
+        "name": property.title,
+        "item": propertyUrl,
+      },
+    ],
+  };
+
+  const salesJsonLd = !isSeasonal ? {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "@id": `${siteUrl}/imovel/${property.id}#product`,
+    "name": property.title,
+    "description": property.description || property.title,
+    "url": propertyUrl,
+    "image": propertyPhotos,
+    "category": property.category || "Imóveis",
+    "offers": {
+      "@type": "Offer",
+      "price": property.price.toString(),
+      "priceCurrency": "BRL",
+      "availability": property.sold ? "https://schema.org/SoldOut" : "https://schema.org/InStock",
+      "url": propertyUrl,
+      "seller": {
+        "@type": "Organization",
+        "name": "RealStock",
+        "url": siteUrl,
+      },
+    },
+  } : null;
+
   return (
     <main className="min-h-screen bg-slate-950 text-white overflow-x-hidden">
       {jsonLd && (
@@ -567,6 +626,16 @@ export default async function PropertyPage({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       )}
+      {salesJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(salesJsonLd) }}
+        />
+      )}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       {property.sold && (
         <div className="w-full bg-gradient-to-r from-emerald-600 to-teal-500 py-4 text-center shadow-lg relative overflow-hidden flex items-center justify-center gap-3">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.3),rgba(255,255,255,0))]" />
@@ -578,15 +647,24 @@ export default async function PropertyPage({
         </div>
       )}
       <section className="mx-auto max-w-7xl px-6 py-8">
-        <div className="mb-6">
-          <Link 
-            href="/minha-conta/anuncios" 
-            className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors group"
-          >
-            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-            Voltar para Meus anúncios
+        {/* Navegação Breadcrumb Semântica para SEO */}
+        <nav aria-label="Breadcrumb" className="mb-6 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+          <Link href="/" className="hover:text-white transition-colors">
+            Início
           </Link>
-        </div>
+          <span>/</span>
+          <Link href="/" className="hover:text-white transition-colors">
+            {isSeasonal ? "Aluguel por Temporada" : "Imóveis à Venda"}
+          </Link>
+          {property.city && (
+            <>
+              <span>/</span>
+              <span className="text-slate-300 font-medium">{property.city}</span>
+            </>
+          )}
+          <span>/</span>
+          <span className="text-emerald-400 font-bold truncate max-w-xs">{property.title}</span>
+        </nav>
 
         <div className="mb-8">
           <div className="flex items-center justify-between">
