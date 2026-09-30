@@ -58,7 +58,7 @@ export async function generateMetadata({
 
   const cityName = properties[0].city || city;
   const stateName = properties[0].state || "Brasil";
-  const title = `Imóveis à Venda e Temporada em ${cityName} - ${stateName} | RealStock`;
+  const title = `Imóveis à Venda e Temporada em ${cityName} - ${stateName}`;
   const description = `Confira ${properties.length} imóveis disponíveis em ${cityName}, ${stateName}. Apartamentos, casas e aluguel por temporada direto com proprietários. Fotos, valores e negociação em tempo real!`;
   const canonicalUrl = `https://www.realstock.com.br/imoveis/${city}`;
 

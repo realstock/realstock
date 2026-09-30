@@ -114,10 +114,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
   let title = "";
   if (isSeasonal) {
-    title = `Aluguel por Temporada: ${property.title}${property.city ? ` em ${property.city}` : ""} | RealStock`;
+    title = `Aluguel por Temporada: ${property.title}${property.city ? ` em ${property.city}` : ""}`;
   } else {
     const hasCommercialIntent = property.title.toLowerCase().includes("venda") || property.title.toLowerCase().includes("comprar");
-    title = `${property.title}${hasCommercialIntent ? "" : " à Venda"}${property.city ? ` em ${property.city}` : ""} | RealStock`;
+    title = `${property.title}${hasCommercialIntent ? "" : " à Venda"}${property.city ? ` em ${property.city}` : ""}`;
   }
 
   const roomsDesc = [
