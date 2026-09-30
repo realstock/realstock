@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
   try {
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.realstock.com.br";
+    const siteUrl = "https://www.realstock.com.br";
     const format = req.nextUrl.searchParams.get("format") || "xml";
 
     // Buscar todos os imóveis ativos de aluguel por temporada

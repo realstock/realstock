@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.realstock.com.br";
+    const siteUrl = "https://www.realstock.com.br";
 
     const properties = await prisma.property.findMany({
       where: {

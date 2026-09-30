@@ -318,9 +318,7 @@ export default async function PropertyPage({
     guests: (offer as any).guests || null,
   }));
 
-  const propertyUrl = `${
-    process.env.NEXT_PUBLIC_SITE_URL || "https://www.realstock.com.br"
-  }/imovel/${property.id}`;
+  const propertyUrl = `https://www.realstock.com.br/imovel/${property.id}`;
 
   function formatYesNo(value: boolean | null | undefined) {
     return value ? "Sim" : "Não";
@@ -487,7 +485,7 @@ export default async function PropertyPage({
     );
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.realstock.com.br";
+  const siteUrl = "https://www.realstock.com.br";
   const jsonLd = property.listingType === "ALUGUEL_TEMPORADA" ? {
     "@context": "https://schema.org",
     "@type": "VacationRental",
