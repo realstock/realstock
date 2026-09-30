@@ -155,24 +155,27 @@ export default function GoogleVacationRentalsPage() {
           </div>
         </div>
 
-        {/* Mensagem de Sucesso */}
-        {successMsg && (
-          <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm font-bold flex items-center gap-3 animate-fade-in">
-            <CheckCircle2 size={20} className="shrink-0 text-emerald-400" />
-            <span>{successMsg}</span>
+        {/* Mensagem de Status */}
+        <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs sm:text-sm space-y-1">
+          <div className="flex items-center gap-2 font-bold text-amber-400 text-sm sm:text-base">
+            <CheckCircle2 size={18} className="text-emerald-400" />
+            Feed XML e Dados Técnicos Prontos (Padrão Google OpenTravel)
           </div>
-        )}
+          <p className="text-slate-300 leading-relaxed text-xs">
+            O RealStock já preparou e validou todo o feed XML e os metadados de temporada exigidos pelo Google. Para que o botão <strong>&quot;Acessar site&quot;</strong> passe a ser exibido publicamente no comparador do <strong>Google Travel</strong> ao lado de Vrbo/Expedia, o feed gerado abaixo precisa ser cadastrado e aprovado no programa oficial de parceiros do Google (Google Hotel/Travel Center).
+          </p>
+        </div>
 
         {/* Painel Status Channel Manager */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-5 rounded-2xl bg-slate-900 border border-white/10 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
-              <CheckCircle2 size={24} />
+            <div className="h-12 w-12 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+              <Layers size={24} />
             </div>
             <div>
-              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status do Channel Manager</div>
-              <div className="text-sm font-bold text-emerald-400">
-                {gvrData?.status === "ACTIVE" ? "🟢 Ativo no Google Vacation Rentals" : "🔵 Pronto para Cadastrar"}
+              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status da Integração</div>
+              <div className="text-sm font-bold text-amber-300">
+                🟡 Feed Pronto para Envio ao Google
               </div>
             </div>
           </div>
@@ -200,18 +203,18 @@ export default function GoogleVacationRentalsPage() {
 
         {/* SIMULAÇÃO DA INTERFACE DO GOOGLE VACATION RENTALS */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white uppercase italic flex items-center gap-2">
-              <Globe size={18} className="text-sky-400" /> Prévia do Anúncio no Google Travel / Vacation Rentals
-            </h2>
-            <a 
-              href={googleDirectUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs font-bold text-sky-400 hover:underline flex items-center gap-1"
-            >
-              Abrir busca oficial no Google <ExternalLink size={12} />
-            </a>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-white uppercase italic flex items-center gap-2">
+                <Globe size={18} className="text-sky-400" /> Simulação Visual: Como ficará no Google Travel
+              </h2>
+              <p className="text-slate-400 text-xs">
+                Prévia de exibição quando o feed for ativado na central de parceiros do Google
+              </p>
+            </div>
+            <span className="text-[11px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full w-fit">
+              Simulação de Prévia
+            </span>
           </div>
 
           {/* Container simulando a janela do Google Chrome / Google Travel */}
@@ -375,34 +378,13 @@ export default function GoogleVacationRentalsPage() {
         {/* Caixas de Ação do Channel Manager PMS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          {/* Link Direto do Google Travel */}
-          <div className="p-6 rounded-3xl bg-slate-900 border border-white/10 space-y-4">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 h-4" alt="Google" /> Link Direto no Google
-            </h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Abra a pesquisa oficial do imóvel diretamente no ecossistema do Google Travel / Vacation Rentals.
-            </p>
-            <div className="bg-black/50 border border-white/10 rounded-xl p-3 flex items-center justify-between gap-2 font-mono text-xs text-sky-300 overflow-hidden">
-              <span className="truncate">{googleDirectUrl}</span>
-              <a
-                href={googleDirectUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-[10px] font-bold shrink-0 flex items-center gap-1"
-              >
-                Abrir <ExternalLink size={12} />
-              </a>
-            </div>
-          </div>
-
           {/* Feed XML para o Google */}
           <div className="p-6 rounded-3xl bg-slate-900 border border-white/10 space-y-4">
             <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Layers size={18} className="text-sky-400" /> Feed XML PMS (Google Feed)
+              <Layers size={18} className="text-sky-400" /> Feed XML Oficial (OpenTravel)
             </h3>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Endpoint XML nativo no padrão OpenTravel consultado pelo Google para atualizar diárias e disponibilidade.
+              Endpoint XML nativo que o Google Hotel Center ou seu Channel Manager consulta para sincronizar diárias e fotos.
             </p>
             <div className="bg-black/50 border border-white/10 rounded-xl p-3 flex items-center justify-between gap-2 font-mono text-xs text-sky-300 overflow-hidden">
               <span className="truncate">{feedXmlUrl}</span>
@@ -418,10 +400,10 @@ export default function GoogleVacationRentalsPage() {
           {/* Link Direto de Reserva */}
           <div className="p-6 rounded-3xl bg-slate-900 border border-white/10 space-y-4">
             <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <ExternalLink size={18} className="text-emerald-400" /> Link Direto na RealStock
+              <ExternalLink size={18} className="text-emerald-400" /> Link Direto no RealStock
             </h3>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Link direto sem comissão de intermediação (`www.realstock.com.br`) apontado no botão "Acessar site" do Google.
+              Link oficial de checkout direto do seu imóvel que o Google vincula ao botão &quot;Acessar site&quot;.
             </p>
             <div className="bg-black/50 border border-white/10 rounded-xl p-3 flex items-center justify-between gap-2 font-mono text-xs text-emerald-300 overflow-hidden">
               <span className="truncate">{directLinkUrl}</span>
@@ -434,6 +416,48 @@ export default function GoogleVacationRentalsPage() {
             </div>
           </div>
 
+          {/* Homologação no Google Hotel Center */}
+          <div className="p-6 rounded-3xl bg-slate-900 border border-white/10 space-y-4">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 h-4" alt="Google" /> Homologação no Google
+            </h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Para ativar o botão de reserva no Google Travel, envie seu Feed XML no portal de parceiros oficiais.
+            </p>
+            <div className="bg-black/50 border border-white/10 rounded-xl p-3 flex items-center justify-between gap-2 text-xs">
+              <span className="text-slate-300 font-medium">Google Travel Partners</span>
+              <a
+                href="https://travel.google/partners/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold shrink-0 flex items-center gap-1"
+              >
+                Acessar Portal <ExternalLink size={12} />
+              </a>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Guia Explicativo do Google Vacation Rentals */}
+        <div className="p-6 md:p-8 rounded-3xl border border-white/10 bg-slate-900/50 space-y-4">
+          <h3 className="text-base font-bold text-white flex items-center gap-2">
+            💡 Como funciona o processo para aparecer no Google Travel / Vacation Rentals?
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-300 leading-relaxed">
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-2">
+              <strong className="text-emerald-400 block text-sm">Passo 1: Feed Técnico (Concluído)</strong>
+              O RealStock desenvolveu o endpoint XML nativo no formato OpenTravel/Google ARI e os Schemas de dados estruturados com todas as fotos e regras.
+            </div>
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-2">
+              <strong className="text-amber-400 block text-sm">Passo 2: Cadastro no Google Partners</strong>
+              O Google Travel não permite inclusão automática sem contrato de parceria. É necessário cadastrar seu feed no Google Hotel Center ou usar um Channel Manager parceiro (ex: Guesty, Hostaway, Beds24).
+            </div>
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-2">
+              <strong className="text-sky-400 block text-sm">Passo 3: Exibição no Google</strong>
+              Após a aprovação técnica do feed pela equipe do Google, seu anúncio passará a ser exibido publicamente no mapa e na lista de opções de reserva com o botão &quot;Acessar site&quot;.
+            </div>
+          </div>
         </div>
 
       </div>
