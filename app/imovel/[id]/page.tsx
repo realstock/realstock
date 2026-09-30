@@ -111,10 +111,26 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const locationSuffix = [property.neighborhood, property.city, property.state].filter(Boolean).join(", ");
   const isSeasonal = property.listingType === "ALUGUEL_TEMPORADA";
   const formattedPrice = `R$ ${Number(property.price).toLocaleString("pt-BR")}`;
-  const title = `${property.title}${property.city ? ` em ${property.city}` : ""} | RealStock`;
-  const description = property.description?.trim()
-    ? `${property.title} em ${locationSuffix || "Brasil"}. ${isSeasonal ? "Aluguel por temporada" : "Valor"}: ${formattedPrice}. ${property.description.substring(0, 90)}... Confira fotos e detalhes!`
-    : `${property.title} em ${locationSuffix || "Brasil"}. ${property.bedrooms ? `${property.bedrooms} quartos. ` : ""}${isSeasonal ? "Diárias a partir de" : "À venda por"} ${formattedPrice}. Acesse agora na RealStock.`;
+
+  let title = "";
+  if (isSeasonal) {
+    title = `Aluguel por Temporada: ${property.title}${property.city ? ` em ${property.city}` : ""} | RealStock`;
+  } else {
+    const hasCommercialIntent = property.title.toLowerCase().includes("venda") || property.title.toLowerCase().includes("comprar");
+    title = `${property.title}${hasCommercialIntent ? "" : " à Venda"}${property.city ? ` em ${property.city}` : ""} | RealStock`;
+  }
+
+  const roomsDesc = [
+    property.bedrooms ? `${property.bedrooms} quartos` : "",
+    property.suites ? `${property.suites} suítes` : "",
+    property.bathrooms ? `${property.bathrooms} banheiros` : "",
+    property.parkingSpaces ? `${property.parkingSpaces} vagas` : "",
+    property.area ? `${property.area}m²` : "",
+  ].filter(Boolean).join(", ");
+
+  const description = isSeasonal
+    ? `Aluguel por temporada em ${locationSuffix || "Brasil"}. ${property.title}. Diárias a partir de ${formattedPrice}. ${roomsDesc ? `${roomsDesc}. ` : ""}Reserve online com segurança no RealStock!`
+    : `Imóvel à venda em ${locationSuffix || "Brasil"}. ${property.title}. Valor: ${formattedPrice}. ${roomsDesc ? `${roomsDesc}. ` : ""}Envie sua proposta online e negocie com segurança no RealStock!`;
   const imageUrl = property.images?.[0]?.imageUrl || "https://www.realstock.com.br/icon.png";
 
   const canonicalUrl = `https://www.realstock.com.br/imovel/${property.id}`;
@@ -618,6 +634,58 @@ export default async function PropertyPage({
     },
   } : null;
 
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": isSeasonal
+          ? `Qual o valor da diária para este imóvel em ${property.city || "sua localidade"}?`
+          : `Qual o valor anunciado para este imóvel em ${property.city || "sua localidade"}?`,
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": isSeasonal
+            ? `O valor da diária é a partir de R$ ${Number(property.price).toLocaleString("pt-BR")}, sujeito a confirmação de disponibilidade de datas.`
+            : `O valor anunciado de venda é de R$ ${Number(property.price).toLocaleString("pt-BR")}, aceitando envio de propostas diretamente pela plataforma RealStock.`
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Como funciona a negociação e a proteção de dados no RealStock?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No RealStock você faz sua proposta ou reserva online com total transparência. Os dados de contato ficam protegidos e só são liberados após o aceite formal da oferta."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Quantos quartos e comodidades o imóvel possui?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": `O imóvel conta com ${property.bedrooms || 1} quarto(s)${property.suites ? `, sendo ${property.suites} suíte(s)` : ""}, ${property.bathrooms || 1} banheiro(s)${property.parkingSpaces ? ` e ${property.parkingSpaces} vaga(s) de garagem` : ""}.${property.pool ? " Possui piscina." : ""}${property.furnished ? " É mobiliado." : ""}`
+        }
+      },
+      ...(isSeasonal ? [{
+        "@type": "Question",
+        "name": "Quais são os horários de check-in e check-out?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "O horário padrão de check-in é a partir das 14:00 e o check-out até às 11:00, salvo combinação prévia com o anfitrião."
+        }
+      }] : [{
+        "@type": "Question",
+        "name": "Este imóvel aceita financiamento imobiliário?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": property.acceptsFinancing
+            ? "Sim, este imóvel aceita financiamento bancário para compra."
+            : "Consulte diretamente pelo formulário de ofertas para verificar condições especiais de negociação e pagamento."
+        }
+      }])
+    ]
+  };
+
   return (
     <main className="min-h-screen bg-slate-950 text-white overflow-x-hidden">
       {jsonLd && (
@@ -635,6 +703,10 @@ export default async function PropertyPage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
       {property.sold && (
         <div className="w-full bg-gradient-to-r from-emerald-600 to-teal-500 py-4 text-center shadow-lg relative overflow-hidden flex items-center justify-center gap-3">
