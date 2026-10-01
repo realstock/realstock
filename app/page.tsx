@@ -1389,20 +1389,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-      <footer className="fixed bottom-0 left-0 w-full border-t border-white/10 bg-slate-950/90 backdrop-blur z-30">
-      <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-6 py-3 text-xs text-slate-400 sm:flex-row sm:pr-40">
-        <div>
-          © 2026 RealStock. Todos os direitos reservados. Plataforma de anúncios imobiliários.
-        </div>
 
-        <a
-          href="mailto:contato@realstock.com.br"
-          className="text-slate-300 transition hover:text-white"
-        >
-          Contato
-        </a>
-      </div>
-    </footer>
 
     <div className="pb-16" />
 

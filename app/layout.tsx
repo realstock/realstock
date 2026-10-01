@@ -2,7 +2,7 @@ import "./globals.css";
 import Providers from "./providers";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import CearaBadge from "@/components/CearaBadge";
+import FixedFooter from "@/components/FixedFooter";
 
 import Script from "next/script";
 import type { Metadata } from "next";
@@ -169,7 +169,7 @@ export default function RootLayout({
             {children}
           </div>
           <Footer />
-          <CearaBadge />
+          <FixedFooter />
         </Providers>
       </body>
     </html>

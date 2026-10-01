@@ -3,7 +3,7 @@ import Image from "next/image";
 
 export default function Footer() {
   return (
-    <footer className="w-full border-t border-white/10 bg-slate-950 text-slate-400 py-12 px-6">
+    <footer className="w-full border-t border-white/10 bg-slate-950 text-slate-400 py-12 pb-20 px-6">
       <div className="max-w-[1600px] mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
         {/* Brand */}
         <div className="space-y-4">
@@ -60,21 +60,6 @@ export default function Footer() {
         </div>
       </div>
       
-      <div className="mt-12 pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 max-w-[1600px] mx-auto">
-        <div>
-          &copy; {new Date().getFullYear()} RealStock Intermediações Imobiliárias. Todos os direitos reservados.
-        </div>
-        <div className="flex items-center gap-2 text-slate-300 font-medium">
-          <Image
-            src="/bandeira-ceara.svg"
-            alt="Bandeira do Ceará"
-            width={20}
-            height={14}
-            className="w-5 h-3.5 object-cover rounded-sm border border-white/20"
-          />
-          <span>Do Ceará mesmo</span>
-        </div>
-      </div>
     </footer>
   );
 }
