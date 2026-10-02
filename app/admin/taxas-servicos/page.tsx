@@ -150,6 +150,28 @@ export default function TaxasServicosPage() {
     }
   }
 
+  async function handleDeleteFee(feeId: number, feeName: string) {
+    const confirmed = window.confirm(`Deseja realmente excluir a taxa "${feeName}"?`);
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/api/admin/site-fees/${feeId}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Erro ao excluir taxa");
+      }
+
+      await loadData();
+    } catch (error: any) {
+      console.error(error);
+      alert(error.message || "Não foi possível excluir a taxa.");
+    }
+  }
+
   if (loading) {
     return <LoadingScreen title="Taxas e Serviços" subtitle="Acessando configurações de precificação..." />;
   }
@@ -310,6 +332,7 @@ export default function TaxasServicosPage() {
                   <th className="pb-3">Tipo</th>
                   <th className="pb-3">Valor</th>
                   <th className="pb-3">Status</th>
+                  <th className="pb-3 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -325,6 +348,16 @@ export default function TaxasServicosPage() {
                       {fee.type === "PERCENTAGE" ? "%" : ""}
                     </td>
                     <td className="py-3">{fee.isActive ? "Ativa" : "Inativa"}</td>
+                    <td className="py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteFee(fee.id, fee.name)}
+                        className="inline-flex items-center justify-center rounded-lg p-2 text-slate-400 transition hover:bg-rose-500/10 hover:text-rose-400"
+                        title="Excluir taxa"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
