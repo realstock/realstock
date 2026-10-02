@@ -64,6 +64,14 @@ export async function POST(req: NextRequest) {
     const isCompraVenda = offer.property?.listingType === "COMPRA_VENDA" || offer.property?.listingType === "VENDA";
 
     if (isCompraVenda && offer.property.contactFeePaidAt) {
+      await prisma.offer.update({
+        where: { id: offer.id },
+        data: {
+          status: "accepted",
+          hostFeePaidAt: offer.property.contactFeePaidAt,
+        },
+      });
+
       return NextResponse.json({
         success: true,
         already_paid: true,

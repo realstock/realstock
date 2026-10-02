@@ -151,6 +151,7 @@ export default function GerenciarOfertasPage() {
       }
 
       if (data.already_paid) {
+        closePaypalModal();
         await loadData();
         return;
       }
@@ -357,11 +358,18 @@ export default function GerenciarOfertasPage() {
                       const propPrice = Number(property?.price || offer.offerPrice || 0);
                       const feeAmount = Math.max(1, (propPrice * 0.01) / 100);
                       const feeFormatted = feeAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      const isFeePaid = Boolean(property?.contactFeePaidAt);
 
                       return (
                         <div className="flex flex-col gap-2">
                           <button
-                            onClick={() => prepararPaypal(offer.id)}
+                            onClick={() => {
+                              if (isFeePaid && property?.listingType !== "ALUGUEL_TEMPORADA") {
+                                aceitarOferta(offer.id);
+                              } else {
+                                prepararPaypal(offer.id);
+                              }
+                            }}
                             disabled={actionLoadingId === offer.id}
                             className="bg-emerald-500 text-slate-950 px-4 py-2.5 rounded-xl font-extrabold hover:bg-emerald-400 transition cursor-pointer shadow-lg shadow-emerald-500/20 text-xs sm:text-sm flex flex-col items-center justify-center gap-0.5"
                           >
@@ -370,11 +378,15 @@ export default function GerenciarOfertasPage() {
                                 ? "Processando..."
                                 : property?.listingType === "ALUGUEL_TEMPORADA"
                                 ? "Aceitar pedido (Pagar taxa PayPal)"
+                                : isFeePaid
+                                ? "Aceitar oferta & Liberar contato"
                                 : `Aceitar oferta • Pagar taxa de R$ ${feeFormatted}`}
                             </span>
                             {property?.listingType !== "ALUGUEL_TEMPORADA" && (
                               <span className="text-[10px] font-bold opacity-80">
-                                (0,01% • Pagamento único via PayPal)
+                                {isFeePaid
+                                  ? "(Taxa já quitada • Liberação imediata)"
+                                  : "(0,01% • Pagamento único via PayPal)"}
                               </span>
                             )}
                           </button>

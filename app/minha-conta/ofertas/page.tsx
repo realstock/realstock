@@ -861,6 +861,7 @@ export default function MinhasReservasPage() {
       }
 
       if (data.already_paid) {
+        closePaypalModal();
         await loadOffers();
         return;
       }
@@ -874,6 +875,35 @@ export default function MinhasReservasPage() {
       setPaypalOfferId(null);
       setPaypalOrderId(null);
       setPaypalError(err.message || "Erro ao preparar pagamento PayPal.");
+    }
+  }
+
+  // Host direct accept offer when fee is already paid
+  async function aceitarOfertaDireto(offerId: number) {
+    try {
+      setActionLoadingId(offerId);
+
+      const res = await fetch("/api/minha-conta/ofertas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "accept", offer_id: offerId }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        if (data.code === "DOCUMENT_REQUIRED" || String(data.error || "").includes("Documento de Identidade")) {
+          alert("📄 DOCUMENTO OBRIGATÓRIO: É necessário enviar seu Documento de Identidade em PDF no seu cadastro para aceitar propostas.");
+          router.push("/minha-conta/perfil");
+          return;
+        }
+        throw new Error(data.error || "Erro ao aceitar oferta.");
+      }
+
+      await loadOffers();
+    } catch (err: any) {
+      alert(err.message || "Erro ao aceitar oferta.");
+    } finally {
+      setActionLoadingId(null);
     }
   }
 
@@ -1528,16 +1558,24 @@ export default function MinhasReservasPage() {
                 <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto shrink-0">
                   <button
                     type="button"
-                    onClick={() => prepararPaypalHost(offer.id)}
+                    onClick={() => {
+                      if (isFeePaid) {
+                        aceitarOfertaDireto(offer.id);
+                      } else {
+                        prepararPaypalHost(offer.id);
+                      }
+                    }}
                     disabled={actionLoadingId === offer.id}
                     className="w-full sm:w-auto rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-2.5 text-xs font-black text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
                     <CheckCircle2 size={16} />
                     <span>
-                      {isSeasonalItem
+                      {actionLoadingId === offer.id
+                        ? "Processando..."
+                        : isSeasonalItem
                         ? "Aceitar Reserva (Pagar Taxa PayPal)"
                         : isFeePaid
-                        ? "Aceitar Oferta (Taxa Já Paga)"
+                        ? "Aceitar Oferta & Liberar Contato"
                         : `Aceitar Oferta • Pagar R$ ${itemFeeFormatted} (PayPal)`}
                     </span>
                   </button>
@@ -1558,12 +1596,12 @@ export default function MinhasReservasPage() {
         })()}
 
         {/* HOST VIEW DETAILS */}
-        {activeTab === "HOSPEDANDO" && (isAcceptedWaiting || isConfirmed) && (
+        {activeTab === "HOSPEDANDO" && (isAcceptedWaiting || isConfirmed || (Boolean(offer.property?.contactFeePaidAt) && !isSeasonalItem)) && (
           <div className="mt-5 border-t border-white/10 pt-4 space-y-3 rounded-2xl bg-slate-950/70 p-4 border border-white/5">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
               <div className="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-2">
                 <ShieldCheck size={16} />
-                <span>Dados de Contato do Hóspede (Liberado)</span>
+                <span>Dados de Contato do {isSeasonalItem ? "Hóspede" : "Comprador"} (Liberado)</span>
               </div>
 
               {/* Host Quick Actions Header Buttons */}

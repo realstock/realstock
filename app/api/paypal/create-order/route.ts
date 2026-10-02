@@ -67,6 +67,14 @@ export async function POST(req: NextRequest) {
     const acceptedOfferValue = Number(offer.offerPrice || 0);
 
     if (property.contactFeePaidAt) {
+      await prisma.offer.update({
+        where: { id: offer.id },
+        data: {
+          status: "accepted",
+          hostFeePaidAt: property.contactFeePaidAt,
+        },
+      });
+
       return NextResponse.json({
         success: true,
         already_paid: true,

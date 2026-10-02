@@ -351,7 +351,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      if (String(offer.status).toLowerCase() !== "open") {
+      if (String(offer.status).toLowerCase() !== "open" && String(offer.status).toLowerCase() !== "pending_host_approval") {
         return NextResponse.json(
           { success: false, error: "Apenas ofertas abertas podem ser aceitas." },
           { status: 400 }
@@ -362,12 +362,39 @@ export async function POST(req: NextRequest) {
         where: { id: offerId },
         data: {
           status: "accepted",
+          hostFeePaidAt: offer.property.contactFeePaidAt || new Date(),
         },
       });
+
+      let conversationId: number | null = null;
+      try {
+        let conversation = await prisma.conversation.findFirst({
+          where: {
+            propertyId: offer.propertyId,
+            buyerId: offer.buyerId,
+            sellerId: offer.property.ownerId,
+          },
+        });
+
+        if (!conversation) {
+          conversation = await prisma.conversation.create({
+            data: {
+              propertyId: offer.propertyId,
+              buyerId: offer.buyerId,
+              sellerId: offer.property.ownerId,
+            },
+          });
+        }
+        conversationId = conversation.id;
+      } catch (chatErr) {
+        console.error("CONVERSATION CREATION ERROR ON OFFER ACCEPT:", chatErr);
+      }
 
       return NextResponse.json({
         success: true,
         offer: updatedOffer,
+        conversationId,
+        message: "Oferta aceita e contatos liberados com sucesso!",
       });
     }
 
