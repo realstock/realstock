@@ -314,39 +314,81 @@ export default function GerenciarOfertasPage() {
                           <div>📷 {offer.buyer?.instagram || "-"}</div>
                         </>
                       ) : (
-                        <div className="rounded-xl border border-blue-400/20 bg-blue-400/10 px-3 py-2 text-blue-200 mt-2 text-xs">
-                          {property?.listingType === "ALUGUEL_TEMPORADA"
-                            ? "Os dados do hóspede serão liberados assim que você aceitar o pedido pagando a taxa no PayPal."
-                            : "Os dados do comprador serão liberados após a taxa ser paga."}
+                        <div className="space-y-2 mt-2">
+                          <div className="rounded-xl border border-blue-400/20 bg-blue-400/10 px-3 py-2 text-blue-200 text-xs">
+                            {property?.listingType === "ALUGUEL_TEMPORADA"
+                              ? "Os dados do hóspede serão liberados assim que você aceitar o pedido pagando a taxa no PayPal."
+                              : "Os dados do comprador serão liberados após a taxa ser paga."}
+                          </div>
+
+                          {property?.listingType !== "ALUGUEL_TEMPORADA" && !property?.contactFeePaidAt && (() => {
+                            const propPrice = Number(property?.price || offer.offerPrice || 0);
+                            const feeAmount = Math.max(1, (propPrice * 0.01) / 100);
+                            const feeFormatted = feeAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            const propPriceFormatted = propPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                            return (
+                              <div className="rounded-2xl border border-sky-400/30 bg-sky-500/10 p-3.5 text-xs space-y-2">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <span className="text-slate-300 font-medium">Taxa de Aceite:</span>
+                                  <span className="text-sm font-black text-emerald-400">
+                                    R$ {feeFormatted}{" "}
+                                    <span className="text-[11px] font-bold text-sky-300">
+                                      (0,01% sobre o anúncio de R$ {propPriceFormatted})
+                                    </span>
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-slate-300 border-t border-sky-400/20 pt-2 flex items-start gap-1.5 leading-relaxed">
+                                  <span className="text-sm shrink-0">💡</span>
+                                  <span>
+                                    <strong>Cobrança única por anúncio:</strong> Só cobramos a taxa 1 vez para cada anúncio. Caso a negociação não se concretize, <strong>não será cobrada novamente</strong> em nenhuma outra oferta deste imóvel.
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>
                   </div>
 
                   <div className="text-right flex flex-col gap-2">
-                    {(isPendingHost || offer.status === "open") && (
-                      <div className="flex flex-col gap-2">
-                        <button
-                          onClick={() => prepararPaypal(offer.id)}
-                          disabled={actionLoadingId === offer.id}
-                          className="bg-emerald-500 text-slate-950 px-4 py-2.5 rounded-xl font-extrabold hover:bg-emerald-400 transition cursor-pointer shadow-lg shadow-emerald-500/20"
-                        >
-                          {actionLoadingId === offer.id
-                            ? "Processando..."
-                            : property?.listingType === "ALUGUEL_TEMPORADA"
-                            ? "Aceitar pedido (Pagar taxa PayPal)"
-                            : "Aceitar oferta (Pagar taxa PayPal)"}
-                        </button>
+                    {(isPendingHost || offer.status === "open") && (() => {
+                      const propPrice = Number(property?.price || offer.offerPrice || 0);
+                      const feeAmount = Math.max(1, (propPrice * 0.01) / 100);
+                      const feeFormatted = feeAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-                        <button
-                          onClick={() => recusarOferta(offer.id)}
-                          disabled={actionLoadingId === offer.id}
-                          className="border border-red-500/30 bg-red-500/10 text-red-300 px-4 py-2 rounded-xl text-xs font-bold hover:bg-red-500/20 transition cursor-pointer"
-                        >
-                          {property?.listingType === "ALUGUEL_TEMPORADA" ? "Recusar reserva" : "Recusar oferta"}
-                        </button>
-                      </div>
-                    )}
+                      return (
+                        <div className="flex flex-col gap-2">
+                          <button
+                            onClick={() => prepararPaypal(offer.id)}
+                            disabled={actionLoadingId === offer.id}
+                            className="bg-emerald-500 text-slate-950 px-4 py-2.5 rounded-xl font-extrabold hover:bg-emerald-400 transition cursor-pointer shadow-lg shadow-emerald-500/20 text-xs sm:text-sm flex flex-col items-center justify-center gap-0.5"
+                          >
+                            <span>
+                              {actionLoadingId === offer.id
+                                ? "Processando..."
+                                : property?.listingType === "ALUGUEL_TEMPORADA"
+                                ? "Aceitar pedido (Pagar taxa PayPal)"
+                                : `Aceitar oferta • Pagar taxa de R$ ${feeFormatted}`}
+                            </span>
+                            {property?.listingType !== "ALUGUEL_TEMPORADA" && (
+                              <span className="text-[10px] font-bold opacity-80">
+                                (0,01% • Pagamento único via PayPal)
+                              </span>
+                            )}
+                          </button>
+
+                          <button
+                            onClick={() => recusarOferta(offer.id)}
+                            disabled={actionLoadingId === offer.id}
+                            className="border border-red-500/30 bg-red-500/10 text-red-300 px-4 py-2 rounded-xl text-xs font-bold hover:bg-red-500/20 transition cursor-pointer"
+                          >
+                            {property?.listingType === "ALUGUEL_TEMPORADA" ? "Recusar reserva" : "Recusar oferta"}
+                          </button>
+                        </div>
+                      );
+                    })()}
 
                     {isAcceptedWaiting && (
                       <div className="text-emerald-400 font-bold text-xs bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 rounded-xl">
@@ -395,11 +437,45 @@ export default function GerenciarOfertasPage() {
               </button>
             </div>
 
-            <div className="mt-4 rounded-2xl border border-blue-400/20 bg-blue-400/10 p-4 text-xs text-blue-200 space-y-2 leading-relaxed">
-              <p>
-                Após a aprovação do pagamento da taxa de 1%, os dados de contato do hóspede serão liberados e o hóspede receberá sua chave Pix para pagamento do sinal.
-              </p>
-            </div>
+            {property?.listingType === "ALUGUEL_TEMPORADA" ? (
+              <div className="mt-4 rounded-2xl border border-blue-400/20 bg-blue-400/10 p-4 text-xs text-blue-200 space-y-2 leading-relaxed">
+                <p>
+                  Após a aprovação do pagamento da taxa de 1%, os dados de contato do hóspede serão liberados e o hóspede receberá sua chave Pix para pagamento do sinal.
+                </p>
+              </div>
+            ) : (() => {
+              const modalPropPrice = Number(property?.price || 0);
+              const modalFeeAmount = Math.max(1, (modalPropPrice * 0.01) / 100);
+              const modalFeeFormatted = modalFeeAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              const modalPropPriceFormatted = modalPropPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+              return (
+                <div className="mt-4 space-y-3">
+                  <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-300">Valor do anúncio:</span>
+                      <span className="font-bold text-white">R$ {modalPropPriceFormatted}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-300">Taxa administrativa (0,01%):</span>
+                      <span className="text-base font-black text-emerald-400">R$ {modalFeeFormatted}</span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-sky-400/30 bg-sky-500/10 p-4 text-xs text-sky-200 space-y-1.5 leading-relaxed">
+                    <div className="font-extrabold text-white flex items-center gap-1.5">
+                      <span>🛡️</span> Cobrança Única por Anúncio
+                    </div>
+                    <p className="text-[11px] text-slate-300">
+                      Só cobramos a taxa <strong>1 vez para cada anúncio</strong>. Caso esta negociação não se concretize por qualquer motivo, <strong>não será cobrada novamente</strong> nenhuma taxa para receber ou aceitar outras propostas deste mesmo anúncio.
+                    </p>
+                    <p className="text-[11px] text-slate-400 pt-1 border-t border-sky-400/20">
+                      Após a aprovação no PayPal, os dados de contato do comprador serão liberados imediatamente para negociação direta.
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
 
             {paypalError && (
               <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-300">

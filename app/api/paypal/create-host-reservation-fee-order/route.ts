@@ -62,7 +62,19 @@ export async function POST(req: NextRequest) {
     }
 
     const isCompraVenda = offer.property?.listingType === "COMPRA_VENDA" || offer.property?.listingType === "VENDA";
-    const basePrice = Number(offer.offerPrice || offer.totalStayPrice || offer.property?.price || 0);
+
+    if (isCompraVenda && offer.property.contactFeePaidAt) {
+      return NextResponse.json({
+        success: true,
+        already_paid: true,
+        message: "Os contatos deste anúncio já foram liberados por um pagamento anterior."
+      });
+    }
+
+    const propertyPrice = Number(offer.property?.price || 0);
+    const basePrice = isCompraVenda && propertyPrice > 0
+      ? propertyPrice
+      : Number(offer.offerPrice || offer.totalStayPrice || propertyPrice || 0);
 
     // Consultar taxa configurada no administrativo
     const targetSlugs = isCompraVenda
@@ -101,13 +113,13 @@ export async function POST(req: NextRequest) {
         feeAmount = Number(service.fee.value);
       }
     } else {
-      // Fallback padrão se não houver taxa cadastrada
-      feePercentage = isCompraVenda ? 0.1 : 1;
+      // Fallback padrão se não houver taxa cadastrada: 0.01% para compra e venda, 1% para temporada
+      feePercentage = isCompraVenda ? 0.01 : 1;
       isPercentage = true;
       feeAmount = (basePrice * feePercentage) / 100;
     }
 
-    const finalFee = Math.max(feeAmount, 1.00); // Mínimo R$ 1.00 para cobrança PayPal
+    const finalFee = Math.max(Number(feeAmount.toFixed(2)), 1.00); // Mínimo R$ 1.00 para cobrança PayPal
 
     const accessToken = await getPayPalAccessToken();
     const base = process.env.PAYPAL_API_BASE!;

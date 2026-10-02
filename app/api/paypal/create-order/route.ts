@@ -55,16 +55,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (offer.status !== "accepted") {
+    if (offer.status !== "accepted" && offer.status !== "open" && offer.status !== "pending") {
       return NextResponse.json(
-        { success: false, error: "A oferta precisa estar aceita." },
+        { success: false, error: "A oferta precisa estar aberta ou aceita." },
         { status: 400 }
       );
     }
 
     const property = offer.property;
-    const acceptedOfferValue = Number(offer.offerPrice);
-    
+    const propertyPrice = Number(property.price || 0);
+    const acceptedOfferValue = Number(offer.offerPrice || 0);
+
+    if (property.contactFeePaidAt) {
+      return NextResponse.json({
+        success: true,
+        already_paid: true,
+        message: "Os contatos deste imóvel já foram liberados por um pagamento anterior."
+      });
+    }
+
     let paymentAmount = 0;
     if (property.listingType === "ALUGUEL_TEMPORADA") {
       const siteService = await prisma.siteService.findFirst({
@@ -73,20 +82,24 @@ export async function POST(req: NextRequest) {
       });
       paymentAmount = siteService?.fee?.value ? Number(siteService.fee.value) : 10.00;
     } else {
-      const baseValueForFee = acceptedOfferValue > 0 ? acceptedOfferValue : Number(property.price);
-      paymentAmount = Number(((2 * baseValueForFee) / 10000).toFixed(2));
+      // 0,01% do valor do anúncio (property.price)
+      const baseValueForFee = propertyPrice > 0 ? propertyPrice : (acceptedOfferValue > 0 ? acceptedOfferValue : 0);
+
+      const siteService = await prisma.siteService.findFirst({
+        where: { slug: { in: ["oferta", "compra-venda", "taxa-oferta"] }, isActive: true },
+        include: { fee: true },
+      });
+
+      let feePct = 0.01; // padrão 0,01%
+      if (siteService?.fee && siteService.fee.isActive && siteService.fee.type === "PERCENTAGE") {
+        feePct = Number(siteService.fee.value);
+      }
+
+      paymentAmount = Number(((baseValueForFee * feePct) / 100).toFixed(2));
 
       if (paymentAmount <= 0) {
         paymentAmount = 1.00;
       }
-    }
-
-    if (property.contactFeePaidAt) {
-      return NextResponse.json({
-        success: true,
-        already_paid: true,
-        message: "Os contatos deste imóvel já foram liberados por um pagamento anterior."
-      });
     }
 
     let payment = await prisma.offerPayment.findFirst({

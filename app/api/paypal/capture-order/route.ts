@@ -160,6 +160,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    await prisma.offer.update({
+      where: { id: payment.offerId },
+      data: {
+        status: "accepted",
+        hostFeePaidAt: new Date(),
+      },
+    });
+
     // Liberar contatos para todo o imóvel (pagamento único por imóvel)
     await prisma.property.update({
       where: { id: payment.propertyId },

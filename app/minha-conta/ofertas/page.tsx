@@ -99,6 +99,8 @@ type OfferItem = {
   property?: {
     id: number;
     title?: string;
+    price?: number | null;
+    contactFeePaidAt?: string | null;
     city?: string | null;
     state?: string | null;
     street?: string | null;
@@ -1474,45 +1476,86 @@ export default function MinhasReservasPage() {
         )}
 
         {/* HOST PENDING APPROVAL PANEL (ACEITAR E PAGAR TAXA 1% PAYPAL) */}
-        {activeTab === "HOSPEDANDO" && isPending && !isCancelled && !isRejected && (
-          <div className="mt-5 border-t border-white/10 pt-4 space-y-3 rounded-2xl bg-amber-500/10 p-4 border border-amber-500/30">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-extrabold text-amber-300 flex items-center gap-2">
-                  <Clock size={18} />
-                  <span>{isSeasonalItem ? "Pedido de Reserva Recebido!" : "Proposta de Compra Recebida!"}</span>
+        {activeTab === "HOSPEDANDO" && isPending && !isCancelled && !isRejected && (() => {
+          const itemPropPrice = Number(offer.property?.price || offer.offerPrice || 0);
+          const itemFeeVal = Math.max(1, (itemPropPrice * 0.01) / 100);
+          const itemFeeFormatted = itemFeeVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          const itemPropPriceFormatted = itemPropPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          const isFeePaid = Boolean(offer.property?.contactFeePaidAt);
+
+          return (
+            <div className="mt-5 border-t border-white/10 pt-4 space-y-3 rounded-2xl bg-amber-500/10 p-4 border border-amber-500/30">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="space-y-1.5 flex-1">
+                  <div className="text-sm font-extrabold text-amber-300 flex items-center gap-2">
+                    <Clock size={18} />
+                    <span>{isSeasonalItem ? "Pedido de Reserva Recebido!" : "Proposta de Compra Recebida!"}</span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {isSeasonalItem
+                      ? "Você recebeu um pedido de reserva. Para aceitar o pedido e liberar os dados de contato do hóspede, efetue o pagamento da taxa administrativa do site via PayPal."
+                      : "Você recebeu uma proposta de compra. Para aceitar a oferta e liberar os dados de contato do comprador, efetue o pagamento da taxa administrativa via PayPal."}
+                  </p>
+
+                  {!isSeasonalItem && !isFeePaid && (
+                    <div className="rounded-xl border border-sky-400/30 bg-sky-500/10 p-3 text-xs space-y-1.5 mt-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-slate-300 font-medium">Taxa de Aceite:</span>
+                        <span className="font-extrabold text-emerald-400">
+                          R$ {itemFeeFormatted}{" "}
+                          <span className="text-[11px] font-normal text-sky-300">
+                            (0,01% sobre o anúncio de R$ {itemPropPriceFormatted})
+                          </span>
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-300 border-t border-sky-400/20 pt-1.5 flex items-start gap-1.5 leading-relaxed">
+                        <span className="text-xs shrink-0">💡</span>
+                        <span>
+                          <strong>Cobrança única por anúncio:</strong> Só cobramos a taxa 1 vez para cada anúncio. Caso a negociação não se concretize, <strong>não será cobrada novamente</strong> em nenhuma outra oferta deste imóvel.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {!isSeasonalItem && isFeePaid && (
+                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-300 font-bold flex items-center gap-1.5 mt-2">
+                      <span>✅</span>
+                      <span>Taxa deste anúncio já foi paga! Contatos liberados sem cobrança adicional.</span>
+                    </div>
+                  )}
                 </div>
-                <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                  {isSeasonalItem
-                    ? "Você recebeu um pedido de reserva. Para aceitar o pedido e liberar os dados de contato do hóspede, efetue o pagamento da taxa administrativa do site via PayPal."
-                    : "Você recebeu uma proposta de compra. Para aceitar a oferta e liberar os dados de contato do comprador, efetue o pagamento da taxa de oferta cadastrada via PayPal."}
-                </p>
-              </div>
 
-              <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto shrink-0">
-                <button
-                  type="button"
-                  onClick={() => prepararPaypalHost(offer.id)}
-                  disabled={actionLoadingId === offer.id}
-                  className="w-full sm:w-auto rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-2.5 text-xs font-black text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
-                >
-                  <CheckCircle2 size={16} />
-                  <span>{isSeasonalItem ? "Aceitar Reserva (Pagar Taxa PayPal)" : "Aceitar Oferta (Pagar Taxa PayPal)"}</span>
-                </button>
+                <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => prepararPaypalHost(offer.id)}
+                    disabled={actionLoadingId === offer.id}
+                    className="w-full sm:w-auto rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-2.5 text-xs font-black text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-lg shadow-emerald-500/20 transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    <CheckCircle2 size={16} />
+                    <span>
+                      {isSeasonalItem
+                        ? "Aceitar Reserva (Pagar Taxa PayPal)"
+                        : isFeePaid
+                        ? "Aceitar Oferta (Taxa Já Paga)"
+                        : `Aceitar Oferta • Pagar R$ ${itemFeeFormatted} (PayPal)`}
+                    </span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => recusarOfertaHost(offer.id)}
-                  disabled={actionLoadingId === offer.id}
-                  className="w-full sm:w-auto rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-xs font-bold text-red-400 hover:bg-red-500/20 transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
-                >
-                  <Ban size={15} />
-                  <span>{isSeasonalItem ? "Recusar Reserva" : "Recusar Oferta"}</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => recusarOfertaHost(offer.id)}
+                    disabled={actionLoadingId === offer.id}
+                    className="w-full sm:w-auto rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-xs font-bold text-red-400 hover:bg-red-500/20 transition cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Ban size={15} />
+                    <span>{isSeasonalItem ? "Recusar Reserva" : "Recusar Oferta"}</span>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* HOST VIEW DETAILS */}
         {activeTab === "HOSPEDANDO" && (isAcceptedWaiting || isConfirmed) && (
@@ -1958,18 +2001,48 @@ export default function MinhasReservasPage() {
                   </button>
                 </div>
 
-                <div className="mt-4 text-xs text-slate-300 space-y-2">
-                  <p>
-                    {isPaypalSeasonal
-                      ? "Para aceitar o pedido e liberar os dados do hóspede, efetue o pagamento da taxa administrativa do site via PayPal."
-                      : "Para aceitar a oferta e liberar os dados do comprador, efetue o pagamento da taxa de oferta cadastrada via PayPal."}
-                  </p>
-                  <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 text-emerald-300 font-bold text-center">
-                    {isPaypalSeasonal
-                      ? "Após a confirmação da taxa, o hóspede receberá sua Chave Pix para efetuar o pagamento do sinal da estadia."
-                      : "Após a confirmação da taxa, os dados de contato do comprador serão liberados para dar andamento à negociação."}
+                {isPaypalSeasonal ? (
+                  <div className="mt-4 text-xs text-slate-300 space-y-2">
+                    <p>
+                      Para aceitar o pedido e liberar os dados do hóspede, efetue o pagamento da taxa administrativa do site via PayPal.
+                    </p>
+                    <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 text-emerald-300 font-bold text-center">
+                      Após a confirmação da taxa, o hóspede receberá sua Chave Pix para efetuar o pagamento do sinal da estadia.
+                    </div>
                   </div>
-                </div>
+                ) : (() => {
+                  const modalPropPrice = Number(paypalTargetOffer?.property?.price || paypalTargetOffer?.offerPrice || 0);
+                  const modalFeeAmount = Math.max(1, (modalPropPrice * 0.01) / 100);
+                  const modalFeeFormatted = modalFeeAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                  const modalPropPriceFormatted = modalPropPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                  return (
+                    <div className="mt-4 space-y-3">
+                      <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-2">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-300">Valor do anúncio:</span>
+                          <span className="font-bold text-white">R$ {modalPropPriceFormatted}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-300">Taxa administrativa (0,01%):</span>
+                          <span className="text-base font-black text-emerald-400">R$ {modalFeeFormatted}</span>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-sky-400/30 bg-sky-500/10 p-4 text-xs text-sky-200 space-y-1.5 leading-relaxed">
+                        <div className="font-extrabold text-white flex items-center gap-1.5">
+                          <span>🛡️</span> Cobrança Única por Anúncio
+                        </div>
+                        <p className="text-[11px] text-slate-300">
+                          Só cobramos a taxa <strong>1 vez para cada anúncio</strong>. Caso esta negociação não se concretize por qualquer motivo, <strong>não será cobrada novamente</strong> nenhuma taxa para receber ou aceitar outras propostas deste mesmo anúncio.
+                        </p>
+                        <p className="text-[11px] text-slate-400 pt-1 border-t border-sky-400/20">
+                          Após a confirmação no PayPal, os dados de contato do comprador serão liberados imediatamente para dar andamento à negociação.
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
 
               {paypalError && (
                 <div className={`mt-4 rounded-2xl p-4 text-xs space-y-2 border ${

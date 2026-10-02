@@ -115,6 +115,7 @@ export async function GET(
       property: {
         id: property.id,
         title: property.title,
+        price: Number(property.price || 0),
         city: property.city,
         state: property.state,
         neighborhood: property.neighborhood,

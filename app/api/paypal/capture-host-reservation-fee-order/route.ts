@@ -114,14 +114,23 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Atualiza oferta para ACCEPTED_WAITING_PAYMENT (ou accepted com hostFeePaidAt)
+    const isCompraVenda = offer.property?.listingType === "COMPRA_VENDA" || offer.property?.listingType === "VENDA";
+
+    // Atualiza oferta para ACCEPTED_WAITING_PAYMENT (temporada) ou accepted (compra e venda)
     const updatedOffer = await prisma.offer.update({
       where: { id: offer.id },
       data: {
-        status: "ACCEPTED_WAITING_PAYMENT",
+        status: isCompraVenda ? "accepted" : "ACCEPTED_WAITING_PAYMENT",
         hostFeePaidAt: new Date(),
       },
     });
+
+    if (isCompraVenda) {
+      await prisma.property.update({
+        where: { id: offer.propertyId },
+        data: { contactFeePaidAt: new Date() },
+      });
+    }
 
     // Abrir/Criar o Chat automaticamente e enviar a mensagem inicial do hóspede
     let createdConversationId: number | null = null;
