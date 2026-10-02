@@ -28,13 +28,13 @@ export default function Header() {
       {/* Linha superior: Logo, Switcher, AdSense, Perfil / Login */}
       <div className="mx-auto flex max-w-[1600px] h-[70px] lg:h-[80px] items-center justify-between px-2.5 sm:px-4 lg:px-6 gap-2">
         <div className="flex items-center gap-1.5 sm:gap-3 md:gap-5 min-w-0">
-          <Link href="/" className="block shrink-0 w-[85px] xs:w-[105px] md:w-[150px] lg:w-[190px]">
+          <Link href="/" className="block shrink-0">
             <Image
               src="/logo-realstock.jpg"
               alt="RealStock"
-              width={500}
-              height={120}
-              className="h-[30px] sm:h-[35px] lg:h-[50px] w-full object-fill"
+              width={1280}
+              height={629}
+              className="h-[36px] sm:h-[44px] lg:h-[52px] w-auto object-contain"
               priority
             />
           </Link>
