@@ -175,6 +175,21 @@ function ChatContent() {
     }
   }, [activeConvId, session]);
 
+  // Marcar mensagens recebidas como lidas para atualizar o menu superior
+  useEffect(() => {
+    if (currentUserId) {
+      fetch("/api/chat/unread")
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.success && data.latestId) {
+            localStorage.setItem(`realstock_chat_last_seen_${currentUserId}`, String(data.latestId));
+            window.dispatchEvent(new CustomEvent("realstock_chat_read"));
+          }
+        })
+        .catch(() => {});
+    }
+  }, [currentUserId, activeConvId, messages.length]);
+
   const chatMessagesContainerRef = useRef<HTMLDivElement>(null);
 
   // Auto scroll internal chat container to bottom when messages update without moving the main browser window

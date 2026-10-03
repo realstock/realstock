@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { signOut, useSession } from "next-auth/react";
@@ -13,15 +14,90 @@ export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
 
+  const [hasNewMessage, setHasNewMessage] = useState(false);
+  const latestIncomingIdRef = useRef<number | null>(null);
+
+  const user = session?.user;
+  const userId = (user as any)?.id ? Number((user as any).id) : null;
+  const isAdmin = (user as any)?.role === "ADMIN";
+
+  const checkUnread = useCallback(async () => {
+    if (!userId) {
+      setHasNewMessage(false);
+      return;
+    }
+    try {
+      const res = await fetch("/api/chat/unread");
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.success) return;
+
+      const latestId = data.latestId as number | null;
+      latestIncomingIdRef.current = latestId;
+
+      if (!latestId) {
+        setHasNewMessage(false);
+        return;
+      }
+
+      const storageKey = `realstock_chat_last_seen_${userId}`;
+      if (pathname.startsWith("/minha-conta/chat")) {
+        localStorage.setItem(storageKey, String(latestId));
+        setHasNewMessage(false);
+        return;
+      }
+
+      const lastSeenStr = localStorage.getItem(storageKey);
+      if (!lastSeenStr) {
+        setHasNewMessage(true);
+      } else {
+        setHasNewMessage(latestId > Number(lastSeenStr));
+      }
+    } catch (err) {
+      console.error("Erro ao verificar mensagens não lidas:", err);
+    }
+  }, [userId, pathname]);
+
+  useEffect(() => {
+    if (!userId) {
+      setHasNewMessage(false);
+      return;
+    }
+
+    checkUnread();
+
+    const interval = setInterval(checkUnread, 15000);
+
+    const handleRead = () => {
+      if (userId && latestIncomingIdRef.current) {
+        localStorage.setItem(`realstock_chat_last_seen_${userId}`, String(latestIncomingIdRef.current));
+      }
+      setHasNewMessage(false);
+    };
+
+    window.addEventListener("realstock_chat_read", handleRead);
+    window.addEventListener("storage", checkUnread);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("realstock_chat_read", handleRead);
+      window.removeEventListener("storage", checkUnread);
+    };
+  }, [userId, checkUnread]);
+
+  useEffect(() => {
+    if (pathname.startsWith("/minha-conta/chat") && userId && latestIncomingIdRef.current) {
+      localStorage.setItem(`realstock_chat_last_seen_${userId}`, String(latestIncomingIdRef.current));
+      setHasNewMessage(false);
+    }
+  }, [pathname, userId]);
+
   function handleTypeSwitch(type: "COMPRA_VENDA" | "ALUGUEL_TEMPORADA") {
     setListingType(type);
     if (session?.user && pathname !== "/") {
       router.push("/");
     }
   }
-
-  const user = session?.user;
-  const isAdmin = (user as any)?.role === "ADMIN";
 
   return (
     <header className="border-b border-white/10 bg-slate-950 text-white">
@@ -105,7 +181,7 @@ export default function Header() {
                   className={`rounded-lg px-2.5 sm:px-3 py-1.5 transition-colors ${
                     pathname === "/anunciar"
                       ? "bg-blue-600 text-white font-semibold"
-                      : "text-slate-200 hover:bg-white/10 hover:text-white"
+                      : "text-white hover:bg-white/10"
                   }`}
                 >
                   Anunciar imóvel
@@ -116,7 +192,7 @@ export default function Header() {
                   className={`rounded-lg px-2.5 sm:px-3 py-1.5 transition-colors ${
                     pathname === "/"
                       ? "bg-blue-600 text-white font-semibold"
-                      : "text-slate-200 hover:bg-white/10 hover:text-white"
+                      : "text-white hover:bg-white/10"
                   }`}
                 >
                   Pesquisar imóvel
@@ -127,7 +203,7 @@ export default function Header() {
                   className={`rounded-lg px-2.5 sm:px-3 py-1.5 transition-colors ${
                     pathname.startsWith("/minha-conta/anuncios")
                       ? "bg-blue-600 text-white font-semibold"
-                      : "text-slate-200 hover:bg-white/10 hover:text-white"
+                      : "text-white hover:bg-white/10"
                   }`}
                 >
                   Meus anúncios
@@ -138,7 +214,7 @@ export default function Header() {
                   className={`rounded-lg px-2.5 sm:px-3 py-1.5 transition-colors ${
                     pathname.startsWith("/minha-conta/ofertas")
                       ? "bg-blue-600 text-white font-semibold"
-                      : "text-slate-200 hover:bg-white/10 hover:text-white"
+                      : "text-white hover:bg-white/10"
                   }`}
                 >
                   {listingType === "ALUGUEL_TEMPORADA" ? "Minhas reservas" : "Minhas ofertas"}
@@ -146,13 +222,27 @@ export default function Header() {
 
                 <Link
                   href="/minha-conta/chat"
-                  className={`rounded-lg px-2.5 sm:px-3 py-1.5 font-medium transition-colors ${
+                  onClick={() => {
+                    if (userId && latestIncomingIdRef.current) {
+                      localStorage.setItem(`realstock_chat_last_seen_${userId}`, String(latestIncomingIdRef.current));
+                    }
+                    setHasNewMessage(false);
+                  }}
+                  className={`rounded-lg px-2.5 sm:px-3 py-1.5 transition-colors flex items-center gap-1.5 ${
                     pathname.startsWith("/minha-conta/chat")
-                      ? "bg-emerald-600 text-white font-semibold"
-                      : "text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300"
+                      ? "bg-blue-600 text-white font-semibold"
+                      : hasNewMessage
+                      ? "text-emerald-400 font-bold bg-emerald-500/15 border border-emerald-500/40 hover:bg-emerald-500/25 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                      : "text-white hover:bg-white/10"
                   }`}
                 >
-                  Chat / Mensagens
+                  <span>Chat / Mensagens</span>
+                  {hasNewMessage && (
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                  )}
                 </Link>
 
                 <Link
@@ -160,7 +250,7 @@ export default function Header() {
                   className={`rounded-lg px-2.5 sm:px-3 py-1.5 transition-colors ${
                     pathname.startsWith("/minha-conta/perfil")
                       ? "bg-blue-600 text-white font-semibold"
-                      : "text-slate-200 hover:bg-white/10 hover:text-white"
+                      : "text-white hover:bg-white/10"
                   }`}
                 >
                   Meu cadastro
@@ -170,8 +260,8 @@ export default function Header() {
                   href="/instrucoes"
                   className={`rounded-lg px-2.5 sm:px-3 py-1.5 transition-colors ${
                     pathname === "/instrucoes"
-                      ? "bg-sky-600 text-white font-semibold"
-                      : "text-sky-400 hover:bg-sky-500/10 hover:text-sky-300"
+                      ? "bg-blue-600 text-white font-semibold"
+                      : "text-white hover:bg-white/10"
                   }`}
                 >
                   Como usar o site
@@ -182,8 +272,8 @@ export default function Header() {
                     href="/admin"
                     className={`rounded-lg px-2.5 sm:px-3 py-1.5 transition-colors ${
                       pathname.startsWith("/admin")
-                        ? "bg-yellow-600 text-white font-semibold"
-                        : "text-yellow-400 hover:bg-yellow-500/10 hover:text-yellow-300"
+                        ? "bg-blue-600 text-white font-semibold"
+                        : "text-white hover:bg-white/10"
                     }`}
                   >
                     Administração
@@ -197,7 +287,7 @@ export default function Header() {
                   className={`rounded-lg px-2.5 sm:px-3 py-1.5 transition-colors ${
                     pathname === "/"
                       ? "bg-blue-600 text-white font-semibold"
-                      : "text-slate-200 hover:bg-white/10 hover:text-white"
+                      : "text-white hover:bg-white/10"
                   }`}
                 >
                   Pesquisar imóvel
@@ -207,7 +297,7 @@ export default function Header() {
                   className={`rounded-lg px-2.5 sm:px-3 py-1.5 transition-colors ${
                     pathname === "/anunciar"
                       ? "bg-blue-600 text-white font-semibold"
-                      : "text-slate-200 hover:bg-white/10 hover:text-white"
+                      : "text-white hover:bg-white/10"
                   }`}
                 >
                   Anunciar imóvel
@@ -216,8 +306,8 @@ export default function Header() {
                   href="/instrucoes"
                   className={`rounded-lg px-2.5 sm:px-3 py-1.5 transition-colors ${
                     pathname === "/instrucoes"
-                      ? "bg-sky-600 text-white font-semibold"
-                      : "text-sky-400 hover:bg-sky-500/10 hover:text-sky-300"
+                      ? "bg-blue-600 text-white font-semibold"
+                      : "text-white hover:bg-white/10"
                   }`}
                 >
                   Como usar o site
@@ -237,7 +327,7 @@ export default function Header() {
           ) : (
             <Link
               href="/login"
-              className="shrink-0 rounded-xl border border-white/10 bg-slate-900 px-3.5 py-1.5 text-xs sm:text-sm font-medium hover:bg-white/10 transition cursor-pointer"
+              className="shrink-0 rounded-xl border border-white/10 bg-slate-900 px-3.5 py-1.5 text-xs sm:text-sm font-medium text-white hover:bg-white/10 transition cursor-pointer"
             >
               Entrar
             </Link>
