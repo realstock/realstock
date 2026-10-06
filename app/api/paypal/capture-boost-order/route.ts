@@ -27,7 +27,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 401 });
     }
 
-    const { orderID, propertyId, dailyBudget, platform, postType } = await req.json();
+    const body = await req.json();
+    const { orderID, propertyId, dailyBudget, platform, postType } = body;
+    const durationDays = Number(body.durationDays || body.duration_days || 5);
 
     if (!orderID || !propertyId || !dailyBudget) {
       return NextResponse.json({ success: false, error: "Parâmetros inválidos." }, { status: 400 });
@@ -45,8 +47,7 @@ export async function POST(req: NextRequest) {
     let isFree = false;
 
     // Calcular o custo total esperado (Investimento + Taxa de Serviço)
-    const DURATION_DAYS = 5;
-    const totalInvestment = Number(dailyBudget) * DURATION_DAYS;
+    const totalInvestment = Number(dailyBudget) * durationDays;
     
     const service = await prisma.siteService.findUnique({
       where: { slug: "turbinar" },
@@ -160,7 +161,7 @@ export async function POST(req: NextRequest) {
             property.title,
             Number(dailyBudget),
             propertyLink,
-            5, // durationDays
+            durationDays,
             property?.city || undefined,
             property?.state || undefined,
             property?.category || undefined,
@@ -168,7 +169,7 @@ export async function POST(req: NextRequest) {
         );
 
         const endTime = new Date();
-        endTime.setDate(endTime.getDate() + 5);
+        endTime.setDate(endTime.getDate() + durationDays);
 
         if (!googleRes.success) {
             console.error("ERRO FINAL ANUNCIO GOOGLE", googleRes.error);
@@ -187,8 +188,8 @@ export async function POST(req: NextRequest) {
                 campaignId: googleRes.campaignId,
                 adGroupId: googleRes.adGroupId,
                 status: "ACTIVE",
-                budget: Number(dailyBudget) * 5,
-                budgetDays: 5,
+                budget: Number(dailyBudget) * durationDays,
+                budgetDays: durationDays,
                 targetUrl: propertyLink
             }
         });
@@ -271,7 +272,7 @@ export async function POST(req: NextRequest) {
     if (!adAccountId || !pageId || !igToken) {
        console.warn("Pagamento aprovado, porém FB Marketing API não configurada totalmente (.env). Cancelando pipeline Ads.");
        const dummyEndTime = new Date();
-       dummyEndTime.setDate(dummyEndTime.getDate() + 5);
+       dummyEndTime.setDate(dummyEndTime.getDate() + durationDays);
        if (Number(propertyId) === 0) {
            await prisma.user.update({
                where: { id: user.id },
@@ -326,10 +327,10 @@ export async function POST(req: NextRequest) {
     }
     const campaignId = campData.id;
 
-    // 3. CRIA ADSET (Orçamento e Duração 5 dias)
+    // 3. CRIA ADSET (Orçamento e Duração)
     const dailyBudgetCents = Math.floor(Number(dailyBudget) * 100);
     const endTime = new Date();
-    endTime.setDate(endTime.getDate() + 5);
+    endTime.setDate(endTime.getDate() + durationDays);
 
     const adSetForm = new URLSearchParams();
     adSetForm.append("name", `AdSet RealStock ${property.state}`);
@@ -461,8 +462,8 @@ export async function POST(req: NextRequest) {
              listingId: Number(propertyId),
              campaignId: campaignId,
              status: "IN_PROCESS",
-             budget: Number(dailyBudget) * 5,
-             budgetDays: 5,
+             budget: Number(dailyBudget) * durationDays,
+             budgetDays: durationDays,
              platform: "meta"
         }
     });

@@ -21,7 +21,8 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       return NextResponse.json({ success: false, error: "Publication box not found" }, { status: 404 });
     }
 
-    const { dailyBudget, platform } = await req.json();
+    const { dailyBudget, platform, durationDays = 5 } = await req.json();
+    const days = Math.max(1, Number(durationDays) || 5);
 
     if (platform === "google") {
       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.realstock.com.br";
@@ -33,7 +34,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
         pub.name || "Patrocínio Admin",
         Number(dailyBudget) || 50,
         targetUrl,
-        5, // durationDays
+        days, // durationDays
         undefined, // city
         undefined, // state
         undefined, // category
@@ -50,14 +51,14 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
           campaignId: finalCampaignId,
           adGroupId: finalAdGroupId,
           status: finalStatus,
-          budget: dailyBudget || 50,
-          budgetDays: 5,
+          budget: (Number(dailyBudget) || 50) * days,
+          budgetDays: days,
           targetUrl: targetUrl
         }
       });
 
       const boostedDate = new Date();
-      boostedDate.setDate(boostedDate.getDate() + 5);
+      boostedDate.setDate(boostedDate.getDate() + days);
 
       await prisma.adminSponsoredPublication.update({
           where: { id: pubId },
@@ -156,7 +157,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       // 3. Criar AdSet
       const dailyBudgetCents = Math.floor(Number(dailyBudget) * 100);
       const endTime = new Date();
-      endTime.setDate(endTime.getDate() + 5);
+      endTime.setDate(endTime.getDate() + days);
 
       const promotedObject: any = { page_id: pageId };
       // Para POST_ENGAGEMENT no Instagram, o promoted_object continua sendo a Page ID.

@@ -32,18 +32,45 @@ export async function createRealStockGoogleCampaign(
     // Safely parse durationDays to prevent invalid dates or budget overruns
     let validDurationDays = 5;
     if (typeof durationDays === "number" && !isNaN(durationDays) && durationDays > 0) {
-      validDurationDays = durationDays;
+      validDurationDays = Math.round(durationDays);
     } else if (typeof durationDays === "string" && !isNaN(Number(durationDays)) && Number(durationDays) > 0) {
-      validDurationDays = Number(durationDays);
+      validDurationDays = Math.round(Number(durationDays));
     }
 
-    // Calculate start and end dates (YYYYMMDD required by Google Ads API)
-    const formatDate = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
+    // Helper to extract date parts in Google Ads account timezone (America/Sao_Paulo)
+    const getSaoPauloDate = (d: Date) => {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric', month: 'numeric', day: 'numeric',
+        hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: false
+      }).formatToParts(d);
+      const p: Record<string, string> = {};
+      for (const part of parts) p[part.type] = part.value;
+      return {
+        year: p.year,
+        month: p.month.padStart(2, '0'),
+        day: p.day.padStart(2, '0'),
+        hour: p.hour.padStart(2, '0'),
+        minute: p.minute.padStart(2, '0'),
+        second: p.second.padStart(2, '0'),
+      };
+    };
+
     const now = new Date();
-    const startDate = formatDate(now);
-    const endDateObj = new Date(now.getTime() + validDurationDays * 24 * 60 * 60 * 1000);
-    const endDate = formatDate(endDateObj);
-    console.log(`[GoogleAds] Campaign period: ${startDate} → ${endDate} (${validDurationDays} days)`);
+    const spNow = getSaoPauloDate(now);
+    const startDateStr = `${spNow.year}-${spNow.month}-${spNow.day}`;
+    const startDateTimeStr = `${startDateStr} ${spNow.hour}:${spNow.minute}:${spNow.second}`;
+
+    // End date calculation: exactly validDurationDays of active serving.
+    // In Google Ads, end_date / end_date_time is inclusive until 23:59:59 on that date.
+    // So for 5 days starting Oct 6: runs Oct 6, 7, 8, 9, 10 (ending on Oct 10 at 23:59:59).
+    const spStart = new Date(`${startDateStr}T00:00:00-03:00`);
+    const spEnd = new Date(spStart.getTime() + (validDurationDays - 1) * 24 * 60 * 60 * 1000);
+    const spEndParts = getSaoPauloDate(spEnd);
+    const endDateStr = `${spEndParts.year}-${spEndParts.month}-${spEndParts.day}`;
+    const endDateTimeStr = `${endDateStr} 23:59:59`;
+
+    console.log(`[GoogleAds] Campaign period: ${startDateTimeStr} → ${endDateTimeStr} (${validDurationDays} days, end_date: ${endDateStr})`);
 
     // 1. Create Budget (dailyBudgetBrl in micro-reais)
     const microAmount = Math.floor(dailyBudgetBrl * 1000000);
@@ -58,14 +85,18 @@ export async function createRealStockGoogleCampaign(
     ]);
     const budgetResourceName = budgetRes.results[0].resource_name;
 
-    // 2. Create Campaign WITH explicit start/end dates to prevent budget overrun
+    // 2. Create Campaign WITH explicit start_date_time and end_date_time to strictly enforce the selected duration
     console.log(`[GoogleAds] Creating campaign linked to budget: ${budgetResourceName}`);
     const campaignRes = await customer.campaigns.create([
       {
         name: `Campanha Imóvel - ${propertyId} - ${Date.now()}`,
         status: enums.CampaignStatus.ENABLED,
-        start_date: startDate,
-        end_date: endDate,
+        // Google Ads API v23 standard: yyyy-MM-dd HH:mm:ss in customer time zone
+        start_date_time: startDateTimeStr,
+        end_date_time: endDateTimeStr,
+        // Legacy date fields with ISO hyphens for compatibility
+        start_date: startDateStr,
+        end_date: endDateStr,
         advertising_channel_type: enums.AdvertisingChannelType.SEARCH,
         network_settings: {
           target_google_search: true,
@@ -317,14 +348,21 @@ export async function createRealStockGoogleCampaign(
 
 export async function pauseExpiredGoogleAdsCampaigns() {
   try {
-    const customer = getGoogleAdsCustomer();
+    let customer: any = null;
+    try {
+      customer = getGoogleAdsCustomer();
+    } catch (custErr) {
+      console.warn("[GoogleAds Auto-Pause] Customer client initialization skipped:", custErr);
+    }
+
     const activeSessions = await prisma.googleAdsSession.findMany({
       where: {
-        status: { in: ["ACTIVE", "ENABLED"] }
+        status: { in: ["ACTIVE", "ENABLED", "ACTIVE_FALLBACK"] }
       }
     });
 
     const now = new Date();
+    let pausedCount = 0;
 
     for (const session of activeSessions) {
       const duration = session.budgetDays || 5;
@@ -333,7 +371,7 @@ export async function pauseExpiredGoogleAdsCampaigns() {
       if (now > expireDate) {
         console.log(`[GoogleAds Auto-Pause] Campaign ${session.campaignId || "N/A"} expired on ${expireDate.toISOString()}. Pausing...`);
         try {
-          if (session.campaignId && !session.campaignId.startsWith("MOCK_")) {
+          if (customer && session.campaignId && !session.campaignId.startsWith("MOCK_")) {
             const resourceName = session.campaignId.includes("/")
               ? session.campaignId
               : `customers/${process.env.GOOGLE_ADS_TARGET_CUSTOMER_ID}/campaigns/${session.campaignId}`;
@@ -353,10 +391,21 @@ export async function pauseExpiredGoogleAdsCampaigns() {
           where: { id: session.id },
           data: { status: "EXPIRED" }
         });
+
+        // Atualizar status de boost no imóvel se expirado
+        if (session.listingId > 0) {
+          await prisma.property.updateMany({
+            where: { id: session.listingId, googleBoostedUntil: { lte: now } },
+            data: { googleBoostedUntil: null }
+          }).catch(() => {});
+        }
+        pausedCount++;
       }
     }
+    return { success: true, pausedCount };
   } catch (err) {
     console.error("[GoogleAds Auto-Pause Error]:", err);
+    return { success: false, error: err };
   }
 }
 

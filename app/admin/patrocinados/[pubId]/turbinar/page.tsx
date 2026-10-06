@@ -20,9 +20,9 @@ export default function AdminLoteGooglePage() {
   const [successMsg, setSuccessMsg] = useState("");
   const [isPublishing, setIsPublishing] = useState(false);
   const [dailyBudget, setDailyBudget] = useState(20);
+  const [durationDays, setDurationDays] = useState(5);
 
-  const DURATION_DAYS = 5;
-  const totalInvestment = dailyBudget * DURATION_DAYS;
+  const totalInvestment = dailyBudget * durationDays;
   const feeAmount = (totalInvestment * 20) / 100; // 20% mock fee visual only for admin
   const siteCharge = totalInvestment + feeAmount;
 
@@ -60,7 +60,7 @@ export default function AdminLoteGooglePage() {
       const res = await fetch(`/api/admin/patrocinados/${pubId}/turbinar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platform, dailyBudget })
+        body: JSON.stringify({ platform, dailyBudget, durationDays })
       });
       const data = await res.json();
       
@@ -129,7 +129,7 @@ export default function AdminLoteGooglePage() {
                            <CalendarDays className="text-purple-400" size={24}/>
                            <div>
                               <div className="text-xs text-slate-400 font-semibold uppercase">Duração</div>
-                              <div className="font-bold">{DURATION_DAYS} Dias corridos</div>
+                              <div className="font-bold">{durationDays} Dias corridos</div>
                               <div className="text-xs text-slate-500 mt-1">Campanha de tráfego contínuo</div>
                            </div>
                        </div>
@@ -158,6 +158,26 @@ export default function AdminLoteGooglePage() {
                       onChange={(e) => setDailyBudget(Number(e.target.value))}
                       className="w-full h-3 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                    />
+
+                   <div className="border-t border-white/10 pt-4 mt-6">
+                     <h3 className="text-sm font-bold text-white mb-2">Duração da Campanha</h3>
+                     <div className="grid grid-cols-5 gap-2">
+                       {[3, 5, 7, 15, 30].map((days) => (
+                         <button
+                           key={days}
+                           type="button"
+                           onClick={() => setDurationDays(days)}
+                           className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border ${
+                             durationDays === days
+                               ? "bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-600/30"
+                               : "bg-slate-900/60 border-white/10 text-slate-400 hover:text-white hover:border-white/20"
+                           }`}
+                         >
+                           {days} dias
+                         </button>
+                       ))}
+                     </div>
+                   </div>
                </div>
             </div>
 
@@ -179,7 +199,7 @@ export default function AdminLoteGooglePage() {
                        
                        <div className="space-y-3 text-sm border-b border-white/10 pb-4 mb-4">
                            <div className="flex justify-between text-slate-400">
-                               <span>Orçamento (R$ {dailyBudget} x {DURATION_DAYS} dias)</span>
+                               <span>Orçamento (R$ {dailyBudget} x {durationDays} dias)</span>
                                <span>R$ {totalInvestment.toFixed(2)}</span>
                            </div>
                            <div className="flex justify-between text-slate-400">

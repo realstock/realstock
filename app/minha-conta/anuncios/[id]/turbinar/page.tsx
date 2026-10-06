@@ -33,8 +33,8 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
   
   // Slider state
   const [dailyBudget, setDailyBudget] = useState<number>(20); // Default R$ 20/day
-  const DURATION_DAYS = 5;
-  const totalInvestment = dailyBudget * DURATION_DAYS;
+  const [durationDays, setDurationDays] = useState<number>(5);
+  const totalInvestment = dailyBudget * durationDays;
   
   let feeAmount = 0;
   if (service?.fee) {
@@ -136,7 +136,13 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
       const res = await fetch("/api/paypal/create-boost-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ property_id: id, total_charge: siteCharge, daily_budget: dailyBudget, platform: selectedPlatform }),
+        body: JSON.stringify({ 
+          property_id: id, 
+          total_charge: siteCharge, 
+          daily_budget: dailyBudget, 
+          duration_days: durationDays,
+          platform: selectedPlatform 
+        }),
       });
 
       const data = await res.json();
@@ -166,6 +172,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
           orderID, 
           propertyId: id, 
           dailyBudget, 
+          durationDays,
           platform: selectedPlatform, 
           postType 
         }),
@@ -603,6 +610,30 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                     }}
                     className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                   />
+
+                  <div className="border-t border-white/10 pt-4 mt-6">
+                    <h3 className="text-sm font-bold text-white mb-1">Duração da Campanha</h3>
+                    <p className="text-[10px] text-slate-400 mb-3">Escolha por quantos dias o anúncio ficará ativo.</p>
+                    <div className="grid grid-cols-5 gap-2">
+                      {[3, 5, 7, 15, 30].map((days) => (
+                        <button
+                          key={days}
+                          type="button"
+                          onClick={() => {
+                            setDurationDays(days);
+                            setPaypalOrderId(null);
+                          }}
+                          className={`py-2 px-2 rounded-xl text-xs font-bold transition-all border text-center ${
+                            durationDays === days
+                              ? "bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-600/30"
+                              : "bg-slate-900/60 border-white/10 text-slate-400 hover:text-white hover:border-white/20"
+                          }`}
+                        >
+                          {days} dias
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -614,12 +645,12 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                 Turbinar Agora
               </h2>
               <p className="text-slate-400 text-sm mb-6">
-                Sua campanha terá duração de **{DURATION_DAYS} dias**. O valor será processado via PayPal e investido diretamente na plataforma de anúncios selecionada.
+                Sua campanha terá duração de **{durationDays} dias**. O valor será processado via PayPal e investido diretamente na plataforma de anúncios selecionada.
               </p>
 
               <div className="space-y-3 bg-white/5 p-4 rounded-xl border border-white/10 mb-6">
                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Investimento Direto ({DURATION_DAYS} dias)</span>
+                    <span className="text-slate-400">Investimento Direto ({durationDays} dias)</span>
                     <span className="font-semibold text-white">R$ {totalInvestment.toFixed(2)}</span>
                  </div>
                  <div className="flex justify-between text-sm">
@@ -752,7 +783,7 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                       <CalendarDays className="text-purple-400" size={18}/>
                       <div className="text-[10px]">
                           <div className="text-slate-400 uppercase font-bold">Duração</div>
-                          <div className="text-white">{DURATION_DAYS} Dias corridos</div>
+                          <div className="text-white">{durationDays} Dias corridos</div>
                       </div>
                   </div>
               </div>

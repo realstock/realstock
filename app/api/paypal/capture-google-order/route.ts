@@ -29,7 +29,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 401 });
     }
 
-    const { orderID, propertyId, dailyBudget } = await req.json();
+    const body = await req.json();
+    const { orderID, propertyId, dailyBudget } = body;
+    const durationDays = Number(body.durationDays || body.duration_days || 5);
 
     if (!orderID || propertyId === undefined || !dailyBudget) {
       return NextResponse.json({ success: false, error: "Parâmetros inválidos." }, { status: 400 });
@@ -42,8 +44,7 @@ export async function POST(req: NextRequest) {
     let isFree = false;
 
     // Calcular o custo total esperado (Investimento + Taxa de Serviço)
-    const DURATION_DAYS = 5;
-    const totalInvestment = Number(dailyBudget) * DURATION_DAYS;
+    const totalInvestment = Number(dailyBudget) * durationDays;
     
     const service = await prisma.siteService.findUnique({
       where: { slug: "turbinar" },
@@ -147,7 +148,7 @@ export async function POST(req: NextRequest) {
       propertyTitle,
       Number(dailyBudget),
       targetUrl,
-      DURATION_DAYS,
+      durationDays,
       property?.city || undefined,
       property?.state || undefined,
       property?.category || undefined,
@@ -169,14 +170,14 @@ export async function POST(req: NextRequest) {
         adGroupId: finalAdGroupId,
         status: finalStatus,
         budget: dailyBudget,
-        budgetDays: 5,
+        budgetDays: durationDays,
         targetUrl: targetUrl
       }
     });
 
     // 3. ESTENDER STATUS PREMIUM NO BD
     const boostedDate = new Date();
-    boostedDate.setDate(boostedDate.getDate() + 5);
+    boostedDate.setDate(boostedDate.getDate() + durationDays);
 
     if (Number(propertyId) === 0) {
        // Portfolio Boost
