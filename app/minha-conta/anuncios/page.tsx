@@ -501,6 +501,20 @@ export default function MeusAnunciosPage() {
                       </button>
 
                       <Link
+                        href={`/minha-conta/anuncios/${property.id}/turbinar?platform=meta`}
+                        className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 py-2.5 text-xs font-black text-white shadow-lg shadow-indigo-500/20 transition-all hover:scale-[1.02] active:scale-95"
+                      >
+                        <Rocket size={14} className="fill-white" /> Turbinar
+                      </Link>
+
+                      <Link
+                        href={`/minha-conta/anuncios/${property.id}/patrocinar`}
+                        className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-yellow-500/30 py-2.5 text-xs font-black text-yellow-500 transition-all hover:from-amber-500/30 hover:to-yellow-500/30 hover:text-yellow-400 active:scale-95"
+                      >
+                        💎 Patrocinar
+                      </Link>
+
+                      <Link
                         href={`/minha-conta/anuncios/${property.id}/google-vacation-rentals`}
                         className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 py-2.5 text-[11px] font-black text-white shadow-lg shadow-blue-500/20 transition-all hover:scale-[1.02] active:scale-95"
                         title="Cadastrar e sincronizar no Google Vacation Rentals (PMS Channel Manager)"
@@ -615,7 +629,7 @@ export default function MeusAnunciosPage() {
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                         {/* 1. POSTAR / VER POST */}
                         <div 
                           className="space-y-3 bg-white/[0.02] border border-white/5 p-3 rounded-xl flex flex-col justify-between"
@@ -748,69 +762,6 @@ export default function MeusAnunciosPage() {
                                 <Film size={13} />
                                 Criar Vídeo IA
                               </button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* 3. TURBINAR / IMPULSIONAR */}
-                        <div 
-                          className="space-y-3 bg-white/[0.02] border border-white/5 p-3 rounded-xl flex flex-col justify-between"
-                          onMouseEnter={(e) => {
-                            e.stopPropagation();
-                            setTooltipState({
-                              visible: true,
-                              x: e.clientX,
-                              y: e.clientY,
-                              text: isPublished 
-                                ? "✨ Aqui é a cereja do bolo, contrate um pacote para turbinar seu anuncio e alcance milhares de pessoas nas redes sociais" 
-                                : "✨ publique seu anuncio nas redes sociais e contrate um pacote para turbinar seu anuncio e alcance milhares de pessoas nas redes sociais"
-                            });
-                          }}
-                          onMouseMove={(e) => {
-                            e.stopPropagation();
-                            setTooltipState(prev => ({
-                              ...prev,
-                              x: e.clientX,
-                              y: e.clientY
-                            }));
-                          }}
-                          onMouseLeave={(e) => {
-                            e.stopPropagation();
-                            setTooltipState(prev => ({
-                              ...prev,
-                              visible: false
-                            }));
-                          }}
-                        >
-                          <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 flex items-center gap-1.5 border-b border-white/5 pb-2">
-                            <Rocket size={12} className="text-indigo-400 animate-pulse" />
-                            <span className="animate-pulse text-indigo-300">3. Turbinar Anúncio</span>
-                          </div>
-                          <div className="flex flex-col gap-2 flex-grow justify-end">
-                            <div className="flex gap-2">
-                              <Link 
-                                href={`/minha-conta/anuncios/${property.id}/turbinar?platform=meta`}
-                                className="flex-1 flex items-center justify-center gap-1 text-center rounded-xl border border-indigo-500/40 bg-indigo-500/10 py-2 text-[11px] font-bold text-indigo-300 transition-all hover:bg-indigo-500/20 shadow-[0_0_10px_rgba(99,102,241,0.2)] animate-pulse"
-                              >
-                                <Rocket size={11} />
-                                Meta Ads
-                              </Link>
-                              <button 
-                                onClick={() => setGooglePreviewProperty(property)}
-                                className="flex-1 flex items-center justify-center gap-1 text-center rounded-xl border border-emerald-500/40 bg-emerald-500/10 py-2 text-[11px] font-bold text-emerald-300 transition-all hover:bg-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.2)] animate-pulse"
-                                title="Ver prévia e publicar no Google Ads"
-                              >
-                                <Rocket size={11} />
-                                Google
-                              </button>
-                            </div>
-                            {!(property.sponsoredUntil && new Date(property.sponsoredUntil) > new Date()) && (
-                              <Link
-                                href={`/minha-conta/anuncios/${property.id}/patrocinar`}
-                                className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-yellow-500/30 py-2 text-[11px] font-black text-yellow-500 transition-all hover:from-amber-500/30 hover:to-yellow-500/30"
-                              >
-                                💎 Patrocinar Imóvel
-                              </Link>
                             )}
                           </div>
                         </div>
