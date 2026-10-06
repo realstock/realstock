@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 
     const { orderID, propertyId } = await req.json();
 
-    if (!orderID || !propertyId) {
+    if (!orderID || propertyId === undefined || propertyId === null) {
       return NextResponse.json({ success: false, error: "Parâmetros inválidos." }, { status: 400 });
     }
 
@@ -48,19 +48,25 @@ export async function POST(req: NextRequest) {
     const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (!user) return NextResponse.json({ success: false, error: "Usuário não encontrado." }, { status: 404 });
 
-    const property = await prisma.property.findFirst({
-        where: { id: Number(propertyId), ownerId: user.id }
-    });
-    
-    if (!property) return NextResponse.json({ success: false, error: "Anúncio inválido." }, { status: 404 });
-
     const endTime = new Date();
     endTime.setDate(endTime.getDate() + 90); // 3 Meses
 
-    await prisma.property.update({
+    if (Number(propertyId) === 0) {
+      await prisma.property.updateMany({
+        where: { ownerId: user.id },
+        data: { sponsoredUntil: endTime }
+      });
+    } else {
+      const property = await prisma.property.findFirst({
+        where: { id: Number(propertyId), ownerId: user.id }
+      });
+      if (!property) return NextResponse.json({ success: false, error: "Anúncio inválido." }, { status: 404 });
+
+      await prisma.property.update({
         where: { id: property.id },
         data: { sponsoredUntil: endTime }
-    });
+      });
+    }
 
     // Accounting Logic
     try {
@@ -75,7 +81,7 @@ export async function POST(req: NextRequest) {
                         type: "REVENUE",
                         category: "SPONSOR",
                         amount: grossAmount,
-                        description: `Comissionamento Patrocínio de Imóvel #${property.id}`,
+                        description: `Comissionamento Patrocínio ${Number(propertyId) === 0 ? "Portfólio" : `de Imóvel #${propertyId}`}`,
                         referenceId: orderID,
                         userId: user.id,
                     },

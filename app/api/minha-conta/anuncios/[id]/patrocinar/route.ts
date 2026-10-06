@@ -30,18 +30,32 @@ export async function GET(
       );
     }
 
-    const property = await prisma.property.findFirst({
-      where: {
-        id: propertyId,
-        ownerId: user.id,
-      },
-      include: {
-        images: {
-          orderBy: { sortOrder: "asc" },
-          take: 1,
+    let property: any = null;
+
+    if (propertyId === 0) {
+      const firstProp = await prisma.property.findFirst({
+        where: { ownerId: user.id },
+        include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } },
+      });
+      property = {
+        id: 0,
+        title: "Portfólio de Imóveis (Todos)",
+        images: firstProp?.images?.length ? firstProp.images : [{ imageUrl: "/placeholder-house.webp" }],
+      };
+    } else {
+      property = await prisma.property.findFirst({
+        where: {
+          id: propertyId,
+          ownerId: user.id,
         },
-      },
-    });
+        include: {
+          images: {
+            orderBy: { sortOrder: "asc" },
+            take: 1,
+          },
+        },
+      });
+    }
 
     if (!property) {
       return NextResponse.json(

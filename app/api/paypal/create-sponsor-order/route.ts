@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const propertyId = Number(body.property_id);
 
-    if (!propertyId) {
+    if (isNaN(propertyId) || propertyId < 0) {
       return NextResponse.json({ success: false, error: "Parâmetros inválidos." }, { status: 400 });
     }
 
