@@ -1872,10 +1872,6 @@ export default function MinhasReservasPage() {
               <X size={16} className="rotate-45 group-hover:scale-110 transition-transform" />
               Voltar ao Painel
             </Link>
-
-            <span className="text-xs font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
-              {isSeasonal ? "Aluguel Temporada" : "Compra e Venda"}
-            </span>
           </div>
 
           <div className="mb-6">
