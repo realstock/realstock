@@ -265,7 +265,7 @@ export default function GerenciarOfertasPage() {
                     <div className={`text-xl font-semibold ${offer.status === "cancelled" || isRejected ? "line-through text-slate-500" : ""}`}>
                       {Number(offer.offerPrice) === 0 ? (
                         "Agendar Visita"
-                      ) : offer.startDate && offer.endDate ? (
+                      ) : (property?.listingType === "ALUGUEL_TEMPORADA" && offer.startDate && offer.endDate) ? (
                         <div className="flex flex-col">
                           <span className="text-emerald-400 font-black">Solicitação de Reserva</span>
                           <span className="text-sm text-slate-300 font-medium mt-0.5">
@@ -277,7 +277,10 @@ export default function GerenciarOfertasPage() {
                           </span>
                         </div>
                       ) : (
-                        `R$ ${offer.offerPrice.toLocaleString("pt-BR")}`
+                        <div className="flex flex-col">
+                          <span className="text-xs text-slate-400 uppercase font-bold tracking-wider">Valor da Oferta</span>
+                          <span className="text-xl font-bold text-emerald-400">R$ {Number(offer.offerPrice).toLocaleString("pt-BR")}</span>
+                        </div>
                       )}
                     </div>
 

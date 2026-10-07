@@ -115,6 +115,7 @@ type OfferItem = {
     checkInTime?: string | null;
     checkOutTime?: string | null;
     depositPercentage?: number | null;
+    sold?: boolean | null;
     images?: { imageUrl: string }[];
     owner?: {
       id?: number;
@@ -659,6 +660,7 @@ export default function MinhasReservasPage() {
   // QR Code Popup Modal state
   const [selectedQrCodeModalUrl, setSelectedQrCodeModalUrl] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<"TODOS" | "VENDA" | "TEMPORADA">("TODOS");
 
   // Host inline instructions editing state
   const [editingInstructionsOfferId, setEditingInstructionsOfferId] = useState<number | null>(null);
@@ -1083,75 +1085,88 @@ export default function MinhasReservasPage() {
   if (loading) {
     return (
       <LoadingScreen
-        title={isSeasonal ? "Minhas Reservas" : "Minhas Ofertas"}
-        subtitle={
-          isSeasonal
-            ? "Sincronizando seus pedidos de reserva e estadias..."
-            : "Sincronizando suas propostas e ofertas de compra..."
-        }
+        title="Minhas Ofertas & Reservas"
+        subtitle="Sincronizando suas propostas e pedidos de reserva..."
       />
     );
   }
 
-  const filteredGuestOffers = guestOffers.filter((o) =>
-    isSeasonal
-      ? o.property?.listingType === "ALUGUEL_TEMPORADA"
-      : o.property?.listingType !== "ALUGUEL_TEMPORADA"
-  );
+  const currentTabAllOffers = activeTab === "VIAJANDO" ? guestOffers : hostOffers;
 
-  const filteredHostOffers = hostOffers.filter((o) =>
-    isSeasonal
-      ? o.property?.listingType === "ALUGUEL_TEMPORADA"
-      : o.property?.listingType !== "ALUGUEL_TEMPORADA"
+  const currentTabVendaOffers = currentTabAllOffers.filter(
+    (o) => o.property?.listingType !== "ALUGUEL_TEMPORADA"
   );
-
-  const allOffersForTab = activeTab === "VIAJANDO" ? filteredGuestOffers : filteredHostOffers;
-  const currentSteps = isSeasonal
-    ? (activeTab === "VIAJANDO" ? GUEST_STEPS : HOST_STEPS)
-    : (activeTab === "VIAJANDO" ? BUYER_STEPS : SELLER_STEPS);
+  const currentTabTemporadaOffers = currentTabAllOffers.filter(
+    (o) => o.property?.listingType === "ALUGUEL_TEMPORADA"
+  );
 
   // Categorization helpers
   function isPastReservation(offer: OfferItem): boolean {
     const statusStr = String(offer.status).toUpperCase();
     if (statusStr === "CANCELLED" || statusStr === "REJECTED") return true;
 
-    if (offer.endDate) {
-      const end = new Date(offer.endDate);
-      end.setHours(23, 59, 59, 999);
-      return end.getTime() < Date.now();
+    if (offer.property?.listingType === "ALUGUEL_TEMPORADA") {
+      if (offer.endDate) {
+        const end = new Date(offer.endDate);
+        end.setHours(23, 59, 59, 999);
+        return end.getTime() < Date.now();
+      }
+    } else {
+      if (statusStr === "COMPLETED" || offer.property?.sold) return true;
     }
     return false;
   }
 
   function isPendingConfirmation(offer: OfferItem): boolean {
     const statusStr = String(offer.status).toUpperCase();
-    if (statusStr === "PENDING_HOST_APPROVAL" || statusStr === "OPEN") return true;
-    if (statusStr === "ACCEPTED_WAITING_PAYMENT" && !offer.pixValidation?.allPassed) return true;
+    if (offer.property?.listingType === "ALUGUEL_TEMPORADA") {
+      if (statusStr === "PENDING_HOST_APPROVAL" || statusStr === "OPEN") return true;
+      if (statusStr === "ACCEPTED_WAITING_PAYMENT" && !offer.pixValidation?.allPassed) return true;
+    } else {
+      if (statusStr === "PENDING_HOST_APPROVAL" || statusStr === "OPEN") return true;
+      if (statusStr === "ACCEPTED_WAITING_PAYMENT" && !offer.property?.contactFeePaidAt) return true;
+    }
     return false;
   }
 
-  // 1. Past / Archived reservations (Check-out date passed OR cancelled/rejected)
-  const archivedOffers = allOffersForTab.filter((o) => isPastReservation(o));
-
-  // 2. Active (non-archived) reservations
-  const activeOffers = allOffersForTab.filter((o) => !isPastReservation(o));
-
-  // Group 2a: Pending Confirmation (STAYS AT THE TOP OF ALL OTHERS)
-  const pendingConfirmationOffers = activeOffers
-    .filter((o) => isPendingConfirmation(o))
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-  // Group 2b: Confirmed Reservations (Sorted by check-in date ASCENDING - closest check-in date first!)
-  const confirmedOffers = activeOffers
-    .filter((o) => !isPendingConfirmation(o))
+  // Active / Archived partitioned
+  const activeVendaOffers = currentTabVendaOffers
+    .filter((o) => !isPastReservation(o))
     .sort((a, b) => {
+      const pA = isPendingConfirmation(a) ? 1 : 0;
+      const pB = isPendingConfirmation(b) ? 1 : 0;
+      if (pA !== pB) return pB - pA;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+  const activeTemporadaOffers = currentTabTemporadaOffers
+    .filter((o) => !isPastReservation(o))
+    .sort((a, b) => {
+      const pA = isPendingConfirmation(a) ? 1 : 0;
+      const pB = isPendingConfirmation(b) ? 1 : 0;
+      if (pA !== pB) return pB - pA;
       const dateA = a.startDate ? new Date(a.startDate).getTime() : Number.MAX_SAFE_INTEGER;
       const dateB = b.startDate ? new Date(b.startDate).getTime() : Number.MAX_SAFE_INTEGER;
       if (dateA !== dateB) return dateA - dateB;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
-  const activeOffersList = [...pendingConfirmationOffers, ...confirmedOffers];
+  const pendingVendaOffers = activeVendaOffers.filter((o) => isPendingConfirmation(o));
+  const confirmedVendaOffers = activeVendaOffers.filter((o) => !isPendingConfirmation(o));
+
+  const pendingTemporadaOffers = activeTemporadaOffers.filter((o) => isPendingConfirmation(o));
+  const confirmedTemporadaOffers = activeTemporadaOffers.filter((o) => !isPendingConfirmation(o));
+
+  const archivedVendaOffers = currentTabVendaOffers.filter((o) => isPastReservation(o));
+  const archivedTemporadaOffers = currentTabTemporadaOffers.filter((o) => isPastReservation(o));
+
+  const currentSteps = categoryFilter === "TEMPORADA"
+    ? (activeTab === "VIAJANDO" ? GUEST_STEPS : HOST_STEPS)
+    : categoryFilter === "VENDA"
+    ? (activeTab === "VIAJANDO" ? BUYER_STEPS : SELLER_STEPS)
+    : (activeTemporadaOffers.length > 0 && activeVendaOffers.length === 0)
+    ? (activeTab === "VIAJANDO" ? GUEST_STEPS : HOST_STEPS)
+    : (activeTab === "VIAJANDO" ? BUYER_STEPS : SELLER_STEPS);
 
   function renderOfferCard(offer: OfferItem, isArchived = false) {
     const isSeasonalItem = offer.property?.listingType === "ALUGUEL_TEMPORADA";
@@ -1164,7 +1179,23 @@ export default function MinhasReservasPage() {
     const isRejected = statusStr === "REJECTED";
     const isCancelled = statusStr === "CANCELLED";
 
-    const currentPhase = getStepPhase(offer);
+    const cardSteps = isSeasonalItem
+      ? (activeTab === "VIAJANDO" ? GUEST_STEPS : HOST_STEPS)
+      : (activeTab === "VIAJANDO" ? BUYER_STEPS : SELLER_STEPS);
+
+    let currentPhase = 1;
+    if (isSeasonalItem) {
+      currentPhase = getStepPhase(offer);
+    } else {
+      if (offer.status === "completed" || offer.property?.sold) {
+        currentPhase = 5;
+      } else if (isConfirmed || isAcceptedWaiting || Boolean(offer.property?.contactFeePaidAt)) {
+        currentPhase = 2;
+      } else {
+        currentPhase = 1;
+      }
+    }
+
     const isCheckInDateOrLater = offer.startDate
       ? new Date().setHours(0, 0, 0, 0) >= new Date(offer.startDate).setHours(0, 0, 0, 0)
       : false;
@@ -1181,11 +1212,11 @@ export default function MinhasReservasPage() {
           <div className="mb-5 border-b border-white/5 pb-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                <span>{currentPhase >= 5 ? "🔑" : currentSteps[Math.min(currentPhase - 1, 4)]?.icon}</span>
+                <span>{currentPhase >= 5 ? "🔑" : cardSteps[Math.min(currentPhase - 1, 4)]?.icon}</span>
                 <span>
                   {currentPhase >= 5
-                    ? "Check-in Liberado! (5 de 5 Etapas Concluídas)"
-                    : `Etapa ${currentPhase} de 5: ${currentSteps[currentPhase - 1]?.title}`}
+                    ? (isSeasonalItem ? "Check-in Liberado! (5 de 5 Etapas Concluídas)" : "Negociação Concluída! (5 de 5 Etapas)")
+                    : `Etapa ${currentPhase} de 5: ${cardSteps[currentPhase - 1]?.title}`}
                 </span>
               </span>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
@@ -1198,7 +1229,7 @@ export default function MinhasReservasPage() {
             </div>
 
             <div className="flex items-center justify-between gap-1">
-              {currentSteps.map((st) => {
+              {cardSteps.map((st) => {
                 const isDone = currentPhase > st.num;
                 const isCurrent = currentPhase === st.num;
 
@@ -1274,7 +1305,7 @@ export default function MinhasReservasPage() {
 
             <div>
               <span className="inline-block rounded-md bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-300 uppercase tracking-wider mb-1">
-                {offer.property?.listingType === "ALUGUEL_TEMPORADA" ? "Temporada" : "Venda"}
+                {offer.property?.listingType === "ALUGUEL_TEMPORADA" ? "Temporada" : "Compra e Venda"}
               </span>
               <h3 className="text-base font-extrabold text-white leading-snug">
                 {offer.property?.title || "Imóvel Sem Título"}
@@ -1286,29 +1317,48 @@ export default function MinhasReservasPage() {
           </div>
 
           <div className="text-left sm:text-right shrink-0">
-            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Valor Total da Estadia</div>
-            <div className="text-xl font-black text-emerald-400">
-              R$ {Number(offer.totalStayPrice || offer.offerPrice).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              {isSeasonalItem ? "Valor Total da Estadia" : "Valor Proposto"}
             </div>
-            {offer.depositAmount && (
+            <div className="text-xl font-black text-emerald-400">
+              R$ {Number(isSeasonalItem ? (offer.totalStayPrice || offer.offerPrice) : offer.offerPrice).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            </div>
+            {isSeasonalItem && offer.depositAmount && (
               <div className="text-[11px] font-semibold text-slate-300 mt-0.5">
                 Sinal ({offer.property?.depositPercentage || 20}%): <strong className="text-white">R$ {Number(offer.depositAmount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>
+              </div>
+            )}
+            {!isSeasonalItem && offer.property?.price && (
+              <div className="text-[11px] font-semibold text-slate-400 mt-0.5">
+                Valor do anúncio: <strong className="text-slate-300">R$ {Number(offer.property.price).toLocaleString("pt-BR")}</strong>
               </div>
             )}
           </div>
         </div>
 
         {/* DATES & CONTACT PANEL */}
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-300">
-          <div>
-            <strong>Período Agendado:</strong>{" "}
-            {offer.startDate ? new Date(offer.startDate).toLocaleDateString("pt-BR") : "N/A"}{" "}
-            até {offer.endDate ? new Date(offer.endDate).toLocaleDateString("pt-BR") : "N/A"}
+        {isSeasonalItem ? (
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-300">
+            <div>
+              <strong>Período Agendado:</strong>{" "}
+              {offer.startDate ? new Date(offer.startDate).toLocaleDateString("pt-BR") : "N/A"}{" "}
+              até {offer.endDate ? new Date(offer.endDate).toLocaleDateString("pt-BR") : "N/A"}
+            </div>
+            <div>
+              <strong>Hóspedes:</strong> {offer.guests || 1} pessoa{(offer.guests || 1) > 1 ? "s" : ""}
+            </div>
           </div>
-          <div>
-            <strong>Hóspedes:</strong> {offer.guests || 1} pessoa{(offer.guests || 1) > 1 ? "s" : ""}
+        ) : (
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-300">
+            <div>
+              <strong>Data da Proposta:</strong>{" "}
+              {new Date(offer.createdAt).toLocaleDateString("pt-BR")} às {new Date(offer.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+            </div>
+            <div>
+              <strong>Modalidade:</strong> Compra e Venda
+            </div>
           </div>
-        </div>
+        )}
 
         {/* EVALUATION / RATING STARS PANEL (SOMENTE PARA ALUGUEL TEMPORADA) */}
         {isSeasonalItem && (isConfirmed || isCheckInReleased || isAcceptedWaiting) && (
@@ -1336,16 +1386,16 @@ export default function MinhasReservasPage() {
         )}
 
         {/* HOST CONTACT BOX */}
-        {activeTab === "VIAJANDO" && (isAcceptedWaiting || isConfirmed) && (
+        {activeTab === "VIAJANDO" && (isAcceptedWaiting || isConfirmed || (Boolean(offer.property?.contactFeePaidAt) && !isSeasonalItem)) && (
           <div className="mt-5 border-t border-white/10 pt-4 space-y-3 rounded-2xl bg-slate-950/70 p-4 border border-white/5">
             <div className="flex items-center justify-between gap-2">
               <div className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
                 <ShieldCheck size={16} />
-                <span>Dados de Contato e Pagamento do Anfitrião</span>
+                <span>{isSeasonalItem ? "Dados de Contato e Pagamento do Anfitrião" : "Dados de Contato do Vendedor (Liberado)"}</span>
               </div>
 
               {/* Step 4 Button: Remaining Balance receipt upload button top right */}
-              {isDepositFullyPaid && !isCheckInReleased && (
+              {isSeasonalItem && isDepositFullyPaid && !isCheckInReleased && (
                 <div className="shrink-0">
                   <label className="cursor-pointer inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-3 py-1.5 text-[11px] font-black text-slate-950 hover:from-amber-400 hover:to-amber-500 shadow-md shadow-amber-500/20 transition">
                     <span>📎 Anexar Comprovante do Saldo (R$ {Number(Number(offer.totalStayPrice || offer.offerPrice) - Number(offer.depositAmount || 0)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })})</span>
@@ -1365,7 +1415,7 @@ export default function MinhasReservasPage() {
             </div>
 
             <div className="grid gap-2 sm:grid-cols-2 text-xs text-slate-300">
-              <div><strong>Anfitrião:</strong> {offer.property?.owner?.name || "Não informado"}</div>
+              <div><strong>{isSeasonalItem ? "Anfitrião:" : "Vendedor:"}</strong> {offer.property?.owner?.name || "Não informado"}</div>
               <div><strong>E-mail:</strong> {offer.property?.owner?.email || "Não informado"}</div>
               <div>
                 <strong>Telefone / WhatsApp:</strong>{" "}
@@ -1388,7 +1438,7 @@ export default function MinhasReservasPage() {
                   "Não informado"
                 )}
               </div>
-              {offer.property?.pixKey && (
+              {isSeasonalItem && offer.property?.pixKey && (
                 <div>
                   <strong>Chave Pix do Anfitrião:</strong>{" "}
                   <span className="font-mono text-emerald-300 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">{offer.property.pixKey}</span>
@@ -1396,8 +1446,15 @@ export default function MinhasReservasPage() {
               )}
             </div>
 
+            {!isSeasonalItem && (
+              <div className="pt-2 border-t border-white/5 text-xs text-emerald-300 flex items-center gap-2">
+                <span>🤝</span>
+                <span>Sua proposta foi aceita! Entre em contato diretamente com o vendedor para negociar as condições de pagamento e formalização da compra.</span>
+              </div>
+            )}
+
             {/* PIX QR CODE DISPLAY IF AVAILABLE */}
-            {offer.property?.pixQrCodeUrl && (
+            {isSeasonalItem && offer.property?.pixQrCodeUrl && (
               <div className="pt-2 border-t border-white/5 flex items-center justify-between gap-3">
                 <div className="text-xs text-slate-300 flex items-center gap-2">
                   <QrCode size={16} className="text-emerald-400" />
@@ -1415,7 +1472,7 @@ export default function MinhasReservasPage() {
             )}
 
             {/* Remaining balance notice for guest */}
-            {isDepositFullyPaid && !isCheckInReleased && (
+            {isSeasonalItem && isDepositFullyPaid && !isCheckInReleased && (
               <div className="pt-2.5 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs text-amber-300">
                 <span className="flex items-center gap-1.5">
                   <span>🔒</span>
@@ -1428,7 +1485,7 @@ export default function MinhasReservasPage() {
             )}
 
             {/* STEP 3 RECEIPT UPLOAD & AI VALIDATION PANEL */}
-            {!isDepositFullyPaid ? (
+            {isSeasonalItem && (!isDepositFullyPaid ? (
               <div className="pt-3 border-t border-white/10 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-900/90 p-3 rounded-xl border border-white/5">
                   <div className="text-xs text-slate-300">
@@ -1472,7 +1529,7 @@ export default function MinhasReservasPage() {
                   />
                 </div>
               )
-            )}
+            ))}
           </div>
         )}
 
@@ -1605,7 +1662,7 @@ export default function MinhasReservasPage() {
               </div>
 
               {/* Host Quick Actions Header Buttons */}
-              {isConfirmed && !isCheckInReleased && (
+              {isSeasonalItem && isConfirmed && !isCheckInReleased && (
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
@@ -1637,7 +1694,7 @@ export default function MinhasReservasPage() {
             </div>
 
             {/* Editable instructions form for host if toggled */}
-            {editingInstructionsOfferId === offer.id && (
+            {isSeasonalItem && editingInstructionsOfferId === offer.id && (
               <div className="space-y-3 p-3.5 rounded-xl bg-slate-900 border border-sky-500/30 mb-3">
                 <div className="text-xs font-bold text-sky-300 flex items-center gap-1.5">
                   ✏️ Configurar Instruções de Entrada e Wi-Fi do Imóvel
@@ -1692,7 +1749,7 @@ export default function MinhasReservasPage() {
             )}
 
             <div className="grid gap-2 sm:grid-cols-2 text-xs text-slate-300">
-              <div><strong>Hóspede:</strong> {offer.buyer?.name || "Não informado"}</div>
+              <div><strong>{isSeasonalItem ? "Hóspede:" : "Comprador:"}</strong> {offer.buyer?.name || "Não informado"}</div>
               <div><strong>E-mail:</strong> {offer.buyer?.email || "Não informado"}</div>
               <div>
                 <strong>Telefone / WhatsApp:</strong>{" "}
@@ -1715,7 +1772,7 @@ export default function MinhasReservasPage() {
                   "Não informado"
                 )}
               </div>
-              {offer.depositAmount && (
+              {isSeasonalItem && offer.depositAmount && (
                 <div>
                   <strong>Sinal Pix Solicitado:</strong>{" "}
                   <span className="font-extrabold text-emerald-400">R$ {Number(offer.depositAmount).toLocaleString("pt-BR")}</span>
@@ -1723,8 +1780,15 @@ export default function MinhasReservasPage() {
               )}
             </div>
 
+            {!isSeasonalItem && (
+              <div className="pt-2 border-t border-white/5 text-xs text-sky-300 flex items-center gap-2">
+                <span>🤝</span>
+                <span>Proposta aceita e contatos liberados! Você pode contatar o comprador diretamente via WhatsApp ou e-mail para combinar pagamento e escritura.</span>
+              </div>
+            )}
+
             {/* Remaining balance notice for host */}
-            {isConfirmed && !isCheckInReleased && (
+            {isSeasonalItem && isConfirmed && !isCheckInReleased && (
               <div className="pt-2 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs text-amber-300">
                 <span className="flex items-center gap-1.5">
                   <span>🔒</span>
@@ -1736,7 +1800,7 @@ export default function MinhasReservasPage() {
               </div>
             )}
 
-            {getOfferReceiptUrls(offer).length > 0 ? (
+            {isSeasonalItem && (getOfferReceiptUrls(offer).length > 0 ? (
               <div className="pt-3 border-t border-white/10 space-y-3">
                 {/* AI Validation Panel (includes receipt links inside Ver Detalhes) */}
                 {offer.pixValidation ? (
@@ -1775,12 +1839,12 @@ export default function MinhasReservasPage() {
                 <Clock size={14} />
                 <span>Etapa 2: Taxa de 1% paga com sucesso. Aguardando o hóspede enviar o comprovante Pix do sinal.</span>
               </div>
-            )}
+            ))}
           </div>
         )}
 
         {/* CHECK-IN & REMAINING BALANCE PANEL FOR CONFIRMED RESERVATIONS */}
-        {((isConfirmed && activeTab === "HOSPEDANDO") || statusStr === "CHECKIN_LIBERADO" || offer.checkInReleasedAt) && (
+        {isSeasonalItem && ((isConfirmed && activeTab === "HOSPEDANDO") || statusStr === "CHECKIN_LIBERADO" || offer.checkInReleasedAt) && (
           <CheckInReleasePanel
             offer={offer}
             perspective={activeTab}
@@ -1816,17 +1880,17 @@ export default function MinhasReservasPage() {
 
           <div className="mb-6">
             <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white">
-              {isSeasonal ? "Minhas Reservas" : "Minhas Ofertas"}
+              Minhas Ofertas & Reservas
             </h1>
             <p className="text-sm text-slate-400 mt-1">
-              {isSeasonal
-                ? "Gerencie suas estadias como hóspede viajante ou como anfitrião dos seus imóveis."
-                : "Gerencie suas propostas de compra enviadas e ofertas recebidas nos seus imóveis."}
+              {activeTab === "VIAJANDO"
+                ? "Gerencie suas propostas de compra enviadas e suas reservas de temporada como viajante."
+                : "Gerencie as propostas de compra recebidas e os pedidos de reserva para seus imóveis."}
             </p>
           </div>
 
-          {/* TOGGLE SWITCH TAB KEY */}
-          <div className="flex items-center gap-3 bg-slate-900 border border-white/10 p-1.5 rounded-2xl w-fit mb-8 shadow-xl">
+          {/* MAIN TABS: OFERTAS ENVIADAS vs OFERTAS RECEBIDAS */}
+          <div className="flex items-center gap-3 bg-slate-900 border border-white/10 p-1.5 rounded-2xl w-fit mb-4 shadow-xl">
             <button
               onClick={() => setActiveTab("VIAJANDO")}
               className={`flex items-center gap-2.5 px-5 py-3 rounded-xl text-xs md:text-sm font-black uppercase tracking-wider transition-all cursor-pointer ${
@@ -1835,11 +1899,11 @@ export default function MinhasReservasPage() {
                   : "text-slate-400 hover:text-white hover:bg-white/5"
               }`}
             >
-              <span className="text-base">{isSeasonal ? "🧳" : "🏷️"}</span>
-              <span>{isSeasonal ? "Estou Viajando" : "Ofertas Enviadas"}</span>
-              {filteredGuestOffers.length > 0 && (
+              <span className="text-base">📤</span>
+              <span>Ofertas Enviadas</span>
+              {guestOffers.length > 0 && (
                 <span className="ml-1 rounded-full bg-emerald-400/20 text-emerald-300 text-[10px] px-2 py-0.5 font-bold border border-emerald-400/30">
-                  {filteredGuestOffers.length}
+                  {guestOffers.length}
                 </span>
               )}
             </button>
@@ -1852,13 +1916,52 @@ export default function MinhasReservasPage() {
                   : "text-slate-400 hover:text-white hover:bg-white/5"
               }`}
             >
-              <span className="text-base">{isSeasonal ? "🏠" : "💼"}</span>
-              <span>{isSeasonal ? "Estou Hospedando" : "Ofertas Recebidas"}</span>
-              {filteredHostOffers.length > 0 && (
+              <span className="text-base">📥</span>
+              <span>Ofertas Recebidas</span>
+              {hostOffers.length > 0 && (
                 <span className="ml-1 rounded-full bg-sky-400/20 text-sky-300 text-[10px] px-2 py-0.5 font-bold border border-sky-400/30">
-                  {filteredHostOffers.length}
+                  {hostOffers.length}
                 </span>
               )}
+            </button>
+          </div>
+
+          {/* CATEGORY SUB-TABS: SEPARAR COMPRA E VENDA E ALUGUEL TEMPORADA */}
+          <div className="flex flex-wrap items-center gap-2 mb-8 border-b border-white/10 pb-4">
+            <button
+              type="button"
+              onClick={() => setCategoryFilter("TODOS")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                categoryFilter === "TODOS"
+                  ? "bg-white/15 text-white border border-white/30 shadow"
+                  : "bg-white/5 text-slate-400 hover:text-slate-200 border border-white/5"
+              }`}
+            >
+              Todas ({currentTabAllOffers.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setCategoryFilter("VENDA")}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                categoryFilter === "VENDA"
+                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-emerald-500/10 shadow"
+                  : "bg-white/5 text-slate-400 hover:text-emerald-300 border border-white/5"
+              }`}
+            >
+              <span>🏷️</span>
+              <span>Compra e Venda ({currentTabVendaOffers.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCategoryFilter("TEMPORADA")}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                categoryFilter === "TEMPORADA"
+                  ? "bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sky-500/10 shadow"
+                  : "bg-white/5 text-slate-400 hover:text-sky-300 border border-white/5"
+              }`}
+            >
+              <span>🧳</span>
+              <span>Aluguel Temporada ({currentTabTemporadaOffers.length})</span>
             </button>
           </div>
 
@@ -1867,10 +1970,18 @@ export default function MinhasReservasPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5 border-b border-white/5 pb-3">
               <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-400">
                 <Sparkles size={16} />
-                <span>{isSeasonal ? "Fases para Conclusão da Reserva" : "Fases para Conclusão da Oferta"}</span>
+                <span>
+                  {categoryFilter === "TEMPORADA"
+                    ? "Fases para Conclusão da Reserva (Temporada)"
+                    : categoryFilter === "VENDA"
+                    ? "Fases para Conclusão da Oferta (Compra e Venda)"
+                    : "Fases do Fluxo de Negociação"}
+                </span>
               </div>
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                {isSeasonal ? "Fluxo em 5 Etapas (Temporada)" : "Fluxo em 5 Etapas (Compra e Venda)"}
+                {categoryFilter === "TEMPORADA"
+                  ? "Fluxo em 5 Etapas (Temporada)"
+                  : "Fluxo em 5 Etapas (Compra e Venda)"}
               </span>
             </div>
 
@@ -1907,66 +2018,132 @@ export default function MinhasReservasPage() {
           )}
 
           {/* RESERVATIONS / OFFERS LIST GROUPED */}
-          {activeOffersList.length === 0 ? (
+          {categoryFilter === "TODOS" && activeVendaOffers.length === 0 && activeTemporadaOffers.length === 0 ? (
             <div className="rounded-3xl border border-white/10 bg-white/5 p-12 text-center text-slate-400 backdrop-blur-md">
               <div className="text-4xl mb-3">
-                {activeTab === "VIAJANDO" ? (isSeasonal ? "🧳" : "🏷️") : (isSeasonal ? "🏠" : "💼")}
+                {activeTab === "VIAJANDO" ? "📤" : "📥"}
               </div>
               <h3 className="text-lg font-bold text-white mb-1">
                 {activeTab === "VIAJANDO"
-                  ? (isSeasonal ? "Nenhuma reserva ativa como viajante." : "Nenhuma oferta de compra enviada.")
-                  : (isSeasonal ? "Nenhum pedido de reserva ativo para seus imóveis." : "Nenhuma proposta de compra recebida para seus imóveis.")}
+                  ? "Nenhuma oferta ou reserva enviada."
+                  : "Nenhuma oferta ou pedido de reserva recebido."}
               </h3>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
                 {activeTab === "VIAJANDO"
-                  ? (isSeasonal
-                      ? "Explore nossos anúncios no mapa da página principal e faça seu primeiro pedido de reserva!"
-                      : "Navegue pelos imóveis à venda na página principal e faça sua primeira proposta de compra!")
-                  : (isSeasonal
-                      ? "Quando hóspedes enviarem pedidos para seus imóveis cadastrados, eles aparecerão aqui."
-                      : "Quando investidores enviarem propostas para seus imóveis à venda, elas aparecerão aqui.")}
+                  ? "Explore os anúncios no site e envie sua primeira proposta de compra ou reserva de temporada!"
+                  : "Quando houver interessados nos seus imóveis cadastrados, você verá as ofertas aqui."}
               </p>
             </div>
           ) : (
-            <div className="space-y-8">
-              {/* GROUP 1: PENDING CONFIRMATION */}
-              {pendingConfirmationOffers.length > 0 && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-amber-500/30 pb-2">
-                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-400">
-                      <Clock size={16} />
-                      <span>⏳ {isSeasonal ? "Em Processo de Confirmação" : "Em Análise de Proposta"} ({pendingConfirmationOffers.length})</span>
-                    </div>
-                    <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2.5 py-0.5 rounded-full">
-                      {isSeasonal ? "Topo das Reservas · Aguardando Sinal" : "Topo das Ofertas · Em Negociação"}
-                    </span>
+            <div className="space-y-10">
+              {/* COMPRA E VENDA SECTION */}
+              {(categoryFilter === "TODOS" || categoryFilter === "VENDA") && (
+                categoryFilter === "VENDA" && activeVendaOffers.length === 0 ? (
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-10 text-center text-slate-400">
+                    <div className="text-4xl mb-3">🏷️</div>
+                    <h3 className="text-base font-bold text-white mb-1">
+                      {activeTab === "VIAJANDO" ? "Nenhuma proposta de compra enviada." : "Nenhuma proposta de compra recebida."}
+                    </h3>
+                    <p className="text-xs text-slate-500 max-w-md mx-auto">
+                      {activeTab === "VIAJANDO"
+                        ? "Navegue pelos imóveis à venda e faça sua primeira proposta!"
+                        : "Quando compradores enviarem propostas para seus imóveis à venda, elas aparecerão aqui."}
+                    </p>
                   </div>
-                  <div className="space-y-5">
-                    {pendingConfirmationOffers.map((offer) => renderOfferCard(offer, false))}
-                  </div>
-                </div>
-              )}
-
-              {/* GROUP 2: CONFIRMED RESERVATIONS / DEALS */}
-              {confirmedOffers.length > 0 && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-emerald-500/30 pb-2">
-                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-400">
-                      <Sparkles size={16} />
-                      <span>
-                        {isSeasonal
-                          ? `📅 Reservas Confirmadas (Ordem por Proximidade do Check-in) (${confirmedOffers.length})`
-                          : `🤝 Ofertas Aceitas & Negociações em Andamento (${confirmedOffers.length})`}
+                ) : activeVendaOffers.length > 0 && (
+                  <div className="space-y-6 rounded-3xl border border-emerald-500/20 bg-emerald-950/10 p-5 md:p-6 shadow-xl">
+                    <div className="flex items-center justify-between border-b border-emerald-500/30 pb-3">
+                      <div className="flex items-center gap-2 text-base font-black uppercase tracking-wider text-emerald-400">
+                        <span className="text-xl">🏷️</span>
+                        <span>Compra e Venda ({activeVendaOffers.length})</span>
+                      </div>
+                      <span className="text-xs font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full">
+                        {activeTab === "VIAJANDO" ? "Propostas Enviadas" : "Propostas Recebidas"}
                       </span>
                     </div>
-                    <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
-                      {isSeasonal ? "Check-in Mais Próximo Primeiro" : "Contatos Liberados"}
-                    </span>
+
+                    {/* SUB-GROUP 1: PENDING PROPOSALS */}
+                    {pendingVendaOffers.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-400">
+                          <Clock size={16} />
+                          <span>⏳ Em Análise da Proposta ({pendingVendaOffers.length})</span>
+                        </div>
+                        <div className="space-y-4">
+                          {pendingVendaOffers.map((offer) => renderOfferCard(offer, false))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SUB-GROUP 2: ACCEPTED / NEGOTIATION */}
+                    {confirmedVendaOffers.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-400">
+                          <Sparkles size={16} />
+                          <span>🤝 Ofertas Aceitas & Contatos Liberados ({confirmedVendaOffers.length})</span>
+                        </div>
+                        <div className="space-y-4">
+                          {confirmedVendaOffers.map((offer) => renderOfferCard(offer, false))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="space-y-5">
-                    {confirmedOffers.map((offer) => renderOfferCard(offer, false))}
+                )
+              )}
+
+              {/* ALUGUEL TEMPORADA SECTION */}
+              {(categoryFilter === "TODOS" || categoryFilter === "TEMPORADA") && (
+                categoryFilter === "TEMPORADA" && activeTemporadaOffers.length === 0 ? (
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-10 text-center text-slate-400">
+                    <div className="text-4xl mb-3">🧳</div>
+                    <h3 className="text-base font-bold text-white mb-1">
+                      {activeTab === "VIAJANDO" ? "Nenhuma reserva de temporada ativa." : "Nenhum pedido de reserva recebido."}
+                    </h3>
+                    <p className="text-xs text-slate-500 max-w-md mx-auto">
+                      {activeTab === "VIAJANDO"
+                        ? "Explore nossos anúncios de temporada e envie sua solicitação de reserva!"
+                        : "Quando hóspedes solicitarem reservas nos seus imóveis de temporada, elas aparecerão aqui."}
+                    </p>
                   </div>
-                </div>
+                ) : activeTemporadaOffers.length > 0 && (
+                  <div className="space-y-6 rounded-3xl border border-sky-500/20 bg-sky-950/10 p-5 md:p-6 shadow-xl">
+                    <div className="flex items-center justify-between border-b border-sky-500/30 pb-3">
+                      <div className="flex items-center gap-2 text-base font-black uppercase tracking-wider text-sky-400">
+                        <span className="text-xl">🧳</span>
+                        <span>Aluguel Temporada ({activeTemporadaOffers.length})</span>
+                      </div>
+                      <span className="text-xs font-bold text-sky-300 bg-sky-500/10 border border-sky-500/30 px-3 py-1 rounded-full">
+                        {activeTab === "VIAJANDO" ? "Minhas Viagens" : "Minhas Hospedagens"}
+                      </span>
+                    </div>
+
+                    {/* SUB-GROUP 1: PENDING CONFIRMATION / SIGNAL */}
+                    {pendingTemporadaOffers.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-400">
+                          <Clock size={16} />
+                          <span>⏳ Em Processo de Confirmação ({pendingTemporadaOffers.length})</span>
+                        </div>
+                        <div className="space-y-4">
+                          {pendingTemporadaOffers.map((offer) => renderOfferCard(offer, false))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SUB-GROUP 2: CONFIRMED RESERVATIONS */}
+                    {confirmedTemporadaOffers.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-sky-400">
+                          <Sparkles size={16} />
+                          <span>📅 Reservas Confirmadas (Ordem por Proximidade do Check-in) ({confirmedTemporadaOffers.length})</span>
+                        </div>
+                        <div className="space-y-4">
+                          {confirmedTemporadaOffers.map((offer) => renderOfferCard(offer, false))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
               )}
             </div>
           )}
@@ -1981,36 +2158,68 @@ export default function MinhasReservasPage() {
               <Archive size={16} className="text-emerald-400" />
               <span>
                 {showArchived
-                  ? (isSeasonal ? "Ocultar Reservas Arquivadas" : "Ocultar Ofertas Arquivadas")
-                  : (isSeasonal
-                      ? `📦 Ver Reservas Arquivadas / Concluídas (${archivedOffers.length})`
-                      : `📦 Ver Ofertas Arquivadas / Recusadas (${archivedOffers.length})`)}
+                  ? "Ocultar Histórico Arquivado"
+                  : `📦 Ver Histórico Arquivado (${
+                      categoryFilter === "VENDA"
+                        ? archivedVendaOffers.length
+                        : categoryFilter === "TEMPORADA"
+                        ? archivedTemporadaOffers.length
+                        : archivedVendaOffers.length + archivedTemporadaOffers.length
+                    })`}
               </span>
             </button>
 
             {showArchived && (
-              <div className="w-full space-y-5 animate-fadeIn">
+              <div className="w-full space-y-6 animate-fadeIn">
                 <div className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center justify-between border-b border-white/10 pb-3">
                   <div className="flex items-center gap-2">
                     <Archive size={16} className="text-emerald-400" />
                     <span>
-                      {isSeasonal
-                        ? `Histórico de Reservas Concluídas e Arquivadas (${archivedOffers.length})`
-                        : `Histórico de Ofertas Concluídas / Recusadas (${archivedOffers.length})`}
+                      {categoryFilter === "VENDA"
+                        ? `Histórico de Ofertas de Compra e Venda Arquivadas (${archivedVendaOffers.length})`
+                        : categoryFilter === "TEMPORADA"
+                        ? `Histórico de Reservas de Temporada Arquivadas (${archivedTemporadaOffers.length})`
+                        : `Histórico de Ofertas e Reservas Arquivadas (${archivedVendaOffers.length + archivedTemporadaOffers.length})`}
                     </span>
                   </div>
                   <span className="text-[10px] text-slate-500 font-bold">
-                    {isSeasonal ? "Check-out Finalizado ou Canceladas" : "Negociações Encerradas ou Recusadas"}
+                    Concluídas, Canceladas ou Recusadas
                   </span>
                 </div>
 
-                {archivedOffers.length === 0 ? (
-                  <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-8 text-center text-xs text-slate-500">
-                    {isSeasonal ? "Nenhuma reserva arquivada até o momento." : "Nenhuma oferta arquivada até o momento."}
+                {/* ARCHIVED COMPRA E VENDA */}
+                {(categoryFilter === "TODOS" || categoryFilter === "VENDA") && archivedVendaOffers.length > 0 && (
+                  <div className="space-y-4">
+                    {categoryFilter === "TODOS" && (
+                      <div className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <span>🏷️ Compra e Venda Arquivadas ({archivedVendaOffers.length})</span>
+                      </div>
+                    )}
+                    <div className="space-y-4 opacity-75 hover:opacity-100 transition-opacity">
+                      {archivedVendaOffers.map((offer) => renderOfferCard(offer, true))}
+                    </div>
                   </div>
-                ) : (
-                  <div className="space-y-5 opacity-75 hover:opacity-100 transition-opacity">
-                    {archivedOffers.map((offer) => renderOfferCard(offer, true))}
+                )}
+
+                {/* ARCHIVED ALUGUEL TEMPORADA */}
+                {(categoryFilter === "TODOS" || categoryFilter === "TEMPORADA") && archivedTemporadaOffers.length > 0 && (
+                  <div className="space-y-4">
+                    {categoryFilter === "TODOS" && (
+                      <div className="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <span>🧳 Aluguel Temporada Arquivadas ({archivedTemporadaOffers.length})</span>
+                      </div>
+                    )}
+                    <div className="space-y-4 opacity-75 hover:opacity-100 transition-opacity">
+                      {archivedTemporadaOffers.map((offer) => renderOfferCard(offer, true))}
+                    </div>
+                  </div>
+                )}
+
+                {((categoryFilter === "TODOS" && archivedVendaOffers.length === 0 && archivedTemporadaOffers.length === 0) ||
+                  (categoryFilter === "VENDA" && archivedVendaOffers.length === 0) ||
+                  (categoryFilter === "TEMPORADA" && archivedTemporadaOffers.length === 0)) && (
+                  <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-8 text-center text-xs text-slate-500">
+                    Nenhum registro arquivado encontrado.
                   </div>
                 )}
               </div>
