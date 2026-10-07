@@ -2,6 +2,52 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Building2, MapPin } from "lucide-react";
+import type { Metadata } from "next";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const userId = Number(id);
+
+  if (!userId || Number.isNaN(userId)) {
+    return {
+      title: "Imobiliária não encontrada | RealStock",
+    };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { name: true, city: true, state: true },
+  });
+
+  if (!user) {
+    return {
+      title: "Imobiliária não encontrada | RealStock",
+    };
+  }
+
+  const title = `${user.name || "Imobiliária"} | Imóveis no RealStock`;
+  const locationSuffix = [user.city, user.state].filter(Boolean).join(", ");
+  const description = `Confira todos os imóveis disponíveis e anunciados por ${user.name || "esta imobiliária"}${locationSuffix ? ` em ${locationSuffix}` : ""} no RealStock.`;
+  const canonicalUrl = `https://www.realstock.com.br/imobiliaria/${id}`;
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title,
+      description,
+      url: canonicalUrl,
+      type: "profile",
+    },
+  };
+}
 
 export default async function ImobiliariaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

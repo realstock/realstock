@@ -35,13 +35,9 @@ export const metadata: Metadata = {
   verification: {
     google: "LJnsmiNMwhnZfSojznS3i0CBulwp4oaOOImxZ_SKjNE",
   },
-  alternates: {
-    canonical: "https://www.realstock.com.br",
-  },
   openGraph: {
     type: "website",
     locale: "pt_BR",
-    url: "https://www.realstock.com.br",
     siteName: "RealStock",
     title: "RealStock | Imóveis à Venda e Aluguel por Temporada no Brasil",
     description: "Encontre casas, apartamentos e imóveis à venda ou aluguel por temporada direto com proprietários e corretores. Negociação e reservas em tempo real com segurança.",

@@ -1,10 +1,21 @@
 import React from "react";
 import Link from "next/link";
 import { Building2, Rocket, ShieldCheck, Megaphone } from "lucide-react";
+import type { Metadata } from "next";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Quem Somos | RealStock",
-  description: "Conheça a história e a missão da RealStock, o melhor marketplace para negociação imobiliária rápida e segura.",
+  description:
+    "Conheça a história e a missão da RealStock, a primeira AdTech imobiliária autônoma para negociação e publicidade de imóveis.",
+  alternates: {
+    canonical: "https://www.realstock.com.br/quem-somos",
+  },
+  openGraph: {
+    title: "Quem Somos | RealStock",
+    description:
+      "Conheça a história e a missão da RealStock, a primeira AdTech imobiliária autônoma para negociação e publicidade de imóveis.",
+    url: "https://www.realstock.com.br/quem-somos",
+  },
 };
 
 export default function QuemSomosPage() {

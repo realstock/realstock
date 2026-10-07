@@ -10,7 +10,16 @@ export default function robots(): MetadataRoute.Robots {
         '/api/properties/*/gvr-feed',
         '/google-vacation-rentals-feed.xml',
       ],
-      disallow: ['/admin/', '/api/'],
+      disallow: [
+        '/admin/',
+        '/api/',
+        '/minha-conta/',
+        '/login',
+        '/cadastro',
+        '/esqueci-senha',
+        '/resetar-senha',
+        '/anunciar/sucesso',
+      ],
     },
     sitemap: [
       'https://www.realstock.com.br/sitemap.xml',

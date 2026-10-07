@@ -1,8 +1,19 @@
 import React from "react";
+import type { Metadata } from "next";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Política de Privacidade | RealStock",
-  description: "Política de privacidade da Plataforma RealStock. Saiba como seus dados são coletados, usados e protegidos.",
+  description:
+    "Política de privacidade da Plataforma RealStock. Saiba como seus dados são coletados, usados e protegidos de acordo com a LGPD.",
+  alternates: {
+    canonical: "https://www.realstock.com.br/privacidade",
+  },
+  openGraph: {
+    title: "Política de Privacidade | RealStock",
+    description:
+      "Política de privacidade da Plataforma RealStock. Saiba como seus dados são coletados, usados e protegidos de acordo com a LGPD.",
+    url: "https://www.realstock.com.br/privacidade",
+  },
 };
 
 export default function PrivacidadePage() {

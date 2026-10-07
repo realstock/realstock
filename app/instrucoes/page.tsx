@@ -1,5 +1,21 @@
 import React from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Central de Instruções e Ajuda | RealStock",
+  description:
+    "Aprenda como anunciar, turbinar imóveis com anúncios patrocinados no Google e Meta, enviar propostas e negociar com segurança no RealStock.",
+  alternates: {
+    canonical: "https://www.realstock.com.br/instrucoes",
+  },
+  openGraph: {
+    title: "Central de Instruções e Ajuda | RealStock",
+    description:
+      "Aprenda como anunciar, turbinar imóveis com anúncios patrocinados no Google e Meta, enviar propostas e negociar com segurança no RealStock.",
+    url: "https://www.realstock.com.br/instrucoes",
+  },
+};
 import {
   FiPlusCircle,
   FiEdit3,
