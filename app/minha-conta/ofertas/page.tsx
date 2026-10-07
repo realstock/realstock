@@ -1923,41 +1923,50 @@ export default function MinhasReservasPage() {
           </div>
 
           {/* CATEGORY SUB-TABS: SEPARAR COMPRA E VENDA E ALUGUEL TEMPORADA */}
-          <div className="flex flex-wrap items-center gap-2 mb-8 border-b border-white/10 pb-4">
+          <div className="flex flex-wrap items-center gap-2 mb-8 bg-slate-900 border border-white/10 p-1.5 rounded-2xl w-fit shadow-lg">
             <button
               type="button"
               onClick={() => setCategoryFilter("TODOS")}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
                 categoryFilter === "TODOS"
-                  ? "bg-white/15 text-white border border-white/30 shadow"
-                  : "bg-white/5 text-slate-400 hover:text-slate-200 border border-white/5"
+                  ? "bg-emerald-500 text-slate-950 font-black shadow-md"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
               }`}
             >
-              Todas ({currentTabAllOffers.length})
+              <span>Todos</span>
+              <span className="rounded-full bg-black/20 px-2 py-0.5 text-[10px]">
+                {currentTabAllOffers.length}
+              </span>
             </button>
-            <button
-              type="button"
-              onClick={() => setCategoryFilter("VENDA")}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                categoryFilter === "VENDA"
-                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-emerald-500/10 shadow"
-                  : "bg-white/5 text-slate-400 hover:text-emerald-300 border border-white/5"
-              }`}
-            >
-              <span>🏷️</span>
-              <span>Compra e Venda ({currentTabVendaOffers.length})</span>
-            </button>
+
             <button
               type="button"
               onClick={() => setCategoryFilter("TEMPORADA")}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
                 categoryFilter === "TEMPORADA"
-                  ? "bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sky-500/10 shadow"
-                  : "bg-white/5 text-slate-400 hover:text-sky-300 border border-white/5"
+                  ? "bg-emerald-500 text-slate-950 font-black shadow-md"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
               }`}
             >
-              <span>🧳</span>
-              <span>Aluguel Temporada ({currentTabTemporadaOffers.length})</span>
+              <span>🧳 Aluguel Temporada</span>
+              <span className="rounded-full bg-black/20 px-2 py-0.5 text-[10px]">
+                {currentTabTemporadaOffers.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCategoryFilter("VENDA")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                categoryFilter === "VENDA"
+                  ? "bg-emerald-500 text-slate-950 font-black shadow-md"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <span>🏢 Compra e Venda</span>
+              <span className="rounded-full bg-black/20 px-2 py-0.5 text-[10px]">
+                {currentTabVendaOffers.length}
+              </span>
             </button>
           </div>
 
