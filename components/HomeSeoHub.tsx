@@ -78,6 +78,7 @@ export default function HomeSeoHub() {
 
   return (
     <section className="mx-auto max-w-[1600px] px-6 py-12 border-t border-white/10 mt-12">
+      <h1 className="sr-only">RealStock | Imóveis à Venda e Aluguel por Temporada no Brasil</h1>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
