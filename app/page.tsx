@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
-import HomeClient from "./HomeClient";
+import { prisma } from "@/lib/prisma";
+import HomeClient, { normalizeProperties, type PropertyPin } from "./HomeClient";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "RealStock | Imóveis à Venda e Aluguel por Temporada no Brasil",
@@ -34,6 +37,29 @@ export const metadata: Metadata = {
   },
 };
 
-export default function HomePage() {
-  return <HomeClient />;
+async function getInitialProperties(): Promise<PropertyPin[]> {
+  try {
+    const rawProperties = await prisma.property.findMany({
+      include: {
+        images: {
+          take: 1,
+          orderBy: { sortOrder: "asc" },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 60,
+    });
+    return normalizeProperties(rawProperties);
+  } catch (error) {
+    console.error("Erro ao carregar imóveis no SSR da Home:", error);
+    return [];
+  }
 }
+
+export default async function HomePage() {
+  const initialProperties = await getInitialProperties();
+  return <HomeClient initialProperties={initialProperties} />;
+}
+

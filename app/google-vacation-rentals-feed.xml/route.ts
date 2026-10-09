@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+// @ts-ignore
 import { GET as getFeed } from "@/app/api/google-vacation-rentals/feed/route";
 
 export async function GET(req: NextRequest) {

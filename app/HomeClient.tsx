@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { Rocket, Building2, Calendar, X, RefreshCw } from "lucide-react";
 import CesiumMapClient from "@/components/CesiumMapClient";
 import { useListingType } from "@/context/ListingTypeContext";
+import HomeSeoHub from "@/components/HomeSeoHub";
 
 
 type MapBounds = {
@@ -253,7 +254,7 @@ function formatLabel(value: string) {
     .replace(/\b\w/g, (l) => l.toUpperCase());
 }
 
-type PropertyPin = {
+export type PropertyPin = {
   id: number;
   title: string;
   price: string;
@@ -382,7 +383,7 @@ function calculateStayTotal(
   };
 }
 
-function normalizeProperties(items: any[]): PropertyPin[] {
+export function normalizeProperties(items: any[]): PropertyPin[] {
   return (items || []).map((item: any) => ({
     id: Number(item.id),
     title: item.title,
@@ -473,7 +474,7 @@ const YoutubeIcon = ({ size = 20 }: { size?: number }) => (
   </svg>
 );
 
-export default function HomeClient() {
+export default function HomeClient({ initialProperties = [] }: { initialProperties?: PropertyPin[] }) {
   const router = useRouter();
   const { status } = useSession();
   const { listingType, checkInDate, setCheckInDate, checkOutDate, setCheckOutDate, guestsCount, setGuestsCount } = useListingType();
@@ -516,7 +517,7 @@ export default function HomeClient() {
     }
   }
   const [bounds, setBounds] = useState<MapBounds | null>(null);
-  const [properties, setProperties] = useState<PropertyPin[]>([]);
+  const [properties, setProperties] = useState<PropertyPin[]>(initialProperties);
   const [selectedMapPinId, setSelectedMapPinId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -812,6 +813,52 @@ export default function HomeClient() {
   return (
     <main className="bg-slate-950 text-white">
       <section className="mx-auto max-w-[1600px] px-6 py-6">
+        {/* Cabecalho Principal com H1 Estrategico para SEO */}
+        <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-white/5 pb-5">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-wider mb-2">
+              Marketplace Imobiliário Autônomo
+            </div>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight">
+              {listingType === "ALUGUEL_TEMPORADA" ? (
+                <>
+                  Aluguel por Temporada no Brasil{" "}
+                  <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+                    | RealStock
+                  </span>
+                </>
+              ) : (
+                <>
+                  Imóveis à Venda e Aluguel de Temporada{" "}
+                  <span className="bg-gradient-to-r from-blue-400 to-indigo-300 bg-clip-text text-transparent">
+                    | RealStock
+                  </span>
+                </>
+              )}
+            </h1>
+            <p className="mt-1.5 text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
+              {listingType === "ALUGUEL_TEMPORADA"
+                ? "Casas de praia, apartamentos e chalés direto com anfitriões. Reserva protegida, mapa interativo e negociação transparente."
+                : "Compre e venda casas, apartamentos e terrenos direto com proprietários e corretores com livro de ofertas em tempo real."}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs shrink-0">
+            <Link
+              href="/imoveis-a-venda"
+              className="px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 hover:text-white font-semibold transition"
+            >
+              Imóveis à Venda
+            </Link>
+            <Link
+              href="/aluguel-temporada"
+              className="px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 hover:text-white font-semibold transition"
+            >
+              Aluguel Temporada
+            </Link>
+          </div>
+        </div>
+
         <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
           <aside className="rounded-[28px] border border-white/10 bg-white/5 p-5">
             <div className="mb-5">
@@ -1482,6 +1529,7 @@ export default function HomeClient() {
         </div>
       </div>
     )}
+    <HomeSeoHub />
   </main>
     
 
