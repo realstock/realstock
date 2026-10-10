@@ -23,7 +23,8 @@ function LoginContent() {
     const urlError = searchParams.get("error");
     if (urlError) {
       if (urlError === "OAuthSignin" || urlError === "OAuthCallback" || urlError === "Callback") {
-        setError("Erro de autenticação no Google. Verifique se a URL 'http://localhost:3000/api/auth/callback/google' está cadastrada no Google Cloud Console (URIs de redirecionamento autorizados).");
+        const origin = typeof window !== "undefined" ? window.location.origin : "https://www.realstock.com.br";
+        setError(`Erro de autenticação no Google. Verifique se a URL '${origin}/api/auth/callback/google' está cadastrada no Google Cloud Console (URIs de redirecionamento autorizados).`);
       } else if (urlError === "OAuthCreateAccount" || urlError === "EmailCreateAccount") {
         setError("Não foi possível autenticar a conta social. Tente se cadastrar primeiro.");
       } else if (urlError === "AccessDenied") {

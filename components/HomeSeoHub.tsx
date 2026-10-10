@@ -8,46 +8,9 @@ import {
   Search,
   ArrowRight,
   Sparkles,
-  HelpCircle,
 } from "lucide-react";
 
 export default function HomeSeoHub() {
-  const faqList = [
-    {
-      q: "O que é o RealStock e como funciona?",
-      a: "O RealStock é um marketplace imobiliário autônomo que conecta proprietários, corretores e compradores diretamente. Diferente de portais convencionais, o RealStock possui livro de ofertas em tempo real para compra e venda, além de integração de aluguel por temporada sincronizada com Google Vacation Rentals, Airbnb e Booking.",
-    },
-    {
-      q: "Como encontrar imóveis à venda ou para alugar por temporada?",
-      a: "Você pode navegar pelo mapa 3D interativo ou acessar diretamente as categorias exclusivas: 'Imóveis à Venda' para compra definitiva ou 'Aluguel por Temporada' para estadias de férias e trabalho. Também é possível filtrar por cidades como Fortaleza, Eusébio, Vitória e Conceição da Barra.",
-    },
-    {
-      q: "Como enviar uma proposta no livro de ofertas?",
-      a: "Na página de qualquer imóvel à venda, basta acessar a aba de ofertas e informar o valor que deseja propor. A negociação é transparente, permitindo que comprador e vendedor ajustem condições rapidamente sem burocracia desnecessária.",
-    },
-    {
-      q: "Como funciona a reserva de aluguel por temporada?",
-      a: "Escolha as datas de check-in e check-out na página do imóvel. O cálculo do valor total e das diárias é feito automaticamente. Envie sua solicitação de reserva e, após aprovação do anfitrião, efetue o pagamento com garantia e segurança.",
-    },
-    {
-      q: "Como anunciar meu imóvel no RealStock?",
-      a: "O cadastro é simples e gratuito. Clique em 'Anunciar imóvel' no menu, preencha as características, envie fotos e publique. Você também pode ativar campanhas de turbinamento inteligente para veicular anúncios automáticos no Instagram, Facebook e Google.",
-    },
-  ];
-
-  const faqSchema = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": faqList.map((item) => ({
-      "@type": "Question",
-      "name": item.q,
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": item.a,
-      },
-    })),
-  };
-
   const destinations = [
     {
       name: "Fortaleza (CE)",
@@ -79,10 +42,7 @@ export default function HomeSeoHub() {
   return (
     <section className="mx-auto max-w-[1600px] px-6 py-12 border-t border-white/10 mt-12">
       <h1 className="sr-only">RealStock | Imóveis à Venda e Aluguel por Temporada no Brasil</h1>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-      />
+
 
       {/* Grid de Modalidades Principais */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
@@ -212,33 +172,6 @@ export default function HomeSeoHub() {
         </div>
       </div>
 
-      {/* FAQ com Accordion / Respostas para Busca Orgânica */}
-      <div>
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <HelpCircle size={22} className="text-blue-400" /> Dúvidas Frequentes sobre o RealStock
-          </h2>
-          <p className="text-slate-400 text-sm mt-1">
-            Respostas para as principais perguntas sobre compra, venda, aluguel de temporada e anúncios.
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          {faqList.map((item, index) => (
-            <div
-              key={index}
-              className="rounded-2xl border border-white/5 bg-slate-900/40 p-5 hover:border-white/10 transition-colors"
-            >
-              <h3 className="text-base font-bold text-white mb-2">
-                {item.q}
-              </h3>
-              <p className="text-xs md:text-sm text-slate-300 leading-relaxed">
-                {item.a}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
     </section>
   );
 }

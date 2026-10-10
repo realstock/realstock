@@ -30,6 +30,7 @@ export default function Footer() {
             <li><Link href="/anuncios-turbinados" className="hover:text-white transition-colors">Vitrine de Destaques</Link></li>
             <li><Link href="/anunciar" className="hover:text-white transition-colors">Anunciar Imóvel Grátis</Link></li>
             <li><Link href="/instrucoes" className="hover:text-white transition-colors">Como funciona o portal?</Link></li>
+            <li><Link href="/duvidas-frequentes" className="hover:text-white transition-colors">Dúvidas Frequentes</Link></li>
           </ul>
         </div>
 

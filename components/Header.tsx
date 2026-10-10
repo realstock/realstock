@@ -151,7 +151,7 @@ export default function Header() {
           />
         </div>
 
-        {/* Top Right: Cumprimento do Usuário ou Botão Entrar */}
+        {/* Top Right: Nome do Usuário apenas quando logado */}
         <div className="flex items-center gap-2 shrink-0">
           {status === "loading" ? null : user ? (
             <div className="flex items-center gap-2">
@@ -159,14 +159,7 @@ export default function Header() {
                 Olá, {user.name ? user.name.split(" ")[0] : (user.email?.split("@")[0] || "Conta")}
               </span>
             </div>
-          ) : (
-            <Link
-              href="/login"
-              className="rounded-xl border border-white/10 bg-slate-900 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm hover:bg-white/10 transition-colors"
-            >
-              Entrar
-            </Link>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -281,38 +274,12 @@ export default function Header() {
                 )}
               </>
             ) : (
-              <>
-                <Link
-                  href="/"
-                  className={`rounded-lg px-2.5 sm:px-3 py-1.5 transition-colors ${
-                    pathname === "/"
-                      ? "bg-blue-600 text-white font-semibold"
-                      : "text-white hover:bg-white/10"
-                  }`}
-                >
-                  Pesquisar imóvel
-                </Link>
-                <Link
-                  href="/anunciar"
-                  className={`rounded-lg px-2.5 sm:px-3 py-1.5 transition-colors ${
-                    pathname === "/anunciar"
-                      ? "bg-blue-600 text-white font-semibold"
-                      : "text-white hover:bg-white/10"
-                  }`}
-                >
-                  Anunciar imóvel
-                </Link>
-                <Link
-                  href="/instrucoes"
-                  className={`rounded-lg px-2.5 sm:px-3 py-1.5 transition-colors ${
-                    pathname === "/instrucoes"
-                      ? "bg-blue-600 text-white font-semibold"
-                      : "text-white hover:bg-white/10"
-                  }`}
-                >
-                  Como usar o site
-                </Link>
-              </>
+              <Link
+                href="/"
+                className="rounded-lg px-2.5 sm:px-3 py-1.5 bg-blue-600 text-white font-semibold transition-colors"
+              >
+                Pesquisar imóvel
+              </Link>
             )}
           </nav>
 

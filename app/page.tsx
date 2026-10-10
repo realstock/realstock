@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
-import HomeClient, { normalizeProperties, type PropertyPin } from "./HomeClient";
+import HomeClient from "./HomeClient";
+import { normalizeProperties, type PropertyPin } from "@/lib/propertyPin";
 
 export const dynamic = "force-dynamic";
 
