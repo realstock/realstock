@@ -19,6 +19,8 @@ export type PropertyPin = {
   maxGuests?: number | null;
   depositPercentage?: number | null;
   pixKey?: string | null;
+  acceptsPaypal?: boolean | null;
+  paypalEmail?: string | null;
   customRates?: any;
 };
 
@@ -45,9 +47,11 @@ export function normalizeProperties(items: any[]): PropertyPin[] {
       maxGuests: item.maxGuests ? Number(item.maxGuests) : null,
       depositPercentage:
         item.depositPercentage !== undefined && item.depositPercentage !== null
-          ? Number(item.depositPercentage)
+            ? Number(item.depositPercentage)
           : 20,
       pixKey: item.pixKey || null,
+      acceptsPaypal: Boolean(item.acceptsPaypal ?? item.accepts_paypal),
+      paypalEmail: item.paypalEmail || item.paypal_email || null,
       customRates: item.customRates || {},
     }))
     .sort((a: any, b: any) => {

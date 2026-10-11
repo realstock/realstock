@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -19,7 +19,9 @@ import {
   AlertCircle,
   Star,
   QrCode,
-  Archive
+  Archive,
+  CreditCard,
+  Loader2,
 } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useListingType } from "@/context/ListingTypeContext";
@@ -43,20 +45,33 @@ type PixCheckItem = {
 };
 
 type PixValidation = {
-  analyzedAt: string;
-  confidence: "HIGH" | "MEDIUM" | "LOW";
-  allPassed: boolean;
-  passedCount: number;
-  totalChecks: number;
-  transactionValue: string | null;
+  analyzedAt?: string;
+  confidence?: "HIGH" | "MEDIUM" | "LOW";
+  allPassed?: boolean;
+  passedCount?: number;
+  totalChecks?: number;
+  transactionValue?: string | null;
+  method?: string;
+  paypalOrderId?: string;
+  paypalCaptureId?: string;
+  amount?: number;
+  confirmedAt?: string;
   receiptUrls?: string[];
-  receiptHistory?: Array<{ url: string; amount: number; authCode?: string | null; date?: string | null }>;
-  checks: {
-    recipientData: PixCheckItem;
+  receiptHistory?: Array<{
+    url: string;
+    amount: number;
+    authCode?: string | null;
+    date?: string | null;
+    method?: string | null;
+    paypalOrderId?: string | null;
+    paypalCaptureId?: string | null;
+  }>;
+  checks?: {
+    recipientData?: PixCheckItem;
     payerData?: PixCheckItem;
-    transactionDateTime: PixCheckItem;
-    authCode: PixCheckItem;
-    isEffective: PixCheckItem;
+    transactionDateTime?: PixCheckItem;
+    authCode?: PixCheckItem;
+    isEffective?: PixCheckItem;
     depositValue?: PixCheckItem;
   };
 };
@@ -109,6 +124,8 @@ type OfferItem = {
     zipCode?: string | null;
     pixKey?: string | null;
     pixQrCodeUrl?: string | null;
+    acceptsPaypal?: boolean | null;
+    paypalEmail?: string | null;
     googleMapsLink?: string | null;
     listingType?: string | null;
     checkInInstructions?: string | null;
@@ -288,42 +305,286 @@ function PixValidationPanel({
   validation,
   perspective,
   receiptUrls,
+  panelType = "DEPOSIT",
+  depositAmount,
+  totalStayPrice,
 }: {
   validation: PixValidation;
   perspective: "VIAJANDO" | "HOSPEDANDO";
   receiptUrls?: string[];
+  panelType?: "DEPOSIT" | "REMAINING_BALANCE";
+  depositAmount?: number;
+  totalStayPrice?: number;
 }) {
-  const [showDetails, setShowDetails] = useState(!validation.allPassed);
+  const [showDetails, setShowDetails] = useState(!validation?.allPassed);
 
-  const checkList = [
-    {
+  const isRemainingBalance =
+    panelType === "REMAINING_BALANCE" ||
+    Array.isArray((validation as any)?.receiptHistory) ||
+    Boolean(
+      (validation as any)?.checks?.depositValue?.expected &&
+        depositAmount &&
+        (validation as any)?.checks?.depositValue?.expected > depositAmount
+    );
+
+  // 1. RENDER REMAINING BALANCE PANEL (CAIXINHA DE CIMA)
+  if (isRemainingBalance) {
+    const rawHistory = (validation as any)?.receiptHistory;
+    const historyItems: Array<{
+      amount: number;
+      authCode?: string | null;
+      date?: string | null;
+      method: "PAYPAL" | "PIX";
+      receiptUrl?: string | null;
+    }> = [];
+
+    if (Array.isArray(rawHistory) && rawHistory.length > 0) {
+      rawHistory.forEach((h: any) => {
+        const isPaypal = h.method === "PAYPAL" || h.url === "PAYPAL" || Boolean(h.paypalOrderId);
+        historyItems.push({
+          amount: Number(h.amount || 0),
+          authCode: h.authCode || h.paypalCaptureId || h.paypalOrderId || null,
+          date: h.date || null,
+          method: isPaypal ? "PAYPAL" : "PIX",
+          receiptUrl: !isPaypal && h.url && typeof h.url === "string" && (h.url.startsWith("http") || h.url.startsWith("/")) ? h.url : null,
+        });
+      });
+    } else if (validation?.method === "PAYPAL") {
+      const amount = Number(
+        (validation as any)?.checks?.depositValue?.amount ||
+          (totalStayPrice && depositAmount ? totalStayPrice - depositAmount : 0) ||
+          0
+      );
+      historyItems.push({
+        amount,
+        authCode: (validation as any)?.paypalCaptureId || (validation as any)?.paypalOrderId || null,
+        date: (validation as any)?.confirmedAt || (validation as any)?.analyzedAt || null,
+        method: "PAYPAL",
+      });
+    } else if (validation?.checks?.depositValue?.amount) {
+      historyItems.push({
+        amount: Number(validation.checks.depositValue.amount),
+        authCode: validation.checks?.authCode?.code || null,
+        date: validation.checks?.transactionDateTime?.date || null,
+        method: "PIX",
+        receiptUrl: receiptUrls?.[0] || null,
+      });
+    }
+
+    const totalPaidInRemaining = Number(
+      (validation?.checks?.depositValue?.accumulatedPaidAmount !== undefined
+        ? Number(validation.checks.depositValue.accumulatedPaidAmount)
+        : historyItems.reduce((acc, item) => acc + item.amount, 0)
+      ).toFixed(2)
+    );
+
+    const remainingBalanceValue =
+      validation?.checks?.depositValue?.remaining !== undefined
+        ? Number(validation.checks.depositValue.remaining)
+        : (totalStayPrice && depositAmount
+            ? Math.max(0, totalStayPrice - depositAmount - totalPaidInRemaining)
+            : 0);
+
+    const isBalanceFullyPaid = validation?.allPassed || remainingBalanceValue <= 0.05;
+
+    return (
+      <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-r from-blue-950/60 to-slate-900/90 p-4 space-y-3 shadow-lg">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="rounded-xl bg-blue-500/20 p-2 text-blue-400 border border-blue-500/30 shrink-0">
+              <CreditCard size={18} />
+            </div>
+            <div>
+              <div className="text-xs font-black text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
+                <span>✅ Pagamentos do Saldo da Estadia</span>
+              </div>
+              <p className="text-[11px] text-slate-300">
+                {isBalanceFullyPaid
+                  ? "O saldo da estadia foi 100% quitado com sucesso!"
+                  : "Parcelas e pagamentos registrados para o saldo da estadia."}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <span
+              className={`text-xs font-black px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${
+                isBalanceFullyPaid
+                  ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
+                  : "bg-amber-500/20 border-amber-500/40 text-amber-300"
+              }`}
+            >
+              <span>Total Pago do Saldo:</span>
+              <span className="text-white">
+                R$ {totalPaidInRemaining.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </span>
+            </span>
+          </div>
+        </div>
+
+        {/* Installments List */}
+        <div className="space-y-2">
+          <div className="text-[11px] font-bold text-slate-300 flex items-center justify-between">
+            <span>Parcelas / Pagamentos Realizados ({historyItems.length}):</span>
+            {!isBalanceFullyPaid && remainingBalanceValue > 0 && (
+              <span className="text-amber-400 font-black">
+                Saldo Restante: R$ {remainingBalanceValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-2">
+            {historyItems.map((item, idx) => (
+              <div
+                key={idx}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs transition hover:border-blue-500/30"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20 text-[11px] font-black text-blue-300 border border-blue-500/30 shrink-0">
+                    #{idx + 1}
+                  </span>
+                  <div>
+                    <div className="flex items-center gap-2 font-bold text-slate-200">
+                      <span className="text-sm font-black text-emerald-400">
+                        R$ {item.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-slate-300">
+                        {item.method === "PAYPAL" ? "Cartão / PayPal 💳" : "Pix ⚡"}
+                      </span>
+                    </div>
+                    {item.date && (
+                      <div className="text-[10px] text-slate-400">
+                        {new Date(item.date).toLocaleString("pt-BR")}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 sm:justify-end text-[11px]">
+                  {item.authCode && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-slate-400 text-[10px]">ID Transação:</span>
+                      <span className="font-mono text-blue-300 font-bold bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 text-[10px]">
+                        {item.authCode}
+                      </span>
+                    </div>
+                  )}
+                  {item.receiptUrl && (
+                    <a
+                      href={item.receiptUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-lg bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 text-[10px] text-emerald-300 font-bold hover:bg-emerald-500/30 transition flex items-center gap-1"
+                    >
+                      <FileText size={11} />
+                      <span>Ver Recibo</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. RENDER DEPOSIT PANEL (CAIXINHA DE BAIXO)
+  const depositPaidAmount = Number(
+    (validation as any)?.amount ||
+      depositAmount ||
+      validation?.checks?.depositValue?.amount ||
+      0
+  );
+
+  if (validation?.method === "PAYPAL" || !validation?.checks) {
+    const txId =
+      (validation as any)?.paypalCaptureId || (validation as any)?.paypalOrderId || null;
+
+    return (
+      <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-r from-blue-950/60 to-slate-900/90 p-4 space-y-2.5 shadow-md">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
+            <span className="text-xs font-bold text-slate-100">
+              ✅ Sinal da Reserva Confirmado (Cartão / PayPal)
+            </span>
+          </div>
+          {depositPaidAmount > 0 && (
+            <span className="text-xs font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-xl shrink-0">
+              Valor Pago do Sinal: R$ {depositPaidAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-300">
+          {txId && (
+            <div>
+              <span className="text-slate-400 font-medium">ID da Transação / Ordem:</span>{" "}
+              <span className="font-mono text-blue-300 font-bold bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 text-[11px]">
+                {txId}
+              </span>
+            </div>
+          )}
+          {(validation as any)?.confirmedAt && (
+            <div>
+              <span className="text-slate-400 font-medium">Data do Pagamento:</span>{" "}
+              <span className="text-slate-200">
+                {new Date((validation as any).confirmedAt).toLocaleString("pt-BR")}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <p className="text-[11px] text-slate-400 leading-tight">
+          O sinal da reserva foi pago diretamente na conta do anfitrião via PayPal e garantiu a confirmação imediata da sua estadia.
+        </p>
+      </div>
+    );
+  }
+
+  const checks = validation.checks;
+  const checkList: { key: string; check: PixCheckItem; detail: string }[] = [];
+
+  if (checks.recipientData) {
+    checkList.push({
       key: "recipientData",
-      check: validation.checks.recipientData,
-      detail: [validation.checks.recipientData?.name, validation.checks.recipientData?.cpfCnpj, validation.checks.recipientData?.bank].filter(Boolean).join(" • "),
-    },
-    {
-      key: "transactionDateTime",
-      check: validation.checks.transactionDateTime,
-      detail: validation.checks.transactionDateTime?.date || "",
-    },
-    {
-      key: "authCode",
-      check: validation.checks.authCode,
-      detail: validation.checks.authCode?.code ? `${String(validation.checks.authCode.code).slice(0, 30)}...` : "",
-    },
-    {
-      key: "isEffective",
-      check: validation.checks.isEffective,
-      detail: validation.checks.isEffective?.transactionType || "",
-    },
-  ].filter((item) => !!item.check) as { key: string; check: PixCheckItem; detail: string }[];
+      check: checks.recipientData,
+      detail: [checks.recipientData?.name, checks.recipientData?.cpfCnpj, checks.recipientData?.bank].filter(Boolean).join(" • "),
+    });
+  }
 
-  if (validation.checks.depositValue) {
+  if (checks.transactionDateTime) {
+    checkList.push({
+      key: "transactionDateTime",
+      check: checks.transactionDateTime,
+      detail: checks.transactionDateTime?.date || "",
+    });
+  }
+
+  if (checks.authCode) {
+    checkList.push({
+      key: "authCode",
+      check: checks.authCode,
+      detail: checks.authCode?.code ? `${String(checks.authCode.code).slice(0, 30)}...` : "",
+    });
+  }
+
+  if (checks.isEffective) {
+    checkList.push({
+      key: "isEffective",
+      check: checks.isEffective,
+      detail: checks.isEffective?.transactionType || "",
+    });
+  }
+
+  if (checks.depositValue) {
     checkList.push({
       key: "depositValue",
-      check: validation.checks.depositValue,
-      detail: validation.checks.depositValue.amount
-        ? `Pago: R$ ${validation.checks.depositValue.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+      check: checks.depositValue,
+      detail: checks.depositValue.amount
+        ? `Pago: R$ ${checks.depositValue.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
         : "",
     });
   }
@@ -333,22 +594,29 @@ function PixValidationPanel({
   return (
     <div className="rounded-xl border border-white/10 bg-slate-950/60 p-3.5 space-y-2">
       {/* Compact Header Summary */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <ShieldCheck size={16} className={validation.allPassed ? "text-emerald-400" : "text-amber-400"} />
           <span className="text-xs font-bold text-slate-200">
             {validation.allPassed
-              ? "✅ Verificação Automática do Comprovante (5/5 Aprovados)"
-              : `⚠️ Verificação Automática (${validation.passedCount}/${validation.totalChecks} Aprovados)`}
+              ? "✅ Sinal da Reserva Confirmado via Pix (5/5 Aprovados)"
+              : `⚠️ Verificação Automática (${validation.passedCount ?? 0}/${validation.totalChecks ?? 5} Aprovados)`}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowDetails(!showDetails)}
-          className="text-[11px] font-bold text-sky-400 hover:underline"
-        >
-          {showDetails ? "Ocultar Detalhes ▲" : "Ver Detalhes ▼"}
-        </button>
+        <div className="flex items-center gap-3">
+          {depositPaidAmount > 0 && (
+            <span className="text-xs font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-lg">
+              Valor Pago: R$ {depositPaidAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowDetails(!showDetails)}
+            className="text-[11px] font-bold text-sky-400 hover:underline cursor-pointer"
+          >
+            {showDetails ? "Ocultar Detalhes ▲" : "Ver Detalhes ▼"}
+          </button>
+        </div>
       </div>
 
       {/* Expanded Grid */}
@@ -409,23 +677,25 @@ function PixValidationPanel({
             ))}
 
             {/* 6th Slot: Receipt Sum Card */}
-            <div className="flex flex-col justify-between rounded-lg p-2.5 border text-xs bg-slate-900 border-emerald-500/30 text-slate-200">
-              <div className="flex items-center justify-between gap-1">
-                <span className="font-bold text-[10px] leading-tight text-emerald-300">🧮 Soma Comprovantes</span>
-                <span className="text-[9px] text-emerald-400 font-extrabold">
-                  {validation.checks.depositValue?.isPartial ? "⚠️ Parcial" : "✅ Quitado"}
-                </span>
+            {checks.depositValue && (
+              <div className="flex flex-col justify-between rounded-lg p-2.5 border text-xs bg-slate-900 border-emerald-500/30 text-slate-200">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="font-bold text-[10px] leading-tight text-emerald-300">🧮 Soma Comprovantes</span>
+                  <span className="text-[9px] text-emerald-400 font-extrabold">
+                    {checks.depositValue?.isPartial ? "⚠️ Parcial" : "✅ Quitado"}
+                  </span>
+                </div>
+                <div className="text-[10px] text-emerald-400 font-black pt-1">
+                  R$ {Number(checks.depositValue?.accumulatedPaidAmount || checks.depositValue?.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                </div>
               </div>
-              <div className="text-[10px] text-emerald-400 font-black pt-1">
-                R$ {Number(validation.checks.depositValue?.accumulatedPaidAmount || validation.checks.depositValue?.amount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Partial payment guidance for guest */}
-          {perspective === "VIAJANDO" && validation.checks.depositValue?.isPartial && (
+          {perspective === "VIAJANDO" && checks.depositValue?.isPartial && (
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/15 p-2.5 text-xs text-amber-200">
-              ⚠️ Pagamento Parcial: Acumulado <strong>R$ {Number(validation.checks.depositValue.accumulatedPaidAmount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong> de <strong>R$ {Number(validation.checks.depositValue.expected || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>. Falta: <strong className="text-emerald-300">R$ {Number(validation.checks.depositValue.remaining || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>.
+              ⚠️ Pagamento Parcial: Acumulado <strong>R$ {Number(checks.depositValue.accumulatedPaidAmount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong> de <strong>R$ {Number(checks.depositValue.expected || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>. Falta: <strong className="text-emerald-300">R$ {Number(checks.depositValue.remaining || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>.
             </div>
           )}
         </div>
@@ -657,6 +927,35 @@ export default function MinhasReservasPage() {
   const [paypalError, setPaypalError] = useState("");
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
 
+  // Guest PayPal modal state for reservation deposit payment
+  const [guestPaypalOffer, setGuestPaypalOffer] = useState<OfferItem | null>(null);
+  const [guestPaypalOrderId, setGuestPaypalOrderId] = useState<string | null>(null);
+  const [guestPaypalLoading, setGuestPaypalLoading] = useState(false);
+  const [guestPaypalError, setGuestPaypalError] = useState("");
+  const [guestPaypalSuccess, setGuestPaypalSuccess] = useState(false);
+
+  // Remaining balance PayPal modal state for full/partial stay payment
+  const [remainingPaypalOffer, setRemainingPaypalOffer] = useState<OfferItem | null>(null);
+  const [remainingPaypalOrderId, setRemainingPaypalOrderId] = useState<string | null>(null);
+  const [remainingPaypalLoading, setRemainingPaypalLoading] = useState(false);
+  const [remainingPaypalError, setRemainingPaypalError] = useState("");
+  const [remainingPaypalSuccess, setRemainingPaypalSuccess] = useState(false);
+  const [remainingPaypalSuccessMsg, setRemainingPaypalSuccessMsg] = useState("");
+  const [remainingPaypalIsFullBalance, setRemainingPaypalIsFullBalance] = useState(true);
+  const [remainingPaypalCustomAmount, setRemainingPaypalCustomAmount] = useState("");
+
+  // Modal de progresso da análise do comprovante Pix
+  const [pixAnalyzingState, setPixAnalyzingState] = useState<{
+    isOpen: boolean;
+    offerId: number | null;
+    isRemainingBalance: boolean;
+    progress: number;
+    currentStepText: string;
+    stage: "UPLOADING" | "ANALYZING" | "VERIFYING" | "COMPLETED" | "ERROR";
+    message?: string;
+    isDuplicate?: boolean;
+  } | null>(null);
+
   // QR Code Popup Modal state
   const [selectedQrCodeModalUrl, setSelectedQrCodeModalUrl] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -670,12 +969,16 @@ export default function MinhasReservasPage() {
 
   const isSeasonal = listingType === "ALUGUEL_TEMPORADA";
 
-  async function loadOffers() {
+  const tabInitializedRef = useRef(false);
+
+  async function loadOffers(preserveTab = false) {
     try {
       setLoading(true);
       setError("");
 
-      const res = await fetch("/api/minha-conta/ofertas");
+      const res = await fetch("/api/minha-conta/ofertas", {
+        cache: "no-store",
+      });
       const data = await res.json();
 
       if (!res.ok || !data.success) {
@@ -685,11 +988,24 @@ export default function MinhasReservasPage() {
       setGuestOffers(data.guestOffers || data.offers || []);
       setHostOffers(data.hostOffers || []);
 
-      // Default active tab: HOSPEDANDO if user has registered properties, else VIAJANDO
-      if (data.hasProperties || (data.userPropertiesCount && data.userPropertiesCount > 0)) {
-        setActiveTab("HOSPEDANDO");
-      } else {
-        setActiveTab("VIAJANDO");
+      // Default active tab: set on initial load only if not specified or preserved
+      if (!tabInitializedRef.current && !preserveTab) {
+        tabInitializedRef.current = true;
+        const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+        const urlTab = params?.get("tab")?.toUpperCase();
+        const urlCat = params?.get("categoria")?.toUpperCase() || params?.get("filter")?.toUpperCase();
+
+        if (urlTab === "VIAJANDO" || urlTab === "HOSPEDANDO") {
+          setActiveTab(urlTab as "VIAJANDO" | "HOSPEDANDO");
+        } else if (data.hasProperties || (data.userPropertiesCount && data.userPropertiesCount > 0)) {
+          setActiveTab("HOSPEDANDO");
+        } else {
+          setActiveTab("VIAJANDO");
+        }
+
+        if (urlCat === "TEMPORADA" || urlCat === "VENDA" || urlCat === "TODOS") {
+          setCategoryFilter(urlCat as "TODOS" | "VENDA" | "TEMPORADA");
+        }
       }
     } catch (err: any) {
       setError(err.message || "Erro ao carregar ofertas.");
@@ -762,8 +1078,28 @@ export default function MinhasReservasPage() {
 
   // Guest upload Pix receipt
   async function handleUploadPixReceipt(offerId: number, file: File) {
+    let progressTimer: NodeJS.Timeout | null = null;
     try {
       setUploadingOfferId(offerId);
+      setPixAnalyzingState({
+        isOpen: true,
+        offerId,
+        isRemainingBalance: false,
+        progress: 15,
+        currentStepText: "Enviando arquivo do comprovante...",
+        stage: "UPLOADING",
+      });
+
+      progressTimer = setInterval(() => {
+        setPixAnalyzingState((prev) => {
+          if (!prev || prev.stage !== "UPLOADING") return prev;
+          if (prev.progress < 38) {
+            return { ...prev, progress: prev.progress + 3 };
+          }
+          return prev;
+        });
+      }, 200);
+
       const formData = new FormData();
       formData.append("file", file);
 
@@ -776,6 +1112,19 @@ export default function MinhasReservasPage() {
       if (!uploadRes.ok || !uploadData.imageUrl) {
         throw new Error(uploadData.error || "Erro ao fazer upload do comprovante.");
       }
+
+      if (progressTimer) clearInterval(progressTimer);
+
+      setPixAnalyzingState((prev) =>
+        prev
+          ? {
+              ...prev,
+              progress: 45,
+              currentStepText: "Lendo e extraindo dados do comprovante Pix...",
+              stage: "ANALYZING",
+            }
+          : null
+      );
 
       // Step 2: Save receipt URL to offer
       const saveRes = await fetch("/api/minha-conta/ofertas", {
@@ -797,6 +1146,27 @@ export default function MinhasReservasPage() {
       setUploadingOfferId(null);
       setValidatingOfferId(offerId);
 
+      setPixAnalyzingState((prev) =>
+        prev
+          ? {
+              ...prev,
+              progress: 68,
+              currentStepText: "Validando instituição bancária, data e autenticidade...",
+              stage: "VERIFYING",
+            }
+          : null
+      );
+
+      progressTimer = setInterval(() => {
+        setPixAnalyzingState((prev) => {
+          if (!prev || prev.stage !== "VERIFYING") return prev;
+          if (prev.progress < 92) {
+            return { ...prev, progress: prev.progress + 4 };
+          }
+          return prev;
+        });
+      }, 250);
+
       const validateRes = await fetch("/api/minha-conta/ofertas/validate-pix", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -807,27 +1177,65 @@ export default function MinhasReservasPage() {
       });
       const validateData = await validateRes.json();
 
+      if (progressTimer) clearInterval(progressTimer);
+
       if (!validateRes.ok || !validateData.success) {
+        const isDup = Boolean(validateData.isDuplicate);
         const errorMsg = validateData.error || "Falha na verificação automática do comprovante.";
         setValidationError(errorMsg);
-        // Still allow host to review manually
-        // Optionally clear previous validation result
-        setPixValidationResult(null);
+        setPixAnalyzingState((prev) =>
+          prev
+            ? {
+                ...prev,
+                progress: 100,
+                stage: "ERROR",
+                isDuplicate: isDup,
+                currentStepText: isDup
+                  ? "Comprovante já anexado anteriormente"
+                  : "Não foi possível validar o comprovante automaticamente",
+                message: errorMsg,
+              }
+            : null
+        );
       } else {
         setValidationError(null);
-        if (validateData.allPassed) {
-          alert("✅ Comprovante validado com sucesso! Sua reserva foi confirmada automaticamente.");
-          setPixValidationResult({ offerId, validation: validateData.validation });
-        } else {
-          alert(`⚠️ Comprovante enviado. ${validateData.validation?.passedCount || 0} de 5 verificações passaram. O anfitrião irá analisar o comprovante.`);
-          setPixValidationResult({ offerId, validation: validateData.validation });
-        }
+        setPixValidationResult({ offerId, validation: validateData.validation });
+
+        const successMsg = validateData.message || (
+          validateData.allPassed
+            ? "✅ Comprovante validado com sucesso! Sua reserva foi confirmada."
+            : `⚠️ Comprovante enviado. ${validateData.validation?.passedCount || 0} de 5 verificações passaram. O anfitrião irá analisar.`
+        );
+
+        setPixAnalyzingState((prev) =>
+          prev
+            ? {
+                ...prev,
+                progress: 100,
+                stage: "COMPLETED",
+                currentStepText: "Comprovante Pix analisado e validado com sucesso!",
+                message: successMsg,
+              }
+            : null
+        );
       }
 
-      await loadOffers();
+      await loadOffers(true);
     } catch (err: any) {
-      alert(err?.message || "Erro ao enviar comprovante.");
+      if (progressTimer) clearInterval(progressTimer);
+      setPixAnalyzingState((prev) =>
+        prev
+          ? {
+              ...prev,
+              progress: 100,
+              stage: "ERROR",
+              currentStepText: "Erro ao processar comprovante",
+              message: err?.message || "Erro ao enviar comprovante.",
+            }
+          : null
+      );
     } finally {
+      if (progressTimer) clearInterval(progressTimer);
       setUploadingOfferId(null);
       setValidatingOfferId(null);
     }
@@ -937,8 +1345,28 @@ export default function MinhasReservasPage() {
 
   // Guest upload remaining balance Pix receipt
   async function handleUploadRemainingBalancePix(offerId: number, file: File) {
+    let progressTimer: NodeJS.Timeout | null = null;
     try {
       setUploadingOfferId(offerId);
+      setPixAnalyzingState({
+        isOpen: true,
+        offerId,
+        isRemainingBalance: true,
+        progress: 15,
+        currentStepText: "Enviando arquivo do comprovante...",
+        stage: "UPLOADING",
+      });
+
+      progressTimer = setInterval(() => {
+        setPixAnalyzingState((prev) => {
+          if (!prev || prev.stage !== "UPLOADING") return prev;
+          if (prev.progress < 38) {
+            return { ...prev, progress: prev.progress + 3 };
+          }
+          return prev;
+        });
+      }, 200);
+
       const formData = new FormData();
       formData.append("file", file);
 
@@ -951,6 +1379,19 @@ export default function MinhasReservasPage() {
       if (!uploadRes.ok || !uploadData.imageUrl) {
         throw new Error(uploadData.error || "Erro ao fazer upload do comprovante.");
       }
+
+      if (progressTimer) clearInterval(progressTimer);
+
+      setPixAnalyzingState((prev) =>
+        prev
+          ? {
+              ...prev,
+              progress: 45,
+              currentStepText: "Lendo e extraindo dados do comprovante Pix...",
+              stage: "ANALYZING",
+            }
+          : null
+      );
 
       // Step 2: Save receipt URL
       const saveRes = await fetch("/api/minha-conta/ofertas", {
@@ -968,9 +1409,29 @@ export default function MinhasReservasPage() {
         throw new Error(saveData.error || "Erro ao salvar comprovante.");
       }
 
-      // Step 3: Run AI validation
       setUploadingOfferId(null);
       setValidatingOfferId(offerId);
+
+      setPixAnalyzingState((prev) =>
+        prev
+          ? {
+              ...prev,
+              progress: 68,
+              currentStepText: "Validando instituição bancária, data e autenticidade...",
+              stage: "VERIFYING",
+            }
+          : null
+      );
+
+      progressTimer = setInterval(() => {
+        setPixAnalyzingState((prev) => {
+          if (!prev || prev.stage !== "VERIFYING") return prev;
+          if (prev.progress < 92) {
+            return { ...prev, progress: prev.progress + 4 };
+          }
+          return prev;
+        });
+      }, 250);
 
       const validateRes = await fetch("/api/minha-conta/ofertas/validate-pix", {
         method: "POST",
@@ -983,20 +1444,61 @@ export default function MinhasReservasPage() {
       });
       const validateData = await validateRes.json();
 
+      if (progressTimer) clearInterval(progressTimer);
+
       if (!validateRes.ok || !validateData.success) {
-        alert(validateData.error || "Falha na verificação automática do comprovante de quitação.");
+        const isDup = Boolean(validateData.isDuplicate);
+        const errorMsg = validateData.error || "Falha na verificação automática do comprovante de quitação.";
+        setPixAnalyzingState((prev) =>
+          prev
+            ? {
+                ...prev,
+                progress: 100,
+                stage: "ERROR",
+                isDuplicate: isDup,
+                currentStepText: isDup
+                  ? "Comprovante já anexado ao saldo"
+                  : "Não foi possível validar o comprovante automaticamente",
+                message: errorMsg,
+              }
+            : null
+        );
       } else {
-        if (validateData.allPassed) {
-          alert("✅ Comprovante de quitação do saldo da estadia validado com sucesso! Check-in LIBERADO 🎉");
-        } else {
-          alert(`⚠️ Comprovante enviado. ${validateData.validation?.passedCount || 0} de 5 verificações passaram. O anfitrião analisará.`);
-        }
+        const successMsg = validateData.message || (
+          validateData.allPassed
+            ? "✅ Comprovante de quitação do saldo da estadia validado com sucesso! Check-in LIBERADO 🎉"
+            : "✅ Parcela do saldo registrada com sucesso! Saldo restante atualizado."
+        );
+
+        setPixAnalyzingState((prev) =>
+          prev
+            ? {
+                ...prev,
+                progress: 100,
+                stage: "COMPLETED",
+                currentStepText: "Comprovante Pix analisado e validado com sucesso!",
+                message: successMsg,
+              }
+            : null
+        );
       }
 
-      await loadOffers();
+      await loadOffers(true);
     } catch (err: any) {
-      alert(err?.message || "Erro ao enviar comprovante de quitação.");
+      if (progressTimer) clearInterval(progressTimer);
+      setPixAnalyzingState((prev) =>
+        prev
+          ? {
+              ...prev,
+              progress: 100,
+              stage: "ERROR",
+              currentStepText: "Erro ao processar comprovante",
+              message: err?.message || "Erro ao enviar comprovante de quitação.",
+            }
+          : null
+      );
     } finally {
+      if (progressTimer) clearInterval(progressTimer);
       setUploadingOfferId(null);
       setValidatingOfferId(null);
     }
@@ -1070,6 +1572,124 @@ export default function MinhasReservasPage() {
     setPaypalOfferId(null);
     setPaypalOrderId(null);
     setPaypalError("");
+  }
+
+  async function handleOpenGuestPaypal(offer: OfferItem) {
+    try {
+      setGuestPaypalOffer(offer);
+      setGuestPaypalOrderId(null);
+      setGuestPaypalError("");
+      setGuestPaypalLoading(true);
+
+      const res = await fetch("/api/paypal/create-reservation-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ offer_id: offer.id }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Erro ao preparar pagamento no PayPal.");
+      }
+
+      if (data.already_paid) {
+        alert("Esta reserva já foi confirmada e paga!");
+        setGuestPaypalOffer(null);
+        await loadOffers();
+        return;
+      }
+
+      setGuestPaypalOrderId(data.paypal_order_id);
+    } catch (err: any) {
+      console.error("GUEST PAYPAL INIT ERROR:", err);
+      setGuestPaypalError(err?.message || "Erro ao conectar ao PayPal.");
+    } finally {
+      setGuestPaypalLoading(false);
+    }
+  }
+
+  function closeGuestPaypalModal() {
+    setGuestPaypalOffer(null);
+    setGuestPaypalOrderId(null);
+    setGuestPaypalError("");
+    setGuestPaypalLoading(false);
+    setGuestPaypalSuccess(false);
+  }
+
+  function getOfferRemainingBalance(offer: OfferItem) {
+    const totalStay = Number(offer.totalStayPrice || offer.offerPrice || 0);
+    const depositPct = Number(offer.property?.depositPercentage || 20);
+    const deposit = Number(offer.depositAmount || ((totalStay * depositPct) / 100));
+    const requiredBalance = Math.max(0, Number((totalStay - deposit).toFixed(2)));
+    let accumulatedPaid = 0;
+    const history = offer.remainingBalanceValidation?.receiptHistory;
+    if (Array.isArray(history) && history.length > 0) {
+      accumulatedPaid = Number(
+        history.reduce((sum: number, item: any) => sum + (Number(item?.amount) || 0), 0).toFixed(2)
+      );
+    } else if (offer.remainingBalanceValidation?.checks?.depositValue?.accumulatedPaidAmount) {
+      accumulatedPaid = Number(offer.remainingBalanceValidation.checks.depositValue.accumulatedPaidAmount);
+    }
+    const remaining = Math.max(0, Number((requiredBalance - accumulatedPaid).toFixed(2)));
+    return {
+      totalStay,
+      deposit,
+      requiredBalance,
+      accumulatedPaid,
+      remaining,
+      isFullyPaid: remaining <= 0.05,
+    };
+  }
+
+  async function handleOpenGuestRemainingPaypal(offer: OfferItem) {
+    const bal = getOfferRemainingBalance(offer);
+    setRemainingPaypalOffer(offer);
+    setRemainingPaypalOrderId(null);
+    setRemainingPaypalError("");
+    setRemainingPaypalSuccess(false);
+    setRemainingPaypalSuccessMsg("");
+    setRemainingPaypalIsFullBalance(true);
+    setRemainingPaypalCustomAmount(bal.remaining.toFixed(2));
+    await prepareRemainingPaypalOrder(offer.id, true, bal.remaining);
+  }
+
+  async function prepareRemainingPaypalOrder(offerId: number, isFull: boolean, amountVal?: number) {
+    try {
+      setRemainingPaypalLoading(true);
+      setRemainingPaypalError("");
+      setRemainingPaypalOrderId(null);
+
+      const res = await fetch("/api/paypal/create-remaining-balance-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          offer_id: offerId,
+          is_full_balance: isFull,
+          custom_amount: amountVal,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Erro ao preparar pagamento do saldo no PayPal.");
+      }
+
+      setRemainingPaypalOrderId(data.paypal_order_id);
+    } catch (err: any) {
+      console.error("REMAINING PAYPAL PREPARE ERROR:", err);
+      setRemainingPaypalError(err?.message || "Erro ao conectar ao PayPal.");
+    } finally {
+      setRemainingPaypalLoading(false);
+    }
+  }
+
+  function closeRemainingPaypalModal() {
+    setRemainingPaypalOffer(null);
+    setRemainingPaypalOrderId(null);
+    setRemainingPaypalError("");
+    setRemainingPaypalLoading(false);
+    setRemainingPaypalSuccess(false);
+    setRemainingPaypalSuccessMsg("");
   }
 
   function getStepPhase(offer: OfferItem): number {
@@ -1395,23 +2015,37 @@ export default function MinhasReservasPage() {
               </div>
 
               {/* Step 4 Button: Remaining Balance receipt upload button top right */}
-              {isSeasonalItem && isDepositFullyPaid && !isCheckInReleased && (
-                <div className="shrink-0">
-                  <label className="cursor-pointer inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-3 py-1.5 text-[11px] font-black text-slate-950 hover:from-amber-400 hover:to-amber-500 shadow-md shadow-amber-500/20 transition">
-                    <span>📎 Anexar Comprovante do Saldo (R$ {Number(Number(offer.totalStayPrice || offer.offerPrice) - Number(offer.depositAmount || 0)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })})</span>
-                    <input
-                      type="file"
-                      accept="image/*,application/pdf"
-                      className="hidden"
-                      disabled={uploadingOfferId === offer.id || validatingOfferId === offer.id}
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) handleUploadRemainingBalancePix(offer.id, f);
-                      }}
-                    />
-                  </label>
-                </div>
-              )}
+              {isSeasonalItem && isDepositFullyPaid && !isCheckInReleased && (() => {
+                const bal = getOfferRemainingBalance(offer);
+                return (
+                  <div className="shrink-0 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenGuestRemainingPaypal(offer)}
+                      className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 px-3 py-1.5 text-[11px] font-black text-white shadow-md shadow-blue-500/20 transition cursor-pointer flex items-center gap-1.5 shrink-0"
+                    >
+                      <CreditCard size={13} />
+                      <span>Pagar Saldo via PayPal 💳</span>
+                    </button>
+
+                    <label className="cursor-pointer inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-3 py-1.5 text-[11px] font-black text-slate-950 hover:from-amber-400 hover:to-amber-500 shadow-md shadow-amber-500/20 transition">
+                      <Upload size={13} />
+                      <span>Anexar Comprovante Pix</span>
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        disabled={uploadingOfferId === offer.id || validatingOfferId === offer.id}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleUploadRemainingBalancePix(offer.id, f);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="grid gap-2 sm:grid-cols-2 text-xs text-slate-300">
@@ -1444,6 +2078,12 @@ export default function MinhasReservasPage() {
                   <span className="font-mono text-emerald-300 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">{offer.property.pixKey}</span>
                 </div>
               )}
+              {isSeasonalItem && (Boolean(offer.property?.acceptsPaypal || (offer.property as any)?.accepts_paypal) || Boolean(offer.property?.paypalEmail) || Boolean((offer.property?.owner as any)?.paypalEmail)) && (
+                <div>
+                  <strong>PayPal do Anfitrião:</strong>{" "}
+                  <span className="font-mono text-blue-300 font-bold bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">{offer.property?.paypalEmail || (offer.property as any)?.paypal_email || (offer.property?.owner as any)?.paypalEmail}</span>
+                </div>
+              )}
             </div>
 
             {!isSeasonalItem && (
@@ -1471,42 +2111,58 @@ export default function MinhasReservasPage() {
               </div>
             )}
 
-            {/* Remaining balance notice for guest */}
-            {isSeasonalItem && isDepositFullyPaid && !isCheckInReleased && (
-              <div className="pt-2.5 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs text-amber-300">
-                <span className="flex items-center gap-1.5">
-                  <span>🔒</span>
-                  <span>Quite o saldo restante antes de ({offer.startDate ? new Date(offer.startDate).toLocaleDateString("pt-BR") : "A definir"} às {offer.property?.checkInTime || "14:00"}) para liberar as informações para checkin.</span>
-                </span>
-                <span className="font-bold text-amber-400 shrink-0">
-                  Saldo Restante: R$ {Number(Number(offer.totalStayPrice || offer.offerPrice) - Number(offer.depositAmount || 0)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                </span>
+            {/* RENDER REMAINING BALANCE VALIDATION PANEL IF AVAILABLE */}
+            {isSeasonalItem && isDepositFullyPaid && offer.remainingBalanceValidation && (
+              <div className="pt-3 border-t border-white/10">
+                <PixValidationPanel
+                  validation={offer.remainingBalanceValidation}
+                  perspective="VIAJANDO"
+                  receiptUrls={getOfferReceiptUrls(offer)}
+                  panelType="REMAINING_BALANCE"
+                  depositAmount={offer.depositAmount ? Number(offer.depositAmount) : undefined}
+                  totalStayPrice={Number(offer.totalStayPrice || offer.offerPrice || 0)}
+                />
               </div>
             )}
 
             {/* STEP 3 RECEIPT UPLOAD & AI VALIDATION PANEL */}
             {isSeasonalItem && (!isDepositFullyPaid ? (
               <div className="pt-3 border-t border-white/10 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-900/90 p-3 rounded-xl border border-white/5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 p-3.5 rounded-xl border border-white/5">
                   <div className="text-xs text-slate-300">
-                    <strong className="text-emerald-400 font-bold">Sinal a ser pago via Pix:</strong>{" "}
+                    <strong className="text-emerald-400 font-bold">Sinal a ser pago:</strong>{" "}
                     R$ {Number(offer.depositAmount || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </div>
 
-                  <label className="cursor-pointer rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2 text-xs font-black text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-md shadow-emerald-500/20 transition flex items-center justify-center gap-1.5 shrink-0">
-                    <Upload size={14} />
-                    <span>📎 Incluir comprovante Pix do Sinal</span>
-                    <input
-                      type="file"
-                      accept="image/*,application/pdf"
-                      className="hidden"
-                      disabled={uploadingOfferId === offer.id || validatingOfferId === offer.id}
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) handleUploadPixReceipt(offer.id, f);
-                      }}
-                    />
-                  </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* BOTÃO PAYPAL AO LADO DO BOTÃO DE COMPROVANTE PIX */}
+                    {isSeasonalItem && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenGuestPaypal(offer)}
+                        className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 px-4 py-2 text-xs font-black text-white shadow-md shadow-blue-500/30 transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                      >
+                        <CreditCard size={14} />
+                        <span>Pagar com Cartão / PayPal 💳</span>
+                      </button>
+                    )}
+
+                    <label className="cursor-pointer rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2 text-xs font-black text-slate-950 hover:from-emerald-400 hover:to-teal-500 shadow-md shadow-emerald-500/20 transition flex items-center justify-center gap-1.5 shrink-0">
+                      <Upload size={14} />
+                      <span>Anexar Comprovante Pix</span>
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        disabled={uploadingOfferId === offer.id || validatingOfferId === offer.id}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleUploadPixReceipt(offer.id, f);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
                 </div>
 
                 {/* AI Validation Panel */}
@@ -1515,6 +2171,9 @@ export default function MinhasReservasPage() {
                     validation={offer.pixValidation}
                     perspective="VIAJANDO"
                     receiptUrls={getOfferReceiptUrls(offer)}
+                    panelType="DEPOSIT"
+                    depositAmount={offer.depositAmount ? Number(offer.depositAmount) : undefined}
+                    totalStayPrice={Number(offer.totalStayPrice || offer.offerPrice || 0)}
                   />
                 )}
               </div>
@@ -1526,6 +2185,9 @@ export default function MinhasReservasPage() {
                     validation={offer.pixValidation}
                     perspective="VIAJANDO"
                     receiptUrls={getOfferReceiptUrls(offer)}
+                    panelType="DEPOSIT"
+                    depositAmount={offer.depositAmount ? Number(offer.depositAmount) : undefined}
+                    totalStayPrice={Number(offer.totalStayPrice || offer.offerPrice || 0)}
                   />
                 </div>
               )
@@ -1544,7 +2206,7 @@ export default function MinhasReservasPage() {
                 </div>
                 <p className="text-xs text-slate-300 mt-1 leading-relaxed">
                   {isSeasonalItem
-                    ? "Sua solicitação de reserva foi enviada com sucesso! O anfitrião tem até 24 horas para aceitar a reserva e disponibilizar a chave Pix para o pagamento do sinal."
+                    ? "Sua solicitação de reserva foi enviada com sucesso! O anfitrião tem até 24 horas para analisar e aceitar."
                     : "Sua proposta de compra foi enviada com sucesso! O proprietário tem até 24 horas para analisar e responder a sua oferta."}
                 </p>
               </div>
@@ -1788,19 +2450,36 @@ export default function MinhasReservasPage() {
             )}
 
             {/* Remaining balance notice for host */}
-            {isSeasonalItem && isConfirmed && !isCheckInReleased && (
-              <div className="pt-2 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs text-amber-300">
-                <span className="flex items-center gap-1.5">
-                  <span>🔒</span>
-                  <span>Quite o saldo restante antes de ({offer.startDate ? new Date(offer.startDate).toLocaleDateString("pt-BR") : "A definir"} às {offer.property?.checkInTime || "14:00"}) para liberar as informações para checkin.</span>
-                </span>
-                <span className="font-bold text-amber-400 shrink-0">
-                  Saldo Restante: R$ {Number(Number(offer.totalStayPrice || offer.offerPrice) - Number(offer.depositAmount || 0)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                </span>
+            {isSeasonalItem && isConfirmed && !isCheckInReleased && (() => {
+              const bal = getOfferRemainingBalance(offer);
+              return (
+                <div className="pt-2 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs text-amber-300">
+                  <span className="flex items-center gap-1.5">
+                    <span>🔒</span>
+                    <span>Quite o saldo restante antes de ({offer.startDate ? new Date(offer.startDate).toLocaleDateString("pt-BR") : "A definir"} às {offer.property?.checkInTime || "14:00"}) para liberar as informações para checkin.</span>
+                  </span>
+                  <span className="font-bold text-amber-400 shrink-0">
+                    Saldo Restante: R$ {bal.remaining.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              );
+            })()}
+
+            {/* RENDER REMAINING BALANCE VALIDATION PANEL IF AVAILABLE FOR HOST */}
+            {isSeasonalItem && offer.remainingBalanceValidation && (
+              <div className="pt-3 border-t border-white/10">
+                <PixValidationPanel
+                  validation={offer.remainingBalanceValidation}
+                  perspective="HOSPEDANDO"
+                  receiptUrls={getOfferReceiptUrls(offer)}
+                  panelType="REMAINING_BALANCE"
+                  depositAmount={offer.depositAmount ? Number(offer.depositAmount) : undefined}
+                  totalStayPrice={Number(offer.totalStayPrice || offer.offerPrice || 0)}
+                />
               </div>
             )}
 
-            {isSeasonalItem && (getOfferReceiptUrls(offer).length > 0 ? (
+            {isSeasonalItem && (getOfferReceiptUrls(offer).length > 0 || offer.pixValidation ? (
               <div className="pt-3 border-t border-white/10 space-y-3">
                 {/* AI Validation Panel (includes receipt links inside Ver Detalhes) */}
                 {offer.pixValidation ? (
@@ -1808,6 +2487,9 @@ export default function MinhasReservasPage() {
                     validation={offer.pixValidation}
                     perspective="HOSPEDANDO"
                     receiptUrls={getOfferReceiptUrls(offer)}
+                    panelType="DEPOSIT"
+                    depositAmount={offer.depositAmount ? Number(offer.depositAmount) : undefined}
+                    totalStayPrice={Number(offer.totalStayPrice || offer.offerPrice || 0)}
                   />
                 ) : (
                   <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-300 flex items-center gap-2">
@@ -2372,6 +3054,372 @@ export default function MinhasReservasPage() {
         );
       })()}
 
+        {/* GUEST PAYPAL MODAL FOR RESERVATION DEPOSIT PAYMENT */}
+        {guestPaypalOffer && (() => {
+          const property = guestPaypalOffer.property;
+          const totalStay = Number(guestPaypalOffer.totalStayPrice || guestPaypalOffer.offerPrice || 0);
+          const depositPct = Number(property?.depositPercentage || 20);
+          const depositValue = guestPaypalOffer.depositAmount
+            ? Number(guestPaypalOffer.depositAmount)
+            : Number(((totalStay * depositPct) / 100).toFixed(2));
+
+          return (
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md">
+              <div className="relative w-full max-w-md rounded-3xl border border-blue-500/30 bg-slate-900 p-6 shadow-2xl">
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  <div className="flex items-center gap-2 text-blue-400 font-black text-sm uppercase tracking-wider">
+                    <CreditCard size={18} />
+                    <span>Pagamento do Sinal via PayPal</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const wasSuccess = guestPaypalSuccess;
+                      closeGuestPaypalModal();
+                      if (wasSuccess) {
+                        setActiveTab("VIAJANDO");
+                        setCategoryFilter("TEMPORADA");
+                        loadOffers(true);
+                      }
+                    }}
+                    className="rounded-xl border border-white/10 bg-white/5 p-1.5 text-slate-400 hover:text-white cursor-pointer"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div className="mt-4 text-xs text-slate-300 space-y-3">
+                  <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-3.5 space-y-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-400">Imóvel:</span>
+                      <strong className="text-white text-right max-w-[200px] truncate">{property?.title}</strong>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-400">Total da Estadia:</span>
+                      <span className="text-white">R$ {totalStay.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs border-t border-blue-500/20 pt-2">
+                      <span className="text-slate-300 font-semibold">Sinal da Reserva ({depositPct}%):</span>
+                      <span className="text-emerald-400 font-black text-base">
+                        R$ {depositValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3 text-[11px] text-slate-300 space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold text-blue-300">
+                      <span>👤</span>
+                      <span>Destinatário direto:</span>
+                      <span className="text-white">{property?.owner?.name || "Anfitrião"}</span>
+                    </div>
+                    <div className="text-slate-400">
+                      Conta PayPal: <strong className="text-blue-300 font-mono">{property?.paypalEmail}</strong>
+                    </div>
+                    <p className="pt-1 text-[10px] text-slate-400 leading-tight">
+                      O RealStock não recebe e nem retém este valor. O dinheiro vai 100% diretamente para o anfitrião, e sua reserva é confirmada automaticamente pelo PayPal assim que o pagamento for concluído.
+                    </p>
+                  </div>
+
+                  {guestPaypalError && (
+                    <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-300">
+                      {guestPaypalError}
+                    </div>
+                  )}
+                </div>
+
+                {guestPaypalSuccess ? (
+                  <div className="mt-6 py-6 px-4 text-center space-y-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30">
+                    <div className="text-4xl animate-bounce">🎉</div>
+                    <div className="text-base font-black text-emerald-400">
+                      Pagamento Realizado com Sucesso!
+                    </div>
+                    <p className="text-xs text-slate-200 leading-relaxed max-w-sm mx-auto">
+                      Sua reserva foi confirmada pelo PayPal! O valor do sinal foi repassado diretamente para a conta do anfitrião.
+                    </p>
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          closeGuestPaypalModal();
+                          setActiveTab("VIAJANDO");
+                          setCategoryFilter("TEMPORADA");
+                          await loadOffers(true);
+                        }}
+                        className="w-full sm:w-auto px-8 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/30 transition cursor-pointer"
+                      >
+                        OK, Ver Minhas Reservas
+                      </button>
+                    </div>
+                  </div>
+                ) : guestPaypalLoading || !guestPaypalOrderId ? (
+                  <div className="mt-6 text-slate-400 text-center text-xs py-4 flex flex-col items-center gap-2">
+                    <span className="animate-spin text-lg">⏳</span>
+                    <span>Conectando com o PayPal...</span>
+                  </div>
+                ) : (
+                  <div className="mt-6">
+                    <PayPalButtons
+                      style={{ layout: "vertical", shape: "rect", label: "pay" }}
+                      createOrder={async () => guestPaypalOrderId}
+                      onApprove={async (data) => {
+                        try {
+                          const res = await fetch("/api/paypal/capture-reservation-order", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              orderID: data.orderID,
+                              offer_id: guestPaypalOffer.id,
+                            }),
+                          });
+
+                          const result = await res.json();
+                          if (!res.ok || !result.success) {
+                            throw new Error(result.error || "Erro ao capturar pagamento no PayPal.");
+                          }
+
+                          setGuestPaypalSuccess(true);
+                        } catch (err: any) {
+                          console.error("GUEST PAYPAL CAPTURE ERROR:", err);
+                          setGuestPaypalError(err?.message || "Erro ao processar pagamento no PayPal.");
+                        }
+                      }}
+                      onError={(err) => {
+                        console.error("GUEST PAYPAL BUTTON ERROR:", err);
+                        setGuestPaypalError("Erro ao processar pagamento no PayPal. Tente novamente ou utilize outro cartão.");
+                      }}
+                      onCancel={() => {
+                        setGuestPaypalError("Pagamento cancelado.");
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* GUEST PAYPAL MODAL FOR REMAINING BALANCE PAYMENT */}
+        {remainingPaypalOffer && (() => {
+          const property = remainingPaypalOffer.property;
+          const bal = getOfferRemainingBalance(remainingPaypalOffer);
+
+          return (
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md">
+              <div className="relative w-full max-w-md rounded-3xl border border-blue-500/30 bg-slate-900 p-6 shadow-2xl">
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  <div className="flex items-center gap-2 text-blue-400 font-black text-sm uppercase tracking-wider">
+                    <CreditCard size={18} />
+                    <span>Pagamento do Saldo via PayPal</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const wasSuccess = remainingPaypalSuccess;
+                      closeRemainingPaypalModal();
+                      if (wasSuccess) {
+                        setActiveTab("VIAJANDO");
+                        setCategoryFilter("TEMPORADA");
+                        loadOffers(true);
+                      }
+                    }}
+                    className="rounded-xl border border-white/10 bg-white/5 p-1.5 text-slate-400 hover:text-white cursor-pointer"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div className="mt-4 text-xs text-slate-300 space-y-3">
+                  <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-3.5 space-y-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-400">Imóvel:</span>
+                      <strong className="text-white text-right max-w-[200px] truncate">{property?.title}</strong>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-400">Total da Estadia:</span>
+                      <span className="text-white">R$ {bal.totalStay.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-400">Sinal Já Pago:</span>
+                      <span className="text-emerald-400 font-semibold">R$ {bal.deposit.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    {bal.accumulatedPaid > 0 && (
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-400">Já Quitado do Saldo:</span>
+                        <span className="text-emerald-400 font-semibold">R$ {bal.accumulatedPaid.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center text-xs border-t border-blue-500/20 pt-2">
+                      <span className="text-slate-300 font-semibold">Saldo Restante:</span>
+                      <span className="text-amber-400 font-black text-base">
+                        R$ {bal.remaining.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* CHECKBOX AND CUSTOM AMOUNT INPUT */}
+                  <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3.5 space-y-3">
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={remainingPaypalIsFullBalance}
+                        onChange={(e) => {
+                          const isFull = e.target.checked;
+                          setRemainingPaypalIsFullBalance(isFull);
+                          if (isFull) {
+                            setRemainingPaypalCustomAmount(bal.remaining.toFixed(2));
+                            prepareRemainingPaypalOrder(remainingPaypalOffer.id, true, bal.remaining);
+                          }
+                        }}
+                        className="mt-0.5 rounded border-white/20 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <div className="text-xs">
+                        <strong className="text-white block">Pagar o valor total do saldo</strong>
+                        <span className="text-[11px] text-emerald-400">
+                          R$ {bal.remaining.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (Quitação total da estadia)
+                        </span>
+                      </div>
+                    </label>
+
+                    {!remainingPaypalIsFullBalance && (
+                      <div className="pt-2 border-t border-white/10 space-y-1.5 animate-fadeIn">
+                        <label className="text-[11px] text-slate-300 font-bold block">
+                          Ou digite o valor que deseja pagar agora:
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-400 font-bold text-xs">R$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="1.00"
+                            max={bal.remaining}
+                            value={remainingPaypalCustomAmount}
+                            onChange={(e) => setRemainingPaypalCustomAmount(e.target.value)}
+                            onBlur={() => {
+                              const val = Number(remainingPaypalCustomAmount);
+                              if (!isNaN(val) && val >= 1.00 && val <= bal.remaining) {
+                                prepareRemainingPaypalOrder(remainingPaypalOffer.id, false, val);
+                              }
+                            }}
+                            className="flex-1 rounded-xl border border-white/10 bg-slate-900 px-3 py-1.5 text-xs text-white font-bold focus:border-blue-500 focus:outline-none"
+                            placeholder="0,00"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const val = Number(remainingPaypalCustomAmount);
+                              if (isNaN(val) || val < 1.00) {
+                                alert("Valor mínimo é R$ 1,00.");
+                                return;
+                              }
+                              if (val > bal.remaining) {
+                                alert(`Valor máximo é R$ ${bal.remaining.toFixed(2)}.`);
+                                return;
+                              }
+                              prepareRemainingPaypalOrder(remainingPaypalOffer.id, false, val);
+                            }}
+                            className="rounded-xl bg-blue-600 hover:bg-blue-500 px-3 py-1.5 text-[11px] font-bold text-white transition cursor-pointer shrink-0"
+                          >
+                            Atualizar
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-slate-400">
+                          Você pode fazer pagamentos parciais até atingir o valor total de R$ {bal.remaining.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-xl border border-white/10 bg-slate-950/50 p-2.5 text-[11px] text-slate-400 space-y-1">
+                    <div className="flex items-center gap-1.5 text-blue-300 font-semibold">
+                      <span>👤</span>
+                      <span>Destinatário:</span>
+                      <span className="text-white">{property?.owner?.name || "Anfitrião"}</span>
+                      <span className="font-mono text-blue-200 text-[10px]">({property?.paypalEmail})</span>
+                    </div>
+                  </div>
+
+                  {remainingPaypalError && (
+                    <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-300">
+                      {remainingPaypalError}
+                    </div>
+                  )}
+                </div>
+
+                {remainingPaypalSuccess ? (
+                  <div className="mt-6 py-6 px-4 text-center space-y-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30">
+                    <div className="text-4xl animate-bounce">🎉</div>
+                    <div className="text-base font-black text-emerald-400">
+                      Pagamento Realizado com Sucesso!
+                    </div>
+                    <p className="text-xs text-slate-200 leading-relaxed max-w-sm mx-auto">
+                      {remainingPaypalSuccessMsg || "Seu pagamento foi confirmado pelo PayPal e repassado diretamente para a conta do anfitrião."}
+                    </p>
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          closeRemainingPaypalModal();
+                          setActiveTab("VIAJANDO");
+                          setCategoryFilter("TEMPORADA");
+                          await loadOffers(true);
+                        }}
+                        className="w-full sm:w-auto px-8 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/30 transition cursor-pointer"
+                      >
+                        OK, Ver Minhas Reservas
+                      </button>
+                    </div>
+                  </div>
+                ) : remainingPaypalLoading || !remainingPaypalOrderId ? (
+                  <div className="mt-6 text-slate-400 text-center text-xs py-4 flex flex-col items-center gap-2">
+                    <span className="animate-spin text-lg">⏳</span>
+                    <span>Conectando com o PayPal...</span>
+                  </div>
+                ) : (
+                  <div className="mt-6">
+                    <PayPalButtons
+                      key={`rem_paypal_${remainingPaypalOrderId}`}
+                      style={{ layout: "vertical", shape: "rect", label: "pay" }}
+                      createOrder={async () => remainingPaypalOrderId}
+                      onApprove={async (data) => {
+                        try {
+                          const res = await fetch("/api/paypal/capture-remaining-balance-order", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              orderID: data.orderID,
+                              offer_id: remainingPaypalOffer.id,
+                            }),
+                          });
+
+                          const result = await res.json();
+                          if (!res.ok || !result.success) {
+                            throw new Error(result.error || "Erro ao capturar pagamento no PayPal.");
+                          }
+
+                          setRemainingPaypalSuccess(true);
+                          if (result.allPassed) {
+                            setRemainingPaypalSuccessMsg("🎉 Saldo 100% quitado! Check-in do imóvel LIBERADO!");
+                          } else {
+                            setRemainingPaypalSuccessMsg(`✅ Pagamento registrado com sucesso! Restam R$ ${Number(result.remaining || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}.`);
+                          }
+                        } catch (err: any) {
+                          console.error("REMAINING PAYPAL CAPTURE ERROR:", err);
+                          setRemainingPaypalError(err?.message || "Erro ao processar pagamento no PayPal.");
+                        }
+                      }}
+                      onError={(err) => {
+                        console.error("REMAINING PAYPAL BUTTON ERROR:", err);
+                        setRemainingPaypalError("Erro ao processar pagamento no PayPal.");
+                      }}
+                      onCancel={() => {
+                        setRemainingPaypalError("Pagamento cancelado.");
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* QR CODE POPUP MODAL */}
         {selectedQrCodeModalUrl && (
           <div
@@ -2425,6 +3473,187 @@ export default function MinhasReservasPage() {
                   Fechar
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL / TELA DE PROGRESSO - ANALISANDO COMPROVANTE PIX */}
+        {pixAnalyzingState?.isOpen && (
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-md animate-fadeIn">
+            <div className="w-full max-w-md overflow-hidden rounded-3xl border border-emerald-500/30 bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-950 p-6 text-white shadow-2xl shadow-emerald-950/50 space-y-6">
+              
+              {/* Top Icon & Title */}
+              <div className="text-center space-y-2">
+                <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border relative ${
+                  pixAnalyzingState.stage === "COMPLETED"
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                    : pixAnalyzingState.stage === "ERROR"
+                    ? pixAnalyzingState.isDuplicate
+                      ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                      : "bg-rose-500/10 border-rose-500/30 text-rose-400"
+                    : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                }`}>
+                  {pixAnalyzingState.stage === "COMPLETED" ? (
+                    <CheckCircle2 className="h-9 w-9 text-emerald-400 animate-bounce" />
+                  ) : pixAnalyzingState.stage === "ERROR" ? (
+                    pixAnalyzingState.isDuplicate ? (
+                      <AlertCircle className="h-9 w-9 text-amber-400 animate-pulse" />
+                    ) : (
+                      <AlertCircle className="h-9 w-9 text-rose-400 animate-pulse" />
+                    )
+                  ) : (
+                    <>
+                      <div className="absolute inset-0 rounded-2xl bg-emerald-500/20 animate-ping opacity-50" />
+                      <Loader2 className="h-8 w-8 text-emerald-400 animate-spin" />
+                    </>
+                  )}
+                </div>
+
+                <h3 className="text-lg font-black tracking-tight text-white">
+                  {pixAnalyzingState.stage === "COMPLETED"
+                    ? "Comprovante Validado!"
+                    : pixAnalyzingState.stage === "ERROR"
+                    ? pixAnalyzingState.isDuplicate
+                      ? "Comprovante Já Anexado ao Saldo"
+                      : "Atenção ao Comprovante"
+                    : "Analisando Comprovante Pix"}
+                </h3>
+                <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                  {pixAnalyzingState.stage === "COMPLETED"
+                    ? "Os dados foram verificados com sucesso e os registros da estadia foram atualizados."
+                    : pixAnalyzingState.stage === "ERROR"
+                    ? pixAnalyzingState.isDuplicate
+                      ? "Identificamos que este comprovante já foi computado no saldo da estadia."
+                      : "Ocorreu um problema durante a verificação automática."
+                    : "Nossa verificação está conferindo os dados bancários, valor e autenticidade da transação."}
+                </p>
+              </div>
+
+              {/* Progress Bar Container */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-bold text-slate-300 flex items-center gap-1.5">
+                    {pixAnalyzingState.stage !== "COMPLETED" && pixAnalyzingState.stage !== "ERROR" && (
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                      </span>
+                    )}
+                    <span>{pixAnalyzingState.currentStepText}</span>
+                  </span>
+                  <span className={`font-mono font-black text-sm ${
+                    pixAnalyzingState.isDuplicate ? "text-amber-400" : "text-emerald-400"
+                  }`}>
+                    {pixAnalyzingState.progress}%
+                  </span>
+                </div>
+
+                <div className="h-3 w-full overflow-hidden rounded-full bg-slate-950 border border-white/10 p-0.5">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ease-out ${
+                      pixAnalyzingState.stage === "ERROR"
+                        ? pixAnalyzingState.isDuplicate
+                          ? "bg-amber-500"
+                          : "bg-rose-500"
+                        : "bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-400"
+                    }`}
+                    style={{ width: `${pixAnalyzingState.progress}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Steps List */}
+              <div className="space-y-2 rounded-2xl bg-slate-950/60 border border-white/5 p-3.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">1. Leitura e extração do documento</span>
+                  {pixAnalyzingState.progress >= 40 ? (
+                    <CheckCircle2 size={15} className="text-emerald-400" />
+                  ) : (
+                    <Loader2 size={13} className="text-slate-500 animate-spin" />
+                  )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">2. Identificação do destinatário e banco</span>
+                  {pixAnalyzingState.progress >= 68 ? (
+                    <CheckCircle2 size={15} className="text-emerald-400" />
+                  ) : pixAnalyzingState.progress >= 40 ? (
+                    <Loader2 size={13} className="text-slate-500 animate-spin" />
+                  ) : (
+                    <Clock size={13} className="text-slate-600" />
+                  )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">3. Código de autenticação / ID Pix</span>
+                  {pixAnalyzingState.isDuplicate ? (
+                    <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">Já Computado</span>
+                  ) : pixAnalyzingState.progress >= 85 ? (
+                    <CheckCircle2 size={15} className="text-emerald-400" />
+                  ) : pixAnalyzingState.progress >= 68 ? (
+                    <Loader2 size={13} className="text-slate-500 animate-spin" />
+                  ) : (
+                    <Clock size={13} className="text-slate-600" />
+                  )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">4. Verificação de efetivação e valor</span>
+                  {pixAnalyzingState.isDuplicate ? (
+                    <CheckCircle2 size={15} className="text-slate-500" />
+                  ) : pixAnalyzingState.progress >= 95 ? (
+                    <CheckCircle2 size={15} className="text-emerald-400" />
+                  ) : pixAnalyzingState.progress >= 85 ? (
+                    <Loader2 size={13} className="text-slate-500 animate-spin" />
+                  ) : (
+                    <Clock size={13} className="text-slate-600" />
+                  )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">5. Quitação / Atualização do saldo</span>
+                  {pixAnalyzingState.isDuplicate ? (
+                    <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">Sem Alteração</span>
+                  ) : pixAnalyzingState.progress >= 100 ? (
+                    <CheckCircle2 size={15} className="text-emerald-400" />
+                  ) : pixAnalyzingState.progress >= 95 ? (
+                    <Loader2 size={13} className="text-slate-500 animate-spin" />
+                  ) : (
+                    <Clock size={13} className="text-slate-600" />
+                  )}
+                </div>
+              </div>
+
+              {/* Message Banner */}
+              {pixAnalyzingState.message && (
+                <div
+                  className={`rounded-xl p-3 text-xs border leading-relaxed ${
+                    pixAnalyzingState.stage === "COMPLETED"
+                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-200"
+                      : pixAnalyzingState.stage === "ERROR"
+                      ? pixAnalyzingState.isDuplicate
+                        ? "bg-amber-500/10 border-amber-500/30 text-amber-200"
+                        : "bg-rose-500/10 border-rose-500/30 text-rose-200"
+                      : "bg-blue-500/10 border-blue-500/30 text-blue-200"
+                  }`}
+                >
+                  {pixAnalyzingState.message}
+                </div>
+              )}
+
+              {/* Action Button (shown when completed or error) */}
+              {(pixAnalyzingState.stage === "COMPLETED" || pixAnalyzingState.stage === "ERROR") && (
+                <button
+                  type="button"
+                  onClick={() => setPixAnalyzingState(null)}
+                  className={`w-full rounded-xl py-3 text-xs font-black text-white shadow-lg transition cursor-pointer flex items-center justify-center gap-2 ${
+                    pixAnalyzingState.stage === "COMPLETED"
+                      ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-emerald-600/30"
+                      : pixAnalyzingState.isDuplicate
+                      ? "bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 shadow-amber-600/30"
+                      : "bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 shadow-rose-600/30"
+                  }`}
+                >
+                  <span>{pixAnalyzingState.stage === "ERROR" ? "OK, Entendi" : "OK, Ver Detalhes Atualizados"}</span>
+                  <ArrowRight size={14} />
+                </button>
+              )}
             </div>
           </div>
         )}

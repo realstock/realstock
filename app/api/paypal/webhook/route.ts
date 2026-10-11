@@ -25,6 +25,34 @@ export async function POST(req: Request) {
               paidAt: new Date(),
             },
           });
+
+          const offer = await prisma.offer.findUnique({
+            where: { id: payment.offerId },
+            include: { property: true },
+          });
+
+          if (offer && offer.property?.listingType === "ALUGUEL_TEMPORADA") {
+            await prisma.offer.update({
+              where: { id: offer.id },
+              data: {
+                status: "RESERVA_CONFIRMADA",
+                pixValidation: {
+                  allPassed: true,
+                  method: "PAYPAL",
+                  paypalOrderId,
+                  paypalCaptureId: captureId,
+                  confirmedAt: new Date().toISOString(),
+                },
+              },
+            });
+
+            try {
+              const { triggerAutoMessage } = await import("@/lib/auto-messages");
+              await triggerAutoMessage("ON_RESERVATION_CONFIRMED", offer.id);
+            } catch (autoErr) {
+              console.error("Webhook auto message trigger error:", autoErr);
+            }
+          }
         }
       }
     }

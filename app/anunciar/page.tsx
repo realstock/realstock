@@ -19,7 +19,7 @@ import {
   useSortable 
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { X, Sparkles, Upload, Music, ChevronRight, Camera, LayoutGrid, Home, FileText, MapPin, Video, Map, Calendar, AlertCircle } from "lucide-react";
+import { X, Sparkles, Upload, Music, ChevronRight, Camera, LayoutGrid, Home, FileText, MapPin, Video, Map, Calendar, AlertCircle, CreditCard } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import PropertyLocationPicker from "@/components/PropertyLocationPicker";
 import NeighborhoodAutocomplete from "@/components/NeighborhoodAutocomplete";
@@ -377,6 +377,8 @@ function AnunciarFormContent() {
   const [pixKey, setPixKey] = useState("");
   const [pixQrCodeUrl, setPixQrCodeUrl] = useState("");
   const [uploadingQrCode, setUploadingQrCode] = useState(false);
+  const [acceptsPaypal, setAcceptsPaypal] = useState(false);
+  const [paypalEmail, setPaypalEmail] = useState("");
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -536,6 +538,8 @@ function AnunciarFormContent() {
         setDepositPercentage(p.depositPercentage?.toString() || "20");
         setPixKey(p.pixKey || "");
         setPixQrCodeUrl(p.pixQrCodeUrl || p.pix_qrcode_url || "");
+        setAcceptsPaypal(Boolean(p.acceptsPaypal));
+        setPaypalEmail(p.paypalEmail || "");
         setIcalFeeds(p.icalFeeds ? (p.icalFeeds as any) : []);
       }
     } catch (e) {
@@ -993,6 +997,11 @@ function AnunciarFormContent() {
       return;
     }
 
+    if (listingType === "ALUGUEL_TEMPORADA" && acceptsPaypal && (!paypalEmail || !paypalEmail.includes("@"))) {
+      setError("Informe um e-mail válido da sua conta PayPal para receber pagamentos de reservas.");
+      return;
+    }
+
     if (
       !title ||
       !description ||
@@ -1122,6 +1131,8 @@ function AnunciarFormContent() {
         deposit_percentage: listingType === "ALUGUEL_TEMPORADA" && depositPercentage ? Number(depositPercentage) : 20,
         pix_key: listingType === "ALUGUEL_TEMPORADA" ? pixKey : "",
         pix_qrcode_url: listingType === "ALUGUEL_TEMPORADA" ? pixQrCodeUrl : "",
+        accepts_paypal: listingType === "ALUGUEL_TEMPORADA" ? acceptsPaypal : false,
+        paypal_email: listingType === "ALUGUEL_TEMPORADA" && acceptsPaypal ? paypalEmail.trim() : "",
 
         legal_status: legalStatus,
         area_total: areaTotal,
@@ -1793,6 +1804,48 @@ function AnunciarFormContent() {
                                 Suba a imagem/print do QR Code do seu Pix para o hóspede escanear e pagar diretamente no app do banco.
                               </p>
                             </Field>
+
+                            <div className="md:col-span-2 p-4 rounded-2xl bg-gradient-to-r from-blue-950/40 via-slate-900 to-slate-900 border border-blue-500/30 space-y-3">
+                              <label className="flex items-start gap-3 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={acceptsPaypal}
+                                  onChange={(e) => setAcceptsPaypal(e.target.checked)}
+                                  className="mt-1 h-4 w-4 rounded border-blue-500/40 bg-slate-900 text-blue-500 focus:ring-blue-500"
+                                />
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <CreditCard size={16} className="text-blue-400" />
+                                    <span className="text-sm font-semibold text-white">
+                                      Aceito pagamento por cartão de crédito via PayPal
+                                    </span>
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-blue-500/20 text-blue-300 font-bold border border-blue-500/30">
+                                      Direto na sua conta
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-slate-300 mt-1">
+                                    Permita que os hóspedes paguem o sinal da reserva utilizando cartão de crédito ou saldo PayPal. O valor vai diretamente para a sua conta PayPal sem intermediação financeira do site.
+                                  </p>
+                                </div>
+                              </label>
+
+                              {acceptsPaypal && (
+                                <div className="pt-2 sm:pl-7">
+                                  <Field label="E-mail da sua conta PayPal *">
+                                    <input
+                                      type="email"
+                                      value={paypalEmail}
+                                      onChange={(e) => setPaypalEmail(e.target.value)}
+                                      className="input border-blue-500/30 focus:border-blue-500"
+                                      placeholder="exemplo@paypal.com"
+                                    />
+                                    <p className="text-[11px] text-slate-400 mt-1">
+                                      Informe o e-mail da sua conta PayPal onde você deseja receber o pagamento das reservas.
+                                    </p>
+                                  </Field>
+                                </div>
+                              )}
+                            </div>
                           </Grid2>
                         </>
                       )}

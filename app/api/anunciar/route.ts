@@ -104,6 +104,8 @@ export async function POST(req: NextRequest) {
     const maxGuests = body.max_guests !== null && body.max_guests !== undefined && body.max_guests !== "" ? Number(body.max_guests) : null;
     const depositPercentage = body.deposit_percentage !== null && body.deposit_percentage !== undefined && body.deposit_percentage !== "" ? Number(body.deposit_percentage) : 20;
     const pixKey = String(body.pix_key || "").trim();
+    const acceptsPaypal = Boolean(body.accepts_paypal || body.acceptsPaypal);
+    const paypalEmail = String(body.paypal_email || body.paypalEmail || "").trim() || null;
     const icalFeeds = body.ical_feeds || [];
 
     const topographyPoints = String(body.topography_points || "").trim();
@@ -301,6 +303,8 @@ export async function POST(req: NextRequest) {
         depositPercentage,
         pixKey: pixKey || null,
         pixQrCodeUrl: String(body.pix_qrcode_url || body.pixQrCodeUrl || "").trim() || null,
+        acceptsPaypal: listingType === "ALUGUEL_TEMPORADA" ? acceptsPaypal : false,
+        paypalEmail: listingType === "ALUGUEL_TEMPORADA" && acceptsPaypal ? paypalEmail : null,
         icalFeeds,
 
         acceptsFinancing,

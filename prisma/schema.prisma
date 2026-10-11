@@ -168,6 +168,8 @@ model Property {
   depositPercentage   Decimal?        @default(20) @map("deposit_percentage") @db.Decimal(5, 2)
   pixKey              String?         @map("pix_key")
   pixQrCodeUrl        String?         @map("pix_qrcode_url")
+  acceptsPaypal       Boolean?        @default(false) @map("accepts_paypal")
+  paypalEmail         String?         @map("paypal_email")
   icalFeeds           Json?           @default("[]") @map("ical_feeds")
   customRates         Json?           @default("{}") @map("custom_pricing")
   contactFeePaidAt    DateTime?       @map("contact_fee_paid_at")

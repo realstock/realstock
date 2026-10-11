@@ -3,6 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -44,6 +47,7 @@ export async function GET() {
                 name: true,
                 email: true,
                 phone: true,
+                paypalEmail: true,
               },
             },
             images: {
@@ -83,6 +87,7 @@ export async function GET() {
                 name: true,
                 email: true,
                 phone: true,
+                paypalEmail: true,
               },
             },
             images: {
@@ -118,15 +123,41 @@ export async function GET() {
       return found ? found.id : null;
     };
 
-    const mappedGuestOffers = guestOffers.map((o) => ({
-      ...o,
-      conversationId: getConversationId(o.propertyId, o.buyerId, o.property.ownerId),
-    }));
+    const mappedGuestOffers = guestOffers.map((o) => {
+      const p = o.property || ({} as any);
+      const acceptsPaypal = Boolean(
+        p.acceptsPaypal ?? (p as any).accepts_paypal ?? (p.paypalEmail && p.paypalEmail.length > 0) ?? (p.owner?.paypalEmail && p.owner.paypalEmail.length > 0)
+      );
+      const paypalEmail = p.paypalEmail || (p as any).paypal_email || p.owner?.paypalEmail || null;
 
-    const mappedHostOffers = hostOffers.map((o) => ({
-      ...o,
-      conversationId: getConversationId(o.propertyId, o.buyerId, o.property.ownerId),
-    }));
+      return {
+        ...o,
+        conversationId: getConversationId(o.propertyId, o.buyerId, p.ownerId),
+        property: {
+          ...p,
+          acceptsPaypal,
+          paypalEmail,
+        },
+      };
+    });
+
+    const mappedHostOffers = hostOffers.map((o) => {
+      const p = o.property || ({} as any);
+      const acceptsPaypal = Boolean(
+        p.acceptsPaypal ?? (p as any).accepts_paypal ?? (p.paypalEmail && p.paypalEmail.length > 0) ?? (p.owner?.paypalEmail && p.owner.paypalEmail.length > 0)
+      );
+      const paypalEmail = p.paypalEmail || (p as any).paypal_email || p.owner?.paypalEmail || null;
+
+      return {
+        ...o,
+        conversationId: getConversationId(o.propertyId, o.buyerId, p.ownerId),
+        property: {
+          ...p,
+          acceptsPaypal,
+          paypalEmail,
+        },
+      };
+    });
 
     const userPropertiesCount = await prisma.property.count({
       where: { ownerId: userId },

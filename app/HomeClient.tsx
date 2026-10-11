@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Rocket, Building2, Calendar, X, RefreshCw } from "lucide-react";
+import { Rocket, Building2, Calendar, X, RefreshCw, CreditCard } from "lucide-react";
 import CesiumMapClient from "@/components/CesiumMapClient";
 import { useListingType } from "@/context/ListingTypeContext";
 import HomeSeoHub from "@/components/HomeSeoHub";
@@ -1376,6 +1376,12 @@ export default function HomeClient({ initialProperties = [] }: { initialProperti
                 {((reservationModalProperty.stayInfo.total * (reservationModalProperty.property.depositPercentage || 20)) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </span>
             </div>
+            {reservationModalProperty.property.acceptsPaypal && (
+              <div className="flex items-center gap-2 pt-2 border-t border-white/5 text-xs text-blue-300">
+                <CreditCard className="h-4 w-4 text-blue-400 shrink-0" />
+                <span>Anfitrião aceita pagamento do sinal com Cartão de Crédito via PayPal direto na conta dele.</span>
+              </div>
+            )}
           </div>
 
           <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs text-amber-200 leading-relaxed space-y-1">
