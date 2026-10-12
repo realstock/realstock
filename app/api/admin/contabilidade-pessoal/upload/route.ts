@@ -1,0 +1,229 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import crypto from "crypto";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { parseOfx } from "@/lib/personal-accounting/ofxParser";
+import { parseCsv } from "@/lib/personal-accounting/csvParser";
+import { parsePdfWithAI } from "@/lib/personal-accounting/pdfParser";
+import { categorizeTransaction, batchCategorizeWithAI, PersonalCategory } from "@/lib/personal-accounting/categorizer";
+
+function generateTxHash(userId: number, date: Date, amount: number, description: string): string {
+  const dateKey = date.toISOString().slice(0, 10);
+  const cleanDesc = description.trim().toLowerCase().replace(/\s+/g, " ");
+  const raw = `${userId}_${dateKey}_${amount.toFixed(2)}_${cleanDesc}`;
+  return crypto.createHash("sha256").update(raw).digest("hex");
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || (session.user as any)?.role !== "ADMIN") {
+      return NextResponse.json({ success: false, error: "Acesso restrito para administradores." }, { status: 401 });
+    }
+
+    const userId = Number((session.user as any).id);
+    const formData = await req.formData();
+
+    const userAccountName = (formData.get("accountName") as string)?.trim() || "";
+    const userSourceType = (formData.get("sourceType") as string)?.trim() || "AUTO";
+
+    // Pega todos os arquivos enviados
+    const files = formData.getAll("file") as File[];
+    if (!files || files.length === 0) {
+      return NextResponse.json({ success: false, error: "Nenhum arquivo enviado." }, { status: 400 });
+    }
+
+    const results = [];
+    let totalImportedOverall = 0;
+    let totalDuplicatesOverall = 0;
+
+    for (const file of files) {
+      const filename = file.name || "arquivo";
+      const ext = filename.split(".").pop()?.toLowerCase() || "";
+      const buffer = Buffer.from(await file.arrayBuffer());
+
+      let parsedTxList: any[] = [];
+      let detectedSourceType: "BANK_STATEMENT" | "CREDIT_CARD" =
+        userSourceType === "CREDIT_CARD"
+          ? "CREDIT_CARD"
+          : userSourceType === "BANK_STATEMENT"
+          ? "BANK_STATEMENT"
+          : /fatura|cartao|card/i.test(filename)
+          ? "CREDIT_CARD"
+          : "BANK_STATEMENT";
+
+      let finalAccountName = userAccountName;
+
+      // 1. EXECUTA O PARSER CONFORME A EXTENSÃO DO ARQUIVO
+      if (ext === "ofx") {
+        const contentStr = buffer.toString("latin1"); // OFX frequentemente usa Latin1/Windows-1252
+        const ofxRes = parseOfx(contentStr);
+        parsedTxList = ofxRes.transactions;
+        if (userSourceType === "AUTO") {
+          detectedSourceType = ofxRes.sourceType;
+        }
+        if (!finalAccountName) {
+          finalAccountName = ofxRes.bankId ? `Banco (${ofxRes.bankId})` : detectedSourceType === "CREDIT_CARD" ? "Cartão de Crédito" : "Conta Bancária";
+        }
+      } else if (ext === "csv") {
+        const contentStr = buffer.toString("utf-8");
+        const csvRes = parseCsv(contentStr);
+        parsedTxList = csvRes.transactions;
+        if (userSourceType === "AUTO") {
+          detectedSourceType = csvRes.sourceType;
+        }
+        if (!finalAccountName) {
+          finalAccountName = detectedSourceType === "CREDIT_CARD" ? "Cartão de Crédito" : "Conta Bancária";
+        }
+      } else if (ext === "pdf") {
+        const pdfRes = await parsePdfWithAI(buffer, filename);
+        parsedTxList = pdfRes.transactions;
+        if (userSourceType === "AUTO") {
+          detectedSourceType = pdfRes.sourceType;
+        }
+        if (!finalAccountName) {
+          finalAccountName = pdfRes.accountName || (detectedSourceType === "CREDIT_CARD" ? "Cartão de Crédito" : "Conta Bancária");
+        }
+      } else {
+        return NextResponse.json(
+          { success: false, error: `Formato de arquivo não suportado: .${ext}. Use .OFX, .PDF ou .CSV.` },
+          { status: 400 }
+        );
+      }
+
+      if (parsedTxList.length === 0) {
+        results.push({
+          filename,
+          imported: 0,
+          duplicates: 0,
+          message: "Nenhuma transação encontrada no arquivo.",
+        });
+        continue;
+      }
+
+      // 2. DEDUPLICAÇÃO INTELIGENTE
+      // Gera hashes para cada transação e busca se já existem no banco
+      const candidates = parsedTxList.map((tx) => ({
+        ...tx,
+        hash: generateTxHash(userId, tx.date, tx.amount, tx.description),
+        accountName: finalAccountName || (detectedSourceType === "CREDIT_CARD" ? "Cartão de Crédito" : "Conta Bancária"),
+      }));
+
+      const hashes = candidates.map((c) => c.hash);
+      const existingTxs = await prisma.personalTransaction.findMany({
+        where: {
+          userId,
+          hash: { in: hashes },
+        },
+        select: { hash: true },
+      });
+
+      const existingHashSet = new Set(existingTxs.map((e) => e.hash));
+      const newTransactions = candidates.filter((c) => !existingHashSet.has(c.hash));
+      const duplicateCount = candidates.length - newTransactions.length;
+
+      // 3. CATEGORIZAÇÃO
+      // Categoriza preliminarmente por dicionário local
+      const unknownItems: Array<{ id: string; description: string; amount: number }> = [];
+      newTransactions.forEach((tx, idx) => {
+        const cat = categorizeTransaction(tx.description, tx.type, detectedSourceType);
+        tx.category = cat;
+        if (cat === "Outros" && tx.type === "EXPENSE") {
+          unknownItems.push({ id: String(idx), description: tx.description, amount: tx.amount });
+        }
+      });
+
+      // Se houver lançamentos desconhecidos, chama IA para categorizar em lote
+      if (unknownItems.length > 0 && unknownItems.length <= 40) {
+        try {
+          const aiClassifications = await batchCategorizeWithAI(unknownItems);
+          Object.entries(aiClassifications).forEach(([idxStr, cat]) => {
+            const idx = parseInt(idxStr, 10);
+            if (newTransactions[idx]) {
+              newTransactions[idx].category = cat;
+            }
+          });
+        } catch (aiErr) {
+          console.error("AI batch categorization fallback skipped:", aiErr);
+        }
+      }
+
+      // 4. CRIA O REGISTRO DO UPLOAD
+      let totalIncome = 0;
+      let totalExpense = 0;
+      let minDate: Date | null = null;
+      let maxDate: Date | null = null;
+
+      candidates.forEach((c) => {
+        if (c.type === "INCOME") totalIncome += c.amount;
+        else totalExpense += c.amount;
+        if (!minDate || c.date < minDate) minDate = c.date;
+        if (!maxDate || c.date > maxDate) maxDate = c.date;
+      });
+
+      const uploadRecord = await prisma.personalUpload.create({
+        data: {
+          userId,
+          filename,
+          fileType: ext.toUpperCase(),
+          sourceType: detectedSourceType,
+          accountName: finalAccountName,
+          transactionsCount: newTransactions.length,
+          totalIncome,
+          totalExpense,
+          periodStart: minDate,
+          periodEnd: maxDate,
+        },
+      });
+
+      // 5. INSERE TRANSAÇÕES EM LOTE NO BANCO DE DADOS
+      if (newTransactions.length > 0) {
+        await prisma.personalTransaction.createMany({
+          data: newTransactions.map((tx) => ({
+            userId,
+            accountName: tx.accountName,
+            sourceType: detectedSourceType,
+            date: tx.date,
+            description: tx.description,
+            amount: tx.amount,
+            type: tx.type,
+            category: tx.category as string,
+            rawText: tx.rawText || tx.description,
+            hash: tx.hash,
+            installment: tx.installment || null,
+            uploadId: uploadRecord.id,
+          })),
+        });
+      }
+
+      totalImportedOverall += newTransactions.length;
+      totalDuplicatesOverall += duplicateCount;
+
+      results.push({
+        filename,
+        imported: newTransactions.length,
+        duplicates: duplicateCount,
+        sourceType: detectedSourceType,
+        accountName: finalAccountName,
+        totalAmount: Number((totalIncome + totalExpense).toFixed(2)),
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      summary: {
+        totalImported: totalImportedOverall,
+        totalDuplicatesSkipped: totalDuplicatesOverall,
+        filesProcessed: files.length,
+      },
+      results,
+    });
+  } catch (error: any) {
+    console.error("Upload Contabilidade Pessoal Error:", error);
+    return NextResponse.json(
+      { success: false, error: error?.message || "Erro ao processar arquivo(s)." },
+      { status: 500 }
+    );
+  }
+}

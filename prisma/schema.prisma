@@ -110,6 +110,8 @@ model User {
   sellerConversations         Conversation[]         @relation("SellerConversations")
   sentMessages                ChatMessage[]          @relation("SentMessages")
   autoMessageSettings         AutoMessageSetting[]
+  personalTransactions        PersonalTransaction[]
+  personalUploads             PersonalUpload[]
 
   @@map("users")
 }
@@ -467,5 +469,49 @@ model AutoMessageSetting {
 
   @@unique([userId, event])
   @@map("auto_message_settings")
+}
+
+model PersonalTransaction {
+  id           String          @id @default(cuid())
+  userId       Int             @map("user_id")
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountName  String          @map("account_name")
+  sourceType   String          @map("source_type") // "BANK_STATEMENT" | "CREDIT_CARD" | "MANUAL"
+  date         DateTime
+  description  String
+  amount       Decimal         @db.Decimal(12, 2)
+  type         String          @map("type") // "INCOME" | "EXPENSE"
+  category     String          @map("category")
+  rawText      String?         @map("raw_text") @db.Text
+  hash         String?         @map("hash")
+  installment  String?         @map("installment")
+  uploadId     String?         @map("upload_id")
+  upload       PersonalUpload? @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  @@index([userId, date])
+  @@index([userId, hash])
+  @@map("personal_transactions")
+}
+
+model PersonalUpload {
+  id                 String                @id @default(cuid())
+  userId             Int                   @map("user_id")
+  user               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  filename           String
+  fileType           String                @map("file_type") // "OFX" | "PDF" | "CSV"
+  sourceType         String                @map("source_type") // "BANK_STATEMENT" | "CREDIT_CARD"
+  accountName        String?               @map("account_name")
+  transactionsCount  Int                   @default(0) @map("transactions_count")
+  totalIncome        Decimal               @default(0) @map("total_income") @db.Decimal(12, 2)
+  totalExpense       Decimal               @default(0) @map("total_expense") @db.Decimal(12, 2)
+  periodStart        DateTime?             @map("period_start")
+  periodEnd          DateTime?             @map("period_end")
+  status             String                @default("COMPLETED")
+  createdAt          DateTime              @default(now()) @map("created_at")
+  transactions       PersonalTransaction[]
+
+  @@map("personal_uploads")
 }
 

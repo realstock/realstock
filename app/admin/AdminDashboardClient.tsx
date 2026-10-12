@@ -148,9 +148,16 @@ export default function AdminDashboardClient() {
                 />
 
                 <QuickAction
-                  title="Contabilidade"
-                  description="Dashboard de receitas, impostos PayPal, faturas manuais e saldo líquido."
+                  title="Contabilidade Plataforma"
+                  description="Dashboard de receitas do site, impostos PayPal, faturas manuais e saldo líquido."
                   href="/admin/contabilidade"
+                  icon={<ChartIcon />}
+                />
+
+                <QuickAction
+                  title="Contabilidade Pessoal"
+                  description="Suba extratos e faturas de cartão. O sistema classifica despesas, deduplica e gera seu balanço."
+                  href="/admin/contabilidade-pessoal"
                   icon={<ChartIcon />}
                 />
 

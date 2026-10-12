@@ -96,9 +96,27 @@ export default function ContabilidadePage() {
   return (
     <main className="min-h-screen bg-slate-950 px-6 pt-28 pb-12 text-white">
       <div className="mx-auto max-w-6xl">
+        {/* TOP TAB SWITCHER: Corporativo vs Pessoal */}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4 mb-6">
+          <div className="flex items-center gap-2">
+            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-4 py-2 text-xs font-bold text-emerald-400 shadow-sm">
+              🏢 Plataforma RealStock (SaaS)
+            </div>
+            <Link
+              href="/admin/contabilidade-pessoal"
+              className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-400 hover:bg-slate-900 hover:text-white transition"
+            >
+              👤 Minha Contabilidade Pessoal
+            </Link>
+          </div>
+
+          <Link href="/admin" className="text-xs text-slate-400 hover:text-white transition">
+            ← Voltar ao Painel Admin
+          </Link>
+        </div>
+
         <div className="flex items-center justify-between mb-8">
           <div>
-            <Link href="/admin" className="text-sm text-slate-400 hover:text-white mb-2 block">← Voltar ao Painel</Link>
             <h1 className="text-3xl font-bold flex items-center gap-3">
               <LineChart className="text-emerald-400" size={32} />
               Contabilidade Oficial
