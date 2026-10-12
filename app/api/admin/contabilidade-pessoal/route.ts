@@ -26,13 +26,21 @@ export async function GET(req: NextRequest) {
     const startDate = new Date(Date.UTC(targetYear, targetMonth - 1, 1, 0, 0, 0));
     const endDate = new Date(Date.UTC(targetYear, targetMonth, 1, 0, 0, 0)); // primeiro dia do mês seguinte
 
-    // Busca transações do usuário no mês
+    // Busca transações do usuário no mês por data contábil ou por mês de competência da fatura
     const whereClause: any = {
       userId,
-      date: {
-        gte: startDate,
-        lt: endDate,
-      },
+      OR: [
+        {
+          date: {
+            gte: startDate,
+            lt: endDate,
+          },
+        },
+        {
+          competenceMonth: targetMonth,
+          competenceYear: targetYear,
+        },
+      ],
     };
 
     if (sourceType && sourceType !== "ALL") {
@@ -44,10 +52,14 @@ export async function GET(req: NextRequest) {
     }
 
     if (search) {
-      whereClause.OR = [
-        { description: { contains: search, mode: "insensitive" } },
-        { accountName: { contains: search, mode: "insensitive" } },
-        { category: { contains: search, mode: "insensitive" } },
+      whereClause.AND = [
+        {
+          OR: [
+            { description: { contains: search, mode: "insensitive" } },
+            { accountName: { contains: search, mode: "insensitive" } },
+            { category: { contains: search, mode: "insensitive" } },
+          ],
+        },
       ];
     }
 
@@ -162,6 +174,9 @@ export async function GET(req: NextRequest) {
       transactions: transactions.map((tx) => ({
         id: tx.id,
         date: tx.date,
+        purchaseDate: tx.purchaseDate,
+        competenceMonth: tx.competenceMonth,
+        competenceYear: tx.competenceYear,
         description: tx.description,
         amount: Number(tx.amount),
         type: tx.type,

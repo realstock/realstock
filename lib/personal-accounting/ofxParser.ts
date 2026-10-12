@@ -124,8 +124,19 @@ export function parseOfx(ofxContent: string): ParsedOfxResult {
         type = "EXPENSE";
       }
     } else {
-      // Cartão de crédito: pagamentos/estornos são créditos (INCOME/abatimento), compras são EXPENSE
-      if (trnType === "CREDIT" || numAmt > 0 && /PAGTO|PAGAMENTO|ESTORNO|CREDITO/i.test(cleanDescription)) {
+      // Cartão de crédito:
+      const isCardPayment =
+        (numAmt > 0 || trnType === "CREDIT") &&
+        /PGTO\s*DEBITO|PAGAMENTO\s*FATURA|PAGTO\s*FATURA|PAGTO\s*POR\s*DEB|PAGAMENTO\s*DEB|PGTO\s*CONTA|PAGAMENTO\s*CONTA|PGTO\s*EFETUADO/i.test(
+          cleanDescription
+        );
+      if (isCardPayment) {
+        // Pagamento da fatura anterior dentro do extrato do cartão não é receita pessoal; ignora
+        continue;
+      }
+
+      // Estornos e descontos de tarifa/anuidade são créditos
+      if (trnType === "CREDIT" || (numAmt > 0 && /ESTORNO|CREDITO|DESC\b/i.test(cleanDescription))) {
         type = "INCOME";
       } else {
         type = "EXPENSE";

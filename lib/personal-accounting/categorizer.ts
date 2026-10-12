@@ -217,8 +217,8 @@ export function categorizeTransaction(
     if (sourceType === "CREDIT_CARD") {
       return "Fatura de Cartão";
     }
-    // No extrato, testa se é investimento/proventos
-    if (/dividend|jcp|rendimento|resgate/i.test(clean)) {
+    // No extrato, testa se é investimento/proventos ou resgate/aplicação automática
+    if (/dividend|jcp|rendimento|resgate|rende\s*f[aá]cil|rende\s*facil|aplica[cç][aã]o\s*autom/i.test(clean)) {
       return "Investimentos";
     }
     return "Renda / Salário";

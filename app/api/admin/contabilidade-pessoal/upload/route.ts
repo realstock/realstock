@@ -7,6 +7,7 @@ import { parseOfx } from "@/lib/personal-accounting/ofxParser";
 import { parseCsv } from "@/lib/personal-accounting/csvParser";
 import { parsePdfWithAI } from "@/lib/personal-accounting/pdfParser";
 import { categorizeTransaction, batchCategorizeWithAI, PersonalCategory } from "@/lib/personal-accounting/categorizer";
+import { detectCompetence } from "@/lib/personal-accounting/competenceDetector";
 
 function generateTxHash(userId: number, date: Date, amount: number, description: string): string {
   const dateKey = date.toISOString().slice(0, 10);
@@ -27,6 +28,12 @@ export async function POST(req: NextRequest) {
 
     const userAccountName = (formData.get("accountName") as string)?.trim() || "";
     const userSourceType = (formData.get("sourceType") as string)?.trim() || "AUTO";
+    const userCompetenceMonth = formData.get("competenceMonth")
+      ? parseInt(formData.get("competenceMonth") as string, 10)
+      : null;
+    const userCompetenceYear = formData.get("competenceYear")
+      ? parseInt(formData.get("competenceYear") as string, 10)
+      : null;
 
     // Pega todos os arquivos enviados
     const files = formData.getAll("file") as File[];
@@ -54,17 +61,23 @@ export async function POST(req: NextRequest) {
           : "BANK_STATEMENT";
 
       let finalAccountName = userAccountName;
+      let filePeriodEnd: Date | undefined;
 
       // 1. EXECUTA O PARSER CONFORME A EXTENSÃO DO ARQUIVO
       if (ext === "ofx") {
         const contentStr = buffer.toString("latin1"); // OFX frequentemente usa Latin1/Windows-1252
         const ofxRes = parseOfx(contentStr);
         parsedTxList = ofxRes.transactions;
+        filePeriodEnd = ofxRes.periodEnd;
         if (userSourceType === "AUTO") {
           detectedSourceType = ofxRes.sourceType;
         }
         if (!finalAccountName) {
-          finalAccountName = ofxRes.bankId ? `Banco (${ofxRes.bankId})` : detectedSourceType === "CREDIT_CARD" ? "Cartão de Crédito" : "Conta Bancária";
+          finalAccountName = ofxRes.bankId
+            ? `Banco (${ofxRes.bankId})`
+            : detectedSourceType === "CREDIT_CARD"
+            ? "Cartão de Crédito"
+            : "Conta Bancária";
         }
       } else if (ext === "csv") {
         const contentStr = buffer.toString("utf-8");
@@ -79,11 +92,14 @@ export async function POST(req: NextRequest) {
       } else if (ext === "pdf") {
         const pdfRes = await parsePdfWithAI(buffer, filename);
         parsedTxList = pdfRes.transactions;
+        filePeriodEnd = pdfRes.periodEnd;
         if (userSourceType === "AUTO") {
           detectedSourceType = pdfRes.sourceType;
         }
         if (!finalAccountName) {
-          finalAccountName = pdfRes.accountName || (detectedSourceType === "CREDIT_CARD" ? "Cartão de Crédito" : "Conta Bancária");
+          finalAccountName =
+            pdfRes.accountName ||
+            (detectedSourceType === "CREDIT_CARD" ? "Cartão de Crédito" : "Conta Bancária");
         }
       } else {
         return NextResponse.json(
@@ -102,13 +118,35 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      // 2. DEDUPLICAÇÃO INTELIGENTE
-      // Gera hashes para cada transação e busca se já existem no banco
-      const candidates = parsedTxList.map((tx) => ({
-        ...tx,
-        hash: generateTxHash(userId, tx.date, tx.amount, tx.description),
-        accountName: finalAccountName || (detectedSourceType === "CREDIT_CARD" ? "Cartão de Crédito" : "Conta Bancária"),
-      }));
+      // 2. DETECÇÃO DA COMPETÊNCIA (MÊS/ANO DA FATURA OU EXTRATO)
+      const comp = detectCompetence(filename, userCompetenceMonth, userCompetenceYear, filePeriodEnd);
+
+      // 3. DEDUPLICAÇÃO INTELIGENTE & MAPEAMENTO DE DATAS
+      // Para cartão de crédito: mapeia a data contábil para o mês de competência da fatura,
+      // preservando a data original da compra (purchaseDate).
+      const candidates = parsedTxList.map((tx) => {
+        const origDate = new Date(tx.date);
+        let effectiveDate = origDate;
+
+        if (detectedSourceType === "CREDIT_CARD") {
+          const purchaseDay = origDate.getUTCDate();
+          const maxDays = new Date(Date.UTC(comp.year, comp.month, 0)).getUTCDate();
+          const clampedDay = Math.min(Math.max(purchaseDay, 1), maxDays);
+          effectiveDate = new Date(Date.UTC(comp.year, comp.month - 1, clampedDay, 12, 0, 0));
+        }
+
+        return {
+          ...tx,
+          purchaseDate: origDate,
+          effectiveDate,
+          competenceMonth: comp.month,
+          competenceYear: comp.year,
+          hash: generateTxHash(userId, origDate, tx.amount, tx.description),
+          accountName:
+            finalAccountName ||
+            (detectedSourceType === "CREDIT_CARD" ? "Cartão de Crédito" : "Conta Bancária"),
+        };
+      });
 
       const hashes = candidates.map((c) => c.hash);
       const existingTxs = await prisma.personalTransaction.findMany({
@@ -123,8 +161,7 @@ export async function POST(req: NextRequest) {
       const newTransactions = candidates.filter((c) => !existingHashSet.has(c.hash));
       const duplicateCount = candidates.length - newTransactions.length;
 
-      // 3. CATEGORIZAÇÃO
-      // Categoriza preliminarmente por dicionário local
+      // 4. CATEGORIZAÇÃO
       const unknownItems: Array<{ id: string; description: string; amount: number }> = [];
       newTransactions.forEach((tx, idx) => {
         const cat = categorizeTransaction(tx.description, tx.type, detectedSourceType);
@@ -134,7 +171,6 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      // Se houver lançamentos desconhecidos, chama IA para categorizar em lote
       if (unknownItems.length > 0 && unknownItems.length <= 40) {
         try {
           const aiClassifications = await batchCategorizeWithAI(unknownItems);
@@ -149,7 +185,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // 4. CRIA O REGISTRO DO UPLOAD
+      // 5. CRIA O REGISTRO DO UPLOAD
       let totalIncome = 0;
       let totalExpense = 0;
       let minDate: Date | null = null;
@@ -158,8 +194,8 @@ export async function POST(req: NextRequest) {
       candidates.forEach((c) => {
         if (c.type === "INCOME") totalIncome += c.amount;
         else totalExpense += c.amount;
-        if (!minDate || c.date < minDate) minDate = c.date;
-        if (!maxDate || c.date > maxDate) maxDate = c.date;
+        if (!minDate || c.purchaseDate < minDate) minDate = c.purchaseDate;
+        if (!maxDate || c.purchaseDate > maxDate) maxDate = c.purchaseDate;
       });
 
       const uploadRecord = await prisma.personalUpload.create({
@@ -169,6 +205,8 @@ export async function POST(req: NextRequest) {
           fileType: ext.toUpperCase(),
           sourceType: detectedSourceType,
           accountName: finalAccountName,
+          competenceMonth: comp.month,
+          competenceYear: comp.year,
           transactionsCount: newTransactions.length,
           totalIncome,
           totalExpense,
@@ -177,14 +215,17 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // 5. INSERE TRANSAÇÕES EM LOTE NO BANCO DE DADOS
+      // 6. INSERE TRANSAÇÕES EM LOTE NO BANCO DE DADOS
       if (newTransactions.length > 0) {
         await prisma.personalTransaction.createMany({
           data: newTransactions.map((tx) => ({
             userId,
             accountName: tx.accountName,
             sourceType: detectedSourceType,
-            date: tx.date,
+            date: tx.effectiveDate,
+            purchaseDate: tx.purchaseDate,
+            competenceMonth: comp.month,
+            competenceYear: comp.year,
             description: tx.description,
             amount: tx.amount,
             type: tx.type,
@@ -206,6 +247,8 @@ export async function POST(req: NextRequest) {
         duplicates: duplicateCount,
         sourceType: detectedSourceType,
         accountName: finalAccountName,
+        competenceMonth: comp.month,
+        competenceYear: comp.year,
         totalAmount: Number((totalIncome + totalExpense).toFixed(2)),
       });
     }

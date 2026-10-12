@@ -64,9 +64,38 @@ export default function ContabilidadePessoalPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadAccountName, setUploadAccountName] = useState("");
   const [uploadSourceType, setUploadSourceType] = useState<"AUTO" | "BANK_STATEMENT" | "CREDIT_CARD">("AUTO");
+  const [uploadMonth, setUploadMonth] = useState(new Date().getMonth() + 1);
+  const [uploadYear, setUploadYear] = useState(new Date().getFullYear());
   const [uploading, setUploading] = useState(false);
   const [uploadProgressText, setUploadProgressText] = useState("");
   const [uploadResult, setUploadResult] = useState<any>(null);
+
+  // Auto-detecta mês e tipo a partir dos arquivos selecionados
+  function handleFileSelection(files: File[]) {
+    setSelectedFiles(files);
+    if (files.length > 0) {
+      const first = files[0].name.toLowerCase();
+      const monthNames: Record<string, number> = {
+        jan: 1, janeiro: 1, fev: 2, fevereiro: 2, mar: 3, marco: 3, março: 3,
+        abr: 4, abril: 4, mai: 5, maio: 5, jun: 6, junho: 6, jul: 7, julho: 7,
+        ago: 8, agosto: 8, set: 9, setembro: 9, out: 10, outubro: 10,
+        nov: 11, novembro: 11, dez: 12, dezembro: 12,
+      };
+      const match = first.match(
+        /(jan(?:eiro)?|fev(?:ereiro)?|mar(?:[cç]o)?|abr(?:il)?|mai(?:o)?|jun(?:ho)?|jul(?:ho)?|ago(?:sto)?|set(?:embro)?|out(?:ubro)?|nov(?:embro)?|dez(?:embro)?)[_\s-]*(\d{2,4})/i
+      );
+      if (match) {
+        const m = monthNames[match[1].toLowerCase()];
+        let y = parseInt(match[2], 10);
+        if (y < 100) y += 2000;
+        if (m) setUploadMonth(m);
+        if (y >= 2000) setUploadYear(y);
+      }
+      if (/cartao|fatura|card|visa|master|altus|liv/i.test(first)) {
+        setUploadSourceType("CREDIT_CARD");
+      }
+    }
+  }
 
   // Estado do Lançamento Manual
   const [manualForm, setManualForm] = useState({
@@ -125,6 +154,8 @@ export default function ContabilidadePessoalPage() {
       selectedFiles.forEach((f) => formData.append("file", f));
       if (uploadAccountName) formData.append("accountName", uploadAccountName);
       formData.append("sourceType", uploadSourceType);
+      formData.append("competenceMonth", String(uploadMonth));
+      formData.append("competenceYear", String(uploadYear));
 
       setUploadProgressText("Processando deduplicação e categorização inteligente...");
       const res = await fetch("/api/admin/contabilidade-pessoal/upload", {
@@ -137,6 +168,10 @@ export default function ContabilidadePessoalPage() {
         setUploadResult(json);
         setSelectedFiles([]);
         setUploadAccountName("");
+        if (json.results?.[0]?.competenceMonth) {
+          setMonth(json.results[0].competenceMonth);
+          setYear(json.results[0].competenceYear);
+        }
         fetchData();
       } else {
         alert("Erro no upload: " + (json.error || "Falha ao processar arquivo."));
@@ -326,6 +361,8 @@ export default function ContabilidadePessoalPage() {
             <button
               onClick={() => {
                 setUploadResult(null);
+                setUploadMonth(month);
+                setUploadYear(year);
                 setShowUploadModal(true);
               }}
               className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-600/20 flex items-center gap-2 transition cursor-pointer"
@@ -413,6 +450,32 @@ export default function ContabilidadePessoalPage() {
             </div>
           </div>
         </div>
+
+        {/* RECONCILIAÇÃO INTELIGENTE DE FATURA (QUANDO HOUVER EXTRATO + CARTÃO) */}
+        {data?.summary?.totalCardInvoicePayments > 0 && data?.summary?.totalCreditCardExpenses > 0 && (
+          <div className="bg-gradient-to-r from-indigo-950/60 via-slate-900 to-emerald-950/40 border border-indigo-500/30 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs shadow-xl">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+                <CreditCard size={20} />
+              </div>
+              <div>
+                <div className="font-black text-white text-sm flex items-center gap-2">
+                  <span>Reconciliação Automática de Fatura Ativa</span>
+                  <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                    Sem Duplicidade
+                  </span>
+                </div>
+                <p className="text-slate-400 mt-0.5 text-[11px] leading-relaxed">
+                  O débito de pagamento da fatura (<strong className="text-white">{formatBRL(data.summary.totalCardInvoicePayments)}</strong>) no extrato foi substituído pelos lançamentos individuais do cartão (<strong className="text-indigo-400">{formatBRL(data.summary.totalCreditCardExpenses)}</strong>), garantindo categorização detalhada sem contar duas vezes.
+                </p>
+              </div>
+            </div>
+            <div className="text-right sm:shrink-0 bg-white/5 border border-white/10 px-3.5 py-2 rounded-xl">
+              <div className="text-[10px] text-slate-400 uppercase font-bold">Total Despesas Reais</div>
+              <div className="text-base font-black text-white">{formatBRL(data.summary.totalExpenses)}</div>
+            </div>
+          </div>
+        )}
 
         {/* SEÇÃO GRÁFICA & ANÁLISE DE CATEGORIAS */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -669,15 +732,27 @@ export default function ContabilidadePessoalPage() {
                       filteredTransactions.map((tx: any) => (
                         <tr key={tx.id} className="hover:bg-white/[0.02] transition">
                           <td className="py-3 px-4 font-mono text-slate-400 whitespace-nowrap">
-                            {new Date(tx.date).toLocaleDateString("pt-BR")}
-                          </td>
-                          <td className="py-3 px-4 font-medium text-white max-w-xs truncate">
-                            <span>{tx.description}</span>
-                            {tx.installment && (
-                              <span className="ml-2 bg-indigo-500/20 text-indigo-300 text-[10px] px-1.5 py-0.5 rounded font-bold">
-                                {tx.installment}
-                              </span>
+                            <div className="text-slate-200">{new Date(tx.date).toLocaleDateString("pt-BR")}</div>
+                            {tx.purchaseDate && tx.sourceType === "CREDIT_CARD" && (
+                              <div className="text-[10px] text-slate-500 font-mono">
+                                Compra: {new Date(tx.purchaseDate).toLocaleDateString("pt-BR")}
+                              </div>
                             )}
+                          </td>
+                          <td className="py-3 px-4 font-medium text-white max-w-sm">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="truncate">{tx.description}</span>
+                              {tx.installment && (
+                                <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] px-1.5 py-0.5 rounded font-bold">
+                                  {tx.installment}
+                                </span>
+                              )}
+                              {tx.sourceType === "CREDIT_CARD" && tx.competenceMonth && (
+                                <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[9px] px-1.5 py-0.5 rounded font-semibold whitespace-nowrap">
+                                  Fatura {String(tx.competenceMonth).padStart(2, "0")}/{tx.competenceYear}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3 px-4 text-slate-300 whitespace-nowrap">
                             <span className="flex items-center gap-1.5">
@@ -758,7 +833,7 @@ export default function ContabilidadePessoalPage() {
                       accept=".ofx,.csv,.pdf"
                       onChange={(e) => {
                         if (e.target.files) {
-                          setSelectedFiles(Array.from(e.target.files));
+                          handleFileSelection(Array.from(e.target.files));
                         }
                       }}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -786,10 +861,41 @@ export default function ContabilidadePessoalPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <div>
+                      <label className="block text-slate-300 font-bold mb-1">Mês de Referência (Fatura / Extrato)</label>
+                      <select
+                        value={uploadMonth}
+                        onChange={(e) => setUploadMonth(Number(e.target.value))}
+                        className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-white outline-none cursor-pointer"
+                      >
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                          <option key={m} value={m}>
+                            {new Date(0, m - 1).toLocaleString("pt-BR", { month: "long" }).toUpperCase()}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">Ano da Fatura</label>
+                      <select
+                        value={uploadYear}
+                        onChange={(e) => setUploadYear(Number(e.target.value))}
+                        className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-white outline-none cursor-pointer"
+                      >
+                        {[2024, 2025, 2026, 2027].map((y) => (
+                          <option key={y} value={y}>
+                            {y}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div>
                       <label className="block text-slate-300 font-bold mb-1">Apelido da Conta / Cartão</label>
                       <input
                         type="text"
-                        placeholder="Ex: Nubank, Itaú Visa, XP"
+                        placeholder="Ex: Nubank, Itaú Visa, Banco do Brasil"
                         value={uploadAccountName}
                         onChange={(e) => setUploadAccountName(e.target.value)}
                         className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-white outline-none placeholder-slate-500"
