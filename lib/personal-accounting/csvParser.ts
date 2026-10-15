@@ -1,4 +1,5 @@
 import { ParsedTransaction } from "./ofxParser";
+import { detectDocumentType } from "./competenceDetector";
 
 export interface ParsedCsvResult {
   sourceType: "BANK_STATEMENT" | "CREDIT_CARD";
@@ -10,7 +11,9 @@ function detectDelimiter(headerLine: string): string {
   const semicolons = (headerLine.match(/;/g) || []).length;
   const commas = (headerLine.match(/,/g) || []).length;
   const tabs = (headerLine.match(/\t/g) || []).length;
+  const pipes = (headerLine.match(/\|/g) || []).length;
 
+  if (pipes > semicolons && pipes > commas && pipes > tabs) return "|";
   if (tabs > semicolons && tabs > commas) return "\t";
   if (semicolons >= commas) return ";";
   return ",";
@@ -62,7 +65,7 @@ function parseMoneyAmount(valStr: string): number | null {
   return isNaN(num) ? null : num;
 }
 
-export function parseCsv(csvContent: string): ParsedCsvResult {
+export function parseCsv(csvContent: string, filename?: string): ParsedCsvResult {
   const lines = csvContent
     .split(/\r?\n/)
     .map((l) => l.trim())
@@ -96,10 +99,9 @@ export function parseCsv(csvContent: string): ParsedCsvResult {
     amountIdx = 2;
   }
 
-  // Detecta se é fatura de cartão de crédito baseado no cabeçalho ou nome
-  const isCreditCard = headers.some((h) => /cart[ãa]o|card|fatura|parcela/i.test(h)) ||
-    /fatura|cartao|credit_card|nubank_card/i.test(lines[0]);
-  const sourceType = isCreditCard ? "CREDIT_CARD" : "BANK_STATEMENT";
+  // Detecta se é fatura de cartão de crédito ou extrato
+  const docTypeRes = detectDocumentType(filename || "", lines.slice(0, 10).join("\n"));
+  const sourceType = docTypeRes.sourceType;
 
   const transactions: ParsedTransaction[] = [];
 

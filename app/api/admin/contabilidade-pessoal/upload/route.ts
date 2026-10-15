@@ -5,9 +5,10 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { parseOfx } from "@/lib/personal-accounting/ofxParser";
 import { parseCsv } from "@/lib/personal-accounting/csvParser";
+import { parseTxt } from "@/lib/personal-accounting/txtParser";
 import { parsePdfWithAI } from "@/lib/personal-accounting/pdfParser";
 import { categorizeTransaction, batchCategorizeWithAI, PersonalCategory } from "@/lib/personal-accounting/categorizer";
-import { detectCompetence } from "@/lib/personal-accounting/competenceDetector";
+import { detectCompetence, detectDocumentType } from "@/lib/personal-accounting/competenceDetector";
 
 function generateTxHash(userId: number, date: Date, amount: number, description: string): string {
   const dateKey = date.toISOString().slice(0, 10);
@@ -51,17 +52,17 @@ export async function POST(req: NextRequest) {
       const buffer = Buffer.from(await file.arrayBuffer());
 
       let parsedTxList: any[] = [];
-      let detectedSourceType: "BANK_STATEMENT" | "CREDIT_CARD" =
-        userSourceType === "CREDIT_CARD"
-          ? "CREDIT_CARD"
-          : userSourceType === "BANK_STATEMENT"
-          ? "BANK_STATEMENT"
-          : /fatura|cartao|card/i.test(filename)
-          ? "CREDIT_CARD"
-          : "BANK_STATEMENT";
-
+      let detectedSourceType: "BANK_STATEMENT" | "CREDIT_CARD" = "BANK_STATEMENT";
       let finalAccountName = userAccountName;
       let filePeriodEnd: Date | undefined;
+      let fileCompetenceMonth: number | undefined;
+      let fileCompetenceYear: number | undefined;
+
+      // Amostra de texto para identificação
+      const contentPreview =
+        ext === "pdf"
+          ? ""
+          : buffer.toString("utf-8", 0, Math.min(buffer.length, 12000));
 
       // 1. EXECUTA O PARSER CONFORME A EXTENSÃO DO ARQUIVO
       if (ext === "ofx") {
@@ -69,9 +70,7 @@ export async function POST(req: NextRequest) {
         const ofxRes = parseOfx(contentStr);
         parsedTxList = ofxRes.transactions;
         filePeriodEnd = ofxRes.periodEnd;
-        if (userSourceType === "AUTO") {
-          detectedSourceType = ofxRes.sourceType;
-        }
+        detectedSourceType = ofxRes.sourceType;
         if (!finalAccountName) {
           finalAccountName = ofxRes.bankId
             ? `Banco (${ofxRes.bankId})`
@@ -81,20 +80,35 @@ export async function POST(req: NextRequest) {
         }
       } else if (ext === "csv") {
         const contentStr = buffer.toString("utf-8");
-        const csvRes = parseCsv(contentStr);
+        const csvRes = parseCsv(contentStr, filename);
         parsedTxList = csvRes.transactions;
-        if (userSourceType === "AUTO") {
-          detectedSourceType = csvRes.sourceType;
-        }
+        detectedSourceType = csvRes.sourceType;
         if (!finalAccountName) {
           finalAccountName = detectedSourceType === "CREDIT_CARD" ? "Cartão de Crédito" : "Conta Bancária";
+        }
+      } else if (ext === "txt") {
+        const contentStr = buffer.toString("utf-8");
+        const txtRes = await parseTxt(contentStr, filename);
+        parsedTxList = txtRes.transactions;
+        filePeriodEnd = txtRes.periodEnd;
+        detectedSourceType = txtRes.sourceType;
+        if (txtRes.competenceMonth) {
+          fileCompetenceMonth = txtRes.competenceMonth;
+          fileCompetenceYear = txtRes.competenceYear;
+        }
+        if (!finalAccountName) {
+          finalAccountName =
+            txtRes.accountName ||
+            (detectedSourceType === "CREDIT_CARD" ? "Cartão de Crédito" : "Conta Bancária");
         }
       } else if (ext === "pdf") {
         const pdfRes = await parsePdfWithAI(buffer, filename);
         parsedTxList = pdfRes.transactions;
         filePeriodEnd = pdfRes.periodEnd;
-        if (userSourceType === "AUTO") {
-          detectedSourceType = pdfRes.sourceType;
+        detectedSourceType = pdfRes.sourceType;
+        if (pdfRes.competenceMonth) {
+          fileCompetenceMonth = pdfRes.competenceMonth;
+          fileCompetenceYear = pdfRes.competenceYear;
         }
         if (!finalAccountName) {
           finalAccountName =
@@ -103,9 +117,16 @@ export async function POST(req: NextRequest) {
         }
       } else {
         return NextResponse.json(
-          { success: false, error: `Formato de arquivo não suportado: .${ext}. Use .OFX, .PDF ou .CSV.` },
+          { success: false, error: `Formato de arquivo não suportado: .${ext}. Use .OFX, .PDF, .CSV ou .TXT.` },
           { status: 400 }
         );
+      }
+
+      // Se o usuário selecionou um tipo explicitamente (não AUTO), respeita a escolha do usuário
+      if (userSourceType === "CREDIT_CARD") {
+        detectedSourceType = "CREDIT_CARD";
+      } else if (userSourceType === "BANK_STATEMENT") {
+        detectedSourceType = "BANK_STATEMENT";
       }
 
       if (parsedTxList.length === 0) {
@@ -119,7 +140,15 @@ export async function POST(req: NextRequest) {
       }
 
       // 2. DETECÇÃO DA COMPETÊNCIA (MÊS/ANO DA FATURA OU EXTRATO)
-      const comp = detectCompetence(filename, userCompetenceMonth, userCompetenceYear, filePeriodEnd);
+      // Prioridade: Formulário manual > Metadado do arquivo (PDF/TXT) > Detector inteligente (nome/conteúdo/transações)
+      const comp = detectCompetence(
+        filename,
+        userCompetenceMonth || fileCompetenceMonth,
+        userCompetenceYear || fileCompetenceYear,
+        filePeriodEnd,
+        contentPreview,
+        parsedTxList
+      );
 
       // 3. DEDUPLICAÇÃO INTELIGENTE & MAPEAMENTO DE DATAS
       // Para cartão de crédito: mapeia a data contábil para o mês de competência da fatura,
@@ -246,9 +275,15 @@ export async function POST(req: NextRequest) {
         imported: newTransactions.length,
         duplicates: duplicateCount,
         sourceType: detectedSourceType,
+        sourceTypeLabel: detectedSourceType === "CREDIT_CARD" ? "Fatura de Cartão de Crédito" : "Extrato Bancário",
         accountName: finalAccountName,
         competenceMonth: comp.month,
         competenceYear: comp.year,
+        periodLabel: comp.periodLabel,
+        detectedFrom: {
+          sourceType: detectedSourceType,
+          competence: comp.detectedFrom,
+        },
         totalAmount: Number((totalIncome + totalExpense).toFixed(2)),
       });
     }

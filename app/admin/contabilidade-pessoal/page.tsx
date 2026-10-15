@@ -26,6 +26,7 @@ import {
   Percent,
 } from "lucide-react";
 import { STANDARD_CATEGORIES } from "@/lib/personal-accounting/categorizer";
+import { detectFileMetadata, FileMetadataResult } from "@/lib/personal-accounting/competenceDetector";
 
 const CATEGORY_COLORS: Record<string, string> = {
   "Alimentação & Supermercado": "bg-emerald-500",
@@ -70,30 +71,42 @@ export default function ContabilidadePessoalPage() {
   const [uploadProgressText, setUploadProgressText] = useState("");
   const [uploadResult, setUploadResult] = useState<any>(null);
 
-  // Auto-detecta mês e tipo a partir dos arquivos selecionados
-  function handleFileSelection(files: File[]) {
+  const [detectedFilesMeta, setDetectedFilesMeta] = useState<FileMetadataResult[]>([]);
+
+  // Auto-detecta mês, ano e tipo (cartão vs extrato) a partir dos arquivos selecionados
+  async function handleFileSelection(files: File[]) {
     setSelectedFiles(files);
-    if (files.length > 0) {
-      const first = files[0].name.toLowerCase();
-      const monthNames: Record<string, number> = {
-        jan: 1, janeiro: 1, fev: 2, fevereiro: 2, mar: 3, marco: 3, março: 3,
-        abr: 4, abril: 4, mai: 5, maio: 5, jun: 6, junho: 6, jul: 7, julho: 7,
-        ago: 8, agosto: 8, set: 9, setembro: 9, out: 10, outubro: 10,
-        nov: 11, novembro: 11, dez: 12, dezembro: 12,
-      };
-      const match = first.match(
-        /(jan(?:eiro)?|fev(?:ereiro)?|mar(?:[cç]o)?|abr(?:il)?|mai(?:o)?|jun(?:ho)?|jul(?:ho)?|ago(?:sto)?|set(?:embro)?|out(?:ubro)?|nov(?:embro)?|dez(?:embro)?)[_\s-]*(\d{2,4})/i
-      );
-      if (match) {
-        const m = monthNames[match[1].toLowerCase()];
-        let y = parseInt(match[2], 10);
-        if (y < 100) y += 2000;
-        if (m) setUploadMonth(m);
-        if (y >= 2000) setUploadYear(y);
+    if (!files || files.length === 0) {
+      setDetectedFilesMeta([]);
+      return;
+    }
+
+    const metaList: FileMetadataResult[] = [];
+
+    for (const file of files) {
+      let preview = "";
+      try {
+        const ext = file.name.split(".").pop()?.toLowerCase();
+        if (ext === "ofx" || ext === "csv" || ext === "txt") {
+          // Lê primeiros 12KB para detecção instantânea e precisa no navegador
+          const slice = file.slice(0, 12000);
+          preview = await slice.text();
+        }
+      } catch (e) {
+        console.warn("Não foi possível ler preview do arquivo:", e);
       }
-      if (/cartao|fatura|card|visa|master|altus|liv/i.test(first)) {
-        setUploadSourceType("CREDIT_CARD");
-      }
+
+      const meta = detectFileMetadata(file.name, preview);
+      metaList.push(meta);
+    }
+
+    setDetectedFilesMeta(metaList);
+
+    if (metaList.length > 0) {
+      const first = metaList[0];
+      setUploadMonth(first.month);
+      setUploadYear(first.year);
+      setUploadSourceType(first.sourceType);
     }
   }
 
@@ -830,7 +843,7 @@ export default function ContabilidadePessoalPage() {
                     <input
                       type="file"
                       multiple
-                      accept=".ofx,.csv,.pdf"
+                      accept=".ofx,.csv,.pdf,.txt"
                       onChange={(e) => {
                         if (e.target.files) {
                           handleFileSelection(Array.from(e.target.files));
@@ -842,26 +855,74 @@ export default function ContabilidadePessoalPage() {
                     <div className="text-xs font-bold text-white">
                       {selectedFiles.length > 0
                         ? `${selectedFiles.length} arquivo(s) selecionado(s)`
-                        : "Clique ou arraste arquivos aqui"}
+                        : "Clique ou arraste seus arquivos aqui"}
                     </div>
                     <div className="text-[11px] text-slate-400 mt-1">
-                      Formatos suportados: <strong>.OFX</strong>, <strong>.PDF</strong> (faturas) e <strong>.CSV</strong>
+                      Formatos aceitos: <strong>.OFX</strong>, <strong>.PDF</strong>, <strong>.CSV</strong> e <strong>.TXT</strong>
                     </div>
 
                     {selectedFiles.length > 0 && (
-                      <div className="mt-3 space-y-1 text-left text-xs font-mono text-emerald-300 bg-black/40 p-2.5 rounded-xl border border-white/10 max-h-28 overflow-y-auto">
-                        {selectedFiles.map((f, i) => (
-                          <div key={i} className="truncate">
-                            ✓ {f.name} ({(f.size / 1024).toFixed(0)} KB)
-                          </div>
-                        ))}
+                      <div className="mt-4 space-y-2 text-left bg-black/60 p-3 rounded-2xl border border-white/10 max-h-48 overflow-y-auto">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between pb-1 border-b border-white/5">
+                          <span>Arquivos & Identificação Automática ({selectedFiles.length})</span>
+                          <span className="text-emerald-400 flex items-center gap-1 font-semibold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                            Detectado
+                          </span>
+                        </div>
+                        {selectedFiles.map((f, i) => {
+                          const meta = detectedFilesMeta[i];
+                          const ext = f.name.split(".").pop()?.toUpperCase() || "ARQ";
+                          const isCard = meta?.sourceType === "CREDIT_CARD";
+
+                          return (
+                            <div
+                              key={i}
+                              className="bg-slate-900/90 border border-white/10 rounded-xl p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm"
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-white/10 text-slate-200 font-mono shrink-0">
+                                  {ext}
+                                </span>
+                                <span className="text-xs font-semibold text-white truncate max-w-xs" title={f.name}>
+                                  {f.name}
+                                </span>
+                                <span className="text-[11px] text-slate-400 font-mono shrink-0">
+                                  ({(f.size / 1024).toFixed(0)} KB)
+                                </span>
+                              </div>
+
+                              {meta ? (
+                                <div className="flex flex-wrap items-center gap-1.5 shrink-0 text-[11px]">
+                                  <span
+                                    className={`px-2 py-0.5 rounded-lg font-bold flex items-center gap-1 border ${
+                                      isCard
+                                        ? "bg-indigo-500/15 text-indigo-300 border-indigo-500/30"
+                                        : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                                    }`}
+                                  >
+                                    {isCard ? <CreditCard size={12} /> : <Wallet size={12} />}
+                                    {meta.sourceTypeLabel}
+                                  </span>
+
+                                  <span className="px-2 py-0.5 rounded-lg font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                                    <Calendar size={12} />
+                                    {meta.periodLabel}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-slate-400 italic">Analisando...</span>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <div>
-                      <label className="block text-slate-300 font-bold mb-1">Mês de Referência (Fatura / Extrato)</label>
+                      <label className="block text-slate-300 font-bold mb-1">Mês de Referência (Detectado)</label>
                       <select
                         value={uploadMonth}
                         onChange={(e) => setUploadMonth(Number(e.target.value))}
@@ -875,7 +936,7 @@ export default function ContabilidadePessoalPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-slate-300 font-bold mb-1">Ano da Fatura</label>
+                      <label className="block text-slate-300 font-bold mb-1">Ano de Referência (Detectado)</label>
                       <select
                         value={uploadYear}
                         onChange={(e) => setUploadYear(Number(e.target.value))}
@@ -908,7 +969,7 @@ export default function ContabilidadePessoalPage() {
                         onChange={(e) => setUploadSourceType(e.target.value as any)}
                         className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-white outline-none cursor-pointer"
                       >
-                        <option value="AUTO">Identificação Automática</option>
+                        <option value="AUTO">Identificação Automática (Recomendado)</option>
                         <option value="BANK_STATEMENT">Extrato Bancário (Conta)</option>
                         <option value="CREDIT_CARD">Fatura de Cartão de Crédito</option>
                       </select>
@@ -961,6 +1022,46 @@ export default function ContabilidadePessoalPage() {
                       </strong>
                     </div>
                   </div>
+
+                  {Array.isArray(uploadResult.results) && uploadResult.results.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        Detalhamento por Arquivo:
+                      </div>
+                      <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                        {uploadResult.results.map((r: any, idx: number) => {
+                          const isCard = r.sourceType === "CREDIT_CARD";
+                          return (
+                            <div
+                              key={idx}
+                              className="bg-slate-900 border border-white/10 p-2.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs"
+                            >
+                              <div className="truncate max-w-xs font-semibold text-white">
+                                {r.filename}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                                <span
+                                  className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border ${
+                                    isCard
+                                      ? "bg-indigo-500/15 text-indigo-300 border-indigo-500/30"
+                                      : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                                  }`}
+                                >
+                                  {r.sourceTypeLabel || (isCard ? "Cartão" : "Extrato")}
+                                </span>
+                                <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                  {r.periodLabel || `${r.competenceMonth}/${r.competenceYear}`}
+                                </span>
+                                <span className="text-[11px] text-emerald-400 font-bold font-mono">
+                                  +{r.imported} novos
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   <button
                     onClick={() => setShowUploadModal(false)}

@@ -3,6 +3,8 @@ import { ParsedTransaction } from "./ofxParser";
 export interface ParsedPdfResult {
   sourceType: "BANK_STATEMENT" | "CREDIT_CARD";
   accountName?: string;
+  competenceMonth?: number;
+  competenceYear?: number;
   periodStart?: Date;
   periodEnd?: Date;
   transactions: ParsedTransaction[];
@@ -26,18 +28,21 @@ Diretrizes:
    - "CREDIT_CARD" (Fatura de Cartão de Crédito)
    - "BANK_STATEMENT" (Extrato de Conta Corrente / Poupança)
 2. Identifique o nome da instituição ou cartão (ex: "Nubank", "Itaú", "XP Visa Infinite", etc.).
-3. Para cada lançamento financeiro, extraia:
+3. Identifique o mês e o ano de competência/vencimento do documento (ex: se for fatura que vence em Fevereiro/2026, competenceMonth = 2, competenceYear = 2026; se for extrato de Janeiro/2026, competenceMonth = 1, competenceYear = 2026).
+4. Para cada lançamento financeiro, extraia:
    - "date": Data no formato ISO "YYYY-MM-DD"
    - "description": Nome limpo e claro do estabelecimento ou favorecido (ex: "iFood", "Uber", "Restaurante Silva", "Pão de Açúcar")
    - "amount": Valor numérico positivo (ex: 45.90, 120.00)
    - "type": "EXPENSE" para compras, saques, débitos, tarifas; "INCOME" para créditos, pagamentos de fatura recebidos, salários, pix recebido, estornos.
    - "installment": Parcela se houver no texto (ex: "01/10", "03/12") ou null se for à vista.
-4. Ignore totais, cabeçalhos, avisos ou resumos de saldo anterior. Extraia apenas as transações individuais.
+5. Ignore totais, cabeçalhos, avisos ou resumos de saldo anterior. Extraia apenas as transações individuais.
 
 Responda ESTRITAMENTE em formato JSON com o seguinte schema:
 {
   "sourceType": "CREDIT_CARD" | "BANK_STATEMENT",
   "accountName": "Nome do Banco ou Cartão",
+  "competenceMonth": 1,
+  "competenceYear": 2026,
   "periodStart": "YYYY-MM-DD" ou null,
   "periodEnd": "YYYY-MM-DD" ou null,
   "transactions": [
@@ -115,6 +120,8 @@ Responda ESTRITAMENTE em formato JSON com o seguinte schema:
   return {
     sourceType,
     accountName: parsed.accountName || (sourceType === "CREDIT_CARD" ? "Cartão de Crédito" : "Conta Bancária"),
+    competenceMonth: typeof parsed.competenceMonth === "number" ? parsed.competenceMonth : undefined,
+    competenceYear: typeof parsed.competenceYear === "number" ? parsed.competenceYear : undefined,
     periodStart: parsed.periodStart ? new Date(parsed.periodStart + "T12:00:00Z") : undefined,
     periodEnd: parsed.periodEnd ? new Date(parsed.periodEnd + "T12:00:00Z") : undefined,
     transactions,
