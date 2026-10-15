@@ -695,7 +695,12 @@ export default function BalancoPatrimonialView() {
 
             <div className="divide-y divide-white/5">
               {circulatingLiabilities.map((it) => {
-                const IconComp = CATEGORY_ICONS[it.category] || CreditCard;
+                const IconComp =
+                  it.category === "VEICULOS" ||
+                  it.title.toLowerCase().includes("veículo") ||
+                  it.title.toLowerCase().includes("carro")
+                    ? Car
+                    : CATEGORY_ICONS[it.category] || CreditCard;
                 return (
                   <div key={it.id} className="py-3 flex items-center justify-between gap-4 group">
                     <div className="flex items-center gap-3 min-w-0">
