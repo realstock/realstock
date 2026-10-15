@@ -104,27 +104,10 @@ export function detectDocumentType(
   contentPreview?: string,
   userOverride?: string
 ): DocumentTypeResult {
-  if (userOverride === "CREDIT_CARD") {
-    return {
-      sourceType: "CREDIT_CARD",
-      label: "Fatura de Cartão de Crédito",
-      confidence: "HIGH",
-      detectedFrom: "USER",
-    };
-  }
-  if (userOverride === "BANK_STATEMENT") {
-    return {
-      sourceType: "BANK_STATEMENT",
-      label: "Extrato Bancário",
-      confidence: "HIGH",
-      detectedFrom: "USER",
-    };
-  }
-
   const cleanFilename = (filename || "").toLowerCase();
   const cleanContent = (contentPreview || "").toLowerCase();
 
-  // 1. Tags OFX específicas (precisão máxima)
+  // 1. Tags OFX específicas (precisão máxima, supera qualquer seleção genérica)
   if (
     cleanContent.includes("<creditcardmsgsrsv1>") ||
     cleanContent.includes("<ccstmttrnrs>") ||
@@ -147,6 +130,24 @@ export function detectDocumentType(
       label: "Extrato Bancário",
       confidence: "HIGH",
       detectedFrom: "OFX_TAGS",
+    };
+  }
+
+  // 2. Se o usuário selecionou explicitamente no formulário (para arquivos não-OFX)
+  if (userOverride === "CREDIT_CARD") {
+    return {
+      sourceType: "CREDIT_CARD",
+      label: "Fatura de Cartão de Crédito",
+      confidence: "HIGH",
+      detectedFrom: "USER",
+    };
+  }
+  if (userOverride === "BANK_STATEMENT") {
+    return {
+      sourceType: "BANK_STATEMENT",
+      label: "Extrato Bancário",
+      confidence: "HIGH",
+      detectedFrom: "USER",
     };
   }
 
@@ -245,19 +246,92 @@ export function detectCompetence(
   contentPreview?: string,
   transactions?: Array<{ date: Date }>
 ): CompetenceResult {
-  // 1. Se o usuário selecionou explicitamente no formulário
-  if (userMonth && userMonth >= 1 && userMonth <= 12 && userYear && userYear >= 2000) {
-    return {
-      month: userMonth,
-      year: userYear,
-      monthLabel: MONTH_NAMES_PT[userMonth],
-      periodLabel: `${MONTH_NAMES_PT[userMonth]}/${userYear}`,
-      detectedFrom: "USER",
-    };
-  }
-
   const cleanFilename = (filename || "").toLowerCase();
   const cleanContent = (contentPreview || "").toLowerCase();
+
+  // 1. Procura no nome do arquivo:
+  // 1a. Mês por extenso/abreviação seguido de ano (ex: "Jan_26", "Jan-2026", "Janeiro_26", "Fev26")
+  const textPattern =
+    /(jan(?:eiro)?|fev(?:ereiro)?|mar(?:[cç]o)?|abr(?:il)?|mai(?:o)?|jun(?:ho)?|jul(?:ho)?|ago(?:sto)?|set(?:embro)?|out(?:ubro)?|nov(?:embro)?|dez(?:embro)?|january|february|march|april|may|june|july|august|september|october|november|december)[_.\s-]*(\d{2,4})/i;
+  const textMatch = cleanFilename.match(textPattern);
+  if (textMatch) {
+    const mStr = textMatch[1].toLowerCase();
+    const yStr = textMatch[2];
+    const month = MONTH_NAMES_MAP[mStr];
+    let year = parseInt(yStr, 10);
+    if (year < 100) year += 2000;
+
+    if (month && year >= 2000 && year <= 2100) {
+      return {
+        month,
+        year,
+        monthLabel: MONTH_NAMES_PT[month],
+        periodLabel: `${MONTH_NAMES_PT[month]}/${year}`,
+        detectedFrom: "FILENAME",
+      };
+    }
+  }
+
+  // 1b. Ano seguido de Mês por extenso (ex: "2026_janeiro", "2026-Jan")
+  const yearFirstTextPattern =
+    /(20\d{2})[_.\s-]*(jan(?:eiro)?|fev(?:ereiro)?|mar(?:[cç]o)?|abr(?:il)?|mai(?:o)?|jun(?:ho)?|jul(?:ho)?|ago(?:sto)?|set(?:embro)?|out(?:ubro)?|nov(?:embro)?|dez(?:embro)?)/i;
+  const yearFirstTextMatch = cleanFilename.match(yearFirstTextPattern);
+  if (yearFirstTextMatch) {
+    const year = parseInt(yearFirstTextMatch[1], 10);
+    const mStr = yearFirstTextMatch[2].toLowerCase();
+    const month = MONTH_NAMES_MAP[mStr];
+    if (month && year >= 2000 && year <= 2100) {
+      return {
+        month,
+        year,
+        monthLabel: MONTH_NAMES_PT[month],
+        periodLabel: `${MONTH_NAMES_PT[month]}/${year}`,
+        detectedFrom: "FILENAME",
+      };
+    }
+  }
+
+  // 1c. Padrão numérico YYYY-MM ou MM-YYYY ou YYYY_MM
+  const numMatch = cleanFilename.match(/(\d{4})[_-](\d{1,2})/) || cleanFilename.match(/(\d{1,2})[_-](\d{4})/);
+  if (numMatch) {
+    const p1 = parseInt(numMatch[1], 10);
+    const p2 = parseInt(numMatch[2], 10);
+    if (p1 > 100) {
+      if (p2 >= 1 && p2 <= 12) {
+        return {
+          month: p2,
+          year: p1,
+          monthLabel: MONTH_NAMES_PT[p2],
+          periodLabel: `${MONTH_NAMES_PT[p2]}/${p1}`,
+          detectedFrom: "FILENAME",
+        };
+      }
+    } else {
+      if (p1 >= 1 && p1 <= 12) {
+        return {
+          month: p1,
+          year: p2,
+          monthLabel: MONTH_NAMES_PT[p1],
+          periodLabel: `${MONTH_NAMES_PT[p1]}/${p2}`,
+          detectedFrom: "FILENAME",
+        };
+      }
+    }
+  }
+
+  // 1d. Padrão YYYYMM numérico contínuo no nome (ex: "extrato_202601.ofx")
+  const compactNumMatch = cleanFilename.match(/(20\d{2})(0[1-9]|1[0-2])/);
+  if (compactNumMatch) {
+    const year = parseInt(compactNumMatch[1], 10);
+    const month = parseInt(compactNumMatch[2], 10);
+    return {
+      month,
+      year,
+      monthLabel: MONTH_NAMES_PT[month],
+      periodLabel: `${MONTH_NAMES_PT[month]}/${year}`,
+      detectedFrom: "FILENAME",
+    };
+  }
 
   // 2. Procura no conteúdo (cabeçalhos de fatura ou extrato)
   if (cleanContent) {
@@ -298,91 +372,7 @@ export function detectCompetence(
     }
   }
 
-  // 3. Procura no nome do arquivo:
-  // 3a. Mês por extenso/abreviação seguido de ano (ex: "Jan_26", "Jan-2026", "Janeiro_26", "Fev26")
-  const textPattern =
-    /(jan(?:eiro)?|fev(?:ereiro)?|mar(?:[cç]o)?|abr(?:il)?|mai(?:o)?|jun(?:ho)?|jul(?:ho)?|ago(?:sto)?|set(?:embro)?|out(?:ubro)?|nov(?:embro)?|dez(?:embro)?|january|february|march|april|may|june|july|august|september|october|november|december)[_.\s-]*(\d{2,4})/i;
-  const textMatch = cleanFilename.match(textPattern);
-  if (textMatch) {
-    const mStr = textMatch[1].toLowerCase();
-    const yStr = textMatch[2];
-    const month = MONTH_NAMES_MAP[mStr];
-    let year = parseInt(yStr, 10);
-    if (year < 100) year += 2000;
-
-    if (month && year >= 2000 && year <= 2100) {
-      return {
-        month,
-        year,
-        monthLabel: MONTH_NAMES_PT[month],
-        periodLabel: `${MONTH_NAMES_PT[month]}/${year}`,
-        detectedFrom: "FILENAME",
-      };
-    }
-  }
-
-  // 3b. Ano seguido de Mês por extenso (ex: "2026_janeiro", "2026-Jan")
-  const yearFirstTextPattern =
-    /(20\d{2})[_.\s-]*(jan(?:eiro)?|fev(?:ereiro)?|mar(?:[cç]o)?|abr(?:il)?|mai(?:o)?|jun(?:ho)?|jul(?:ho)?|ago(?:sto)?|set(?:embro)?|out(?:ubro)?|nov(?:embro)?|dez(?:embro)?)/i;
-  const yearFirstTextMatch = cleanFilename.match(yearFirstTextPattern);
-  if (yearFirstTextMatch) {
-    const year = parseInt(yearFirstTextMatch[1], 10);
-    const mStr = yearFirstTextMatch[2].toLowerCase();
-    const month = MONTH_NAMES_MAP[mStr];
-    if (month && year >= 2000 && year <= 2100) {
-      return {
-        month,
-        year,
-        monthLabel: MONTH_NAMES_PT[month],
-        periodLabel: `${MONTH_NAMES_PT[month]}/${year}`,
-        detectedFrom: "FILENAME",
-      };
-    }
-  }
-
-  // 3c. Padrão numérico YYYY-MM ou MM-YYYY ou YYYY_MM
-  const numMatch = cleanFilename.match(/(\d{4})[_-](\d{1,2})/) || cleanFilename.match(/(\d{1,2})[_-](\d{4})/);
-  if (numMatch) {
-    const p1 = parseInt(numMatch[1], 10);
-    const p2 = parseInt(numMatch[2], 10);
-    if (p1 > 100) {
-      if (p2 >= 1 && p2 <= 12) {
-        return {
-          month: p2,
-          year: p1,
-          monthLabel: MONTH_NAMES_PT[p2],
-          periodLabel: `${MONTH_NAMES_PT[p2]}/${p1}`,
-          detectedFrom: "FILENAME",
-        };
-      }
-    } else {
-      if (p1 >= 1 && p1 <= 12) {
-        return {
-          month: p1,
-          year: p2,
-          monthLabel: MONTH_NAMES_PT[p1],
-          periodLabel: `${MONTH_NAMES_PT[p1]}/${p2}`,
-          detectedFrom: "FILENAME",
-        };
-      }
-    }
-  }
-
-  // 3d. Padrão YYYYMM numérico contínuo no nome (ex: "extrato_202601.ofx")
-  const compactNumMatch = cleanFilename.match(/(20\d{2})(0[1-9]|1[0-2])/);
-  if (compactNumMatch) {
-    const year = parseInt(compactNumMatch[1], 10);
-    const month = parseInt(compactNumMatch[2], 10);
-    return {
-      month,
-      year,
-      monthLabel: MONTH_NAMES_PT[month],
-      periodLabel: `${MONTH_NAMES_PT[month]}/${year}`,
-      detectedFrom: "FILENAME",
-    };
-  }
-
-  // 4. Se houver transações carregadas, calcula o mês/ano predominante
+  // 3. Se houver transações carregadas, calcula o mês/ano predominante
   if (transactions && transactions.length > 0) {
     const monthCounts: Record<string, number> = {};
     for (const tx of transactions) {
@@ -409,6 +399,19 @@ export function detectCompetence(
       }
     }
   }
+
+  // 4. Se o usuário forneceu mês/ano no formulário para arquivo sem data explícita
+  if (userMonth && userMonth >= 1 && userMonth <= 12 && userYear && userYear >= 2000) {
+    return {
+      month: userMonth,
+      year: userYear,
+      monthLabel: MONTH_NAMES_PT[userMonth],
+      periodLabel: `${MONTH_NAMES_PT[userMonth]}/${userYear}`,
+      detectedFrom: "USER",
+    };
+  }
+
+
 
   // 5. Se houver data de fechamento ou período (dtEnd)
   if (dtEnd) {

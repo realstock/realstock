@@ -102,11 +102,14 @@ export default function ContabilidadePessoalPage() {
 
     setDetectedFilesMeta(metaList);
 
-    if (metaList.length > 0) {
+    if (metaList.length === 1) {
       const first = metaList[0];
       setUploadMonth(first.month);
       setUploadYear(first.year);
       setUploadSourceType(first.sourceType);
+    } else if (metaList.length > 1) {
+      // Para múltiplos arquivos, mantém AUTO para que cada arquivo seja processado com seu próprio tipo e mês
+      setUploadSourceType("AUTO");
     }
   }
 

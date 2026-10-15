@@ -67,8 +67,19 @@ function extractTagValue(block: string, tag: string): string | null {
   return null;
 }
 
-function extractInstallment(text: string): string | undefined {
-  const match = text.match(/\b(\d{1,2}\/\d{1,2})\b/);
+function extractInstallment(text: string, sourceType: "BANK_STATEMENT" | "CREDIT_CARD"): string | undefined {
+  if (sourceType === "BANK_STATEMENT") {
+    // Extratos bancários contêm datas como "01/03 08:37" ou "02/03/2026", que NÃO são parcelas
+    const match = text.match(/\b(?:parc(?:ela)?|prest)\.?\s*(\d{1,2}\/\d{1,2})\b/i);
+    return match ? match[1] : undefined;
+  }
+  // No cartão de crédito, busca parcelas como "01/10", "PARC 02/05" (evitando datas como 01/03/2026)
+  if (/\d{1,2}\/\d{1,2}\/\d{2,4}/.test(text)) {
+    const withoutDates = text.replace(/\d{1,2}\/\d{1,2}\/\d{2,4}/g, "");
+    const match = withoutDates.match(/\b(\d{1,2}\/(?:0[2-9]|[1-5]\d))\b/);
+    return match ? match[1] : undefined;
+  }
+  const match = text.match(/\b(\d{1,2}\/(?:0[2-9]|[1-5]\d))\b/);
   return match ? match[1] : undefined;
 }
 
@@ -127,7 +138,7 @@ export function parseOfx(ofxContent: string): ParsedOfxResult {
       // Cartão de crédito:
       const isCardPayment =
         (numAmt > 0 || trnType === "CREDIT") &&
-        /PGTO\s*DEBITO|PAGAMENTO\s*FATURA|PAGTO\s*FATURA|PAGTO\s*POR\s*DEB|PAGAMENTO\s*DEB|PGTO\s*CONTA|PAGAMENTO\s*CONTA|PGTO\s*EFETUADO/i.test(
+        /PGTO\.?\s*CASH|PGTO\s*DEBITO|PAGAMENTO\s*FATURA|PAGTO\s*FATURA|PAGTO\s*POR\s*DEB|PAGAMENTO\s*DEB|PGTO\s*CONTA|PAGAMENTO\s*CONTA|PGTO\s*EFETUADO/i.test(
           cleanDescription
         );
       if (isCardPayment) {
@@ -144,7 +155,7 @@ export function parseOfx(ofxContent: string): ParsedOfxResult {
     }
 
     const txDate = parseOfxDate(dtPostedStr);
-    const installment = extractInstallment(cleanDescription);
+    const installment = extractInstallment(cleanDescription, sourceType);
 
     transactions.push({
       date: txDate,

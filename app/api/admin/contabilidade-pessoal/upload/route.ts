@@ -122,11 +122,17 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Se o usuário selecionou um tipo explicitamente (não AUTO), respeita a escolha do usuário
-      if (userSourceType === "CREDIT_CARD") {
-        detectedSourceType = "CREDIT_CARD";
-      } else if (userSourceType === "BANK_STATEMENT") {
-        detectedSourceType = "BANK_STATEMENT";
+      // Se for envio em lote (múltiplos arquivos), o tipo e a competência de cada arquivo
+      // DEVEM ser detectados individualmente para não contaminar arquivos diferentes.
+      const isMulti = files.length > 1;
+
+      // Respeita seleção manual do usuário apenas se for arquivo único E não for OFX contraditório
+      if (!isMulti) {
+        if (userSourceType === "CREDIT_CARD" && detectedSourceType !== "BANK_STATEMENT") {
+          detectedSourceType = "CREDIT_CARD";
+        } else if (userSourceType === "BANK_STATEMENT" && detectedSourceType !== "CREDIT_CARD") {
+          detectedSourceType = "BANK_STATEMENT";
+        }
       }
 
       if (parsedTxList.length === 0) {
@@ -140,11 +146,11 @@ export async function POST(req: NextRequest) {
       }
 
       // 2. DETECÇÃO DA COMPETÊNCIA (MÊS/ANO DA FATURA OU EXTRATO)
-      // Prioridade: Formulário manual > Metadado do arquivo (PDF/TXT) > Detector inteligente (nome/conteúdo/transações)
+      // Se for múltiplos arquivos, não usa userCompetenceMonth genérico; deixa o detector extrair de cada arquivo
       const comp = detectCompetence(
         filename,
-        userCompetenceMonth || fileCompetenceMonth,
-        userCompetenceYear || fileCompetenceYear,
+        isMulti ? fileCompetenceMonth : (userCompetenceMonth || fileCompetenceMonth),
+        isMulti ? fileCompetenceYear : (userCompetenceYear || fileCompetenceYear),
         filePeriodEnd,
         contentPreview,
         parsedTxList
