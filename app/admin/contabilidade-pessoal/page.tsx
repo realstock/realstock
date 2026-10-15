@@ -24,9 +24,11 @@ import {
   X,
   TrendingUp,
   Percent,
+  Landmark,
 } from "lucide-react";
 import { STANDARD_CATEGORIES } from "@/lib/personal-accounting/categorizer";
 import { detectFileMetadata, FileMetadataResult } from "@/lib/personal-accounting/competenceDetector";
+import BalancoPatrimonialView from "./components/BalancoPatrimonialView";
 
 const CATEGORY_COLORS: Record<string, string> = {
   "Alimentação & Supermercado": "bg-emerald-500",
@@ -46,6 +48,8 @@ const CATEGORY_COLORS: Record<string, string> = {
 export default function ContabilidadePessoalPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+
+  const [activeTab, setActiveTab] = useState<"FLUXO" | "BALANCO">("FLUXO");
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
@@ -338,59 +342,101 @@ export default function ContabilidadePessoalPage() {
             </p>
           </div>
 
-          {/* Seletor de Período e Botões */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 bg-slate-900/90 border border-white/10 p-2 rounded-2xl">
-              <Calendar size={16} className="text-slate-400 ml-1" />
-              <select
-                className="bg-slate-800 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-bold outline-none cursor-pointer"
-                value={month}
-                onChange={(e) => setMonth(Number(e.target.value))}
+          {/* Seletor de Período e Botões (exibidos no Fluxo Mensal) */}
+          {activeTab === "FLUXO" && (
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2 bg-slate-900/90 border border-white/10 p-2 rounded-2xl">
+                <Calendar size={16} className="text-slate-400 ml-1" />
+                <select
+                  className="bg-slate-800 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-bold outline-none cursor-pointer"
+                  value={month}
+                  onChange={(e) => setMonth(Number(e.target.value))}
+                >
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                    <option key={m} value={m}>
+                      {new Date(0, m - 1).toLocaleString("pt-BR", { month: "long" }).toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="bg-slate-800 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-bold outline-none cursor-pointer"
+                  value={year}
+                  onChange={(e) => setYear(Number(e.target.value))}
+                >
+                  {[2024, 2025, 2026, 2027].map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={() => setShowManualModal(true)}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3.5 py-2.5 rounded-xl border border-white/10 flex items-center gap-1.5 transition cursor-pointer"
               >
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                  <option key={m} value={m}>
-                    {new Date(0, m - 1).toLocaleString("pt-BR", { month: "long" }).toUpperCase()}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="bg-slate-800 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-bold outline-none cursor-pointer"
-                value={year}
-                onChange={(e) => setYear(Number(e.target.value))}
+                <Plus size={15} />
+                Manual
+              </button>
+
+              <button
+                onClick={() => {
+                  setUploadResult(null);
+                  setUploadMonth(month);
+                  setUploadYear(year);
+                  setShowUploadModal(true);
+                }}
+                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-600/20 flex items-center gap-2 transition cursor-pointer"
               >
-                {[2024, 2025, 2026, 2027].map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
+                <UploadCloud size={16} />
+                Subir Extrato ou Cartão
+              </button>
             </div>
-
-            <button
-              onClick={() => setShowManualModal(true)}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3.5 py-2.5 rounded-xl border border-white/10 flex items-center gap-1.5 transition cursor-pointer"
-            >
-              <Plus size={15} />
-              Manual
-            </button>
-
-            <button
-              onClick={() => {
-                setUploadResult(null);
-                setUploadMonth(month);
-                setUploadYear(year);
-                setShowUploadModal(true);
-              }}
-              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-600/20 flex items-center gap-2 transition cursor-pointer"
-            >
-              <UploadCloud size={16} />
-              Subir Extrato ou Cartão
-            </button>
-          </div>
+          )}
         </div>
 
-        {/* CARDS DE RESUMO (KPIs) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* SUB-TABS DA CONTABILIDADE PESSOAL */}
+        <div className="flex items-center gap-3 border-b border-white/10 pb-4">
+          <button
+            onClick={() => setActiveTab("FLUXO")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition cursor-pointer ${
+              activeTab === "FLUXO"
+                ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-950/40"
+                : "bg-slate-900 hover:bg-slate-800 text-slate-300 border border-white/5"
+            }`}
+          >
+            <TrendingUp size={15} />
+            📊 Fluxo Mensal & Extratos
+          </button>
+
+          <button
+            onClick={() => setActiveTab("BALANCO")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition cursor-pointer ${
+              activeTab === "BALANCO"
+                ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-950/40"
+                : "bg-slate-900 hover:bg-slate-800 text-slate-300 border border-white/5"
+            }`}
+          >
+            <Landmark size={15} />
+            🏛️ Balanço Patrimonial
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                activeTab === "BALANCO"
+                  ? "bg-slate-950/20 text-slate-950"
+                  : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+              }`}
+            >
+              Jan - Set
+            </span>
+          </button>
+        </div>
+
+        {activeTab === "BALANCO" ? (
+          <BalancoPatrimonialView />
+        ) : (
+          <>
+            {/* CARDS DE RESUMO (KPIs) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Receitas */}
           <div className="bg-gradient-to-br from-emerald-500/15 via-slate-900 to-slate-950 border border-emerald-500/20 p-5 rounded-3xl shadow-xl flex items-center gap-4">
             <div className="w-13 h-13 bg-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-400 shrink-0">
@@ -816,6 +862,8 @@ export default function ContabilidadePessoalPage() {
             </div>
           )}
         </div>
+      </>
+    )}
 
         {/* MODAL DE UPLOAD DE EXTRATO / CARTÃO */}
         {showUploadModal && (

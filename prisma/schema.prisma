@@ -112,6 +112,7 @@ model User {
   autoMessageSettings         AutoMessageSetting[]
   personalTransactions        PersonalTransaction[]
   personalUploads             PersonalUpload[]
+  personalBalanceItems        PersonalBalanceItem[]
 
   @@map("users")
 }
@@ -519,5 +520,25 @@ model PersonalUpload {
   transactions       PersonalTransaction[]
 
   @@map("personal_uploads")
+}
+
+model PersonalBalanceItem {
+  id               String   @id @default(cuid())
+  userId           Int      @map("user_id")
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type             String   @map("type") // "ASSET" | "LIABILITY"
+  subgroup         String   @map("subgroup") // "CIRCULANTE" | "NAO_CIRCULANTE"
+  category         String   @map("category") // "CAIXA_BANCOS" | "APLICACOES_LIQUIDEZ" | "IMOVEIS" | "VEICULOS" | "INVESTIMENTOS_LP" | "PARTICIPACOES" | "OUTROS_BENS" | "CARTOES_CREDITO" | "CONTAS_PAGAR" | "EMPRESTIMOS" | "FINANCIAMENTOS" | "OUTRAS_OBRIGACOES"
+  title            String   @map("title")
+  institution      String?  @map("institution")
+  value            Decimal  @db.Decimal(14, 2)
+  notes            String?  @map("notes") @db.Text
+  isAutoCalculated Boolean  @default(false) @map("is_auto_calculated")
+  referenceDate    DateTime @default(now()) @map("reference_date")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([userId, type, subgroup])
+  @@map("personal_balance_items")
 }
 
