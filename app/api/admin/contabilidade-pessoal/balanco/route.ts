@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { syncLoanAbatement } from "@/lib/personal-accounting/loanTracker";
 
 export async function GET(req: NextRequest) {
   try {
@@ -49,6 +50,9 @@ export async function GET(req: NextRequest) {
     const latestCardInvoiceAmount = Number(
       sepCardTxs.reduce((sum, t) => sum + Number(t.amount), 0).toFixed(2)
     );
+
+    // Sincroniza abatimento contínuo do empréstimo de curto prazo (R$ 5.691,46)
+    const loanTracker = await syncLoanAbatement(userId);
 
     // 2. Busca itens salvos do Balanço Patrimonial
     let items = await prisma.personalBalanceItem.findMany({
@@ -267,6 +271,7 @@ export async function GET(req: NextRequest) {
         totalEffectiveExpenses: Number(totalEffectiveExpenses.toFixed(2)),
         latestCardInvoiceAmount,
       },
+      loanTracker,
     });
   } catch (error: any) {
     console.error("Erro ao carregar Balanço Patrimonial:", error);
@@ -390,7 +395,14 @@ export async function PUT(req: NextRequest) {
         data: { value: latestCardInvoiceAmount },
       });
 
-      return NextResponse.json({ success: true, message: "Valores automáticos sincronizados com sucesso." });
+      // Sincroniza também abatimento do empréstimo
+      const loanTracker = await syncLoanAbatement(userId);
+
+      return NextResponse.json({
+        success: true,
+        message: "Valores automáticos e empréstimo sincronizados com sucesso.",
+        loanTracker,
+      });
     }
 
     // Atualização em lote de itens (array de { id, value })

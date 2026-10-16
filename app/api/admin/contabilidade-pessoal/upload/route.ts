@@ -9,6 +9,7 @@ import { parseTxt } from "@/lib/personal-accounting/txtParser";
 import { parsePdfWithAI } from "@/lib/personal-accounting/pdfParser";
 import { categorizeTransaction, batchCategorizeWithAI, PersonalCategory } from "@/lib/personal-accounting/categorizer";
 import { detectCompetence, detectDocumentType } from "@/lib/personal-accounting/competenceDetector";
+import { syncLoanAbatement } from "@/lib/personal-accounting/loanTracker";
 
 function generateTxHash(userId: number, date: Date, amount: number, description: string): string {
   const dateKey = date.toISOString().slice(0, 10);
@@ -199,7 +200,7 @@ export async function POST(req: NextRequest) {
       // 4. CATEGORIZAÇÃO
       const unknownItems: Array<{ id: string; description: string; amount: number }> = [];
       newTransactions.forEach((tx, idx) => {
-        const cat = categorizeTransaction(tx.description, tx.type, detectedSourceType);
+        const cat = categorizeTransaction(tx.description, tx.type, detectedSourceType, tx.amount);
         tx.category = cat;
         if (cat === "Outros" && tx.type === "EXPENSE") {
           unknownItems.push({ id: String(idx), description: tx.description, amount: tx.amount });
@@ -292,6 +293,13 @@ export async function POST(req: NextRequest) {
         },
         totalAmount: Number((totalIncome + totalExpense).toFixed(2)),
       });
+    }
+
+    // 7. SINCRONIZA ABATIMENTO DE EMPRÉSTIMOS CASO HAJA NOVAS TRANSAÇÕES
+    try {
+      await syncLoanAbatement(userId);
+    } catch (syncErr) {
+      console.error("Erro ao sincronizar abatimento de empréstimo após upload:", syncErr);
     }
 
     return NextResponse.json({

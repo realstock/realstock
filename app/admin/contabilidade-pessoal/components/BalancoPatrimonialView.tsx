@@ -715,6 +715,11 @@ export default function BalancoPatrimonialView() {
                               Apurado Jan-Set
                             </span>
                           )}
+                          {(it.category === "EMPRESTIMOS" || it.notes?.includes("Detecção automática") || it.notes?.includes("parcela(s) paga(s)")) && (
+                            <span className="bg-orange-500/20 text-orange-400 border border-orange-500/30 text-[9px] px-1.5 py-0.5 rounded font-bold tracking-tight">
+                              ⚡ Auto-Abatimento Ativo
+                            </span>
+                          )}
                         </div>
                         <div className="text-[11px] text-slate-400 truncate">
                           {it.institution || CATEGORY_LABELS[it.category]}

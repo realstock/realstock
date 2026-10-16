@@ -15,6 +15,7 @@ export const STANDARD_CATEGORIES = [
   "Serviços & Assinaturas",
   "Fatura de Cartão",
   "Investimentos",
+  "Empréstimos",
   "Renda / Salário",
   "Outros",
 ] as const;
@@ -199,17 +200,32 @@ const CATEGORY_RULES: Array<{
       /faturamento|honor[aá]rios/i,
     ],
   },
+  {
+    category: "Empréstimos",
+    patterns: [
+      /empr[eé]stimo|financiamento|consorcio|cons[oó]rcio|parcela\s*empr/i,
+      /5691/i,
+    ],
+  },
 ];
 
 /**
- * Classifica uma transação com base na descrição, tipo e regras.
+ * Classifica uma transação com base na descrição, tipo, regras e valor.
  */
 export function categorizeTransaction(
   description: string,
   type: "INCOME" | "EXPENSE",
-  sourceType: "BANK_STATEMENT" | "CREDIT_CARD" = "BANK_STATEMENT"
+  sourceType: "BANK_STATEMENT" | "CREDIT_CARD" = "BANK_STATEMENT",
+  amount?: number
 ): PersonalCategory {
   const clean = description.trim();
+
+  // Se o valor for a parcela do empréstimo de curto prazo (~R$ 5.691,46)
+  if (type === "EXPENSE" && amount !== undefined) {
+    if (Math.abs(amount - 5691.46) <= 2.0) {
+      return "Empréstimos";
+    }
+  }
 
   // 1. Se for entrada de dinheiro (INCOME)
   if (type === "INCOME") {

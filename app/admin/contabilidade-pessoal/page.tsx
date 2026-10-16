@@ -40,6 +40,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Compras & Varejo": "bg-indigo-500",
   "Serviços & Assinaturas": "bg-cyan-500",
   "Fatura de Cartão": "bg-teal-500",
+  "Empréstimos": "bg-orange-500",
   "Investimentos": "bg-emerald-400",
   "Renda / Salário": "bg-green-500",
   "Outros": "bg-slate-500",
