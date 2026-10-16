@@ -40,13 +40,20 @@ export async function syncLoanAbatement(userId: number): Promise<LoanAbatementRe
       OR: [
         {
           amount: {
-            gte: LOAN_CONFIG.INSTALLMENT_VALUE - 2.0,
-            lte: LOAN_CONFIG.INSTALLMENT_VALUE + 2.0,
+            gte: LOAN_CONFIG.INSTALLMENT_VALUE - 5.0,
+            lte: LOAN_CONFIG.INSTALLMENT_VALUE + 5.0,
           },
         },
         {
           description: {
             contains: "5691",
+            mode: "insensitive",
+          },
+        },
+        {
+          description: {
+            contains: "5.691",
+            mode: "insensitive",
           },
         },
       ],
@@ -81,13 +88,21 @@ export async function syncLoanAbatement(userId: number): Promise<LoanAbatementRe
   }
 
   // 3. Atualiza ou cria o item no Balanço Patrimonial (PersonalBalanceItem)
-  const existingItem = await prisma.personalBalanceItem.findFirst({
+  // Busca TODOS os itens existentes que correspondam a este empréstimo
+  const matchingItems = await prisma.personalBalanceItem.findMany({
     where: {
       userId,
       type: "LIABILITY",
       category: LOAN_CONFIG.CATEGORY,
-      title: { contains: "5691" },
+      OR: [
+        { title: { contains: "Empréstimo", mode: "insensitive" } },
+        { title: { contains: "5.691" } },
+        { title: { contains: "5691" } },
+        { notes: { contains: "5.691" } },
+        { notes: { contains: "5691" } },
+      ],
     },
+    orderBy: { createdAt: "asc" },
   });
 
   const title = `${LOAN_CONFIG.TITLE_PREFIX} (${remainingInstallments} parcelas de R$ 5.691,46)`;
@@ -96,9 +111,10 @@ export async function syncLoanAbatement(userId: number): Promise<LoanAbatementRe
       ? `Original: ${LOAN_CONFIG.BASE_INSTALLMENTS} parcelas (R$ ${LOAN_CONFIG.TOTAL_BASE_VALUE.toFixed(2)}). ${paidCount} parcela(s) paga(s) via PIX/Cartão (-R$ ${totalAmortized.toFixed(2)}). Restam ${remainingInstallments} parcelas de R$ 5.691,46.`
       : `Empréstimo de curto prazo: 50 parcelas de R$ 5.691,46 (Total R$ 284.573,00). Detecção automática de PIX de R$ 5.691,46 ativada para abatimento.`;
 
-  if (existingItem) {
+  if (matchingItems.length > 0) {
+    const mainItem = matchingItems[0];
     await prisma.personalBalanceItem.update({
-      where: { id: existingItem.id },
+      where: { id: mainItem.id },
       data: {
         title,
         value: remainingDebt,
@@ -107,6 +123,14 @@ export async function syncLoanAbatement(userId: number): Promise<LoanAbatementRe
         institution: "PIX Cartão de Crédito / Banco",
       },
     });
+
+    // Se houver itens duplicados (mais de 1), exclui todos os outros garantindo 1 lançamento único
+    if (matchingItems.length > 1) {
+      const duplicateIds = matchingItems.slice(1).map((i) => i.id);
+      await prisma.personalBalanceItem.deleteMany({
+        where: { id: { in: duplicateIds } },
+      });
+    }
   } else {
     // Procura se tem algum item genérico de empréstimos zerado para reaproveitar
     const genericItem = await prisma.personalBalanceItem.findFirst({
