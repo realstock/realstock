@@ -58,3 +58,16 @@ select.input option {
   color: white;
 }
 
+/* Corrigir alinhamento e padding de inputs de data no iOS Safari / WebKit */
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: inherit !important;
+}
+
+input[type="date"] {
+  min-height: 2.5rem;
+  line-height: 1.25rem;
+}
+

@@ -7,6 +7,7 @@ import { signOut, useSession } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import AdSenseBanner from "./AdSenseBanner";
 import { useListingType } from "@/context/ListingTypeContext";
+import { User, LogIn } from "lucide-react";
 
 export default function Header() {
   const { data: session, status } = useSession();
@@ -101,25 +102,25 @@ export default function Header() {
 
   return (
     <header className="border-b border-white/10 bg-slate-950 text-white">
-      {/* Linha superior: Logo, Switcher, AdSense, Perfil / Login */}
-      <div className="mx-auto flex max-w-[1600px] h-[70px] lg:h-[80px] items-center justify-between px-2.5 sm:px-4 lg:px-6 gap-2">
-        <div className="flex items-center gap-1.5 sm:gap-3 md:gap-5 min-w-0">
+      {/* Linha superior: Logo, Switcher (Desktop), AdSense, Perfil / Login */}
+      <div className="mx-auto flex max-w-[1600px] h-[58px] sm:h-[70px] lg:h-[80px] items-center justify-between px-3 sm:px-4 lg:px-6 gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 md:gap-5 min-w-0">
           <Link href="/" className="block shrink-0">
             <Image
               src="/logo-realstock.jpg"
               alt="RealStock"
               width={1280}
               height={629}
-              className="h-[36px] sm:h-[44px] lg:h-[52px] w-auto object-contain"
+              className="h-[34px] sm:h-[44px] lg:h-[52px] w-auto object-contain"
               priority
             />
           </Link>
 
-          {/* Switcher Compra e Venda / Temporada */}
-          <div className="flex rounded-xl bg-slate-900 border border-white/10 p-[2px] sm:p-[3px] select-none shrink-0">
+          {/* Switcher Compra e Venda / Temporada (Desktop / Tablet >= 640px) */}
+          <div className="hidden sm:flex rounded-xl bg-slate-900 border border-white/10 p-[3px] select-none shrink-0 shadow-inner">
             <button
               onClick={() => handleTypeSwitch("COMPRA_VENDA")}
-              className={`rounded-lg px-1.5 sm:px-3.5 py-1 sm:py-1.5 text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+              className={`rounded-lg px-3.5 py-1.5 text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 listingType === "COMPRA_VENDA"
                   ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/20"
                   : "text-slate-400 hover:text-white"
@@ -129,7 +130,7 @@ export default function Header() {
             </button>
             <button
               onClick={() => handleTypeSwitch("ALUGUEL_TEMPORADA")}
-              className={`rounded-lg px-1.5 sm:px-3.5 py-1 sm:py-1.5 text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+              className={`rounded-lg px-3.5 py-1.5 text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 listingType === "ALUGUEL_TEMPORADA"
                   ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20"
                   : "text-slate-400 hover:text-white"
@@ -140,7 +141,7 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Espaço reservado para o Banner do Google Ads */}
+        {/* Espaço reservado para o Banner do Google Ads (Apenas telas grandes) */}
         <div className="hidden lg:flex flex-1 mx-8 h-[80px] max-h-[80px] items-center justify-center overflow-hidden relative">
           <div className="absolute inset-0 flex items-center justify-center -z-10 text-slate-700 text-xs text-dashed border border-white/5 rounded-xl">Anúncio Global</div>
           <AdSenseBanner 
@@ -151,15 +152,58 @@ export default function Header() {
           />
         </div>
 
-        {/* Top Right: Nome do Usuário apenas quando logado */}
+        {/* Top Right: Nome do Usuário ou Botão Entrar */}
         <div className="flex items-center gap-2 shrink-0">
-          {status === "loading" ? null : user ? (
-            <div className="flex items-center gap-2">
-              <span className="text-xs sm:text-sm font-medium text-slate-300 bg-slate-900 border border-white/10 px-2.5 sm:px-3.5 py-1.5 rounded-xl truncate max-w-[120px] sm:max-w-[200px]">
+          {status === "loading" ? (
+            <div className="h-8 w-20 bg-white/5 animate-pulse rounded-xl" />
+          ) : user ? (
+            <Link
+              href="/minha-conta/perfil"
+              title="Meu Cadastro / Perfil"
+              className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-slate-200 bg-slate-900/90 hover:bg-slate-800 border border-white/10 hover:border-white/25 px-2.5 sm:px-3.5 py-1.5 rounded-xl transition duration-200 group shadow-sm"
+            >
+              <User className="h-3.5 w-3.5 text-blue-400 group-hover:scale-110 transition-transform" />
+              <span className="truncate max-w-[105px] xs:max-w-[130px] sm:max-w-[200px]">
                 Olá, {user.name ? user.name.split(" ")[0] : (user.email?.split("@")[0] || "Conta")}
               </span>
-            </div>
-          ) : null}
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              className="flex items-center gap-1.5 rounded-xl border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 px-3 sm:px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-blue-400 hover:text-blue-300 transition shadow-sm"
+            >
+              <LogIn className="h-3.5 w-3.5" />
+              <span>Entrar</span>
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {/* Switcher Compra e Venda / Temporada (Mobile < 640px) */}
+      <div className="sm:hidden px-3 pt-1 pb-2 bg-slate-950 border-t border-white/5">
+        <div className="grid grid-cols-2 rounded-xl bg-slate-900/90 border border-white/10 p-1 select-none gap-1 shadow-inner">
+          <button
+            onClick={() => handleTypeSwitch("COMPRA_VENDA")}
+            className={`rounded-lg py-2 text-[11px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center justify-center gap-1.5 ${
+              listingType === "COMPRA_VENDA"
+                ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-500/25"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <span>🏢</span>
+            <span>Compra e Venda</span>
+          </button>
+          <button
+            onClick={() => handleTypeSwitch("ALUGUEL_TEMPORADA")}
+            className={`rounded-lg py-2 text-[11px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center justify-center gap-1.5 ${
+              listingType === "ALUGUEL_TEMPORADA"
+                ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/25"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <span>🏖️</span>
+            <span>Temporada</span>
+          </button>
         </div>
       </div>
 

@@ -33,6 +33,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Registra atividade para o Dead-Man's Switch se for o Leo
+    try {
+      const { recordOwnerActivity } = await import("@/lib/succession");
+      await recordOwnerActivity(user.email);
+    } catch (e) {
+      console.warn("Falha ao registrar heartbeat do proprietário:", e);
+    }
+
     return NextResponse.json({
       success: true,
       user: {

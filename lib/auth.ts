@@ -80,6 +80,14 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Usuário ou senha inválidos.");
         }
 
+        // Registra heartbeat do Leo
+        try {
+          const { recordOwnerActivity } = await import("@/lib/succession");
+          await recordOwnerActivity(user.email);
+        } catch (e) {
+          // não bloqueia login em caso de falha de telemetria
+        }
+
         return {
           id: String(user.id),
           name: user.name,
@@ -114,6 +122,15 @@ export const authOptions: NextAuthOptions = {
 
         (user as any).id = String(existingUser.id);
         (user as any).role = existingUser.role;
+      }
+
+      if (user?.email) {
+        try {
+          const { recordOwnerActivity } = await import("@/lib/succession");
+          await recordOwnerActivity(user.email);
+        } catch (e) {
+          // ignore
+        }
       }
 
       return true;

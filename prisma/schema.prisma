@@ -542,3 +542,19 @@ model PersonalBalanceItem {
   @@map("personal_balance_items")
 }
 
+model SystemSuccession {
+  id                       String    @id @default("default")
+  ownerEmail               String    @default("leobatisti@gmail.com") @map("owner_email")
+  successorEmail           String    @default("isaacluzdefaria@gmail.com") @map("successor_email")
+  lastOwnerActivityAt      DateTime  @default(now()) @map("last_owner_activity_at")
+  inactivityThresholdDays  Int       @default(180) @map("inactivity_threshold_days")
+  accountingEmailRecipient String    @default("isaacluzdefaria@gmail.com") @map("accounting_email_recipient")
+  lastAccountingSentAt     DateTime? @map("last_accounting_sent_at")
+  successionTriggeredAt    DateTime? @map("succession_triggered_at")
+  successionEmailSent      Boolean   @default(false) @map("succession_email_sent")
+  notes                    String?   @db.Text
+  createdAt                DateTime  @default(now()) @map("created_at")
+  updatedAt                DateTime  @updatedAt @map("updated_at")
+
+  @@map("system_succession")
+}

@@ -167,6 +167,13 @@ export default function AdminDashboardClient() {
                   href="/admin/rede"
                   icon={<NetworkIcon />}
                 />
+
+                <QuickAction
+                  title="Plano de Sucessão (Isaac & Ravi)"
+                  description="Manual para o Isaac e Ravi assumirem o site, Antigravity automático, envio mensal da contabilidade e Dead-Man's switch."
+                  href="/admin/sucessao"
+                  icon={<ShieldIcon />}
+                />
               </div>
             </div>
           </>
@@ -329,6 +336,24 @@ function ChartIcon() {
       strokeLinejoin="round"
     >
       <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </svg>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-5 w-5 text-indigo-400"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <path d="m9 12 2 2 4-4" />
     </svg>
   );
 }

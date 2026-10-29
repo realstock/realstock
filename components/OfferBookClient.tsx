@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Calendar } from "lucide-react";
+import { Calendar, Users } from "lucide-react";
 import CalendarioReservasModal from "@/components/CalendarioReservasModal";
 
 type OfferItem = {
@@ -376,38 +376,44 @@ export default function OfferBookClient({
         <form onSubmit={handleSubmitOffer} className="mt-4 space-y-3">
           {isSeasonal ? (
             <div className="space-y-3">
-              <div>
-                <label className="block text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 ml-0.5">Check-in *</label>
-                <input
-                  type="date"
-                  value={checkIn}
-                  onChange={(e) => setCheckIn(e.target.value)}
-                  onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-                  className="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-white outline-none focus:border-emerald-500 transition cursor-pointer [color-scheme:dark]"
-                  min={new Date().toISOString().split("T")[0]}
-                />
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+                <div>
+                  <label className="block text-xs text-slate-300 font-bold uppercase tracking-wider mb-1 ml-0.5">Check-in *</label>
+                  <input
+                    type="date"
+                    value={checkIn}
+                    onChange={(e) => setCheckIn(e.target.value)}
+                    onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                    className="w-full h-11 sm:h-12 rounded-xl sm:rounded-2xl border border-white/10 bg-slate-900 px-3 sm:px-4 text-xs sm:text-sm text-white outline-none focus:border-emerald-500 transition cursor-pointer [color-scheme:dark] flex items-center"
+                    min={new Date().toISOString().split("T")[0]}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-300 font-bold uppercase tracking-wider mb-1 ml-0.5">Check-out *</label>
+                  <input
+                    type="date"
+                    value={checkOut}
+                    onChange={(e) => setCheckOut(e.target.value)}
+                    onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                    className="w-full h-11 sm:h-12 rounded-xl sm:rounded-2xl border border-white/10 bg-slate-900 px-3 sm:px-4 text-xs sm:text-sm text-white outline-none focus:border-emerald-500 transition cursor-pointer [color-scheme:dark] flex items-center"
+                    min={checkIn || new Date().toISOString().split("T")[0]}
+                  />
+                </div>
               </div>
+
               <div>
-                <label className="block text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 ml-0.5">Check-out *</label>
-                <input
-                  type="date"
-                  value={checkOut}
-                  onChange={(e) => setCheckOut(e.target.value)}
-                  onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-                  className="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-white outline-none focus:border-emerald-500 transition cursor-pointer [color-scheme:dark]"
-                  min={checkIn || new Date().toISOString().split("T")[0]}
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 font-bold uppercase tracking-wider mb-1 ml-0.5">Hóspedes *</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={guestsCount}
-                  onChange={(e) => setGuestsCount(e.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-white outline-none focus:border-emerald-500 transition"
-                  placeholder="Ex.: 2"
-                />
+                <label className="block text-xs text-slate-300 font-bold uppercase tracking-wider mb-1 ml-0.5">Hóspedes *</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="1"
+                    value={guestsCount}
+                    onChange={(e) => setGuestsCount(e.target.value)}
+                    className="w-full h-11 sm:h-12 rounded-xl sm:rounded-2xl border border-white/10 bg-slate-900 pl-10 pr-4 text-xs sm:text-sm text-white outline-none focus:border-emerald-500 transition"
+                    placeholder="Ex.: 2"
+                  />
+                  <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                </div>
               </div>
 
               {numberOfNights > 0 && (

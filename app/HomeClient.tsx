@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Rocket, Building2, Calendar, X, RefreshCw, CreditCard } from "lucide-react";
+import { Rocket, Building2, Calendar, X, RefreshCw, CreditCard, Users } from "lucide-react";
 import CesiumMapClient from "@/components/CesiumMapClient";
 import { useListingType } from "@/context/ListingTypeContext";
 import HomeSeoHub from "@/components/HomeSeoHub";
@@ -751,9 +751,9 @@ export default function HomeClient({ initialProperties = [] }: { initialProperti
 
   return (
     <main className="bg-slate-950 text-white">
-      <section className="mx-auto max-w-[1600px] px-6 py-6">
+      <section className="mx-auto max-w-[1600px] px-3.5 sm:px-6 py-4 sm:py-6">
         <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
-          <aside className="rounded-[28px] border border-white/10 bg-white/5 p-5">
+          <aside className="rounded-[28px] border border-white/10 bg-white/5 p-4 sm:p-5">
             <div className="mb-5">
               <Link 
                 href="/anuncios-turbinados" 
@@ -772,10 +772,10 @@ export default function HomeClient({ initialProperties = [] }: { initialProperti
 
             <div className="space-y-4">
               {listingType === "ALUGUEL_TEMPORADA" && (
-                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 space-y-3 shadow-inner">
-                  <div className="flex items-center justify-between">
+                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-3.5 sm:p-4 space-y-3.5 shadow-inner">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-emerald-500/15">
                     <h3 className="text-xs font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                      📅 Datas & Hóspedes
+                      <Calendar className="h-4 w-4 text-emerald-400" /> Datas & Hóspedes
                     </h3>
                     {(checkInDate || checkOutDate || guestsCount !== "1") && (
                       <button
@@ -784,48 +784,54 @@ export default function HomeClient({ initialProperties = [] }: { initialProperti
                           setCheckOutDate("");
                           setGuestsCount("1");
                         }}
-                        className="text-[10px] font-bold text-red-400 hover:underline cursor-pointer"
+                        className="text-[10px] font-bold text-red-400 hover:text-red-300 hover:underline cursor-pointer transition"
                       >
                         Limpar
                       </button>
                     )}
                   </div>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {/* Check-in e Check-out lado a lado alinhados perfeitamente */}
+                  <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
                     <div>
-                      <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Check-in</label>
+                      <label className="text-[11px] uppercase font-bold text-slate-300 block mb-1">Check-in</label>
                       <input
                         type="date"
                         value={checkInDate}
                         onChange={(e) => setCheckInDate(e.target.value)}
                         onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 outline-none transition cursor-pointer [color-scheme:dark]"
+                        className="w-full h-11 rounded-xl border border-white/10 bg-slate-950 px-2.5 sm:px-3 text-xs sm:text-sm text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 outline-none transition cursor-pointer [color-scheme:dark] flex items-center"
                         min={new Date().toISOString().split("T")[0]}
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Check-out</label>
+                      <label className="text-[11px] uppercase font-bold text-slate-300 block mb-1">Check-out</label>
                       <input
                         type="date"
                         value={checkOutDate}
                         onChange={(e) => setCheckOutDate(e.target.value)}
                         onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-                        className="w-full rounded-xl border border-white/10 bg-slate-950 px-2.5 py-1.5 text-xs text-white focus:border-emerald-500 outline-none transition cursor-pointer [color-scheme:dark]"
+                        className="w-full h-11 rounded-xl border border-white/10 bg-slate-950 px-2.5 sm:px-3 text-xs sm:text-sm text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 outline-none transition cursor-pointer [color-scheme:dark] flex items-center"
                         min={checkInDate || new Date().toISOString().split("T")[0]}
                       />
                     </div>
                   </div>
 
+                  {/* Quantidade de Hóspedes com a mesma altura e estilo alinhado */}
                   <div>
-                    <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Qtd. de Hóspedes</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={guestsCount}
-                      onChange={(e) => setGuestsCount(e.target.value)}
-                      className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-1.5 text-xs text-white focus:border-emerald-500 outline-none transition"
-                      placeholder="Ex.: 2"
-                    />
+                    <label className="text-[11px] uppercase font-bold text-slate-300 block mb-1">Qtd. de Hóspedes</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="1"
+                        max="50"
+                        value={guestsCount}
+                        onChange={(e) => setGuestsCount(e.target.value)}
+                        className="w-full h-11 rounded-xl border border-white/10 bg-slate-950 pl-9 pr-3 text-xs sm:text-sm text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 outline-none transition"
+                        placeholder="Ex.: 2"
+                      />
+                      <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                    </div>
                   </div>
                 </div>
               )}

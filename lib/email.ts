@@ -5,7 +5,7 @@ export async function sendEmail({
   subject,
   html,
 }: {
-  to: string;
+  to: string | string[];
   subject: string;
   html: string;
 }) {
@@ -18,10 +18,11 @@ export async function sendEmail({
 
   const resend = new Resend(apiKey);
   const from = process.env.EMAIL_FROM || "RealStock <onboarding@resend.dev>";
+  const recipients = Array.isArray(to) ? to : [to];
 
   const { data, error } = await resend.emails.send({
     from,
-    to: [to],
+    to: recipients,
     subject,
     html,
   });
