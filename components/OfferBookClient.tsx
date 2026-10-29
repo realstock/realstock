@@ -30,6 +30,16 @@ type Props = {
   defaultGuests?: string;
 };
 
+function formatDateDisplay(dateStr: string): string {
+  if (!dateStr) return "";
+  const parts = dateStr.split("T")[0].split("-");
+  if (parts.length === 3) {
+    const [y, m, d] = parts;
+    return `${d}/${m}/${y}`;
+  }
+  return dateStr;
+}
+
 function getInitials(name: string) {
   if (!name) return "-";
 
@@ -376,28 +386,40 @@ export default function OfferBookClient({
         <form onSubmit={handleSubmitOffer} className="mt-4 space-y-3">
           {isSeasonal ? (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-                <div>
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-3 min-w-0">
+                <div className="min-w-0">
                   <label className="block text-xs text-slate-300 font-bold uppercase tracking-wider mb-1 ml-0.5">Check-in *</label>
-                  <input
-                    type="date"
-                    value={checkIn}
-                    onChange={(e) => setCheckIn(e.target.value)}
-                    onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-                    className="w-full h-11 sm:h-12 rounded-xl sm:rounded-2xl border border-white/10 bg-slate-900 px-3 sm:px-4 text-xs sm:text-sm text-white outline-none focus:border-emerald-500 transition cursor-pointer [color-scheme:dark] flex items-center"
-                    min={new Date().toISOString().split("T")[0]}
-                  />
+                  <div className="relative w-full h-11 sm:h-12 rounded-xl sm:rounded-2xl border border-white/10 bg-slate-900 px-3 sm:px-4 flex items-center justify-between text-xs sm:text-sm text-white focus-within:border-emerald-500 overflow-hidden cursor-pointer">
+                    <span className={`truncate ${checkIn ? "text-white font-medium" : "text-slate-500"}`}>
+                      {checkIn ? formatDateDisplay(checkIn) : "dd/mm/aaaa"}
+                    </span>
+                    <Calendar className="h-4 w-4 text-emerald-400 shrink-0 pointer-events-none ml-1 opacity-80" />
+                    <input
+                      type="date"
+                      value={checkIn}
+                      onChange={(e) => setCheckIn(e.target.value)}
+                      onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer [color-scheme:dark]"
+                      min={new Date().toISOString().split("T")[0]}
+                    />
+                  </div>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs text-slate-300 font-bold uppercase tracking-wider mb-1 ml-0.5">Check-out *</label>
-                  <input
-                    type="date"
-                    value={checkOut}
-                    onChange={(e) => setCheckOut(e.target.value)}
-                    onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-                    className="w-full h-11 sm:h-12 rounded-xl sm:rounded-2xl border border-white/10 bg-slate-900 px-3 sm:px-4 text-xs sm:text-sm text-white outline-none focus:border-emerald-500 transition cursor-pointer [color-scheme:dark] flex items-center"
-                    min={checkIn || new Date().toISOString().split("T")[0]}
-                  />
+                  <div className="relative w-full h-11 sm:h-12 rounded-xl sm:rounded-2xl border border-white/10 bg-slate-900 px-3 sm:px-4 flex items-center justify-between text-xs sm:text-sm text-white focus-within:border-emerald-500 overflow-hidden cursor-pointer">
+                    <span className={`truncate ${checkOut ? "text-white font-medium" : "text-slate-500"}`}>
+                      {checkOut ? formatDateDisplay(checkOut) : "dd/mm/aaaa"}
+                    </span>
+                    <Calendar className="h-4 w-4 text-emerald-400 shrink-0 pointer-events-none ml-1 opacity-80" />
+                    <input
+                      type="date"
+                      value={checkOut}
+                      onChange={(e) => setCheckOut(e.target.value)}
+                      onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer [color-scheme:dark]"
+                      min={checkIn || new Date().toISOString().split("T")[0]}
+                    />
+                  </div>
                 </div>
               </div>
 

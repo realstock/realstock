@@ -268,6 +268,16 @@ type StayTotalResult = {
   formattedTotal: string;
 };
 
+function formatDateDisplay(dateStr: string): string {
+  if (!dateStr) return "";
+  const parts = dateStr.split("T")[0].split("-");
+  if (parts.length === 3) {
+    const [y, m, d] = parts;
+    return `${d}/${m}/${y}`;
+  }
+  return dateStr;
+}
+
 function calculateStayTotal(
   property: PropertyPin,
   checkInStr: string,
@@ -791,29 +801,41 @@ export default function HomeClient({ initialProperties = [] }: { initialProperti
                     )}
                   </div>
                   
-                  {/* Check-in e Check-out lado a lado alinhados perfeitamente */}
-                  <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
-                    <div>
+                  {/* Check-in e Check-out lado a lado alinhados perfeitamente sem estouro de borda */}
+                  <div className="grid grid-cols-2 gap-2 sm:gap-2.5 min-w-0">
+                    <div className="min-w-0">
                       <label className="text-[11px] uppercase font-bold text-slate-300 block mb-1">Check-in</label>
-                      <input
-                        type="date"
-                        value={checkInDate}
-                        onChange={(e) => setCheckInDate(e.target.value)}
-                        onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-                        className="w-full h-11 rounded-xl border border-white/10 bg-slate-950 px-2.5 sm:px-3 text-xs sm:text-sm text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 outline-none transition cursor-pointer [color-scheme:dark] flex items-center"
-                        min={new Date().toISOString().split("T")[0]}
-                      />
+                      <div className="relative w-full h-11 rounded-xl border border-white/10 bg-slate-950 px-2.5 sm:px-3 flex items-center justify-between text-xs sm:text-sm text-white focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/30 overflow-hidden cursor-pointer">
+                        <span className={`truncate ${checkInDate ? "text-white font-medium" : "text-slate-500"}`}>
+                          {checkInDate ? formatDateDisplay(checkInDate) : "dd/mm/aaaa"}
+                        </span>
+                        <Calendar className="h-3.5 w-3.5 text-emerald-400 shrink-0 pointer-events-none ml-1 opacity-80" />
+                        <input
+                          type="date"
+                          value={checkInDate}
+                          onChange={(e) => setCheckInDate(e.target.value)}
+                          onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer [color-scheme:dark]"
+                          min={new Date().toISOString().split("T")[0]}
+                        />
+                      </div>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <label className="text-[11px] uppercase font-bold text-slate-300 block mb-1">Check-out</label>
-                      <input
-                        type="date"
-                        value={checkOutDate}
-                        onChange={(e) => setCheckOutDate(e.target.value)}
-                        onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-                        className="w-full h-11 rounded-xl border border-white/10 bg-slate-950 px-2.5 sm:px-3 text-xs sm:text-sm text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 outline-none transition cursor-pointer [color-scheme:dark] flex items-center"
-                        min={checkInDate || new Date().toISOString().split("T")[0]}
-                      />
+                      <div className="relative w-full h-11 rounded-xl border border-white/10 bg-slate-950 px-2.5 sm:px-3 flex items-center justify-between text-xs sm:text-sm text-white focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/30 overflow-hidden cursor-pointer">
+                        <span className={`truncate ${checkOutDate ? "text-white font-medium" : "text-slate-500"}`}>
+                          {checkOutDate ? formatDateDisplay(checkOutDate) : "dd/mm/aaaa"}
+                        </span>
+                        <Calendar className="h-3.5 w-3.5 text-emerald-400 shrink-0 pointer-events-none ml-1 opacity-80" />
+                        <input
+                          type="date"
+                          value={checkOutDate}
+                          onChange={(e) => setCheckOutDate(e.target.value)}
+                          onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer [color-scheme:dark]"
+                          min={checkInDate || new Date().toISOString().split("T")[0]}
+                        />
+                      </div>
                     </div>
                   </div>
 
