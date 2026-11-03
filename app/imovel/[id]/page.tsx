@@ -569,6 +569,7 @@ export default async function PropertyPage({
       "@type": "Offer",
       "price": property.price.toString(),
       "priceCurrency": "BRL",
+      "priceValidUntil": new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
       "availability": "https://schema.org/InStock",
       "url": `${propertyUrl}?checkin=${checkin || ""}&checkout=${checkout || ""}&guests=${guests || "2"}&utm_source=google&utm_medium=vacation_rentals`,
       "validFrom": new Date().toISOString().split("T")[0],
@@ -576,6 +577,39 @@ export default async function PropertyPage({
         "@type": "Organization",
         "name": "RealStock",
         "url": siteUrl
+      },
+      "hasMerchantReturnPolicy": {
+        "@type": "MerchantReturnPolicy",
+        "applicableCountry": "BR",
+        "returnPolicyCategory": "https://schema.org/MerchantReturnNotPermitted",
+        "merchantReturnLink": `${siteUrl}/termos`
+      },
+      "shippingDetails": {
+        "@type": "OfferShippingDetails",
+        "shippingRate": {
+          "@type": "MonetaryAmount",
+          "value": "0.00",
+          "currency": "BRL"
+        },
+        "shippingDestination": {
+          "@type": "DefinedRegion",
+          "addressCountry": "BR"
+        },
+        "deliveryTime": {
+          "@type": "ShippingDeliveryTime",
+          "handlingTime": {
+            "@type": "QuantitativeValue",
+            "minValue": 0,
+            "maxValue": 0,
+            "unitCode": "DAY"
+          },
+          "transitTime": {
+            "@type": "QuantitativeValue",
+            "minValue": 0,
+            "maxValue": 0,
+            "unitCode": "DAY"
+          }
+        }
       }
     }
   } : null;
@@ -611,6 +645,118 @@ export default async function PropertyPage({
     ],
   };
 
+  // Configuração comum para atender aos requisitos de Listagens do Comerciante (Google Merchant Listings)
+  const merchantReturnPolicy = {
+    "@type": "MerchantReturnPolicy",
+    "applicableCountry": "BR",
+    "returnPolicyCategory": "https://schema.org/MerchantReturnNotPermitted",
+    "merchantReturnLink": `${siteUrl}/termos`,
+  };
+
+  const merchantShippingDetails = {
+    "@type": "OfferShippingDetails",
+    "shippingRate": {
+      "@type": "MonetaryAmount",
+      "value": "0.00",
+      "currency": "BRL",
+    },
+    "shippingDestination": {
+      "@type": "DefinedRegion",
+      "addressCountry": "BR",
+    },
+    "deliveryTime": {
+      "@type": "ShippingDeliveryTime",
+      "handlingTime": {
+        "@type": "QuantitativeValue",
+        "minValue": 0,
+        "maxValue": 0,
+        "unitCode": "DAY",
+      },
+      "transitTime": {
+        "@type": "QuantitativeValue",
+        "minValue": 0,
+        "maxValue": 0,
+        "unitCode": "DAY",
+      },
+    },
+  };
+
+  const priceValidUntil = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+  const getPropertyType = (cat?: string | null) => {
+    const c = (cat || "").toLowerCase();
+    if (c.includes("apartamento") || c.includes("flat") || c.includes("cobertura") || c.includes("kitnet") || c.includes("studio")) {
+      return "Apartment";
+    }
+    if (c.includes("terreno") || c.includes("lote")) {
+      return "Landform";
+    }
+    if (c.includes("comercial") || c.includes("sala") || c.includes("loja") || c.includes("galpão")) {
+      return "CommercialBuilding";
+    }
+    return "SingleFamilyResidence";
+  };
+
+  // Schema oficial semântico para listagem imobiliária
+  const realEstateJsonLd = !isSeasonal ? {
+    "@context": "https://schema.org",
+    "@type": "RealEstateListing",
+    "@id": `${siteUrl}/imovel/${property.id}#listing`,
+    "name": property.title,
+    "description": property.description || property.title,
+    "url": propertyUrl,
+    "datePosted": property.createdAt ? new Date(property.createdAt).toISOString().split("T")[0] : undefined,
+    "image": propertyPhotos,
+    "mainEntity": {
+      "@type": getPropertyType(property.category),
+      "name": property.title,
+      "description": property.description || property.title,
+      "image": propertyPhotos,
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": property.street || property.neighborhood || "Endereço sob consulta",
+        "addressLocality": property.city || "Brasil",
+        "addressRegion": property.state || "BR",
+        "postalCode": property.zipCode || "60000-000",
+        "addressCountry": "BR",
+      },
+      ...(property.latitude && property.longitude ? {
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": Number(property.latitude),
+          "longitude": Number(property.longitude),
+        }
+      } : {}),
+      "numberOfRooms": property.bedrooms || 1,
+      "numberOfBedrooms": property.bedrooms || 1,
+      "numberOfBathroomsTotal": property.bathrooms || 1,
+      ...(property.area ? {
+        "floorSize": {
+          "@type": "QuantitativeValue",
+          "value": Number(property.area),
+          "unitCode": "MTK",
+        }
+      } : {}),
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": property.price.toString(),
+      "priceCurrency": "BRL",
+      "priceValidUntil": priceValidUntil,
+      "businessFunction": "http://purl.org/goodrelations/v1#Sell",
+      "availability": property.sold ? "https://schema.org/SoldOut" : "https://schema.org/InStock",
+      "url": propertyUrl,
+      "seller": {
+        "@type": "Organization",
+        "name": "RealStock",
+        "url": siteUrl,
+      },
+      "hasMerchantReturnPolicy": merchantReturnPolicy,
+      "shippingDetails": merchantShippingDetails,
+    },
+  } : null;
+
+  // Schema Product com dados completos para Merchant Listings e Rich Snippets de Preço no Google Search
   const salesJsonLd = !isSeasonal ? {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -620,17 +766,27 @@ export default async function PropertyPage({
     "url": propertyUrl,
     "image": propertyPhotos,
     "category": property.category || "Imóveis",
+    "sku": String(property.id),
+    "mpn": String(property.id),
+    "brand": {
+      "@type": "Brand",
+      "name": "RealStock",
+    },
     "offers": {
       "@type": "Offer",
       "price": property.price.toString(),
       "priceCurrency": "BRL",
+      "priceValidUntil": priceValidUntil,
       "availability": property.sold ? "https://schema.org/SoldOut" : "https://schema.org/InStock",
+      "itemCondition": "https://schema.org/NewCondition",
       "url": propertyUrl,
       "seller": {
         "@type": "Organization",
         "name": "RealStock",
         "url": siteUrl,
       },
+      "hasMerchantReturnPolicy": merchantReturnPolicy,
+      "shippingDetails": merchantShippingDetails,
     },
   } : null;
 
@@ -692,6 +848,12 @@ export default async function PropertyPage({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
+      {realEstateJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(realEstateJsonLd) }}
         />
       )}
       {salesJsonLd && (

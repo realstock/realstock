@@ -188,7 +188,6 @@ export async function POST(req: NextRequest) {
     } else {
        // Property Boost
        // Verify ownership first
-       const property = await prisma.property.findUnique({ where: { id: Number(propertyId) }});
        if (property && property.ownerId === user.id) {
            await prisma.property.update({
                where: { id: Number(propertyId) },
@@ -197,7 +196,38 @@ export async function POST(req: NextRequest) {
        }
     }
 
-    return NextResponse.json({ success: true, googleCampaignId: finalCampaignId, status: finalStatus === "ACTIVE" ? "completed" : "completed_fallback" });
+    const calculatedEndFormatted = boostedDate.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric"
+    });
+
+    const stateName = property?.state || user.state || "Brasil";
+
+    const campaignDetails = {
+      campaignName: Number(propertyId) === 0 ? "RealStock Google Search Portfólio" : `RealStock Google Search Propriedade ${propertyId}`,
+      adsetName: `Grupo de Anúncios Google ${stateName}`,
+      adName: Number(propertyId) === 0 ? "Google Ads Portfólio Geral" : `Anúncio Google Ads Prop ${propertyId}`,
+      platform: "Google Ads (Rede de Pesquisa)",
+      status: "Ativo",
+      adStatus: "Qualificado para Veiculação",
+      targeting: `${stateName} • Rede de Pesquisa Google`,
+      dailyBudget: Number(dailyBudget),
+      durationDays: durationDays,
+      totalInvestment: Number(dailyBudget) * durationDays,
+      endDate: calculatedEndFormatted,
+      format: "Pesquisa Responsiva Google",
+      cta: "Acessar Site do Imóvel",
+      targetUrl: targetUrl
+    };
+
+    return NextResponse.json({ 
+      success: true, 
+      message: "🚀 Campanha no Google Ads criada e ativada com sucesso!",
+      googleCampaignId: finalCampaignId, 
+      status: finalStatus === "ACTIVE" ? "completed" : "completed_fallback",
+      campaignDetails
+    });
 
   } catch (error: any) {
     console.error("CAPTURE GOOGLE ORDER ERROR:", error);
