@@ -46,6 +46,19 @@ async function getInitialProperties(): Promise<PropertyPin[]> {
           take: 1,
           orderBy: { sortOrder: "asc" },
         },
+        offers: {
+          where: {
+            status: { in: ["accepted", "ACCEPTED", "ACCEPTED_WAITING_PAYMENT", "RESERVA_CONFIRMADA", "PAGO", "CONCLUIDO", "CHECKIN_LIBERADO"] },
+            OR: [
+              { expiresAt: null },
+              { expiresAt: { gt: new Date() } }
+            ]
+          },
+          select: {
+            startDate: true,
+            endDate: true,
+          }
+        }
       },
       orderBy: {
         createdAt: "desc",

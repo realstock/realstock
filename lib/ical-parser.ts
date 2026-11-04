@@ -92,3 +92,20 @@ export async function fetchICalEvents(url: string, platformName: string): Promis
     return [];
   }
 }
+
+// Cache em memória para evitar requisições repetidas ao Booking/Airbnb/VRBO durante navegação no mapa
+const icalMemoryCache = new Map<string, { timestamp: number; events: ICalEvent[] }>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
+
+export async function fetchCachedICalEvents(url: string, platformName: string): Promise<ICalEvent[]> {
+  if (!url) return [];
+  const cached = icalMemoryCache.get(url);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.events;
+  }
+
+  const events = await fetchICalEvents(url, platformName);
+  icalMemoryCache.set(url, { timestamp: Date.now(), events });
+  return events;
+}
+

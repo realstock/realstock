@@ -1,3 +1,9 @@
+export type BlockedDateRange = {
+  start: string; // YYYY-MM-DD
+  end: string;   // YYYY-MM-DD
+  source?: string;
+};
+
 export type PropertyPin = {
   id: number;
   title: string;
@@ -22,38 +28,58 @@ export type PropertyPin = {
   acceptsPaypal?: boolean | null;
   paypalEmail?: string | null;
   customRates?: any;
+  blockedRanges?: BlockedDateRange[];
 };
 
 export function normalizeProperties(items: any[]): PropertyPin[] {
   return (items || [])
-    .map((item: any) => ({
-      id: Number(item.id),
-      title: item.title,
-      price: `R$ ${Number(item.price).toLocaleString("pt-BR")}`,
-      rawPrice: Number(item.price || 0),
-      legalStatus: item.legalStatus || "-",
-      area: item.area || "-",
-      city: item.city || "-",
-      neighborhood: item.neighborhood || null,
-      lat: Number(item.latitude),
-      lng: Number(item.longitude),
-      mainImage: item.images?.[0]?.imageUrl || null,
-      sponsoredUntil: item.sponsoredUntil || null,
-      metaBoostedUntil: item.metaBoostedUntil || null,
-      instagramMediaId: item.instagramMediaId || null,
-      instagramPermalink: item.instagramPermalink || null,
-      listingType: item.listingType || "COMPRA_VENDA",
-      minNights: item.minNights ? Number(item.minNights) : null,
-      maxGuests: item.maxGuests ? Number(item.maxGuests) : null,
-      depositPercentage:
-        item.depositPercentage !== undefined && item.depositPercentage !== null
-            ? Number(item.depositPercentage)
-          : 20,
-      pixKey: item.pixKey || null,
-      acceptsPaypal: Boolean(item.acceptsPaypal ?? item.accepts_paypal),
-      paypalEmail: item.paypalEmail || item.paypal_email || null,
-      customRates: item.customRates || {},
-    }))
+    .map((item: any) => {
+      const offerBlocks: BlockedDateRange[] = (item.offers || [])
+        .filter((o: any) => o.startDate && o.endDate)
+        .map((o: any) => ({
+          start: new Date(o.startDate).toISOString().split("T")[0],
+          end: new Date(o.endDate).toISOString().split("T")[0],
+          source: "offer",
+        }));
+      const preBlocks: BlockedDateRange[] = item.blockedRanges || [];
+      const customRateBlocks: BlockedDateRange[] = Object.entries((item.customRates || {}) as Record<string, any>)
+        .filter(([_, rate]) => rate && typeof rate === "object" && rate.blocked === true)
+        .map(([dateStr]) => ({
+          start: dateStr,
+          end: dateStr,
+          source: "customRate",
+        }));
+
+      return {
+        id: Number(item.id),
+        title: item.title,
+        price: `R$ ${Number(item.price).toLocaleString("pt-BR")}`,
+        rawPrice: Number(item.price || 0),
+        legalStatus: item.legalStatus || "-",
+        area: item.area || "-",
+        city: item.city || "-",
+        neighborhood: item.neighborhood || null,
+        lat: Number(item.latitude || item.lat),
+        lng: Number(item.longitude || item.lng),
+        mainImage: item.images?.[0]?.imageUrl || item.mainImage || null,
+        sponsoredUntil: item.sponsoredUntil || null,
+        metaBoostedUntil: item.metaBoostedUntil || null,
+        instagramMediaId: item.instagramMediaId || null,
+        instagramPermalink: item.instagramPermalink || null,
+        listingType: item.listingType || "COMPRA_VENDA",
+        minNights: item.minNights ? Number(item.minNights) : null,
+        maxGuests: item.maxGuests ? Number(item.maxGuests) : null,
+        depositPercentage:
+          item.depositPercentage !== undefined && item.depositPercentage !== null
+              ? Number(item.depositPercentage)
+            : 20,
+        pixKey: item.pixKey || null,
+        acceptsPaypal: Boolean(item.acceptsPaypal ?? item.accepts_paypal),
+        paypalEmail: item.paypalEmail || item.paypal_email || null,
+        customRates: item.customRates || {},
+        blockedRanges: [...preBlocks, ...offerBlocks, ...customRateBlocks],
+      };
+    })
     .sort((a: any, b: any) => {
       const isNow = new Date();
       const aSpon = a.sponsoredUntil && new Date(a.sponsoredUntil) > isNow;

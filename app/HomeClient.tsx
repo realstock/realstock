@@ -281,21 +281,31 @@ function formatDateDisplay(dateStr: string): string {
 function calculateStayTotal(
   property: PropertyPin,
   checkInStr: string,
-  checkOutStr: string,
+  checkOutStr?: string,
   guestsStr?: string
 ): StayTotalResult | null {
-  if (!checkInStr || !checkOutStr) return null;
+  if (!checkInStr) return null;
 
   const [inY, inM, inD] = checkInStr.split("T")[0].split("-").map(Number);
-  const [outY, outM, outD] = checkOutStr.split("T")[0].split("-").map(Number);
-  if (!inY || !inM || !inD || !outY || !outM || !outD) return null;
+  if (!inY || !inM || !inD) return null;
 
   const start = new Date(Date.UTC(inY, inM - 1, inD));
-  const end = new Date(Date.UTC(outY, outM - 1, outD));
+  let end: Date;
+  let numberOfNights: number;
 
-  const diffTime = end.getTime() - start.getTime();
-  const numberOfNights = Math.round(diffTime / (1000 * 60 * 60 * 24));
-  if (numberOfNights <= 0) return null;
+  if (checkOutStr) {
+    const [outY, outM, outD] = checkOutStr.split("T")[0].split("-").map(Number);
+    if (!outY || !outM || !outD) return null;
+    end = new Date(Date.UTC(outY, outM - 1, outD));
+    const diffTime = end.getTime() - start.getTime();
+    numberOfNights = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    if (numberOfNights <= 0) return null;
+  } else {
+    // Apenas data de check-in foi selecionada até o momento (avalia 1 diária)
+    end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + 1);
+    numberOfNights = 1;
+  }
 
   const guestsCountNum = Number(guestsStr || 1);
   if (property.maxGuests && guestsCountNum > property.maxGuests) {
@@ -343,7 +353,8 @@ function calculateStayTotal(
     cur.setUTCDate(cur.getUTCDate() + 1);
   }
 
-  if (numberOfNights < effectiveMinNights) {
+  // Verifica noites mínimas apenas se checkOutStr foi explicitamente informado pelo usuário
+  if (checkOutStr && numberOfNights < effectiveMinNights) {
     return {
       numberOfNights,
       total: 0,
@@ -363,6 +374,32 @@ function calculateStayTotal(
       unavailabilityReason: "Datas fechadas pelo anfitrião",
       formattedTotal: total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
     };
+  }
+
+  // Verificar sobreposição com períodos bloqueados (reservas confirmadas RealStock + calendários externos iCal)
+  if (property.blockedRanges && property.blockedRanges.length > 0) {
+    for (const range of property.blockedRanges) {
+      const [bInY, bInM, bInD] = range.start.split("T")[0].split("-").map(Number);
+      const [bOutY, bOutM, bOutD] = range.end.split("T")[0].split("-").map(Number);
+      if (!bInY || !bInM || !bInD || !bOutY || !bOutM || !bOutD) continue;
+
+      const rStart = new Date(Date.UTC(bInY, bInM - 1, bInD));
+      const rEnd = new Date(Date.UTC(bOutY, bOutM - 1, bOutD));
+      const rEndEffective = rStart.getTime() === rEnd.getTime()
+        ? new Date(rStart.getTime() + 24 * 60 * 60 * 1000)
+        : rEnd;
+
+      if (start < rEndEffective && end > rStart) {
+        return {
+          numberOfNights,
+          total,
+          hasBlockedDate: true,
+          isAvailable: false,
+          unavailabilityReason: "Período já reservado",
+          formattedTotal: total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+        };
+      }
+    }
   }
 
   return {
@@ -468,6 +505,30 @@ export default function HomeClient({ initialProperties = [] }: { initialProperti
   const [bounds, setBounds] = useState<MapBounds | null>(null);
   const [properties, setProperties] = useState<PropertyPin[]>(initialProperties);
   const [selectedMapPinId, setSelectedMapPinId] = useState<number | null>(null);
+
+  const availableProperties = useMemo(() => {
+    if (listingType === "ALUGUEL_TEMPORADA" && (checkInDate || checkOutDate)) {
+      return properties.filter((p) => {
+        const info = calculateStayTotal(p, checkInDate, checkOutDate, guestsCount);
+        return !info || info.isAvailable;
+      });
+    }
+    return properties;
+  }, [properties, listingType, checkInDate, checkOutDate, guestsCount]);
+
+  useEffect(() => {
+    if (selectedMapPinId && !availableProperties.some((p) => p.id === selectedMapPinId)) {
+      setSelectedMapPinId(null);
+    }
+  }, [availableProperties, selectedMapPinId]);
+
+  const displayedProperties = useMemo(() => {
+    if (selectedMapPinId) {
+      return availableProperties.filter((p) => p.id === selectedMapPinId);
+    }
+    return availableProperties;
+  }, [availableProperties, selectedMapPinId]);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -1128,16 +1189,10 @@ export default function HomeClient({ initialProperties = [] }: { initialProperti
               </div>
             )}
 
+            {/* Imóveis disponíveis filtrados para o período (oculta os indisponíveis) */}
+            {(() => null)()}
             <CesiumMapClient
-              properties={useMemo(() => {
-                if (listingType === "ALUGUEL_TEMPORADA" && checkInDate && checkOutDate) {
-                  return properties.filter((p) => {
-                    const info = calculateStayTotal(p, checkInDate, checkOutDate, guestsCount);
-                    return !info || info.isAvailable;
-                  });
-                }
-                return properties;
-              }, [properties, listingType, checkInDate, checkOutDate, guestsCount])}
+              properties={availableProperties}
               onBoundsChange={handleBoundsChange}
               clusterZoomTarget={clusterZoomTarget}
               onClusterZoomRequest={handleClusterZoomRequest}
@@ -1165,7 +1220,7 @@ export default function HomeClient({ initialProperties = [] }: { initialProperti
                     {selectedMapPinId ? "Imóvel selecionado no mapa" : "Imóveis na área visível do mapa"}
                   </div>
                   <h3 className="mt-1 text-2xl font-bold">
-                    {(selectedMapPinId ? properties.filter((p) => p.id === selectedMapPinId) : properties).length} resultado(s)
+                    {displayedProperties.length} resultado(s)
                   </h3>
                 </div>
 
@@ -1176,13 +1231,25 @@ export default function HomeClient({ initialProperties = [] }: { initialProperti
                 )}
               </div>
 
-              {properties.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-white/10 bg-slate-900/40 p-6 text-sm text-slate-400">
-                  Nenhum imóvel encontrado na área atual do mapa com os filtros aplicados.
+              {displayedProperties.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/10 bg-slate-900/40 p-8 text-center text-sm text-slate-400">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-2xl mb-3">
+                    🏖️
+                  </div>
+                  <p className="font-bold text-white text-base">
+                    {listingType === "ALUGUEL_TEMPORADA" && (checkInDate || checkOutDate)
+                      ? "Nenhum imóvel disponível para o período selecionado"
+                      : "Nenhum imóvel encontrado na área atual do mapa com os filtros aplicados."}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400 max-w-md mx-auto">
+                    {listingType === "ALUGUEL_TEMPORADA" && (checkInDate || checkOutDate)
+                      ? "Os imóveis desta região estão ocupados ou não atendem aos critérios de noites mínimas ou hóspedes. Tente alterar as datas ou navegar pelo mapa."
+                      : "Tente afastar o zoom ou ajustar os filtros de busca para encontrar mais opções."}
+                  </p>
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {(selectedMapPinId ? properties.filter((p) => p.id === selectedMapPinId) : properties).map((property) => {
+                    {displayedProperties.map((property) => {
                       const isNow = new Date();
                       const isPublishedIG = !!property.instagramMediaId;
                       const isSponsored = !!(property.sponsoredUntil && new Date(property.sponsoredUntil) > isNow);
@@ -1194,15 +1261,11 @@ export default function HomeClient({ initialProperties = [] }: { initialProperti
                         ? calculateStayTotal(property, checkInDate, checkOutDate, guestsCount)
                         : null;
 
-                      const isUnavailable = stayInfo ? !stayInfo.isAvailable : false;
-
                       return (
                         <div
                           key={property.id}
                           className={`group overflow-hidden rounded-[2rem] border transition-all duration-300 relative p-[2.5px] ${
-                            isUnavailable
-                              ? "border-red-500/30 bg-slate-900/40 opacity-75 hover:opacity-100 hover:border-red-500/50"
-                              : isSponsored && hasIG
+                            isSponsored && hasIG
                               ? "bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 shadow-[0_0_20px_rgba(250,204,21,0.3)] hover:shadow-[0_0_30px_rgba(250,204,21,0.5)] scale-[1.02]"
                               : isSponsored
                               ? "border-yellow-400 bg-yellow-400/20 shadow-[0_0_15px_rgba(250,204,21,0.2)] hover:shadow-[0_0_25px_rgba(250,204,21,0.4)]"
@@ -1234,28 +1297,20 @@ export default function HomeClient({ initialProperties = [] }: { initialProperti
                                         </div>
                                     )}
 
-                                    {isUnavailable && (
-                                      <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[1px] z-30 flex items-center justify-center p-2 text-center">
-                                        <span className="bg-red-600/90 text-white font-black text-[11px] uppercase tracking-wider px-3 py-1.5 rounded-xl shadow-xl border border-red-400/30">
-                                          🚫 Indisponível para as datas
-                                        </span>
-                                      </div>
-                                    )}
-
                                     {/* Badges Hierárquicas */}
-                                    {!isUnavailable && isSponsored && hasIG && (
+                                    {isSponsored && hasIG && (
                                         <div className="absolute top-2 right-2 bg-gradient-to-r from-yellow-500 to-pink-500 text-white text-[8px] font-black px-3 py-1 rounded-full flex items-center gap-1.5 shadow-xl ring-1 ring-white/20 z-20 uppercase tracking-tighter">
                                             <Rocket size={10} fill="white" /> VIP GOLD + IG
                                         </div>
                                     )}
 
-                                    {!isUnavailable && isSponsored && !hasIG && (
+                                    {isSponsored && !hasIG && (
                                         <div className="absolute top-2 right-2 bg-yellow-400 text-slate-950 text-[9px] font-black px-2.5 py-1 rounded-full shadow-lg z-20 border border-white/20 uppercase">
                                             Patrocinado
                                         </div>
                                     )}
 
-                                    {!isUnavailable && !isSponsored && hasIG && (
+                                    {!isSponsored && hasIG && (
                                         <div className="absolute top-2 right-2 bg-gradient-to-tr from-purple-600 to-pink-500 text-white text-[8px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg ring-1 ring-white/20 z-20 uppercase">
                                             <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.791-4-4s1.791-4 4-4 4 1.791 4 4-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg> 
                                             Instagram
@@ -1279,32 +1334,15 @@ export default function HomeClient({ initialProperties = [] }: { initialProperti
                                         </div>
                                     </div>
 
-                                    {stayInfo && (
-                                      <div className={`mt-3 rounded-xl border p-2.5 ${
-                                        isUnavailable
-                                          ? "border-red-500/30 bg-red-500/10"
-                                          : "border-emerald-500/30 bg-emerald-500/10"
-                                      }`}>
-                                        {isUnavailable ? (
-                                          <div>
-                                            <div className="text-xs font-black text-red-400 flex items-center gap-1">
-                                              <span>🚫 Indisponível</span>
-                                            </div>
-                                            <p className="mt-0.5 text-[10px] text-red-300 font-medium">
-                                              {stayInfo.unavailabilityReason || "Período fechado pelo anfitrião"}
-                                            </p>
-                                          </div>
-                                        ) : (
-                                          <div>
-                                            <div className="flex items-center justify-between text-xs font-extrabold text-emerald-300">
-                                              <span>Total Estadia ({stayInfo.numberOfNights} {stayInfo.numberOfNights === 1 ? 'noite' : 'noites'}):</span>
-                                              <span className="text-sm font-black text-emerald-400">{stayInfo.formattedTotal}</span>
-                                            </div>
-                                            <p className="mt-0.5 text-[10px] text-slate-400 font-medium">
-                                              Média: {(stayInfo.total / stayInfo.numberOfNights).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} / noite
-                                            </p>
-                                          </div>
-                                        )}
+                                    {stayInfo && stayInfo.isAvailable && (
+                                      <div className="mt-3 rounded-xl border p-2.5 border-emerald-500/30 bg-emerald-500/10">
+                                        <div className="flex items-center justify-between text-xs font-extrabold text-emerald-300">
+                                          <span>Total Estadia ({stayInfo.numberOfNights} {stayInfo.numberOfNights === 1 ? 'noite' : 'noites'}):</span>
+                                          <span className="text-sm font-black text-emerald-400">{stayInfo.formattedTotal}</span>
+                                        </div>
+                                        <p className="mt-0.5 text-[10px] text-slate-400 font-medium">
+                                          Média: {(stayInfo.total / stayInfo.numberOfNights).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} / noite
+                                        </p>
                                       </div>
                                     )}
 
