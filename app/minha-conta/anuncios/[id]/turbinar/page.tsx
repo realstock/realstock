@@ -1143,19 +1143,34 @@ function TurbinarContent({ params }: { params: Promise<{ id: string }> }) {
                 </>
               )}
 
-              <div className="mt-6 space-y-4">
-                  <div className="bg-slate-900/50 p-3 rounded-lg border border-white/5 flex items-center gap-3">
-                      <Target className="text-blue-400" size={18}/>
-                      <div className="text-[10px]">
-                          <div className="text-slate-400 uppercase font-bold">Público</div>
-                          <div className="text-white">{property.state || "Brasil"}</div>
+              <div className="mt-6 space-y-3">
+                  <div className="bg-slate-900/50 p-3.5 rounded-xl border border-white/5 flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 shrink-0">
+                        <Target size={18}/>
+                      </div>
+                      <div className="text-xs min-w-0 flex-1">
+                          <div className="text-[10px] text-slate-400 uppercase font-black tracking-wider">
+                            {selectedPlatform === "google" ? "Região de Busca (Google)" : "Público e Área de Alcance"}
+                          </div>
+                          <div className="text-white font-bold truncate">
+                            {selectedPlatform === "google"
+                              ? `${property.city ? `${property.city} - ` : ""}${property.state || "Brasil"}`
+                              : `Raio de ${targetRadiusKm} km • ${property.city || property.state || "Local Selecionado"}`}
+                          </div>
+                          <div className="text-[10px] text-purple-300 font-medium">
+                            {selectedPlatform === "google" 
+                              ? "Rede de Pesquisa Google (Palavras-chave)" 
+                              : "Meta Ads (Instagram & Facebook) • 18 a 65+ anos"}
+                          </div>
                       </div>
                   </div>
-                  <div className="bg-slate-900/50 p-3 rounded-lg border border-white/5 flex items-center gap-3">
-                      <CalendarDays className="text-purple-400" size={18}/>
-                      <div className="text-[10px]">
-                          <div className="text-slate-400 uppercase font-bold">Duração</div>
-                          <div className="text-white">{durationDays} Dias corridos</div>
+                  <div className="bg-slate-900/50 p-3.5 rounded-xl border border-white/5 flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400 shrink-0">
+                        <CalendarDays size={18}/>
+                      </div>
+                      <div className="text-xs">
+                          <div className="text-[10px] text-slate-400 uppercase font-black tracking-wider">Duração da Campanha</div>
+                          <div className="text-white font-bold">{durationDays} Dias corridos</div>
                       </div>
                   </div>
               </div>
