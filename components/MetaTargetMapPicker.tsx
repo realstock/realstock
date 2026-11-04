@@ -57,10 +57,30 @@ export default function MetaTargetMapPicker({
   const isInitializedRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  const propertyLocationRef = useRef(propertyLocation);
+  useEffect(() => {
+    propertyLocationRef.current = propertyLocation;
+  }, [propertyLocation]);
+
   const [latitude, setLatitude] = useState<number>(initialLatitude || -3.7319);
   const [longitude, setLongitude] = useState<number>(initialLongitude || -38.5267);
   const [radiusKm, setRadiusKm] = useState<number>(Math.max(25, initialRadiusKm));
   const [isMapReady, setIsMapReady] = useState(false);
+
+  const radiusKmRef = useRef(radiusKm);
+  useEffect(() => {
+    radiusKmRef.current = radiusKm;
+  }, [radiusKm]);
+
+  const coordsRef = useRef({ lat: latitude, lng: longitude });
+  useEffect(() => {
+    coordsRef.current = { lat: latitude, lng: longitude };
+  }, [latitude, longitude]);
 
   // Inicializa o nome do local com base no imóvel original
   const initialLoc = [propertyLocation?.city, propertyLocation?.state].filter(Boolean).join(", ") 
@@ -102,7 +122,7 @@ export default function MetaTargetMapPicker({
       setResolvedCity(city);
       setResolvedState(state);
 
-      onChange({
+      onChangeRef.current?.({
         latitude: Number(lat.toFixed(6)),
         longitude: Number(lng.toFixed(6)),
         radiusKm: rad,
@@ -117,7 +137,7 @@ export default function MetaTargetMapPicker({
     } finally {
       setIsResolvingLocation(false);
     }
-  }, [onChange]);
+  }, []);
 
   // Inicialização do Cesium Viewer
   useEffect(() => {
@@ -166,8 +186,8 @@ export default function MetaTargetMapPicker({
           id: "meta-target-circle",
           position: Cesium.Cartesian3.fromDegrees(longitude, latitude),
           ellipse: {
-            semiMajorAxis: new Cesium.CallbackProperty(() => radiusKm * 1000, false),
-            semiMinorAxis: new Cesium.CallbackProperty(() => radiusKm * 1000, false),
+            semiMajorAxis: new Cesium.CallbackProperty(() => radiusKmRef.current * 1000, false),
+            semiMinorAxis: new Cesium.CallbackProperty(() => radiusKmRef.current * 1000, false),
             material: Cesium.Color.fromCssColorString("rgba(168, 85, 247, 0.28)"),
             outline: true,
             outlineColor: Cesium.Color.fromCssColorString("#c084fc"),
@@ -233,6 +253,7 @@ export default function MetaTargetMapPicker({
 
           setLatitude(newLat);
           setLongitude(newLng);
+          coordsRef.current = { lat: newLat, lng: newLng };
           setLocationName("Identificando região...");
 
           // Atualizar posições no Cesium
@@ -243,15 +264,17 @@ export default function MetaTargetMapPicker({
             pinEntityRef.current.position = Cesium.Cartesian3.fromDegrees(newLng, newLat);
           }
 
+          const currentRad = radiusKmRef.current;
+
           // Notifica pai imediatamente com coordenadas e dispara reverse geocode
-          onChange({
+          onChangeRef.current?.({
             latitude: newLat,
             longitude: newLng,
-            radiusKm,
+            radiusKm: currentRad,
             locationName: undefined,
           });
 
-          resolveReverseGeocode(newLat, newLng, radiusKm);
+          resolveReverseGeocode(newLat, newLng, currentRad);
         }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
         setIsMapReady(true);
@@ -277,15 +300,19 @@ export default function MetaTargetMapPicker({
       propertyPinRef.current = null;
       isInitializedRef.current = false;
     };
-  }, [resolveReverseGeocode, onChange, propLat, propLng]);
+  }, []);
 
   // Atualizar Câmera e Entidades quando o raio mudar
   const handleRadiusChange = (newRadius: number, adjustCamera: boolean = true) => {
     const clamped = Math.max(25, Math.min(150, newRadius));
     setRadiusKm(clamped);
-    onChange({
-      latitude,
-      longitude,
+    radiusKmRef.current = clamped;
+
+    const currentCoords = coordsRef.current;
+
+    onChangeRef.current?.({
+      latitude: currentCoords.lat,
+      longitude: currentCoords.lng,
       radiusKm: clamped,
       locationName,
       city: resolvedCity,
@@ -297,7 +324,7 @@ export default function MetaTargetMapPicker({
         if (!viewerRef.current || viewerRef.current.isDestroyed()) return;
         const altitude = Math.max(16000, clamped * 2800);
         viewerRef.current.camera.flyTo({
-          destination: Cesium.Cartesian3.fromDegrees(longitude, latitude, altitude),
+          destination: Cesium.Cartesian3.fromDegrees(currentCoords.lng, currentCoords.lat, altitude),
           duration: 0.6,
         });
       });
@@ -306,41 +333,48 @@ export default function MetaTargetMapPicker({
 
   // Centralizar de volta no imóvel original
   const handleResetToProperty = () => {
-    if (!propLat || !propLng) return;
-    setLatitude(propLat);
-    setLongitude(propLng);
+    const pLoc = propertyLocationRef.current;
+    const pLat = pLoc?.latitude ?? initialLatitude;
+    const pLng = pLoc?.longitude ?? initialLongitude;
+    if (!pLat || !pLng) return;
 
-    const origLoc = [propertyLocation?.city, propertyLocation?.state].filter(Boolean).join(", ") 
-      || propertyLocation?.state 
+    setLatitude(pLat);
+    setLongitude(pLng);
+    coordsRef.current = { lat: pLat, lng: pLng };
+
+    const origLoc = [pLoc?.city, pLoc?.state].filter(Boolean).join(", ") 
+      || pLoc?.state 
       || "Brasil";
 
     setLocationName(origLoc);
-    setResolvedCity(propertyLocation?.city || "");
-    setResolvedState(propertyLocation?.state || "");
+    setResolvedCity(pLoc?.city || "");
+    setResolvedState(pLoc?.state || "");
+
+    const currentRad = radiusKmRef.current;
 
     import("cesium").then((Cesium) => {
       if (!viewerRef.current || viewerRef.current.isDestroyed()) return;
 
       if (circleEntityRef.current) {
-        circleEntityRef.current.position = Cesium.Cartesian3.fromDegrees(propLng, propLat);
+        circleEntityRef.current.position = Cesium.Cartesian3.fromDegrees(pLng, pLat);
       }
       if (pinEntityRef.current) {
-        pinEntityRef.current.position = Cesium.Cartesian3.fromDegrees(propLng, propLat);
+        pinEntityRef.current.position = Cesium.Cartesian3.fromDegrees(pLng, pLat);
       }
 
-      const altitude = Math.max(16000, radiusKm * 2800);
+      const altitude = Math.max(16000, currentRad * 2800);
       viewerRef.current.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(propLng, propLat, altitude),
+        destination: Cesium.Cartesian3.fromDegrees(pLng, pLat, altitude),
         duration: 1.0,
       });
 
-      onChange({
-        latitude: propLat,
-        longitude: propLng,
-        radiusKm,
+      onChangeRef.current?.({
+        latitude: pLat,
+        longitude: pLng,
+        radiusKm: currentRad,
         locationName: origLoc,
-        city: propertyLocation?.city,
-        state: propertyLocation?.state,
+        city: pLoc?.city,
+        state: pLoc?.state,
       });
     });
   };

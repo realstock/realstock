@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use, useRef, Suspense } from "react";
+import { useEffect, useState, use, useRef, Suspense, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -48,6 +48,37 @@ function TurbinarContent({ params }: { params: Promise<{ id: string }> }) {
   const [targetLocationName, setTargetLocationName] = useState<string>("");
   const [targetCity, setTargetCity] = useState<string>("");
   const [targetState, setTargetState] = useState<string>("");
+
+  const handleTargetAreaChange = useCallback(
+    ({ latitude, longitude, radiusKm, locationName, city, state }: {
+      latitude: number;
+      longitude: number;
+      radiusKm: number;
+      locationName?: string;
+      city?: string;
+      state?: string;
+    }) => {
+      setTargetLatitude(latitude);
+      setTargetLongitude(longitude);
+      setTargetRadiusKm(radiusKm);
+      if (locationName) setTargetLocationName(locationName);
+      if (city) setTargetCity(city);
+      if (state) setTargetState(state);
+    },
+    []
+  );
+
+  const memoizedPropertyLocation = useMemo(() => {
+    if (!property) return undefined;
+    return {
+      latitude: property.latitude ? Number(property.latitude) : -3.7319,
+      longitude: property.longitude ? Number(property.longitude) : -38.5267,
+      title: property.title,
+      city: property.city,
+      state: property.state,
+      neighborhood: property.neighborhood,
+    };
+  }, [property?.latitude, property?.longitude, property?.title, property?.city, property?.state, property?.neighborhood]);
   
   // Slider state
   const [dailyBudget, setDailyBudget] = useState<number>(20); // Default R$ 20/day
@@ -940,22 +971,8 @@ function TurbinarContent({ params }: { params: Promise<{ id: string }> }) {
                       initialLatitude={targetLatitude ?? (property.latitude ? Number(property.latitude) : -3.7319)}
                       initialLongitude={targetLongitude ?? (property.longitude ? Number(property.longitude) : -38.5267)}
                       initialRadiusKm={targetRadiusKm}
-                      propertyLocation={{
-                        latitude: property.latitude ? Number(property.latitude) : -3.7319,
-                        longitude: property.longitude ? Number(property.longitude) : -38.5267,
-                        title: property.title,
-                        city: property.city,
-                        state: property.state,
-                        neighborhood: property.neighborhood,
-                      }}
-                      onChange={({ latitude, longitude, radiusKm, locationName, city, state }) => {
-                        setTargetLatitude(latitude);
-                        setTargetLongitude(longitude);
-                        setTargetRadiusKm(radiusKm);
-                        if (locationName) setTargetLocationName(locationName);
-                        if (city) setTargetCity(city);
-                        if (state) setTargetState(state);
-                      }}
+                      propertyLocation={memoizedPropertyLocation}
+                      onChange={handleTargetAreaChange}
                     />
                   </div>
                 )}
