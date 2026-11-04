@@ -7,13 +7,13 @@ export default function Footer() {
       <div className="max-w-[1600px] mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
         {/* Brand */}
         <div className="space-y-4 sm:col-span-2 lg:col-span-1">
-          <Link href="/" className="block w-[180px]">
+          <Link href="/" className="block w-[190px]">
              <Image
                 src="/logo-realstock.jpg"
                 alt="RealStock"
-                width={300}
-                height={80}
-                className="w-full h-auto"
+                width={1024}
+                height={503}
+                className="w-full h-auto object-contain"
               />
           </Link>
           <p className="text-sm leading-relaxed">

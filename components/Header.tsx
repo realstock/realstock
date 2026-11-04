@@ -103,15 +103,15 @@ export default function Header() {
   return (
     <header className="border-b border-white/10 bg-slate-950 text-white">
       {/* Linha superior: Logo, Switcher (Desktop), AdSense, Perfil / Login */}
-      <div className="mx-auto flex max-w-[1600px] h-[58px] sm:h-[70px] lg:h-[80px] items-center justify-between px-3 sm:px-4 lg:px-6 gap-2">
+      <div className="mx-auto flex max-w-[1600px] h-[64px] sm:h-[76px] lg:h-[88px] items-center justify-between px-3 sm:px-4 lg:px-6 gap-2">
         <div className="flex items-center gap-2 sm:gap-3 md:gap-5 min-w-0">
           <Link href="/" className="block shrink-0">
             <Image
               src="/logo-realstock.jpg"
               alt="RealStock"
-              width={1280}
-              height={629}
-              className="h-[34px] sm:h-[44px] lg:h-[52px] w-auto object-contain"
+              width={1024}
+              height={503}
+              className="h-[42px] sm:h-[54px] lg:h-[64px] w-auto object-contain transition-transform duration-200 hover:scale-[1.03]"
               priority
             />
           </Link>
