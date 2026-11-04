@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { orderID, propertyId, dailyBudget, platform, postType, targetLatitude, targetLongitude, targetRadiusKm } = body;
+    const { orderID, propertyId, dailyBudget, platform, postType, targetLatitude, targetLongitude, targetRadiusKm, targetLocationName, targetCity, targetState } = body;
     const durationDays = Number(body.durationDays || body.duration_days || 5);
 
     if (!orderID || propertyId === undefined || propertyId === null || propertyId === "" || isNaN(Number(propertyId)) || !dailyBudget) {
@@ -303,13 +303,14 @@ export async function POST(req: NextRequest) {
     const targetLat = targetLatitude !== undefined && targetLatitude !== null && !isNaN(Number(targetLatitude)) ? Number(targetLatitude) : null;
     const targetLng = targetLongitude !== undefined && targetLongitude !== null && !isNaN(Number(targetLongitude)) ? Number(targetLongitude) : null;
     const effectiveRadiusKm = Math.max(25, Math.round(Number(targetRadiusKm) || 30));
+    const displayLocation = targetLocationName || (targetCity ? `${targetCity}, ${targetState}` : targetState) || property.city || stateName;
 
     const targetingDescription = (targetLat !== null && targetLng !== null)
-        ? `Raio de ${effectiveRadiusKm} km (${property.city || stateName}) • 18 a 65+ anos`
+        ? `Raio de ${effectiveRadiusKm} km (${displayLocation}) • 18 a 65+ anos`
         : `${stateName} • 18 a 65+ anos`;
 
     const adsetNameGenerated = (targetLat !== null && targetLng !== null)
-        ? `AdSet RealStock Raio ${effectiveRadiusKm}km (${property.city || stateName})`
+        ? `AdSet RealStock Raio ${effectiveRadiusKm}km (${displayLocation})`
         : `AdSet RealStock ${property.state || stateName}`;
 
     // Helper para ativar boost local no banco se a Meta API falhar ou não estiver configurada

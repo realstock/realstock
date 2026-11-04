@@ -31,7 +31,14 @@ interface MetaTargetMapPickerProps {
     state?: string;
     neighborhood?: string;
   };
-  onChange: (data: { latitude: number; longitude: number; radiusKm: number }) => void;
+  onChange: (data: { 
+    latitude: number; 
+    longitude: number; 
+    radiusKm: number;
+    locationName?: string;
+    city?: string;
+    state?: string;
+  }) => void;
 }
 
 export default function MetaTargetMapPicker({
@@ -48,24 +55,68 @@ export default function MetaTargetMapPicker({
   const pinEntityRef = useRef<any>(null);
   const propertyPinRef = useRef<any>(null);
   const isInitializedRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const [latitude, setLatitude] = useState<number>(initialLatitude || -3.7319);
   const [longitude, setLongitude] = useState<number>(initialLongitude || -38.5267);
   const [radiusKm, setRadiusKm] = useState<number>(Math.max(25, initialRadiusKm));
   const [isMapReady, setIsMapReady] = useState(false);
-  const [isAdjusting, setIsAdjusting] = useState(false);
+
+  // Inicializa o nome do local com base no imóvel original
+  const initialLoc = [propertyLocation?.city, propertyLocation?.state].filter(Boolean).join(", ") 
+    || propertyLocation?.state 
+    || "Brasil";
+
+  const [locationName, setLocationName] = useState<string>(initialLoc);
+  const [resolvedCity, setResolvedCity] = useState<string>(propertyLocation?.city || "");
+  const [resolvedState, setResolvedState] = useState<string>(propertyLocation?.state || "");
+  const [isResolvingLocation, setIsResolvingLocation] = useState(false);
 
   // Propriedades do imóvel original para o botão "Centralizar no Imóvel"
   const propLat = propertyLocation?.latitude ?? initialLatitude;
   const propLng = propertyLocation?.longitude ?? initialLongitude;
 
-  // Notificar pai sempre que latitude, longitude ou radiusKm mudarem
-  const triggerChange = useCallback((newLat: number, newLng: number, newRadius: number) => {
-    onChange({
-      latitude: Number(newLat.toFixed(6)),
-      longitude: Number(newLng.toFixed(6)),
-      radiusKm: newRadius,
-    });
+  // Função para resolver o nome da cidade e do estado através de Geocodificação Reversa
+  const resolveReverseGeocode = useCallback(async (lat: number, lng: number, rad: number) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setIsResolvingLocation(true);
+
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`, {
+        signal: controller.signal,
+        headers: { "Accept-Language": "pt-BR,pt;q=0.9" }
+      });
+      if (!res.ok) throw new Error("Falha na geocodificação reversa");
+      const data = await res.json();
+      
+      const city = data.address?.city || data.address?.town || data.address?.municipality || data.address?.village || data.address?.county || "";
+      const state = data.address?.state || "";
+      const locName = [city, state].filter(Boolean).join(", ") || state || city || "Brasil";
+
+      setLocationName(locName);
+      setResolvedCity(city);
+      setResolvedState(state);
+
+      onChange({
+        latitude: Number(lat.toFixed(6)),
+        longitude: Number(lng.toFixed(6)),
+        radiusKm: rad,
+        locationName: locName,
+        city,
+        state,
+      });
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        console.warn("Aviso na geocodificação reversa:", err);
+      }
+    } finally {
+      setIsResolvingLocation(false);
+    }
   }, [onChange]);
 
   // Inicialização do Cesium Viewer
@@ -182,6 +233,7 @@ export default function MetaTargetMapPicker({
 
           setLatitude(newLat);
           setLongitude(newLng);
+          setLocationName("Identificando região...");
 
           // Atualizar posições no Cesium
           if (circleEntityRef.current) {
@@ -191,7 +243,15 @@ export default function MetaTargetMapPicker({
             pinEntityRef.current.position = Cesium.Cartesian3.fromDegrees(newLng, newLat);
           }
 
-          triggerChange(newLat, newLng, radiusKm);
+          // Notifica pai imediatamente com coordenadas e dispara reverse geocode
+          onChange({
+            latitude: newLat,
+            longitude: newLng,
+            radiusKm,
+            locationName: undefined,
+          });
+
+          resolveReverseGeocode(newLat, newLng, radiusKm);
         }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
         setIsMapReady(true);
@@ -217,13 +277,20 @@ export default function MetaTargetMapPicker({
       propertyPinRef.current = null;
       isInitializedRef.current = false;
     };
-  }, []);
+  }, [resolveReverseGeocode, onChange, propLat, propLng]);
 
   // Atualizar Câmera e Entidades quando o raio mudar
   const handleRadiusChange = (newRadius: number, adjustCamera: boolean = true) => {
     const clamped = Math.max(25, Math.min(150, newRadius));
     setRadiusKm(clamped);
-    triggerChange(latitude, longitude, clamped);
+    onChange({
+      latitude,
+      longitude,
+      radiusKm: clamped,
+      locationName,
+      city: resolvedCity,
+      state: resolvedState,
+    });
 
     if (viewerRef.current && adjustCamera) {
       import("cesium").then((Cesium) => {
@@ -243,6 +310,14 @@ export default function MetaTargetMapPicker({
     setLatitude(propLat);
     setLongitude(propLng);
 
+    const origLoc = [propertyLocation?.city, propertyLocation?.state].filter(Boolean).join(", ") 
+      || propertyLocation?.state 
+      || "Brasil";
+
+    setLocationName(origLoc);
+    setResolvedCity(propertyLocation?.city || "");
+    setResolvedState(propertyLocation?.state || "");
+
     import("cesium").then((Cesium) => {
       if (!viewerRef.current || viewerRef.current.isDestroyed()) return;
 
@@ -259,7 +334,14 @@ export default function MetaTargetMapPicker({
         duration: 1.0,
       });
 
-      triggerChange(propLat, propLng, radiusKm);
+      onChange({
+        latitude: propLat,
+        longitude: propLng,
+        radiusKm,
+        locationName: origLoc,
+        city: propertyLocation?.city,
+        state: propertyLocation?.state,
+      });
     });
   };
 
@@ -329,6 +411,11 @@ export default function MetaTargetMapPicker({
             <span className="h-2 w-2 rounded-full bg-purple-400 animate-ping" />
             <span className="font-semibold text-purple-300">Raio Atual:</span>
             <strong className="text-white font-extrabold text-sm">{radiusKm} km</strong>
+            {locationName && (
+              <span className="hidden sm:inline-block border-l border-white/20 pl-2 ml-1 text-slate-200 font-semibold truncate max-w-[220px]">
+                📍 {locationName}
+              </span>
+            )}
           </div>
 
           <div className="pointer-events-auto hidden sm:flex items-center gap-1.5 rounded-xl bg-slate-950/85 backdrop-blur-md border border-white/10 px-3 py-1.5 text-[11px] text-slate-300 shadow-xl">
@@ -360,9 +447,11 @@ export default function MetaTargetMapPicker({
 
         {/* Indicador de Centro Inferior Esquerdo */}
         <div className="absolute bottom-3 left-3 z-10 pointer-events-none">
-          <div className="flex items-center gap-1.5 rounded-lg bg-slate-950/80 backdrop-blur-md border border-white/10 px-2.5 py-1 text-[10px] text-slate-400 shadow-lg">
-            <MapPin size={11} className="text-emerald-400" />
-            <span>{isCenteredOnProperty ? "Centro no Imóvel" : "Centro Personalizado"}</span>
+          <div className="flex items-center gap-1.5 rounded-lg bg-slate-950/85 backdrop-blur-md border border-white/10 px-2.5 py-1 text-[11px] text-white shadow-lg">
+            <MapPin size={12} className="text-emerald-400 shrink-0" />
+            <span className="font-bold truncate max-w-[250px]">
+              {locationName || (isCenteredOnProperty ? "Centro no Imóvel" : "Centro Personalizado")}
+            </span>
           </div>
         </div>
       </div>

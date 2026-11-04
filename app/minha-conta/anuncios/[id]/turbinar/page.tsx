@@ -45,6 +45,9 @@ function TurbinarContent({ params }: { params: Promise<{ id: string }> }) {
   const [targetLatitude, setTargetLatitude] = useState<number | null>(null);
   const [targetLongitude, setTargetLongitude] = useState<number | null>(null);
   const [targetRadiusKm, setTargetRadiusKm] = useState<number>(30);
+  const [targetLocationName, setTargetLocationName] = useState<string>("");
+  const [targetCity, setTargetCity] = useState<string>("");
+  const [targetState, setTargetState] = useState<string>("");
   
   // Slider state
   const [dailyBudget, setDailyBudget] = useState<number>(20); // Default R$ 20/day
@@ -115,6 +118,12 @@ function TurbinarContent({ params }: { params: Promise<{ id: string }> }) {
         const pLng = data.property.longitude ? Number(data.property.longitude) : -38.5267;
         setTargetLatitude((prev) => prev ?? pLat);
         setTargetLongitude((prev) => prev ?? pLng);
+        const initialLoc = [data.property.city, data.property.state].filter(Boolean).join(", ") 
+          || data.property.state 
+          || "Brasil";
+        setTargetLocationName((prev) => prev || initialLoc);
+        setTargetCity((prev) => prev || data.property.city || "");
+        setTargetState((prev) => prev || data.property.state || "");
       }
       setService(data.service);
       setIgSessions(data.igSessions || []);
@@ -204,7 +213,10 @@ function TurbinarContent({ params }: { params: Promise<{ id: string }> }) {
           postType,
           targetLatitude: targetLatitude ?? (property?.latitude ? Number(property.latitude) : undefined),
           targetLongitude: targetLongitude ?? (property?.longitude ? Number(property.longitude) : undefined),
-          targetRadiusKm: targetRadiusKm
+          targetRadiusKm: targetRadiusKm,
+          targetLocationName: targetLocationName || undefined,
+          targetCity: targetCity || undefined,
+          targetState: targetState || undefined
         }),
       });
       const result = await res.json();
@@ -214,13 +226,15 @@ function TurbinarContent({ params }: { params: Promise<{ id: string }> }) {
       calculatedEndDate.setDate(calculatedEndDate.getDate() + durationDays);
       const calculatedEndFormatted = calculatedEndDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
+      const displayLoc = targetLocationName || (targetCity ? `${targetCity}, ${targetState}` : targetState) || property?.city || property?.state || "Local Selecionado";
+
       const targetingText = selectedPlatform === "google"
         ? `${property?.city || property?.state || "Brasil"} • Pesquisa Google`
-        : `Raio de ${targetRadiusKm} km (${property?.city || property?.state || "local selecionado"}) • 18 a 65+ anos`;
+        : `Raio de ${targetRadiusKm} km (${displayLoc}) • 18 a 65+ anos`;
 
       const adsetNameText = selectedPlatform === "google"
         ? `AdSet Google ${property?.city || property?.state || "Brasil"}`
-        : `AdSet RealStock Raio ${targetRadiusKm}km (${property?.city || property?.state || "Brasil"})`;
+        : `AdSet RealStock Raio ${targetRadiusKm}km (${displayLoc})`;
 
       const summary = result.campaignDetails || {
         campaignName: id === "0" ? "Portfólio de Imóveis RealStock" : `RealStock Boost Propriedade ${id}`,
@@ -433,7 +447,7 @@ function TurbinarContent({ params }: { params: Promise<{ id: string }> }) {
                         {campaignSummary?.adsetName || (
                           selectedPlatform === "google"
                             ? `AdSet Google ${property?.city || property?.state || "Brasil"}`
-                            : `AdSet RealStock Raio ${targetRadiusKm}km (${property?.city || property?.state || "Brasil"})`
+                            : `AdSet RealStock Raio ${targetRadiusKm}km (${targetLocationName || (targetCity ? `${targetCity}, ${targetState}` : targetState) || property?.city || property?.state || "Brasil"})`
                         )}
                       </span>
                     </div>
@@ -443,7 +457,7 @@ function TurbinarContent({ params }: { params: Promise<{ id: string }> }) {
                         {campaignSummary?.targeting || (
                           selectedPlatform === "google"
                             ? `${property?.city || property?.state || "Brasil"} • Pesquisa Google`
-                            : `Raio de ${targetRadiusKm} km (${property?.city || property?.state || "local selecionado"}) • 18 a 65+ anos`
+                            : `Raio de ${targetRadiusKm} km (${targetLocationName || (targetCity ? `${targetCity}, ${targetState}` : targetState) || property?.city || property?.state || "Local Selecionado"}) • 18 a 65+ anos`
                         )}
                       </span>
                     </div>
@@ -934,10 +948,13 @@ function TurbinarContent({ params }: { params: Promise<{ id: string }> }) {
                         state: property.state,
                         neighborhood: property.neighborhood,
                       }}
-                      onChange={({ latitude, longitude, radiusKm }) => {
+                      onChange={({ latitude, longitude, radiusKm, locationName, city, state }) => {
                         setTargetLatitude(latitude);
                         setTargetLongitude(longitude);
                         setTargetRadiusKm(radiusKm);
+                        if (locationName) setTargetLocationName(locationName);
+                        if (city) setTargetCity(city);
+                        if (state) setTargetState(state);
                       }}
                     />
                   </div>
@@ -1155,7 +1172,7 @@ function TurbinarContent({ params }: { params: Promise<{ id: string }> }) {
                           <div className="text-white font-bold truncate">
                             {selectedPlatform === "google"
                               ? `${property.city ? `${property.city} - ` : ""}${property.state || "Brasil"}`
-                              : `Raio de ${targetRadiusKm} km • ${property.city || property.state || "Local Selecionado"}`}
+                              : `Raio de ${targetRadiusKm} km • ${targetLocationName || (targetCity ? `${targetCity}, ${targetState}` : targetState) || (property.city ? `${property.city}, ${property.state}` : property.state || "Local Selecionado")}`}
                           </div>
                           <div className="text-[10px] text-purple-300 font-medium">
                             {selectedPlatform === "google" 
