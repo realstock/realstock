@@ -163,6 +163,7 @@ export default async function ImoveisAVendaPage() {
   };
 
   const popularCities = [
+    { name: "Ceará (CE) - Estado Principal", slug: "ceara", url: "/imoveis-a-venda/ceara", desc: "Casas em condomínio no Eusébio, apartamentos em Fortaleza e praias como Flecheiras e Trairi" },
     { name: "Fortaleza (CE)", slug: "fortaleza", desc: "Apartamentos de luxo, vista mar e bairros nobres" },
     { name: "Eusébio (CE)", slug: "eusebio", desc: "Casas em condomínio fechado de alto padrão e lazer" },
     { name: "Vitória (ES)", slug: "vitoria", desc: "Capital com alto IDH, praias e excelente valorização" },
@@ -243,7 +244,7 @@ export default async function ImoveisAVendaPage() {
             {popularCities.map((city) => (
               <Link
                 key={city.slug}
-                href={`/imoveis/${city.slug}?tipo=venda`}
+                href={city.url || `/imoveis/${city.slug}?tipo=venda`}
                 className="group p-5 rounded-2xl border border-white/10 bg-slate-900/50 hover:bg-slate-900 hover:border-blue-500/40 transition-all duration-300"
               >
                 <div className="flex items-center justify-between mb-2">

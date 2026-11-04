@@ -1,17 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { MetadataRoute } from "next";
+import { getStateBySlug, normalizeSlug } from "@/lib/geoUtils";
 
 export const dynamic = "force-dynamic";
-
-function normalizeSlug(str: string) {
-  return str
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://www.realstock.com.br";
@@ -20,16 +11,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     select: {
       id: true,
       city: true,
+      state: true,
+      listingType: true,
       createdAt: true,
     },
   });
 
   const citySlugs = new Set<string>();
+  const stateSlugs = new Set<string>();
+
   properties.forEach((p) => {
     if (p.city) {
       citySlugs.add(normalizeSlug(p.city));
     }
+    if (p.state) {
+      const stateInfo = getStateBySlug(p.state);
+      if (stateInfo) {
+        stateSlugs.add(stateInfo.slug);
+      } else {
+        stateSlugs.add(normalizeSlug(p.state));
+      }
+    }
   });
+
+  // Sempre garantir que Ceará esteja explicitamente no sitemap
+  stateSlugs.add("ceara");
 
   const staticRoutes: MetadataRoute.Sitemap = [
     {
@@ -94,6 +100,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
+  // Rotas de Hub de Estados (ex: /imoveis/ceara, /imoveis-a-venda/ceara, /aluguel-temporada/ceara)
+  const stateRoutes: MetadataRoute.Sitemap = [];
+  stateSlugs.forEach((slug) => {
+    stateRoutes.push({
+      url: `${baseUrl}/imoveis/${slug}`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 1.0,
+    });
+    stateRoutes.push({
+      url: `${baseUrl}/imoveis-a-venda/${slug}`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 1.0,
+    });
+    stateRoutes.push({
+      url: `${baseUrl}/aluguel-temporada/${slug}`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.9,
+    });
+  });
+
+  // Rotas de Cidades
   const cityRoutes: MetadataRoute.Sitemap = Array.from(citySlugs).map((slug) => ({
     url: `${baseUrl}/imoveis/${slug}`,
     lastModified: new Date(),
@@ -101,6 +131,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.9,
   }));
 
+  // Rotas Individuais de Imóveis
   const propertyRoutes: MetadataRoute.Sitemap = properties.map((property) => ({
     url: `${baseUrl}/imovel/${property.id}`,
     lastModified: property.createdAt || new Date(),
@@ -108,5 +139,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...staticRoutes, ...cityRoutes, ...propertyRoutes];
+  return [...staticRoutes, ...stateRoutes, ...cityRoutes, ...propertyRoutes];
 }

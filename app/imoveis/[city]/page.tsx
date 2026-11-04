@@ -8,21 +8,14 @@ import {
   Maximize2,
   ArrowRight,
   Sparkles,
+  Building2,
+  Calendar,
 } from "lucide-react";
+import { getStateBySlug, normalizeSlug } from "@/lib/geoUtils";
 
 export const dynamic = "force-dynamic";
 
-function normalizeSlug(str: string) {
-  return str
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-async function getPropertiesByCitySlug(citySlug: string) {
+async function getPropertiesByLocationSlug(slug: string) {
   const allProperties = await prisma.property.findMany({
     include: {
       images: {
@@ -33,13 +26,51 @@ async function getPropertiesByCitySlug(citySlug: string) {
     orderBy: { createdAt: "desc" },
   });
 
+  const stateInfo = getStateBySlug(slug);
+
+  if (stateInfo) {
+    const matching = allProperties.filter((p) => {
+      if (!p.state) return false;
+      const pStateNorm = normalizeSlug(p.state);
+      return (
+        pStateNorm === stateInfo.slug ||
+        pStateNorm === normalizeSlug(stateInfo.name) ||
+        p.state.trim().toUpperCase() === stateInfo.uf
+      );
+    });
+
+    return {
+      properties: matching,
+      isState: true,
+      stateInfo,
+      cityName: null,
+      stateName: stateInfo.name,
+      displayName: stateInfo.name,
+      uf: stateInfo.uf,
+      canonicalSlug: stateInfo.slug,
+    };
+  }
+
+  // Busca por Cidade
   const matchingProperties = allProperties.filter((p) => {
     if (!p.city) return false;
-    const slug = normalizeSlug(p.city);
-    return slug === citySlug;
+    const citySlugNorm = normalizeSlug(p.city);
+    return citySlugNorm === slug;
   });
 
-  return matchingProperties;
+  const cityName = matchingProperties[0]?.city || slug;
+  const stateName = matchingProperties[0]?.state || "Brasil";
+
+  return {
+    properties: matchingProperties,
+    isState: false,
+    stateInfo: null,
+    cityName,
+    stateName,
+    displayName: cityName,
+    uf: null,
+    canonicalSlug: slug,
+  };
 }
 
 export async function generateMetadata({
@@ -48,7 +79,8 @@ export async function generateMetadata({
   params: Promise<{ city: string }>;
 }) {
   const { city } = await params;
-  const properties = await getPropertiesByCitySlug(city);
+  const locationData = await getPropertiesByLocationSlug(city);
+  const { properties, isState, stateInfo, cityName, stateName, canonicalSlug } = locationData;
 
   if (properties.length === 0) {
     return {
@@ -56,11 +88,18 @@ export async function generateMetadata({
     };
   }
 
-  const cityName = properties[0].city || city;
-  const stateName = properties[0].state || "Brasil";
-  const title = `Imóveis à Venda e Temporada em ${cityName} - ${stateName}`;
-  const description = `Confira ${properties.length} imóveis disponíveis em ${cityName}, ${stateName}. Apartamentos, casas e aluguel por temporada direto com proprietários. Fotos, valores e negociação em tempo real!`;
-  const canonicalUrl = `https://www.realstock.com.br/imoveis/${city}`;
+  let title = "";
+  let description = "";
+
+  if (isState && stateInfo) {
+    title = `Imóveis no ${stateInfo.name} (${stateInfo.uf}): Venda e Temporada | RealStock`;
+    description = `Confira ${properties.length} imóveis disponíveis no estado do ${stateInfo.name}. Casas em condomínio no Eusébio, apartamentos em Fortaleza e casas de praia em Flecheiras e Trairi direto com proprietários no RealStock!`;
+  } else {
+    title = `Imóveis à Venda e Temporada em ${cityName} - ${stateName} | RealStock`;
+    description = `Confira ${properties.length} imóveis disponíveis em ${cityName}, ${stateName}. Apartamentos, casas e aluguel por temporada direto com proprietários. Fotos, valores e negociação em tempo real!`;
+  }
+
+  const canonicalUrl = `https://www.realstock.com.br/imoveis/${canonicalSlug}`;
 
   return {
     title,
@@ -78,14 +117,14 @@ export async function generateMetadata({
           url: properties[0].images[0]?.imageUrl || "https://www.realstock.com.br/icon.png",
           width: 800,
           height: 600,
-          alt: `Imóveis em ${cityName}`,
+          alt: `Imóveis em ${isState ? stateName : cityName}`,
         },
       ],
     },
   };
 }
 
-export default async function CityLandingPage({
+export default async function LocationLandingPage({
   params,
   searchParams,
 }: {
@@ -94,15 +133,12 @@ export default async function CityLandingPage({
 }) {
   const { city } = await params;
   const { tipo } = await searchParams;
-  const properties = await getPropertiesByCitySlug(city);
+  const locationData = await getPropertiesByLocationSlug(city);
+  const { properties, isState, stateInfo, cityName, stateName, canonicalSlug } = locationData;
 
   if (properties.length === 0) {
     notFound();
   }
-
-  const cityName = properties[0].city || city;
-  const stateName = properties[0].state || "Brasil";
-  const citySlug = city;
 
   // Filtragem opcional por tipo (venda vs temporada)
   const filteredProperties = properties.filter((p) => {
@@ -116,14 +152,16 @@ export default async function CityLandingPage({
   const seasonalCount = properties.filter((p) => p.listingType === "ALUGUEL_TEMPORADA").length;
 
   const siteUrl = "https://www.realstock.com.br";
-  const canonicalUrl = `${siteUrl}/imoveis/${citySlug}`;
+  const canonicalUrl = `${siteUrl}/imoveis/${canonicalSlug}`;
+
+  const displayName = isState && stateInfo ? `${stateInfo.name} (${stateInfo.uf})` : `${cityName} - ${stateName}`;
 
   // Schema ItemList para o Google exibir lista/carrossel
   const itemListSchema = {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    "name": `Imóveis em ${cityName} - ${stateName}`,
-    "description": `Catálogo de imóveis à venda e temporada em ${cityName}, ${stateName}`,
+    "name": `Imóveis em ${displayName}`,
+    "description": `Catálogo de imóveis à venda e temporada em ${displayName}`,
     "url": canonicalUrl,
     "numberOfItems": properties.length,
     "itemListElement": properties.map((p, index) => ({
@@ -155,11 +193,18 @@ export default async function CityLandingPage({
       {
         "@type": "ListItem",
         "position": 3,
-        "name": `Imóveis em ${cityName}`,
+        "name": isState && stateInfo ? stateInfo.name : `Imóveis em ${cityName}`,
         "item": canonicalUrl,
       },
     ],
   };
+
+  // Cidades do Ceará em destaque se for Ceará
+  const cearaCities = [
+    { name: "Fortaleza (CE)", slug: "fortaleza", desc: "Apartamentos de alto padrão no Meireles, Beira-Mar, Cocó e Praia do Futuro" },
+    { name: "Eusébio (CE)", slug: "eusebio", desc: "Casas em condomínio fechado e lotes residenciais no Alphaville Ceará" },
+    { name: "Trairi / Flecheiras (CE)", slug: "trairi", desc: "Casas de praia, vilas de temporada e terrenos no litoral cearense" },
+  ];
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -183,7 +228,7 @@ export default async function CityLandingPage({
             Imóveis
           </Link>
           <span>/</span>
-          <span className="text-white font-medium">{cityName} ({stateName})</span>
+          <span className="text-white font-medium">{displayName}</span>
         </nav>
 
         {/* Hero Section */}
@@ -191,17 +236,28 @@ export default async function CityLandingPage({
           <div className="absolute -right-20 -top-20 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="relative z-10">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-4">
-              <MapPin size={14} /> {cityName}, {stateName}
+              <MapPin size={14} /> {displayName}
             </div>
             <h1 className="text-3xl md:text-5xl font-black text-white leading-tight mb-4">
-              Imóveis em <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">{cityName}</span>
+              {isState && stateInfo ? (
+                <>
+                  Imóveis no <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">{stateInfo.name}</span> ({stateInfo.uf})
+                </>
+              ) : (
+                <>
+                  Imóveis em <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">{cityName}</span>
+                </>
+              )}
             </h1>
             <p className="text-slate-300 text-sm md:text-base max-w-2xl leading-relaxed mb-6">
-              Confira apartamentos, casas e opções para alugar por temporada em {cityName}. Negocie direto, sem burocracia e com total segurança no RealStock.
+              {isState && stateInfo
+                ? stateInfo.description
+                : `Confira apartamentos, casas e opções para alugar por temporada em ${cityName}. Negocie direto, sem burocracia e com total segurança no RealStock.`
+              }
             </p>
 
             {/* Badges de Contagem */}
-            <div className="flex flex-wrap items-center gap-3 text-xs md:text-sm">
+            <div className="flex flex-wrap items-center gap-3 text-xs md:text-sm mb-6">
               <span className="px-3.5 py-1.5 rounded-xl bg-white/5 border border-white/10 text-slate-300">
                 Total: <strong className="text-white">{properties.length}</strong> imóveis
               </span>
@@ -216,13 +272,61 @@ export default async function CityLandingPage({
                 </span>
               )}
             </div>
+
+            {/* Atalhos para Páginas Específicas se for Estado */}
+            {isState && stateInfo && (
+              <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-white/10">
+                <Link
+                  href={`/imoveis-a-venda/${stateInfo.slug}`}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider hover:bg-emerald-400 transition-all shadow-md shadow-emerald-500/20"
+                >
+                  <Building2 size={14} /> Ver Casas e Apartamentos à Venda ({saleCount})
+                </Link>
+                {seasonalCount > 0 && (
+                  <Link
+                    href={`/aluguel-temporada/${stateInfo.slug}`}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-500 text-white font-bold text-xs uppercase tracking-wider hover:bg-sky-400 transition-all shadow-md shadow-sky-500/20"
+                  >
+                    <Calendar size={14} /> Ver Aluguel de Temporada ({seasonalCount})
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
         </header>
+
+        {/* Cidades em Destaque no Ceará */}
+        {isState && stateInfo?.slug === "ceara" && (
+          <section className="mb-12">
+            <h2 className="text-xl md:text-2xl font-bold mb-4 flex items-center gap-2">
+              <MapPin size={20} className="text-emerald-400" /> Cidades em Destaque no Ceará
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {cearaCities.map((c) => (
+                <Link
+                  key={c.slug}
+                  href={`/imoveis/${c.slug}`}
+                  className="p-5 rounded-2xl border border-white/10 bg-slate-900/50 hover:bg-slate-900 hover:border-emerald-500/40 transition-all group"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-bold text-white group-hover:text-emerald-300 transition-colors">
+                      {c.name}
+                    </h3>
+                    <ArrowRight size={16} className="text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    {c.desc}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Filtros por Categoria */}
         <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-2">
           <Link
-            href={`/imoveis/${citySlug}`}
+            href={`/imoveis/${canonicalSlug}`}
             className={`px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all ${
               !tipo || tipo === "todos"
                 ? "bg-white text-slate-950 shadow-md"
@@ -233,7 +337,7 @@ export default async function CityLandingPage({
           </Link>
           {saleCount > 0 && (
             <Link
-              href={`/imoveis/${citySlug}?tipo=venda`}
+              href={`/imoveis/${canonicalSlug}?tipo=venda`}
               className={`px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all ${
                 tipo === "venda"
                   ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
@@ -245,7 +349,7 @@ export default async function CityLandingPage({
           )}
           {seasonalCount > 0 && (
             <Link
-              href={`/imoveis/${citySlug}?tipo=temporada`}
+              href={`/imoveis/${canonicalSlug}?tipo=temporada`}
               className={`px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all ${
                 tipo === "temporada"
                   ? "bg-sky-500 text-white shadow-md shadow-sky-500/20"
@@ -303,7 +407,7 @@ export default async function CityLandingPage({
                     </h2>
                     <p className="mt-1 text-xs text-slate-400 flex items-center gap-1">
                       <MapPin size={12} className="text-slate-500" />
-                      {[property.neighborhood, property.city].filter(Boolean).join(", ")}
+                      {[property.neighborhood, property.city, property.state].filter(Boolean).join(", ")}
                     </p>
                   </div>
 
@@ -343,13 +447,13 @@ export default async function CityLandingPage({
         {/* Seção de FAQ Local para SEO */}
         <section className="rounded-3xl border border-white/10 bg-slate-900/40 p-6 md:p-10 mb-12">
           <h2 className="text-xl md:text-2xl font-bold mb-6 flex items-center gap-2">
-            <Sparkles size={20} className="text-emerald-400" /> Perguntas Frequentes sobre Imóveis em {cityName}
+            <Sparkles size={20} className="text-emerald-400" /> Perguntas Frequentes sobre Imóveis em {displayName}
           </h2>
 
           <div className="space-y-4 text-sm">
             <div className="rounded-2xl border border-white/5 bg-white/5 p-4">
               <h3 className="font-semibold text-white mb-2">
-                Como comprar ou alugar imóveis em {cityName} pelo RealStock?
+                Como comprar ou alugar imóveis em {displayName} pelo RealStock?
               </h3>
               <p className="text-slate-300 leading-relaxed text-xs md:text-sm">
                 Basta selecionar o anúncio desejado e enviar uma proposta ou pré-reserva diretamente pela página do imóvel. A negociação é transparente, sem intermediários desnecessários e com proteção total de dados.
@@ -358,7 +462,7 @@ export default async function CityLandingPage({
 
             <div className="rounded-2xl border border-white/5 bg-white/5 p-4">
               <h3 className="font-semibold text-white mb-2">
-                Os valores dos imóveis em {cityName} são negociáveis?
+                Os valores dos imóveis em {displayName} são negociáveis?
               </h3>
               <p className="text-slate-300 leading-relaxed text-xs md:text-sm">
                 Sim! No RealStock você tem um livro de ofertas em tempo real onde pode enviar contrapropostas para imóveis à venda ou consultar valores especiais para estadias de temporada.
@@ -367,7 +471,7 @@ export default async function CityLandingPage({
 
             <div className="rounded-2xl border border-white/5 bg-white/5 p-4">
               <h3 className="font-semibold text-white mb-2">
-                Como anunciar meu imóvel em {cityName} no RealStock?
+                Como anunciar meu imóvel em {displayName} no RealStock?
               </h3>
               <p className="text-slate-300 leading-relaxed text-xs md:text-sm">
                 Você pode cadastrar seu imóvel gratuitamente acessando a opção &quot;Anunciar&quot; no menu principal. Seu anúncio é sincronizado com Google e redes sociais para maximizar seu alcance.

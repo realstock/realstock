@@ -36,13 +36,15 @@ export default function Footer() {
 
         {/* Cidades e Destinos Populares */}
         <div>
-          <h4 className="text-white font-bold mb-4 uppercase text-xs tracking-widest">Destinos em Alta</h4>
+          <h4 className="text-white font-bold mb-4 uppercase text-xs tracking-widest">Ceará & Regiões</h4>
           <ul className="space-y-2 text-sm">
+            <li><Link href="/imoveis-a-venda/ceara" className="hover:text-emerald-400 font-semibold text-white transition-colors">Imóveis à Venda no Ceará (CE)</Link></li>
+            <li><Link href="/aluguel-temporada/ceara" className="hover:text-sky-400 font-semibold text-white transition-colors">Aluguel Temporada no Ceará</Link></li>
+            <li><Link href="/imoveis/ceara" className="hover:text-white transition-colors">Catálogo Completo do Ceará</Link></li>
             <li><Link href="/imoveis/fortaleza" className="hover:text-white transition-colors">Imóveis em Fortaleza (CE)</Link></li>
             <li><Link href="/imoveis/eusebio" className="hover:text-white transition-colors">Imóveis em Eusébio (CE)</Link></li>
-            <li><Link href="/imoveis/trairi" className="hover:text-white transition-colors">Temporada em Trairi / Flecheiras (CE)</Link></li>
-            <li><Link href="/imoveis/vitoria" className="hover:text-white transition-colors">Imóveis em Vitória (ES)</Link></li>
-            <li><Link href="/imoveis/conceicao-da-barra" className="hover:text-white transition-colors">Imóveis em Conceição da Barra (ES)</Link></li>
+            <li><Link href="/imoveis/trairi" className="hover:text-white transition-colors">Temporada em Flecheiras (CE)</Link></li>
+            <li><Link href="/imoveis-a-venda/espirito-santo" className="hover:text-white transition-colors">Imóveis no Espírito Santo (ES)</Link></li>
           </ul>
         </div>
 

@@ -163,6 +163,7 @@ export default async function AluguelTemporadaPage() {
   };
 
   const popularDestinations = [
+    { name: "Ceará (CE) - Litoral & Férias", slug: "ceara", url: "/aluguel-temporada/ceara", desc: "Casas de praia em Flecheiras e Trairi, flats e apartamentos com vista mar na Praia do Futuro" },
     { name: "Fortaleza (CE)", slug: "fortaleza", desc: "Praia de Iracema, Meireles e Beira-Mar" },
     { name: "Trairi / Flecheiras (CE)", slug: "trairi", desc: "Paraíso dos esportes náuticos e praias paradisíacas" },
     { name: "Eusébio (CE)", slug: "eusebio", desc: "Casas espaçosas e tranquilidade a minutos da capital" },
@@ -243,7 +244,7 @@ export default async function AluguelTemporadaPage() {
             {popularDestinations.map((dest) => (
               <Link
                 key={dest.slug}
-                href={`/imoveis/${dest.slug}?tipo=temporada`}
+                href={dest.url || `/imoveis/${dest.slug}?tipo=temporada`}
                 className="group p-5 rounded-2xl border border-white/10 bg-slate-900/50 hover:bg-slate-900 hover:border-emerald-500/40 transition-all duration-300"
               >
                 <div className="flex items-center justify-between mb-2">

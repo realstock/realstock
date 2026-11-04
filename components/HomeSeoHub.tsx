@@ -13,6 +13,11 @@ import {
 export default function HomeSeoHub() {
   const destinations = [
     {
+      name: "Ceará (CE) - Polo Principal",
+      slug: "ceara",
+      desc: "Principal estado atendido pela RealStock. Casas em condomínio no Eusébio, apartamentos em Fortaleza e praias como Flecheiras e Trairi.",
+    },
+    {
       name: "Fortaleza (CE)",
       slug: "fortaleza",
       desc: "Apartamentos na Beira-Mar, Meireles, Aldeota e opções para temporada no litoral cearense.",
