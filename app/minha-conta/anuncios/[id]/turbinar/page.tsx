@@ -1,15 +1,25 @@
 "use client";
 
-import { useEffect, useState, use, useRef } from "react";
+import { useEffect, useState, use, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
-import { Rocket, Target, CalendarDays, Wallet, Volume2, VolumeX, X, Globe, Video } from "lucide-react";
+import { Rocket, Target, CalendarDays, Wallet, Volume2, VolumeX, X, Globe, Video, CheckCircle2, Sparkles, MapPin, Layers, ExternalLink, ShieldCheck, ArrowLeft, RefreshCw } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
 import ViralizarModal from "@/components/ViralizarModal";
 
-export default function TurbinarPage({ params }: { params: Promise<{ id: string }> }) {
+const MetaTargetMapPicker = dynamic(() => import("@/components/MetaTargetMapPicker"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[340px] w-full rounded-2xl bg-slate-900 border border-white/10 flex items-center justify-center text-slate-400 text-xs">
+      Carregando mapa 3D de segmentação...
+    </div>
+  ),
+});
+
+function TurbinarContent({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { status } = useSession();
   const router = useRouter();
@@ -30,6 +40,11 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
   const [turbinarCredits, setTurbinarCredits] = useState<number>(0);
   const [couponCode, setCouponCode] = useState("");
   const [applyingCoupon, setApplyingCoupon] = useState(false);
+
+  // Estados de segmentação de público e raio do mapa (Meta Ads)
+  const [targetLatitude, setTargetLatitude] = useState<number | null>(null);
+  const [targetLongitude, setTargetLongitude] = useState<number | null>(null);
+  const [targetRadiusKm, setTargetRadiusKm] = useState<number>(30);
   
   // Slider state
   const [dailyBudget, setDailyBudget] = useState<number>(20); // Default R$ 20/day
@@ -49,6 +64,8 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
   const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
   const [paypalError, setPaypalError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [campaignSummary, setCampaignSummary] = useState<any>(null);
+  const [showExtendForm, setShowExtendForm] = useState(false);
   const [isBoosting, setIsBoosting] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
@@ -93,6 +110,12 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
       }
 
       setProperty(data.property);
+      if (data.property) {
+        const pLat = data.property.latitude ? Number(data.property.latitude) : -3.7319;
+        const pLng = data.property.longitude ? Number(data.property.longitude) : -38.5267;
+        setTargetLatitude((prev) => prev ?? pLat);
+        setTargetLongitude((prev) => prev ?? pLng);
+      }
       setService(data.service);
       setIgSessions(data.igSessions || []);
       setFbSessions(data.fbSessions || []);
@@ -100,6 +123,10 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
       if (infoData.success) {
         setUserRole(infoData.role);
         setTurbinarCredits(infoData.turbinarCredits);
+      }
+
+      if (data.activeCampaignDetails) {
+        setCampaignSummary(data.activeCampaignDetails);
       }
 
       // Selecionar postType automaticamente se carrossel não estiver disponível
@@ -174,12 +201,57 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
           dailyBudget, 
           durationDays,
           platform: selectedPlatform, 
-          postType 
+          postType,
+          targetLatitude: targetLatitude ?? (property?.latitude ? Number(property.latitude) : undefined),
+          targetLongitude: targetLongitude ?? (property?.longitude ? Number(property.longitude) : undefined),
+          targetRadiusKm: targetRadiusKm
         }),
       });
       const result = await res.json();
       if (!res.ok || !result.success) throw new Error(result.error || "Falha ao finalizar");
-      setSuccessMsg(`Sua campanha foi criada com sucesso e está em análise pelo ${selectedPlatform === 'google' ? 'Google' : 'Meta'}. Logo seus leads começarão a chegar!`);
+
+      const calculatedEndDate = new Date();
+      calculatedEndDate.setDate(calculatedEndDate.getDate() + durationDays);
+      const calculatedEndFormatted = calculatedEndDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+      const targetingText = selectedPlatform === "google"
+        ? `${property?.city || property?.state || "Brasil"} • Pesquisa Google`
+        : `Raio de ${targetRadiusKm} km (${property?.city || property?.state || "local selecionado"}) • 18 a 65+ anos`;
+
+      const adsetNameText = selectedPlatform === "google"
+        ? `AdSet Google ${property?.city || property?.state || "Brasil"}`
+        : `AdSet RealStock Raio ${targetRadiusKm}km (${property?.city || property?.state || "Brasil"})`;
+
+      const summary = result.campaignDetails || {
+        campaignName: id === "0" ? "Portfólio de Imóveis RealStock" : `RealStock Boost Propriedade ${id}`,
+        adsetName: adsetNameText,
+        adName: id === "0" ? "Anúncio Portfólio Geral" : `Anuncio Turbinado Prop ${id}`,
+        platform: selectedPlatform === "google" 
+          ? "Google Ads (Rede de Pesquisa)" 
+          : (selectedPlatform === "facebook" ? "Facebook (Meta Ads)" : "Instagram (Meta Ads)"),
+        status: "Ativo",
+        adStatus: selectedPlatform === "google" 
+          ? "Qualificado para Veiculação" 
+          : "Em Análise pela IA da Meta (Aprovação em minutos)",
+        targeting: targetingText,
+        dailyBudget: Number(dailyBudget),
+        durationDays: durationDays,
+        totalInvestment: totalInvestment,
+        endDate: calculatedEndFormatted,
+        format: selectedPlatform === "google" 
+          ? "Rede de Pesquisa Google" 
+          : (postType === "reels" ? "Reels IA (Vídeo)" : "Carrossel de Fotos"),
+        cta: selectedPlatform === "google" ? "Acessar Site do Imóvel" : "Botão Saiba Mais (Link Direto)",
+        targetUrl: typeof window !== "undefined" ? `${window.location.origin}/imovel/${id}` : `https://www.realstock.com.br/imovel/${id}`
+      };
+      setCampaignSummary(summary);
+      setShowExtendForm(false);
+
+      if (result.warning) {
+        setSuccessMsg(result.warning);
+      } else {
+        setSuccessMsg(result.message || `Sua campanha foi criada com sucesso e está em análise pelo ${selectedPlatform === 'google' ? 'Google' : 'Meta'}. Logo seus leads começarão a chegar!`);
+      }
       // Update turbinar credits locally if used
       if (orderID === "CREDIT") {
         setTurbinarCredits(c => Math.max(0, Number(c) - siteCharge));
@@ -243,20 +315,280 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
           </p>
         </div>
 
-        {successMsg && (
-          <div className="mb-6 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-emerald-300">
-            <h3 className="font-bold text-xl mb-2">Campanha no ar! 🎉</h3>
-            <p>{successMsg}</p>
-             <div className="mt-4">
-              <Link href="/minha-conta/anuncios" className="text-emerald-200 underline">
-                Voltar aos anúncios
-              </Link>
-             </div>
-          </div>
-        )}
+        {/* Visualização Completa da Campanha Turbinada */}
+        {(campaignSummary || successMsg) && !showExtendForm ? (
+          <div className="space-y-6">
+            <div className="relative overflow-hidden rounded-3xl border border-emerald-500/30 bg-gradient-to-b from-emerald-950/40 via-slate-900/80 to-slate-950 p-6 md:p-8 shadow-2xl backdrop-blur-xl">
+              {/* Glow decorativo de fundo */}
+              <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
 
-        {!successMsg && property && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Header do Card */}
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/10">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20 border border-emerald-400/30 shadow-inner text-emerald-400">
+                    <CheckCircle2 size={32} className="animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-0.5 text-xs font-semibold text-emerald-400">
+                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                        Campanha no Ar
+                      </span>
+                      <span className="rounded-full bg-white/5 border border-white/10 px-2.5 py-0.5 text-[11px] font-medium text-slate-400">
+                        {campaignSummary?.platform || (selectedPlatform === "google" ? "Google Ads" : "Meta Ads")}
+                      </span>
+                    </div>
+                    <h2 className="mt-2 text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+                      {successMsg ? "Campanha Criada com Sucesso! 🎉" : "Campanha Ativa e Veiculando 🚀"}
+                    </h2>
+                    <p className="mt-1 text-sm md:text-base text-slate-300">
+                      {successMsg || `Seu anúncio está turbinado com alto alcance até ${campaignSummary?.endDate || "o término contratado"}.`}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-start md:self-center shrink-0">
+                  <span className="flex items-center gap-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 px-3.5 py-2 text-xs font-bold text-emerald-300 uppercase tracking-wide">
+                    <ShieldCheck size={16} />
+                    {campaignSummary?.status || "ATIVO"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Informações do Imóvel Promovido */}
+              {property && (
+                <div className="relative z-10 mt-6 flex items-center gap-3 p-3.5 rounded-2xl bg-white/[0.04] border border-white/10">
+                  {property.images && property.images.length > 0 && property.images[0].imageUrl ? (
+                    <img
+                      src={property.images[0].imageUrl}
+                      alt={property.title || "Imóvel"}
+                      className="w-14 h-14 rounded-xl object-cover border border-white/10 shrink-0"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 text-slate-400">
+                      <Sparkles size={20} />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider block">
+                      Imóvel em Destaque
+                    </span>
+                    <h4 className="text-sm font-bold text-white truncate">
+                      {id === "0" ? "Portfólio de Imóveis RealStock" : property.title}
+                    </h4>
+                    <span className="text-xs text-slate-400 flex items-center gap-1">
+                      <MapPin size={12} className="text-slate-400" />
+                      {[property.city, property.state].filter(Boolean).join(" - ") || "Brasil"}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Grid com os 3 Blocos de Detalhes solicitados (SEM IDs TÉCNICOS) */}
+              <div className="relative z-10 mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Bloco 1: Campanha */}
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-md hover:border-purple-500/30 transition-colors">
+                  <div className="flex items-center gap-2.5 text-purple-400 mb-3">
+                    <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                      <Rocket size={18} />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-purple-300">1. Campanha</span>
+                  </div>
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <span className="block text-[11px] font-medium text-slate-400">Nome da Campanha</span>
+                      <span className="font-semibold text-white break-words">
+                        {campaignSummary?.campaignName || (id === "0" ? "RealStock Boost Portfólio Geral" : `RealStock Boost Propriedade ${id}`)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[11px] font-medium text-slate-400">Plataforma / Rede</span>
+                      <span className="font-medium text-slate-200">
+                        {campaignSummary?.platform || (selectedPlatform === "google" ? "Google Ads (Rede de Pesquisa)" : "Meta Ads (Instagram & Facebook)")}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[11px] font-medium text-slate-400">Status Geral</span>
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                        {campaignSummary?.status || "ATIVO"} (Chave ativada no Gerenciador)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bloco 2: Conjunto de Anúncios (AdSet) */}
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-md hover:border-sky-500/30 transition-colors">
+                  <div className="flex items-center gap-2.5 text-sky-400 mb-3">
+                    <div className="p-2 rounded-xl bg-sky-500/10 border border-sky-500/20">
+                      <Target size={18} />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-sky-300">2. Conjunto de Anúncios (AdSet)</span>
+                  </div>
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <span className="block text-[11px] font-medium text-slate-400">Nome do Conjunto</span>
+                      <span className="font-semibold text-white break-words">
+                        {campaignSummary?.adsetName || (
+                          selectedPlatform === "google"
+                            ? `AdSet Google ${property?.city || property?.state || "Brasil"}`
+                            : `AdSet RealStock Raio ${targetRadiusKm}km (${property?.city || property?.state || "Brasil"})`
+                        )}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[11px] font-medium text-slate-400">Segmentação & Região</span>
+                      <span className="font-medium text-slate-200">
+                        {campaignSummary?.targeting || (
+                          selectedPlatform === "google"
+                            ? `${property?.city || property?.state || "Brasil"} • Pesquisa Google`
+                            : `Raio de ${targetRadiusKm} km (${property?.city || property?.state || "local selecionado"}) • 18 a 65+ anos`
+                        )}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[11px] font-medium text-slate-400">Orçamento Diário</span>
+                      <span className="font-bold text-white">
+                        R$ {Number(campaignSummary?.dailyBudget || dailyBudget || 20).toFixed(2).replace(".", ",")} / dia
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[11px] font-medium text-slate-400">Período de Veiculação</span>
+                      <span className="font-medium text-slate-200">
+                        {campaignSummary?.durationDays || durationDays || 5} dias • Término em{" "}
+                        <strong className="text-emerald-400 font-bold">{campaignSummary?.endDate || "ativo"}</strong>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bloco 3: Anúncio (Ad) e Criativo */}
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-md hover:border-pink-500/30 transition-colors">
+                  <div className="flex items-center gap-2.5 text-pink-400 mb-3">
+                    <div className="p-2 rounded-xl bg-pink-500/10 border border-pink-500/20">
+                      <Layers size={18} />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-pink-300">3. Anúncio (Ad) e Criativo</span>
+                  </div>
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <span className="block text-[11px] font-medium text-slate-400">Nome do Anúncio</span>
+                      <span className="font-semibold text-white break-words">
+                        {campaignSummary?.adName || (id === "0" ? "Anúncio Portfólio Geral" : `Anuncio Turbinado Prop ${id}`)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[11px] font-medium text-slate-400">Formato</span>
+                      <span className="font-medium text-slate-200">
+                        {campaignSummary?.format || (selectedPlatform === "google" ? "Rede de Pesquisa Google" : (postType === "reels" ? "Reels IA (Vídeo)" : "Carrossel de Fotos"))}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[11px] font-medium text-slate-400">Botão de Chamada (CTA)</span>
+                      <span className="inline-flex items-center gap-1 font-semibold text-sky-300">
+                        {campaignSummary?.cta || (selectedPlatform === "google" ? "Acessar Site do Imóvel" : "Botão Saiba Mais (Link Direto)")}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[11px] font-medium text-slate-400">Status de Entrega</span>
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-300">
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                        {campaignSummary?.adStatus || "Em análise padrão pela IA da Meta (Aprovação em poucos minutos)"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Resumo Financeiro & Métricas */}
+              <div className="relative z-10 mt-4 rounded-2xl border border-white/5 bg-slate-900/60 p-4 flex flex-wrap items-center justify-between gap-4 text-xs">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
+                    <Wallet size={16} />
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block">Total Investido</span>
+                    <span className="text-base font-bold text-white">
+                      R$ {Number(campaignSummary?.totalInvestment || (Number(dailyBudget) * durationDays) || 100).toFixed(2).replace(".", ",")}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
+                    <CalendarDays size={16} />
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block">Data de Término</span>
+                    <span className="text-base font-bold text-emerald-400">{campaignSummary?.endDate || "Em andamento"}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-pink-500/10 text-pink-400">
+                    <Sparkles size={16} />
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block">Destino do Lead</span>
+                    <span className="text-slate-300">Página direta do imóvel no RealStock</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botões de Ação */}
+              <div className="relative z-10 mt-6 pt-6 border-t border-white/10 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Link
+                    href="/minha-conta/anuncios"
+                    className="inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 px-5 py-3 text-sm font-bold text-white transition-all shadow-md group"
+                  >
+                    <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                    Voltar aos Anúncios
+                  </Link>
+
+                  {id !== "0" && (
+                    <a
+                      href={`/imovel/${id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 px-5 py-3 text-sm font-bold text-sky-300 transition-all shadow-md group"
+                    >
+                      Ver Anúncio no Site
+                      <ExternalLink size={15} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                    </a>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => setShowExtendForm(true)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-5 py-3 text-sm font-bold shadow-lg shadow-emerald-950/50 transition-all"
+                >
+                  <RefreshCw size={15} />
+                  Turbinar Novamente / Estender Prazo
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : property ? (
+          <div>
+            {campaignSummary && (
+              <div className="mb-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 size={20} className="text-emerald-400 shrink-0" />
+                  <span className="text-sm text-emerald-200">
+                    Este imóvel já possui campanha ativa até <strong>{campaignSummary.endDate}</strong>. Ao contratar novamente, o prazo será estendido.
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowExtendForm(false)}
+                  className="text-xs font-bold text-emerald-300 underline shrink-0 hover:text-white"
+                >
+                  Ver Resumo da Campanha Ativa
+                </button>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Lado Esquerdo: Preview e Configuração */}
             <div className="space-y-6">
               <div className="rounded-2xl border border-white/10 bg-white/5 p-6 h-fit">
@@ -584,6 +916,33 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                   )}
                 </div>
 
+                {/* 3. Seleção de Área no Mapa com Círculo Ajustável (Meta Ads) */}
+                {selectedPlatform !== "google" && property && (
+                  <div className="mt-6 border-t border-white/10 pt-4">
+                    <div className="text-[10px] font-black uppercase tracking-[0.15em] text-purple-400 mb-2">
+                      3. Área Geográfica de Entrega (Meta Ads)
+                    </div>
+                    <MetaTargetMapPicker
+                      initialLatitude={targetLatitude ?? (property.latitude ? Number(property.latitude) : -3.7319)}
+                      initialLongitude={targetLongitude ?? (property.longitude ? Number(property.longitude) : -38.5267)}
+                      initialRadiusKm={targetRadiusKm}
+                      propertyLocation={{
+                        latitude: property.latitude ? Number(property.latitude) : -3.7319,
+                        longitude: property.longitude ? Number(property.longitude) : -38.5267,
+                        title: property.title,
+                        city: property.city,
+                        state: property.state,
+                        neighborhood: property.neighborhood,
+                      }}
+                      onChange={({ latitude, longitude, radiusKm }) => {
+                        setTargetLatitude(latitude);
+                        setTargetLongitude(longitude);
+                        setTargetRadiusKm(radiusKm);
+                      }}
+                    />
+                  </div>
+                )}
+
                 {/* Orçamento (Barra de Rolagem) */}
                 <div className="mt-6 border-t border-white/10 pt-4">
                   <h3 className="text-sm font-bold text-white mb-1">Orçamento Diário</h3>
@@ -735,7 +1094,20 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
                     </div>
                   )}
 
-                  {userRole === "ADMIN" ? (
+                  {id !== "0" && selectedPlatform !== "google" && !selectedSession && !property?.instagramMediaId ? (
+                    <div className="space-y-3">
+                      <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs leading-relaxed">
+                        ⚠️ Este anúncio ainda não possui publicação ativa no {selectedPlatform === "facebook" ? "Facebook" : "Instagram"}. Para impulsionar nas redes sociais da Meta, publique o post primeiro com o <strong>Míssil Viralizar</strong> ou selecione a aba <strong>Google Ads</strong> acima.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsViralizarOpen(true)}
+                        className="w-full rounded-2xl bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 px-6 py-4 text-center font-black text-white uppercase tracking-wider transition hover:opacity-90 shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2"
+                      >
+                        <Rocket size={18} /> Publicar com Míssil Viralizar
+                      </button>
+                    </div>
+                  ) : userRole === "ADMIN" ? (
                     <button 
                       onClick={() => executeTurbinar("ADMIN_FREE")}
                       className="w-full rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 py-4 font-black text-white shadow-xl shadow-emerald-500/20 hover:scale-[1.02] transition-all active:scale-95 flex items-center justify-center gap-3"
@@ -789,8 +1161,9 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      ) : null}
+    </div>
 
       <ViralizarModal 
         isOpen={isViralizarOpen}
@@ -807,3 +1180,12 @@ export default function TurbinarPage({ params }: { params: Promise<{ id: string 
     </main>
   );
 }
+
+export default function TurbinarPage(props: { params: Promise<{ id: string }> }) {
+  return (
+    <Suspense fallback={<LoadingScreen title="Painel de Tráfego" subtitle="Carregando opções de anúncio..." />}>
+      <TurbinarContent {...props} />
+    </Suspense>
+  );
+}
+

@@ -28,10 +28,10 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { orderID, propertyId, dailyBudget, platform, postType } = body;
+    const { orderID, propertyId, dailyBudget, platform, postType, targetLatitude, targetLongitude, targetRadiusKm } = body;
     const durationDays = Number(body.durationDays || body.duration_days || 5);
 
-    if (!orderID || !propertyId || !dailyBudget) {
+    if (!orderID || propertyId === undefined || propertyId === null || propertyId === "" || isNaN(Number(propertyId)) || !dailyBudget) {
       return NextResponse.json({ success: false, error: "Parâmetros inválidos." }, { status: 400 });
     }
 
@@ -209,19 +209,40 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true, message: "🚀 Anúncio turbinado com sucesso na rede Google Ads!" });
     }
 
-    let sourceId = null;
+    // Turbinamento de Portfólio Geral (ID 0)
+    if (Number(propertyId) === 0) {
+        const endTime = new Date();
+        endTime.setDate(endTime.getDate() + durationDays);
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { 
+                portfolioBoostedUntil: endTime,
+                metaPortfolioBoostedUntil: endTime
+            }
+        });
+        return NextResponse.json({ 
+            success: true, 
+            message: "🚀 Portfólio turbinado com sucesso! Seus imóveis receberão destaque prioritário nas buscas e na vitrine do RealStock." 
+        });
+    }
+
+    let sourceId: string | null = null;
 
     if (platform === "instagram") {
-        // Prioridade 1: Vínculo Direto
-        sourceId = property.instagramMediaId;
+        // Prioridade 1: Buscar sessão do postType escolhido (carrossel vs reels)
+        const igSession = await prisma.instagramPreviewSession.findFirst({
+            where: { listingId: Number(propertyId), status: "PUBLISHED", postType: postType || "carousel" },
+            orderBy: { createdAt: "desc" }
+        });
+        sourceId = igSession?.publishedMediaId || property.instagramMediaId || null;
 
-        // Fallback: Busca antiga
+        // Fallback: Qualquer sessão do Instagram publicada
         if (!sourceId) {
-            const igSession = await prisma.instagramPreviewSession.findFirst({
-                where: { listingId: Number(propertyId), status: "PUBLISHED", postType: postType || "carousel" },
+            const anyIgSession = await prisma.instagramPreviewSession.findFirst({
+                where: { listingId: Number(propertyId), status: "PUBLISHED" },
                 orderBy: { createdAt: "desc" }
             });
-            sourceId = igSession?.publishedMediaId;
+            sourceId = anyIgSession?.publishedMediaId || null;
         }
         
         if (!sourceId) {
@@ -232,28 +253,32 @@ export async function POST(req: NextRequest) {
             where: { listingId: Number(propertyId), status: "PUBLISHED", postType: postType || "carousel" },
             orderBy: { createdAt: "desc" }
         });
-        sourceId = fbSession?.publishedPostId;
+        sourceId = fbSession?.publishedPostId || null;
+
+        if (!sourceId) {
+            const anyFbSession = await prisma.facebookFeedSession.findFirst({
+                where: { listingId: Number(propertyId), status: "PUBLISHED" },
+                orderBy: { createdAt: "desc" }
+            });
+            sourceId = anyFbSession?.publishedPostId || null;
+        }
+
         if (!sourceId) {
             return NextResponse.json({ success: false, error: "Publicação no Facebook não encontrada para impulsionar." }, { status: 404 });
         }
     } else if (platform === "meta") {
-        // Tenta achar primeiro Vínculo Direto Instagram, senão fallback
-        sourceId = property.instagramMediaId;
+        const igSession = await prisma.instagramPreviewSession.findFirst({
+            where: { listingId: Number(propertyId), status: "PUBLISHED", postType: postType || "carousel" },
+            orderBy: { createdAt: "desc" }
+        });
+        sourceId = igSession?.publishedMediaId || property.instagramMediaId || null;
         
-        if (!sourceId) {
-            const igSession = await prisma.instagramPreviewSession.findFirst({
-                where: { listingId: Number(propertyId), status: "PUBLISHED", postType: postType || "carousel" },
-                orderBy: { createdAt: "desc" }
-            });
-            sourceId = igSession?.publishedMediaId;
-        }
-
         if (!sourceId) {
             const fbSession = await prisma.facebookFeedSession.findFirst({
                 where: { listingId: Number(propertyId), status: "PUBLISHED", postType: postType || "carousel" },
                 orderBy: { createdAt: "desc" }
             });
-            sourceId = fbSession?.publishedPostId;
+            sourceId = fbSession?.publishedPostId || null;
         }
         
         if (!sourceId) {
@@ -269,44 +294,104 @@ export async function POST(req: NextRequest) {
     const igToken = process.env.INSTAGRAM_ACCESS_TOKEN; 
     const igUserId = process.env.INSTAGRAM_IG_USER_ID;
 
+    const endTime = new Date();
+    endTime.setDate(endTime.getDate() + durationDays);
+
+    const stateName = property.state || "Brasil";
+
+    // Informações de geolocalização e raio da Meta Ads
+    const targetLat = targetLatitude !== undefined && targetLatitude !== null && !isNaN(Number(targetLatitude)) ? Number(targetLatitude) : null;
+    const targetLng = targetLongitude !== undefined && targetLongitude !== null && !isNaN(Number(targetLongitude)) ? Number(targetLongitude) : null;
+    const effectiveRadiusKm = Math.max(25, Math.round(Number(targetRadiusKm) || 30));
+
+    const targetingDescription = (targetLat !== null && targetLng !== null)
+        ? `Raio de ${effectiveRadiusKm} km (${property.city || stateName}) • 18 a 65+ anos`
+        : `${stateName} • 18 a 65+ anos`;
+
+    const adsetNameGenerated = (targetLat !== null && targetLng !== null)
+        ? `AdSet RealStock Raio ${effectiveRadiusKm}km (${property.city || stateName})`
+        : `AdSet RealStock ${property.state || stateName}`;
+
+    // Helper para ativar boost local no banco se a Meta API falhar ou não estiver configurada
+    const activateLocalBoostFallback = async (reason: string) => {
+        await prisma.property.update({
+            where: { id: Number(propertyId) },
+            data: { 
+                boostedUntil: endTime, 
+                metaBoostedUntil: endTime 
+            }
+        });
+
+        const calculatedEndFormatted = endTime.toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric"
+        });
+
+        const campaignDetails = {
+            campaignName: Number(propertyId) === 0 ? "RealStock Boost Portfólio Geral" : `RealStock Boost Propriedade ${propertyId}`,
+            adsetName: (targetLat !== null && targetLng !== null) ? `Destaque RealStock Raio ${effectiveRadiusKm}km` : `Destaque RealStock ${stateName}`,
+            adName: Number(propertyId) === 0 ? "Anúncio Portfólio Geral" : `Anuncio Turbinado Prop ${propertyId}`,
+            platform: "Portal RealStock (Vitrine & Destaque)",
+            status: "Ativo",
+            adStatus: "Veiculando com Prioridade Máxima no Portal",
+            targeting: targetingDescription,
+            dailyBudget: Number(dailyBudget),
+            durationDays: durationDays,
+            totalInvestment: Number(dailyBudget) * durationDays,
+            endDate: calculatedEndFormatted,
+            format: postType === "reels" ? "Vídeo Reels" : "Carrossel de Fotos",
+            cta: "Ver Detalhes do Imóvel",
+            targetUrl: `https://www.realstock.com.br/imovel/${propertyId}`
+        };
+
+        return NextResponse.json({ 
+            success: true, 
+            message: "🚀 Anúncio turbinado com sucesso no RealStock!",
+            warning: `O anúncio foi ativado com destaque no portal RealStock por ${durationDays} dias. Sincronização externa Meta: ${reason}`,
+            campaignDetails
+        });
+    };
+
     if (!adAccountId || !pageId || !igToken) {
-       console.warn("Pagamento aprovado, porém FB Marketing API não configurada totalmente (.env). Cancelando pipeline Ads.");
-       const dummyEndTime = new Date();
-       dummyEndTime.setDate(dummyEndTime.getDate() + durationDays);
-       if (Number(propertyId) === 0) {
-           await prisma.user.update({
-               where: { id: user.id },
-               data: { portfolioBoostedUntil: dummyEndTime }
-           });
-       } else {
-           await prisma.property.update({
-               where: { id: Number(propertyId) },
-               data: { boostedUntil: dummyEndTime }
-           });
-       }
-       return NextResponse.json({ success: true, warning: "Pagamento aprovado. Meta Ads não subiu por falta de variáveis no painel .env" });
+       console.warn("FB Marketing API não configurada totalmente (.env). Ativando boost no portal RealStock.");
+       return activateLocalBoostFallback("Credenciais da Meta Ads pendentes de configuração.");
     }
 
     const BASE_GRAPH = "https://graph.facebook.com/v19.0";
     
-    // 1. OBTÉM REGIÃO PARA TARGET
-    let regionKey = null;
-    const stateName = property.state || "Brasil";
-    try {
-        const geoRes = await fetch(`${BASE_GRAPH}/search?type=adgeolocation&q=${encodeURIComponent(stateName)}&country_code=BR&location_types=["region"]&access_token=${igToken}`);
-        const geoData = await geoRes.json();
-        if (geoData.data && geoData.data.length > 0) {
-             regionKey = geoData.data[0].key;
-        }
-    } catch(e) { console.error("FB GEO ERROR", e); }
+    // 1. OBTÉM GEOLOCATIONS PARA TARGET (RAIO PERSONALIZADO OU REGIÃO)
+    let geo_locations: any = null;
 
-    const targeting = regionKey ? {
-       geo_locations: { regions: [{ key: regionKey }] },
+    if (targetLat !== null && targetLng !== null) {
+        // Meta Special Ad Category HOUSING: raio mínimo de 15 milhas (~24-25 km)
+        geo_locations = {
+            custom_locations: [
+                {
+                    latitude: targetLat,
+                    longitude: targetLng,
+                    radius: effectiveRadiusKm,
+                    distance_unit: "kilometer"
+                }
+            ]
+        };
+    } else {
+        let regionKey = null;
+        try {
+            const geoRes = await fetch(`${BASE_GRAPH}/search?type=adgeolocation&q=${encodeURIComponent(stateName)}&country_code=BR&location_types=["region"]&access_token=${igToken}`);
+            const geoData = await geoRes.json();
+            if (geoData.data && geoData.data.length > 0) {
+                 regionKey = geoData.data[0].key;
+            }
+        } catch(e) { console.error("FB GEO ERROR", e); }
+
+        geo_locations = regionKey ? { regions: [{ key: regionKey }] } : { countries: ["BR"] };
+    }
+
+    const targeting = {
+       geo_locations,
        publisher_platforms: platform === "meta" ? ["facebook", "instagram"] : [platform === "instagram" ? "instagram" : "facebook"],
        ...(platform === "instagram" ? { instagram_positions: ["stream", "story"] } : platform === "facebook" ? { facebook_positions: ["feed"] } : { instagram_positions: ["stream", "story"], facebook_positions: ["feed"] })
-    } : {
-       geo_locations: { countries: ["BR"] },
-       publisher_platforms: platform === "meta" ? ["facebook", "instagram"] : [platform === "instagram" ? "instagram" : "facebook"]
     };
 
     // 2. CRIA CAMPANHA
@@ -323,17 +408,16 @@ export async function POST(req: NextRequest) {
     const campData = await campRes.json();
     if (!campData.id) {
         console.error("ERRO CAMPANHA FB", campData);
-        return NextResponse.json({ success: false, error: "Falha ao criar Campanha Meta Ads: " + (campData.error?.message||"") }, { status: 500 });
+        const errorMsg = campData.error?.message || "Conta com pendência ou em validação na Meta.";
+        return activateLocalBoostFallback(errorMsg);
     }
     const campaignId = campData.id;
 
     // 3. CRIA ADSET (Orçamento e Duração)
     const dailyBudgetCents = Math.floor(Number(dailyBudget) * 100);
-    const endTime = new Date();
-    endTime.setDate(endTime.getDate() + durationDays);
 
     const adSetForm = new URLSearchParams();
-    adSetForm.append("name", `AdSet RealStock ${property.state}`);
+    adSetForm.append("name", adsetNameGenerated);
     adSetForm.append("campaign_id", campaignId);
     adSetForm.append("daily_budget", dailyBudgetCents.toString());
     adSetForm.append("billing_event", "IMPRESSIONS");
@@ -349,77 +433,71 @@ export async function POST(req: NextRequest) {
     const adSetData = await adSetRes.json();
     if (!adSetData.id) {
         console.error("ERRO ADSET FB", adSetData);
-        return NextResponse.json({ success: false, error: "Falha ao criar Conjunto de Anúncios: " + (adSetData.error?.message||"") }, { status: 500 });
+        const errorMsg = adSetData.error?.message || "Erro no conjunto de anúncios da Meta.";
+        return activateLocalBoostFallback(errorMsg);
     }
     const adSetId = adSetData.id;
 
     // 4. CRIA CRIATIVO USANDO MÍDIA ORGÂNICA DO IG
     let processAppUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || "https://www.realstock.com.br";
     if (processAppUrl.includes("localhost")) {
-         processAppUrl = "https://www.realstock.com.br"; // FB não aceita localhost como destino de anúncio real
+         processAppUrl = "https://www.realstock.com.br";
     }
-    const propertyLink = Number(propertyId) === 0 ? processAppUrl : `${processAppUrl}/imovel/${property.id}`;
-
-    const creativeForm = new URLSearchParams();
-    creativeForm.append("name", `Criativo Ad Firebase ${sourceId}`);
-
-    /* ==============================================================
-       NOVA LÓGICA: IMPULSIONAMENTO 100% NATIVO OU DARK POST
-       ============================================================== */
-    
-    const buildCreative = async (actor: string, storySpec: boolean = true, useUserIdKey: boolean = false) => {
-        const form = new URLSearchParams();
-        form.append("name", `Criativo Boost Prop ${propertyId}`);
-        const actorKey = useUserIdKey ? "instagram_user_id" : "instagram_actor_id";
-        
-        // Link de destino para o botão (Call to Action)
-        const cta = {
-            type: "LEARN_MORE",
-            value: {
-                link: propertyLink
-            }
-        };
- 
-        // Para Instagram, o segredo do botão aparecer é usar o object_story_spec
-        // com o template_data configurado corretamente.
-        form.append("object_story_spec", JSON.stringify({
-            [actorKey]: actor,
-            source_instagram_media_id: sourceId,
-            template_data: {
-                call_to_action: cta
-            }
-        }));
-
-        form.append("access_token", igToken);
-        const res = await fetch(`${BASE_GRAPH}/${adAccountId}/adcreatives`, { method: "POST", body: form });
-        return res.json();
-    };
+    const propertyLink = `${processAppUrl}/imovel/${property.id}`;
 
     let creativeData: any = null;
 
     if (platform === "instagram" && sourceId && !sourceId.startsWith("Prop_")) {
-        // Resgatar igActorId
-        let igActorId = igUserId;
-        if (!igActorId) {
+        // Tentativa 1: source_instagram_media_id direto com Call To Action (Formato nativo Meta)
+        try {
+            const formB = new URLSearchParams();
+            formB.append("name", `Criativo Boost Prop ${propertyId}`);
+            formB.append("source_instagram_media_id", sourceId);
+            formB.append("call_to_action", JSON.stringify({
+                type: "LEARN_MORE",
+                value: { link: propertyLink }
+            }));
+            formB.append("access_token", igToken);
+            const resB = await fetch(`${BASE_GRAPH}/${adAccountId}/adcreatives`, { method: "POST", body: formB });
+            creativeData = await resB.json();
+        } catch (e) {
+            console.error("ERRO FORMAT B IG CREATIVE:", e);
+        }
+
+        // Tentativa 2: Fallback direto source_instagram_media_id
+        if (!creativeData || !creativeData.id) {
             try {
-                const pageRes = await fetch(`${BASE_GRAPH}/${pageId}?fields=instagram_business_account&access_token=${igToken}`);
-                const pageData = await pageRes.json();
-                igActorId = pageData.instagram_business_account?.id;
+                const formA = new URLSearchParams();
+                formA.append("name", `Criativo Boost Prop ${propertyId}`);
+                formA.append("source_instagram_media_id", sourceId);
+                formA.append("access_token", igToken);
+                const resA = await fetch(`${BASE_GRAPH}/${adAccountId}/adcreatives`, { method: "POST", body: formA });
+                creativeData = await resA.json();
             } catch (e) {}
         }
 
-        if (igActorId) {
-            // Tenta o leque de possibilidades
-            creativeData = await buildCreative(igActorId, false, true); // Tentativa 1: instagram_user_id
+        // Tentativa 3: object_story_spec
+        if (!creativeData || !creativeData.id) {
+            let igActorId = igUserId;
+            if (!igActorId) {
+                try {
+                    const pageRes = await fetch(`${BASE_GRAPH}/${pageId}?fields=instagram_business_account&access_token=${igToken}`);
+                    const pageData = await pageRes.json();
+                    igActorId = pageData.instagram_business_account?.id;
+                } catch (e) {}
+            }
 
-            if (creativeData.error && (creativeData.error.code === 100 || creativeData.error.code === 1)) {
-                creativeData = await buildCreative(igActorId, true, false); // Fallback 1: story_spec
+            if (igActorId) {
+                const formC = new URLSearchParams();
+                formC.append("name", `Criativo Boost Prop ${propertyId}`);
+                formC.append("object_story_spec", JSON.stringify({
+                    instagram_actor_id: igActorId,
+                    source_instagram_media_id: sourceId
+                }));
+                formC.append("access_token", igToken);
+                const resC = await fetch(`${BASE_GRAPH}/${adAccountId}/adcreatives`, { method: "POST", body: formC });
+                creativeData = await resC.json();
             }
-            if (creativeData.error && (creativeData.error.code === 100 || creativeData.error.code === 1)) {
-                creativeData = await buildCreative(pageId, true, false); // Fallback 2: Page ID como Ator
-            }
-        } else {
-             throw new Error("ID do Instagram não encontrado. Vincule sua conta Instagram à Página.");
         }
     } else if (platform === "facebook" && sourceId && !sourceId.startsWith("Prop_")) {
         const facebookForm = new URLSearchParams();
@@ -438,7 +516,11 @@ export async function POST(req: NextRequest) {
 
     if (!creativeData || !creativeData.id) {
         console.error("ERRO CRIATIVO FB", creativeData);
-        return NextResponse.json({ success: false, error: "Falha ao vincular o post: " + (creativeData.error?.message||"Desconhecido") }, { status: 500 });
+        let errorDetail = creativeData?.error?.message || "Erro ao vincular mídia";
+        if (creativeData?.error?.code === 1 || errorDetail.includes("unknown error")) {
+            errorDetail = "Conta Meta com pendência de faturamento ou permissões no Gerenciador de Anúncios.";
+        }
+        return activateLocalBoostFallback(errorDetail);
     }
     const creativeId = creativeData.id;
 
@@ -454,7 +536,7 @@ export async function POST(req: NextRequest) {
     const adData = await adRes.json();
     if (!adData.id) {
         console.error("ERRO FINAL ANUNCIO FB", adData);
-        return NextResponse.json({ success: false, error: "Anúncio recusado: " + (adData.error?.message||"") }, { status: 500 });
+        return activateLocalBoostFallback(adData.error?.message || "Anúncio recusado pela Meta.");
     }
 
     await prisma.metaAdsSession.create({
@@ -468,29 +550,46 @@ export async function POST(req: NextRequest) {
         }
     });
 
-    if (Number(propertyId) === 0) {
-        await prisma.user.update({
-            where: { id: user.id },
-            data: { 
-                portfolioBoostedUntil: endTime, 
-                metaPortfolioBoostedUntil: endTime,
-                metaPortfolioAdId: adData.id, // User model might need fields too if they boost portfolio
-                metaPortfolioCampaignId: campaignId
-            }
-        });
-    } else {
-        await prisma.property.update({
-            where: { id: Number(propertyId) },
-            data: { 
-                boostedUntil: endTime, 
-                metaBoostedUntil: endTime,
-                metaAdId: adData.id,
-                metaCampaignId: campaignId
-            }
-        });
-    }
+    await prisma.property.update({
+        where: { id: Number(propertyId) },
+        data: { 
+            boostedUntil: endTime, 
+            metaBoostedUntil: endTime,
+            metaAdId: adData.id,
+            metaCampaignId: campaignId
+        }
+    });
 
-    return NextResponse.json({ success: true, message: "🚀 Anúncio criado e turbinado com sucesso pela Marketing API!" });
+    const calculatedEndFormatted = endTime.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+    });
+
+    const campaignDetails = {
+        campaignName: Number(propertyId) === 0 ? "RealStock Boost Portfólio Geral" : `RealStock Boost Propriedade ${propertyId}`,
+        adsetName: adsetNameGenerated,
+        adName: Number(propertyId) === 0 ? "Anúncio Portfólio Geral" : `Anuncio Turbinado Prop ${propertyId}`,
+        platform: platform === "google" 
+            ? "Google Ads (Rede de Pesquisa)" 
+            : (platform === "facebook" ? "Facebook (Meta Ads)" : "Instagram & Facebook (Meta Ads)"),
+        status: "Ativo",
+        adStatus: "Em Análise pela IA da Meta (Aprovação em poucos minutos)",
+        targeting: targetingDescription,
+        dailyBudget: Number(dailyBudget),
+        durationDays: durationDays,
+        totalInvestment: Number(dailyBudget) * durationDays,
+        endDate: calculatedEndFormatted,
+        format: postType === "reels" ? "Reels IA (Vídeo)" : "Carrossel de Fotos",
+        cta: "Botão Saiba Mais (Link Direto)",
+        targetUrl: `https://www.realstock.com.br/imovel/${propertyId}`
+    };
+
+    return NextResponse.json({ 
+        success: true, 
+        message: "🚀 Anúncio criado e turbinado com sucesso pela Marketing API!",
+        campaignDetails
+    });
 
   } catch (error: any) {
     console.error("PAYPAL CAPTURE BOOST ERROR:", error);

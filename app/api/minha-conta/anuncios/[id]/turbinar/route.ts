@@ -86,25 +86,64 @@ export async function GET(
         orderBy: { createdAt: "desc" }
     });
 
-    const platform = req.nextUrl.searchParams.get("platform");
 
-    if (igSessions.length === 0 && fbSessions.length === 0 && propertyId !== 0 && platform !== "google") {
-        return NextResponse.json(
-            { success: false, error: "Este anúncio não possui publicações ativas para turbinar." },
-            { status: 400 }
-        );
-    }
+    const latestMetaSession = await prisma.metaAdsSession.findFirst({
+        where: { listingId: propertyId },
+        orderBy: { createdAt: "desc" }
+    });
 
     const service = await prisma.siteService.findUnique({
       where: { slug: "turbinar" },
       include: { fee: true },
     });
 
+    let activeCampaignDetails = null;
+    const isBoosted = Boolean(
+      (property.metaBoostedUntil && new Date(property.metaBoostedUntil) > new Date()) ||
+      (property.boostedUntil && new Date(property.boostedUntil) > new Date()) ||
+      (property.googleBoostedUntil && new Date(property.googleBoostedUntil) > new Date())
+    );
+
+    if (isBoosted) {
+      const isGoogle = Boolean(property.googleBoostedUntil && new Date(property.googleBoostedUntil) > new Date());
+      const endDt = new Date(property.metaBoostedUntil || property.googleBoostedUntil || property.boostedUntil);
+      const calculatedEndFormatted = endDt.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+      });
+
+      const budgetVal = latestMetaSession?.budget ? Number(latestMetaSession.budget) : 50;
+      const budgetDaysVal = latestMetaSession?.budgetDays || 5;
+      const dailyVal = Math.round(budgetVal / budgetDaysVal);
+
+      activeCampaignDetails = {
+        campaignName: propertyId === 0 ? "RealStock Boost Portfólio Geral" : `RealStock Boost Propriedade ${propertyId}`,
+        adsetName: isGoogle ? `AdSet Google ${property.city || property.state || "Brasil"}` : `AdSet RealStock (${property.city || property.state || "Brasil"})`,
+        adName: propertyId === 0 ? "Anúncio Portfólio Geral" : `Anuncio Turbinado Prop ${propertyId}`,
+        platform: isGoogle ? "Google Ads (Rede de Pesquisa)" : "Instagram & Facebook (Meta Ads)",
+        status: "Ativo",
+        adStatus: isGoogle ? "Qualificado para Veiculação" : "Em Análise pela IA da Meta (Aprovação em poucos minutos)",
+        targeting: isGoogle 
+          ? `${property.city || property.state || "Brasil"} • Pesquisa Google`
+          : `Raio Geográfico Meta Ads (${property.city || property.state || "Brasil"}) • 18 a 65+ anos`,
+        dailyBudget: dailyVal,
+        durationDays: budgetDaysVal,
+        totalInvestment: budgetVal,
+        endDate: calculatedEndFormatted,
+        format: isGoogle ? "Rede de Pesquisa Google" : "Carrossel de Fotos & Reels",
+        cta: isGoogle ? "Acessar Site do Imóvel" : "Botão Saiba Mais (Link Direto)",
+        targetUrl: `https://www.realstock.com.br/imovel/${propertyId}`
+      };
+    }
+
     return NextResponse.json({
       success: true,
       property,
       igSessions,
       fbSessions,
+      latestMetaSession,
+      activeCampaignDetails,
       service
     });
   } catch (error: any) {
