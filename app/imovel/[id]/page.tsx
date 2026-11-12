@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Globe, CalendarCheck2, Star } from "lucide-react";
+import { ArrowLeft, Globe, CalendarCheck2, Star, ShieldCheck } from "lucide-react";
 import OfferBookClient from "@/components/OfferBookClient";
 import AdSenseBanner from "@/components/AdSenseBanner";
 import { fetchICalEvents } from "@/lib/ical-parser";
@@ -533,31 +533,16 @@ export default async function PropertyPage({
       "latitude": Number(property.latitude || -3.7319),
       "longitude": Number(property.longitude || -38.5267)
     },
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": avgRating ? Number(avgRating) : 5.0,
-      "ratingCount": guestRatings.length > 0 ? guestRatings.length : 1,
-      "reviewCount": guestRatings.length > 0 ? guestRatings.length : 1,
-      "bestRating": 5,
-      "worstRating": 1
-    },
-    "review": [
-      {
-        "@type": "Review",
-        "reviewRating": {
-          "@type": "Rating",
-          "ratingValue": avgRating ? Math.round(Number(avgRating)) : 5,
-          "bestRating": 5,
-          "worstRating": 1
-        },
-        "author": {
-          "@type": "Person",
-          "name": "Hóspede Verificado"
-        },
-        "datePublished": property.createdAt ? new Date(property.createdAt).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
-        "reviewBody": "Excelente estadia e acomodação com suporte em tempo real pela RealStock."
+    ...(guestRatings.length > 0 && avgRating ? {
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": Number(avgRating),
+        "ratingCount": guestRatings.length,
+        "reviewCount": guestRatings.length,
+        "bestRating": 5,
+        "worstRating": 1
       }
-    ],
+    } : {}),
     "containsPlace": {
       "@type": "Accommodation",
       "numberOfRooms": property.bedrooms || 1,
@@ -771,17 +756,9 @@ export default async function PropertyPage({
       "hasMerchantReturnPolicy": merchantReturnPolicy,
       "shippingDetails": merchantShippingDetails,
     },
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": avgRating ? Number(avgRating) : 5.0,
-      "ratingCount": guestRatings.length > 0 ? guestRatings.length : 1,
-      "reviewCount": guestRatings.length > 0 ? guestRatings.length : 1,
-      "bestRating": 5,
-      "worstRating": 1,
-    },
   } : null;
 
-  // Schema Product com dados completos para Merchant Listings, Avaliações e Rich Snippets no Google Search
+  // Schema Product com dados completos para Merchant Listings e Rich Snippets no Google Search
   const salesJsonLd = !isSeasonal ? {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -797,31 +774,16 @@ export default async function PropertyPage({
       "@type": "Brand",
       "name": "RealStock",
     },
-    "aggregateRating": {
-      "@type": "AggregateRating",
-      "ratingValue": avgRating ? Number(avgRating) : 5.0,
-      "ratingCount": guestRatings.length > 0 ? guestRatings.length : 1,
-      "reviewCount": guestRatings.length > 0 ? guestRatings.length : 1,
-      "bestRating": 5,
-      "worstRating": 1,
-    },
-    "review": [
-      {
-        "@type": "Review",
-        "reviewRating": {
-          "@type": "Rating",
-          "ratingValue": avgRating ? Math.round(Number(avgRating)) : 5,
-          "bestRating": 5,
-          "worstRating": 1,
-        },
-        "author": {
-          "@type": "Person",
-          "name": "Comprador Verificado",
-        },
-        "datePublished": property.createdAt ? new Date(property.createdAt).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
-        "reviewBody": "Imóvel verificado com documentação e proposta transparente na plataforma RealStock.",
+    ...(guestRatings.length > 0 && avgRating ? {
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": Number(avgRating),
+        "ratingCount": guestRatings.length,
+        "reviewCount": guestRatings.length,
+        "bestRating": 5,
+        "worstRating": 1,
       },
-    ],
+    } : {}),
     "offers": {
       "@type": "Offer",
       "price": property.price.toString(),
@@ -966,21 +928,28 @@ export default async function PropertyPage({
           </p>
 
           <div className="mt-3 inline-flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 border border-amber-500/30 px-3.5 py-1.5 text-xs font-bold text-amber-300">
-              <div className="flex items-center gap-0.5">
-                {Array.from({ length: 5 }, (_, i) => (
-                  <Star
-                    key={i}
-                    size={14}
-                    className={i < Math.round(Number(avgRating || 5)) ? "text-amber-400 fill-amber-400" : "text-slate-600"}
-                  />
-                ))}
+            {avgRating && guestRatings.length > 0 ? (
+              <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 border border-amber-500/30 px-3.5 py-1.5 text-xs font-bold text-amber-300">
+                <div className="flex items-center gap-0.5">
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <Star
+                      key={i}
+                      size={14}
+                      className={i < Math.round(Number(avgRating)) ? "text-amber-400 fill-amber-400" : "text-slate-600"}
+                    />
+                  ))}
+                </div>
+                <span>{avgRating} / 5.0</span>
+                <span className="text-slate-400 font-normal">
+                  ({guestRatings.length} {guestRatings.length === 1 ? "avaliação" : "avaliações"})
+                </span>
               </div>
-              <span>{avgRating || "5.0"} / 5.0</span>
-              <span className="text-slate-400 font-normal">
-                ({guestRatings.length > 0 ? `${guestRatings.length} ${guestRatings.length === 1 ? "avaliação" : "avaliações"}` : "Anúncio Verificado RealStock"})
-              </span>
-            </div>
+            ) : (
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 text-xs font-medium text-emerald-400">
+                <ShieldCheck size={14} className="text-emerald-400" />
+                <span>Anúncio Verificado RealStock</span>
+              </div>
+            )}
           </div>
         </div>
 

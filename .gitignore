@@ -53,3 +53,4 @@ node_modules
 # Test receipts and sandbox files
 comprovante_pix_*.pdf
 usuario teste paypal.pdf
+scratch/
