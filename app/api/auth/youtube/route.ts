@@ -4,25 +4,35 @@ import { authOptions } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
     try {
+        const { searchParams } = new URL(req.url);
+        const returnUrl = searchParams.get("returnUrl") || "/minha-conta/anuncios";
+
         const session = await getServerSession(authOptions);
         if (!session || !session.user) {
-            return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+            const origin = new URL(req.url).origin;
+            const fullTarget = `${origin}/api/auth/youtube?returnUrl=${encodeURIComponent(returnUrl)}`;
+            return NextResponse.redirect(`${origin}/login?callbackUrl=${encodeURIComponent(fullTarget)}`);
         }
 
         const clientId = process.env.GOOGLE_CLIENT_ID;
         const origin = new URL(req.url).origin;
         const redirectUri = `${origin}/api/auth/youtube/callback`;
         
-        // Solicita escopo de upload, leitura do YouTube e Google Ads
+        // Escopos necessários para leitura do canal e upload para YouTube Shorts
         const scopes = [
             "https://www.googleapis.com/auth/youtube.upload",
             "https://www.googleapis.com/auth/youtube.readonly",
             "https://www.googleapis.com/auth/userinfo.profile",
-            "https://www.googleapis.com/auth/userinfo.email",
-            "https://www.googleapis.com/auth/adwords"
+            "https://www.googleapis.com/auth/userinfo.email"
         ].join(" ");
         
-        const state = Math.random().toString(36).substring(2);
+        const statePayload = {
+            userId: (session.user as any).id,
+            email: session.user.email,
+            returnUrl,
+            salt: Math.random().toString(36).substring(2)
+        };
+        const state = Buffer.from(JSON.stringify(statePayload)).toString("base64");
 
         // redirect to google oauth
         const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` + new URLSearchParams({

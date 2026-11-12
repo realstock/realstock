@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getYoutubeConnectionStatus } from "@/lib/youtube";
 
 export async function GET(
   req: NextRequest,
@@ -76,7 +77,10 @@ export async function GET(
       );
     }
 
-    // Verificar sessões publicadas
+    // Verificar conexão com o canal do YouTube
+    const youtubeStatus = await getYoutubeConnectionStatus(user.id);
+
+    // Verificar sessões publicadas (filtrando mocks)
     const youtubeSessions = await prisma.youtubeShortsSession.findMany({
       where: {
         listingId: propertyId,
@@ -85,15 +89,34 @@ export async function GET(
       orderBy: { createdAt: "desc" }
     });
 
-    const publishedSessions = youtubeSessions.map(session => ({
-      postType: "reels", // YouTube Shorts é sempre formato Reels/Vídeo
+    const realSessions = youtubeSessions.filter(
+      session => session.videoId && !session.videoId.startsWith("mock_")
+    );
+
+    const publishedSessions = realSessions.map(session => ({
+      postType: "reels",
       validationReport: { permalink: session.permalink || `https://youtube.com/shorts/${session.videoId}` }
     }));
+
+    const hasMockSession = youtubeSessions.some(
+      session => session.videoId && session.videoId.startsWith("mock_")
+    );
+
+    const isEligibleForDirectPublish = Boolean(
+      property.reelsVideoPaidAt || 
+      (property.boostedUntil && new Date(property.boostedUntil) > new Date()) || 
+      hasMockSession ||
+      user.role === "ADMIN"
+    );
 
     return NextResponse.json({
       success: true,
       property,
       publishedSessions,
+      isYoutubeConnected: youtubeStatus.isConnected,
+      channelTitle: youtubeStatus.channelTitle,
+      hasMockSession,
+      isEligibleForDirectPublish,
       service: {
         id: service.id,
         name: "Publicação de Anúncio no YouTube Shorts",

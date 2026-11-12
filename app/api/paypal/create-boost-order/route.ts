@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     const totalCharge = Number(body.total_charge);
     const platform = body.platform || "instagram";
 
-    if (!propertyId || !totalCharge) {
+    if (isNaN(propertyId) || propertyId === null || propertyId === undefined || !totalCharge) {
       return NextResponse.json({ success: false, error: "Parâmetros inválidos." }, { status: 400 });
     }
 

@@ -78,6 +78,8 @@ export async function GET(req: NextRequest) {
     }
 
     const portfolioListingId = getPortfolioListingId(user.id);
+    const { getYoutubeConnectionStatus } = require("@/lib/youtube");
+    const youtubeStatus = await getYoutubeConnectionStatus(user.id);
 
     // Verificar sessões publicadas de portfólio no YouTube Shorts
     const youtubeSessions = await prisma.youtubeShortsSession.findMany({
@@ -88,7 +90,11 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" }
     });
 
-    const youtubePosts = youtubeSessions.map(session => ({
+    const realYoutubeSessions = youtubeSessions.filter(
+      session => session.videoId && !session.videoId.startsWith("mock_")
+    );
+
+    const youtubePosts = realYoutubeSessions.map(session => ({
       postType: "reels", // YouTube Shorts é sempre formato Vídeo/Reels
       validationReport: { permalink: session.permalink || `https://youtube.com/shorts/${session.videoId}` }
     }));
@@ -97,6 +103,8 @@ export async function GET(req: NextRequest) {
       success: true,
       properties,
       youtubePosts,
+      isYoutubeConnected: youtubeStatus.isConnected,
+      channelTitle: youtubeStatus.channelTitle,
       portfolioVideoUrl: user.portfolioVideoUrl,
       service: {
         id: service.id,

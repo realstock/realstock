@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Rocket, Target, CalendarDays, Wallet } from "lucide-react";
 
-export default function AdminLoteGooglePage() {
+function AdminLoteGoogleContent() {
    const { status } = useSession();
   const router = useRouter();
   const { pubId } = useParams();
@@ -229,5 +229,13 @@ export default function AdminLoteGooglePage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function AdminLoteGooglePage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-slate-950 p-6 text-slate-400">Carregando admin ads...</main>}>
+      <AdminLoteGoogleContent />
+    </Suspense>
   );
 }

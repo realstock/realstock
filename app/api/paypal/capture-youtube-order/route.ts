@@ -163,89 +163,46 @@ export async function POST(req: NextRequest) {
 
     const videoUrl = property?.customVideoUrl || property?.reelsVideoUrl;
     if (property && videoUrl) {
-      try {
-        const { refreshYoutubeAccessToken } = require("@/lib/youtube");
-        const ytAccessToken = await refreshYoutubeAccessToken(user.id);
+      const isSeasonal = property.listingType === "ALUGUEL_TEMPORADA";
+      const propertyUrl = `https://www.realstock.com.br/imovel/${property.id}`;
+      const descStr = property.description ? ` - ${property.description}` : "";
 
-        if (ytAccessToken) {
-          console.log("YouTube Access Token found. Initializing real upload to YouTube Data API...");
-          
-          const tempFile = await downloadToTempFile(videoUrl);
-          const transcodedFile = await transcodeIfNeeded(tempFile);
-          
-          const videoBuffer = fs.readFileSync(transcodedFile);
-          
-          const isSeasonal = property.listingType === "ALUGUEL_TEMPORADA";
-          const propertyUrl = `https://www.realstock.com.br/imovel/${property.id}`;
-          const descStr = property.description ? ` - ${property.description}` : "";
+      const videoTitle = isSeasonal
+        ? "Procurando lugar para se hospedar? Conheça este espaço!"
+        : property.title.substring(0, 70);
 
-          const videoTitle = isSeasonal
-            ? "Procurando lugar para se hospedar? Conheça este espaço!"
-            : property.title.substring(0, 70);
+      const videoDescription = isSeasonal
+        ? `Pensando em viajar para ${property.city || ''} reserve este imovel no ${propertyUrl}${descStr}`
+        : `${property.title}\n\n📍 ${[property.city, property.state].filter(Boolean).join(" - ")}\n💰 R$ ${Number(property.price).toLocaleString("pt-BR")}\n\n${property.description || ""}`;
 
-          const videoDescription = isSeasonal
-            ? `Pensando em viajar para ${property.city} reserve este imovel no ${propertyUrl}${descStr}`
-            : `${property.title}\n\n📍 ${[property.city, property.state].filter(Boolean).join(" - ")}\n💰 R$ ${Number(property.price).toLocaleString("pt-BR")}\n\n${property.description || ""}`;
+      const tags = isSeasonal
+        ? ["Shorts", "RealStock", "AluguelTemporada", "Temporada", property.city || "Brasil"].filter(Boolean)
+        : ["Shorts", "RealStock", "Imoveis", property.city || "Brasil"].filter(Boolean);
 
-          const metadata = {
-            snippet: {
-              title: videoTitle,
-              description: videoDescription.substring(0, 1000),
-              tags: isSeasonal ? ["Shorts", "RealStock", "AluguelTemporada", "Temporada"] : ["Shorts", "RealStock", "Imoveis"],
-              categoryId: "22"
+      const { uploadYoutubeShort } = require("@/lib/youtube");
+      const uploadResult = await uploadYoutubeShort({
+        userId: user.id,
+        videoUrl,
+        title: videoTitle,
+        description: videoDescription,
+        tags,
+      });
+
+      if (uploadResult.success && uploadResult.videoId) {
+        videoId = uploadResult.videoId;
+        permalink = uploadResult.permalink;
+        isSimulated = false;
+
+        try {
+          await prisma.youtubeShortsSession.deleteMany({
+            where: {
+              listingId: propertyId,
+              videoId: { startsWith: "mock_" },
             },
-            status: {
-              privacyStatus: "public",
-              selfDeclaredMadeForKids: false
-            }
-          };
-
-          const uploadUrlRes = await fetch("https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${ytAccessToken}`,
-              "Content-Type": "application/json; charset=UTF-8",
-              "X-Upload-Content-Length": videoBuffer.length.toString(),
-              "X-Upload-Content-Type": "video/mp4"
-            },
-            body: JSON.stringify(metadata)
           });
-
-          if (uploadUrlRes.ok) {
-            const resumableUrl = uploadUrlRes.headers.get("Location");
-            if (resumableUrl) {
-              const uploadBinaryRes = await fetch(resumableUrl, {
-                method: "PUT",
-                headers: {
-                  "Content-Length": videoBuffer.length.toString(),
-                  "Content-Type": "video/mp4"
-                },
-                body: videoBuffer
-              });
-
-              if (uploadBinaryRes.ok) {
-                const uploadData = await uploadBinaryRes.json();
-                if (uploadData.id) {
-                  videoId = uploadData.id;
-                  permalink = `https://youtube.com/shorts/${videoId}`;
-                  isSimulated = false;
-                  console.log("YouTube Shorts upload success! Video ID:", videoId);
-                }
-              } else {
-                console.error("YouTube binary upload failed:", await uploadBinaryRes.text());
-              }
-            }
-          } else {
-            console.error("YouTube resumable upload initiation failed:", await uploadUrlRes.text());
-          }
-
-          if (tempFile && fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
-          if (transcodedFile && transcodedFile !== tempFile && fs.existsSync(transcodedFile)) fs.unlinkSync(transcodedFile);
-        } else {
-          console.log("No YouTube credentials found, running YouTube Shorts simulation...");
-        }
-      } catch (ytErr) {
-        console.error("Real YouTube Shorts upload failed, falling back to simulation:", ytErr);
+        } catch (e) {}
+      } else {
+        console.warn("YouTube real upload failed, using simulated session fallback:", uploadResult.error);
       }
     }
 

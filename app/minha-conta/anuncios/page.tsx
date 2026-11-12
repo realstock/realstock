@@ -504,7 +504,7 @@ export default function MeusAnunciosPage() {
                         href={`/minha-conta/anuncios/${property.id}/turbinar?platform=meta`}
                         className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 py-2.5 text-xs font-black text-white shadow-lg shadow-indigo-500/20 transition-all hover:scale-[1.02] active:scale-95"
                       >
-                        <Rocket size={14} className="fill-white" /> Turbinar
+                        <Rocket size={14} className="fill-white" /> {property.metaBoostedUntil && new Date(property.metaBoostedUntil) > new Date() ? "Turbinado (Ver Status)" : "Turbinar"}
                       </Link>
 
                       <Link
@@ -542,16 +542,26 @@ export default function MeusAnunciosPage() {
                       )}
                       
                       {property.metaBoostedUntil && new Date(property.metaBoostedUntil) > new Date() && (
-                        <div className="mt-3 inline-flex items-center gap-1 rounded bg-indigo-500/20 px-2 py-1 text-xs font-bold text-indigo-400 border border-indigo-500/20">
-                          <Rocket size={14} />
-                          Meta Ads: {Math.ceil((new Date(property.metaBoostedUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias res.
-                        </div>
+                        <Link
+                          href={`/minha-conta/anuncios/${property.id}/turbinar?platform=meta`}
+                          className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-indigo-500/20 px-2.5 py-1 text-xs font-bold text-indigo-300 border border-indigo-500/30 transition-all hover:bg-indigo-500/30 hover:border-indigo-400 hover:text-white hover:scale-105 active:scale-95 group shadow-sm cursor-pointer"
+                          title="Clique para ver os detalhes da campanha ativa na Meta Ads"
+                        >
+                          <Rocket size={14} className="text-indigo-400 group-hover:animate-bounce" />
+                          <span>Meta Ads: {Math.ceil((new Date(property.metaBoostedUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias res.</span>
+                          <span className="text-[10px] text-indigo-300 underline ml-1 group-hover:text-white">Ver Campanha &rarr;</span>
+                        </Link>
                       )}
                       {property.googleBoostedUntil && new Date(property.googleBoostedUntil) > new Date() && (
-                        <div className="mt-2 inline-flex items-center gap-1 rounded bg-emerald-500/20 px-2 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/20">
-                          <Rocket size={14} />
-                          Google Ads: {Math.ceil((new Date(property.googleBoostedUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias res.
-                        </div>
+                        <Link
+                          href={`/minha-conta/anuncios/${property.id}/turbinar?platform=google`}
+                          className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/20 px-2.5 py-1 text-xs font-bold text-emerald-300 border border-emerald-500/30 transition-all hover:bg-emerald-500/30 hover:border-emerald-400 hover:text-white hover:scale-105 active:scale-95 group shadow-sm cursor-pointer"
+                          title="Clique para ver os detalhes da campanha ativa no Google Ads"
+                        >
+                          <Rocket size={14} className="text-emerald-400 group-hover:animate-bounce" />
+                          <span>Google Ads: {Math.ceil((new Date(property.googleBoostedUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias res.</span>
+                          <span className="text-[10px] text-emerald-300 underline ml-1 group-hover:text-white">Ver Campanha &rarr;</span>
+                        </Link>
                       )}
                       
                       {property.sponsoredUntil && new Date(property.sponsoredUntil) > new Date() && (
@@ -873,17 +883,27 @@ export default function MeusAnunciosPage() {
                          : 'O sistema da RealStock agrupa as melhores fotos dos seus imóveis no formato de álbum (Carrossel) otimizado para o Instagram e Facebook automaticamente.'}
                      </div>
                      
-                     {metaPortfolioBoostedUntil && new Date(metaPortfolioBoostedUntil) > new Date() && (
-                        <div className="mt-3 inline-flex items-center gap-1 w-fit rounded bg-indigo-500/20 px-2 py-1 text-xs font-bold text-indigo-400 border border-indigo-500/20">
-                          <Rocket size={14} />
-                          Meta Ads: {Math.ceil((new Date(metaPortfolioBoostedUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias res.
-                        </div>
+                      {metaPortfolioBoostedUntil && new Date(metaPortfolioBoostedUntil) > new Date() && (
+                        <Link
+                          href={`/minha-conta/anuncios/0/turbinar?platform=meta`}
+                          className="mt-3 inline-flex items-center gap-1.5 w-fit rounded-lg bg-indigo-500/20 px-2.5 py-1 text-xs font-bold text-indigo-300 border border-indigo-500/30 transition-all hover:bg-indigo-500/30 hover:border-indigo-400 hover:text-white hover:scale-105 active:scale-95 group shadow-sm cursor-pointer"
+                          title="Clique para ver os detalhes da campanha ativa do Portfólio na Meta Ads"
+                        >
+                          <Rocket size={14} className="text-indigo-400 group-hover:animate-bounce" />
+                          <span>Meta Ads: {Math.ceil((new Date(metaPortfolioBoostedUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias res.</span>
+                          <span className="text-[10px] text-indigo-300 underline ml-1 group-hover:text-white">Ver Campanha &rarr;</span>
+                        </Link>
                       )}
                       {googlePortfolioBoostedUntil && new Date(googlePortfolioBoostedUntil) > new Date() && (
-                        <div className="mt-2 inline-flex items-center gap-1 w-fit rounded bg-emerald-500/20 px-2 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/20">
-                          <Rocket size={14} />
-                          Google Ads: {Math.ceil((new Date(googlePortfolioBoostedUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias res.
-                        </div>
+                        <Link
+                          href={`/minha-conta/anuncios/0/turbinar?platform=google`}
+                          className="mt-2 inline-flex items-center gap-1.5 w-fit rounded-lg bg-emerald-500/20 px-2.5 py-1 text-xs font-bold text-emerald-300 border border-emerald-500/30 transition-all hover:bg-emerald-500/30 hover:border-emerald-400 hover:text-white hover:scale-105 active:scale-95 group shadow-sm cursor-pointer"
+                          title="Clique para ver os detalhes da campanha ativa do Portfólio no Google Ads"
+                        >
+                          <Rocket size={14} className="text-emerald-400 group-hover:animate-bounce" />
+                          <span>Google Ads: {Math.ceil((new Date(googlePortfolioBoostedUntil).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias res.</span>
+                          <span className="text-[10px] text-emerald-300 underline ml-1 group-hover:text-white">Ver Campanha &rarr;</span>
+                        </Link>
                       )}
                    </div>
                  </div>

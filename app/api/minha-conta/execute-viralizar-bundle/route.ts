@@ -596,98 +596,66 @@ export async function POST(req: NextRequest) {
       if (videoUrl && platform === "youtube") {
         console.log("Publishing YouTube Shorts...");
         
-        let videoId = `mock_${Math.random().toString(36).substring(2, 10)}`;
-        let permalink = `https://youtube.com/shorts/${videoId}`;
-        let isSimulated = true;
+        const videoTitle = isSeasonal
+          ? "Procurando lugar para se hospedar? Conheça este espaço!"
+          : title.substring(0, 70);
 
-        try {
-          const { refreshYoutubeAccessToken } = require("@/lib/youtube");
-          const ytAccessToken = await refreshYoutubeAccessToken(userId);
+        const tags = isSeasonal
+          ? ["Shorts", "RealStock", "AluguelTemporada", "Temporada", city || "Brasil"].filter(Boolean)
+          : ["Shorts", "RealStock", "Imoveis", city || "Brasil"].filter(Boolean);
 
-          if (ytAccessToken) {
-            console.log("YouTube Access Token found. Initializing real upload to YouTube Data API...");
-            
-            const tempFile = await downloadToTempFile(videoUrl);
-            const transcodedFile = await transcodeIfNeeded(tempFile);
-            
-            const videoBuffer = fs.readFileSync(transcodedFile);
-            
-            const videoTitle = isSeasonal
-              ? "Procurando lugar para se hospedar? Conheça este espaço!"
-              : title.substring(0, 70);
-
-            const metadata = {
-              snippet: {
-                title: videoTitle,
-                description: caption.substring(0, 1000),
-                tags: isSeasonal ? ["Shorts", "RealStock", "AluguelTemporada", "Temporada"] : ["Shorts", "RealStock", "Imoveis"],
-                categoryId: "22"
-              },
-              status: {
-                privacyStatus: "public",
-                selfDeclaredMadeForKids: false
-              }
-            };
-
-            const uploadUrlRes = await fetch("https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status", {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${ytAccessToken}`,
-                "Content-Type": "application/json; charset=UTF-8",
-                "X-Upload-Content-Length": videoBuffer.length.toString(),
-                "X-Upload-Content-Type": "video/mp4"
-              },
-              body: JSON.stringify(metadata)
-            });
-
-            if (uploadUrlRes.ok) {
-              const resumableUrl = uploadUrlRes.headers.get("Location");
-              if (resumableUrl) {
-                const uploadBinaryRes = await fetch(resumableUrl, {
-                  method: "PUT",
-                  headers: {
-                    "Content-Length": videoBuffer.length.toString(),
-                    "Content-Type": "video/mp4"
-                  },
-                  body: videoBuffer
-                });
-
-                if (uploadBinaryRes.ok) {
-                  const uploadData = await uploadBinaryRes.json();
-                  if (uploadData.id) {
-                    videoId = uploadData.id;
-                    permalink = `https://youtube.com/shorts/${videoId}`;
-                    isSimulated = false;
-                    console.log("YouTube Shorts upload success! Video ID:", videoId);
-                  }
-                } else {
-                  console.error("YouTube binary upload failed:", await uploadBinaryRes.text());
-                }
-              }
-            } else {
-              console.error("YouTube resumable upload initiation failed:", await uploadUrlRes.text());
-            }
-
-            if (tempFile && fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
-            if (transcodedFile && transcodedFile !== tempFile && fs.existsSync(transcodedFile)) fs.unlinkSync(transcodedFile);
-          } else {
-            console.log("No YouTube credentials found, running YouTube Shorts simulation...");
-          }
-        } catch (ytErr) {
-          console.error("Real YouTube Shorts upload failed, falling back to simulation:", ytErr);
-        }
-
-        results.yt_shorts = { success: true, id: videoId, permalink, isSimulated };
-
-        await prisma.youtubeShortsSession.create({
-          data: {
-            listingId: propertyId,
-            videoId: videoId,
-            status: "PUBLISHED",
-            caption: caption,
-            permalink: permalink
-          }
+        const { uploadYoutubeShort } = require("@/lib/youtube");
+        const uploadResult = await uploadYoutubeShort({
+          userId,
+          videoUrl,
+          title: videoTitle,
+          description: caption,
+          tags,
         });
+
+        if (uploadResult.success && uploadResult.videoId) {
+          results.yt_shorts = {
+            success: true,
+            id: uploadResult.videoId,
+            permalink: uploadResult.permalink,
+            isSimulated: false,
+          };
+
+          // Remove sessões mock antigas se existirem
+          try {
+            await prisma.youtubeShortsSession.deleteMany({
+              where: {
+                listingId: propertyId,
+                videoId: { startsWith: "mock_" },
+              },
+            });
+          } catch (e) {}
+
+          await prisma.youtubeShortsSession.create({
+            data: {
+              listingId: propertyId,
+              videoId: uploadResult.videoId,
+              status: "PUBLISHED",
+              caption: caption,
+              permalink: uploadResult.permalink,
+            },
+          });
+        } else {
+          console.error("YouTube upload failed in Viralizar bundle:", uploadResult.error);
+          results.yt_shorts = {
+            success: false,
+            error: uploadResult.error || "Falha no upload para o YouTube Shorts.",
+          };
+
+          await prisma.youtubeShortsSession.create({
+            data: {
+              listingId: propertyId,
+              status: "FAILED",
+              caption: caption,
+              publishErrors: { error: uploadResult.error },
+            },
+          });
+        }
       }
 
     } catch (socialErr: any) {

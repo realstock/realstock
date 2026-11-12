@@ -268,14 +268,22 @@ export default function AdminPatrocinadosPage() {
                     <div className="space-y-3">
                        <div className="flex flex-wrap gap-2">
                           {pub.metaBoostedUntil && new Date(pub.metaBoostedUntil) > new Date() && (
-                            <div className="flex items-center gap-1 rounded-lg bg-indigo-500/10 px-2 py-1 text-[10px] font-bold text-indigo-400 border border-indigo-500/20">
-                                <Rocket size={12} /> Meta Ads Ativo
-                            </div>
+                            <Link 
+                              href={`/admin/patrocinados/${pub.id}/turbinar?platform=meta`}
+                              className="flex items-center gap-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 px-2 py-1 text-[10px] font-bold text-indigo-400 border border-indigo-500/20 hover:border-indigo-400 transition-all cursor-pointer"
+                              title="Ver detalhes da campanha no Meta Ads"
+                            >
+                                <Rocket size={12} /> Meta Ads Ativo &rarr;
+                            </Link>
                           )}
                           {pub.googleBoostedUntil && new Date(pub.googleBoostedUntil) > new Date() && (
-                            <div className="flex items-center gap-1 rounded-lg bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-400 border border-emerald-500/20">
-                                <Rocket size={12} /> Google Ads Ativo
-                            </div>
+                            <Link 
+                              href={`/admin/patrocinados/${pub.id}/turbinar?platform=google`}
+                              className="flex items-center gap-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-1 text-[10px] font-bold text-emerald-400 border border-emerald-500/20 hover:border-emerald-400 transition-all cursor-pointer"
+                              title="Ver detalhes da campanha no Google Ads"
+                            >
+                                <Rocket size={12} /> Google Ads Ativo &rarr;
+                            </Link>
                           )}
                        </div>
 
