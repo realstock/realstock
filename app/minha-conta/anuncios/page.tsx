@@ -94,10 +94,15 @@ export default function MeusAnunciosPage() {
 
   useEffect(() => {
     if (viewingVideoUrl && videoRef.current) {
-      videoRef.current.play().catch(e => {
-        console.log("Autoplay failed:", e);
-        setPlayerError(`Autoplay: ${e.message || String(e)}`);
-      });
+      setPlayerError(null);
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((e) => {
+          // Autoplay prevenido pelo navegador ou interrompido por ciclo do DOM
+          // Isso é comportamento esperado do navegador e não é um erro de mídia
+          console.log("Autoplay notice (reprodução iniciada após toque ou interação):", e);
+        });
+      }
     }
   }, [viewingVideoUrl]);
 
@@ -1341,9 +1346,17 @@ export default function MeusAnunciosPage() {
                   ref={videoRef}
                   onError={(e) => {
                     const mediaError = (e.target as HTMLVideoElement).error;
-                    setPlayerError(mediaError ? `MediaError (Code ${mediaError.code}): ${mediaError.message || 'Decoder or format error'}` : "Unknown media error");
+                    if (mediaError) {
+                      setPlayerError(`MediaError (Code ${mediaError.code}): ${mediaError.message || 'Decoder or format error'}`);
+                    }
                   }}
-                  src={viewingVideoUrl ? `/api/proxy-video?url=${encodeURIComponent(viewingVideoUrl)}#t=0.001` : undefined} 
+                  src={
+                    viewingVideoUrl
+                      ? viewingVideoUrl.includes("supabase.co") || viewingVideoUrl.startsWith("blob:") || viewingVideoUrl.startsWith("/")
+                        ? viewingVideoUrl
+                        : `/api/proxy-video?url=${encodeURIComponent(viewingVideoUrl)}`
+                      : undefined
+                  } 
                   className="h-full w-full object-cover" 
                   controls 
                   autoPlay
