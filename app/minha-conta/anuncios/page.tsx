@@ -532,19 +532,6 @@ export default function MeusAnunciosPage() {
                       <div className="mt-2 text-sm font-semibold text-emerald-400">
                         R$ {Number(property.price).toLocaleString("pt-BR")} {property.listingType === "ALUGUEL_TEMPORADA" ? "/ diária" : ""}
                       </div>
-
-                      {property.listingType === "ALUGUEL_TEMPORADA" && (
-                        <div className="mt-3">
-                          <Link
-                            href={`/minha-conta/anuncios/${property.id}/google-vacation-rentals`}
-                            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 px-3.5 py-2 text-[11px] font-black text-white shadow-md shadow-blue-500/20 transition-all hover:scale-[1.02] active:scale-95"
-                            title="Cadastrar e sincronizar no Google Vacation Rentals (PMS Channel Manager)"
-                          >
-                            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-3.5 h-3.5" alt="Google" />
-                            Google Vacation Rentals (PMS)
-                          </Link>
-                        </div>
-                      )}
                       
                       {property.metaBoostedUntil && new Date(property.metaBoostedUntil) > new Date() && (
                         <Link
