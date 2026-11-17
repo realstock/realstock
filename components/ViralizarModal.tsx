@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Play, Loader2, Sparkles, Rocket, CheckCircle2, ExternalLink, Film, Info } from "lucide-react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import { renderReelsFrame, LoadedMediaItem, ReelsScriptConfig } from "@/lib/reels-engine";
 
 interface ViralizarModalProps {
   isOpen: boolean;
@@ -10,6 +11,9 @@ interface ViralizarModalProps {
   propertyTitle: string;
   propertyCity?: string | null;
   propertyState?: string | null;
+  listingType?: string | null;
+  price?: number | null;
+  neighborhood?: string | null;
   images: { imageUrl: string, title?: string; city?: string; state?: string }[];
   videos?: { videoUrl: string }[];
   reelsMusicUrl?: string | null;
@@ -181,6 +185,9 @@ export default function ViralizarModal(props: ViralizarModalProps) {
     propertyTitle, 
     propertyCity, 
     propertyState, 
+    listingType,
+    price,
+    neighborhood,
     images, 
     videos = [],
     reelsMusicUrl,
@@ -426,133 +433,147 @@ export default function ViralizarModal(props: ViralizarModalProps) {
         finishBundle(blob, activeOrderID || "CREDIT");
     };
 
-    // Warm-up para o Safari
+    // Preparar lista de mídias para o Reels Studio Engine
+    const mediaItems: LoadedMediaItem[] = [];
+
+    // Carregar Vídeos
+    for (const vid of loadedVideos) {
+      if (vid.videoWidth) {
+        mediaItems.push({
+          type: "video",
+          element: vid,
+          width: vid.videoWidth,
+          height: vid.videoHeight,
+          duration: vid.duration || 5,
+        });
+      }
+    }
+
+    // Carregar Imagens
+    for (const img of loadedImages) {
+      mediaItems.push({
+        type: "image",
+        element: img,
+        width: img.naturalWidth || img.width || 720,
+        height: img.naturalHeight || img.height || 1280,
+      });
+    }
+
+    if (mediaItems.length === 0) {
+      addLog("Erro: Nenhuma imagem ou vídeo disponível para renderizar o Reels.");
+      alert("Não foi possível carregar as imagens do anúncio.");
+      setStep("ready");
+      return;
+    }
+
+    // Gerar ou carregar Roteiro de IA com ganchos de alta conversão
+    addLog("Consultando IA para roteiro persuasivo e ganchos de engajamento...");
+    let scriptConfig: ReelsScriptConfig | null = null;
+    if (propertyId > 0) {
+      try {
+        const resScript = await fetch(`/api/minha-conta/anuncios/${propertyId}/ai-reels-script`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageCount: mediaItems.length }),
+        });
+        const dataScript = await resScript.json();
+        if (dataScript.success && dataScript.script) {
+          scriptConfig = dataScript.script;
+          addLog(`Roteiro IA aplicado: "${dataScript.script.hook}"`);
+        }
+      } catch (e) {
+        console.warn("Fallback de roteiro IA no Viralizar:", e);
+      }
+    }
+
+    const isSeasonal = listingType === "ALUGUEL_TEMPORADA";
+    if (!scriptConfig) {
+      scriptConfig = {
+        hook: isSeasonal 
+          ? `Procurando o refúgio perfeito para suas férias em ${propertyCity || "um paraíso"}? 🌴`
+          : `Conheça esta oportunidade exclusiva à venda em ${propertyCity || "ótima localização"}! ✨`,
+        subtitle: `${propertyCity ? `${propertyCity} • ` : ""}${isSeasonal ? "ALUGUEL POR TEMPORADA" : "IMÓVEL À VENDA"}`,
+        priceTag: price 
+          ? (isSeasonal ? `R$ ${price.toLocaleString("pt-BR")}/diária` : `R$ ${price.toLocaleString("pt-BR")}`)
+          : (isSeasonal ? "Consulte diária" : "Consulte valor"),
+        featureBadge: isSeasonal ? "Temporada Exclusiva • Lazer Completo" : "Alto Padrão • Oportunidade Única",
+        scenes: [
+          { headline: isSeasonal ? "Seu Refúgio Perfeito" : "Design & Sofisticação", sub: "Ambientes amplos e confortáveis" },
+          { headline: isSeasonal ? "Momentos Inesquecíveis" : "Living Integrado", sub: "Iluminação natural e elegância" },
+          { headline: isSeasonal ? "Lazer & Descanso" : "Suíte Master", sub: "Conforto absoluto para você" },
+          { headline: isSeasonal ? "Localização Privilegiada" : "Alta Valorização", sub: "Pronto para receber sua proposta" },
+        ],
+        cta: isSeasonal 
+          ? "Reserve suas datas direto na RealStock! 📲"
+          : "Envie sua proposta direto na RealStock! 📲",
+      };
+    }
+
+    // Warm-up para o Safari e Canvas
     ctx.fillStyle = "#020617";
     ctx.fillRect(0, 0, width, height);
-    if (loadedVideos[0]) {
-        const vid = loadedVideos[0];
-        const scale = Math.max(width / vid.videoWidth, height / vid.videoHeight);
-        const dW = vid.videoWidth * scale;
-        const dH = vid.videoHeight * scale;
-        ctx.drawImage(vid, (width - dW) / 2, (height - dH) / 2, dW, dH);
-    } else if (loadedImages[0]) {
-        const img = loadedImages[0];
-        const scale = Math.max(width / img.width, height / img.height);
-        const dW = img.width * scale;
-        const dH = img.height * scale;
-        ctx.drawImage(img, (width - dW) / 2, (height - dH) / 2, dW, dH);
-    }
-    renderOverlays(ctx, width, height, propertyTitle, propertyCity, propertyState);
+    renderReelsFrame(
+      ctx,
+      mediaItems,
+      width,
+      height,
+      0,
+      30,
+      {
+        fps: 30,
+        durationSeconds: 30,
+        transitionType: "smart_mix",
+        listingType: listingType || undefined,
+        script: scriptConfig,
+        showProgressBar: true,
+        showPriceBadge: true,
+        showCaptions: true,
+      }
+    );
     
     addLog("Sincronizando gravador...");
     await new Promise(r => setTimeout(r, 500));
     recorder.start(200); 
     await new Promise(r => setTimeout(r, 200));
 
-    const targetTotalDuration = 59; // Máximo de 59 segundos cravados (margem segura pro Insta/Site/FB)
+    const targetTotalDuration = 30; // 30s cravados: ritmo padrão viral para Reels, Stories e Shorts
     const fps = 30;
+    const totalFrames = targetTotalDuration * fps;
 
-    // Lógica de colagem: Prioridade para Vídeos
-    if (loadedVideos.length > 0) {
-        const availableVideos: HTMLVideoElement[] = [];
-        while (availableVideos.length < 10) {
-            availableVideos.push(...loadedVideos);
+    addLog("Renderizando cenas com efeitos cinematográficos e transições IA...");
+
+    for (let frame = 0; frame < totalFrames; frame++) {
+      const frameStartTime = performance.now();
+      const currentTime = frame / fps;
+
+      setProgress(20 + Math.round((frame / totalFrames) * 79));
+
+      renderReelsFrame(
+        ctx,
+        mediaItems,
+        width,
+        height,
+        currentTime,
+        targetTotalDuration,
+        {
+          fps,
+          durationSeconds: 30,
+          transitionType: "smart_mix",
+          listingType: listingType || undefined,
+          script: scriptConfig,
+          showProgressBar: true,
+          showPriceBadge: true,
+          showCaptions: true,
         }
-        const finalVideos = availableVideos.slice(0, 10);
-        const duration = 5.9; // Cada clipe dura exatamente 5.9s
-        const framesPerClip = duration * fps;
+      );
 
-        for (let vIndex = 0; vIndex < finalVideos.length; vIndex++) {
-            const vid = finalVideos[vIndex];
-            
-            let startTime = 0;
-            if (vid.duration > duration) {
-                startTime = (vid.duration - duration) / 2;
-            }
-            if (vid.duration > (startTime + duration + 0.5)) {
-                startTime += 0.5;
-            }
+      await new Promise(resolve => requestAnimationFrame(resolve));
 
-            vid.currentTime = startTime;
-            await new Promise(r => setTimeout(r, 150)); // Buffer para buscar frame
-
-            for (let f = 0; f < framesPerClip; f++) {
-                const frameStartTime = performance.now();
-                
-                setProgress(20 + Math.round(((vIndex * framesPerClip + f) / (finalVideos.length * framesPerClip)) * 79));
-                
-                const timeInClip = f / fps;
-                vid.currentTime = startTime + (timeInClip % vid.duration);
-                
-                await new Promise(resolve => {
-                    const onSeeked = () => { vid.removeEventListener('seeked', onSeeked); resolve(null); };
-                    vid.addEventListener('seeked', onSeeked);
-                    setTimeout(resolve, 50);
-                });
-
-                ctx.fillStyle = "#020617";
-                ctx.fillRect(0, 0, width, height);
-
-                const vW = vid.videoWidth;
-                const vH = vid.videoHeight;
-                const scale = Math.max(width / vW, height / vH);
-                const dW = vW * scale;
-                const dH = vH * scale;
-                ctx.drawImage(vid, (width - dW) / 2, (height - dH) / 2, dW, dH);
-
-                renderOverlays(ctx, width, height, propertyTitle, propertyCity, propertyState);
-                
-                await new Promise(resolve => requestAnimationFrame(resolve));
-
-                const elapsed = performance.now() - frameStartTime;
-                const sleepTime = Math.max(0, (1000 / fps) - elapsed);
-                if (sleepTime > 0) {
-                    await new Promise(resolve => setTimeout(resolve, sleepTime));
-                }
-            }
-        }
-    } else {
-        const availableImages = loadedImages.slice(0, 10);
-        const totalDisplays = 10;
-        const durationPerImage = targetTotalDuration / totalDisplays; // Exatamente 5.9s
-        const totalFrames = targetTotalDuration * fps; // Exatamente 1770 frames
-
-        for (let frame = 0; frame < totalFrames; frame++) {
-            const frameStartTime = performance.now();
-            
-            const currentTime = frame / fps;
-            const displayIndex = Math.floor(currentTime / durationPerImage);
-            const imageIndex = displayIndex % availableImages.length;
-            const imageProgress = (currentTime % durationPerImage) / durationPerImage;
-            
-            setProgress(20 + Math.round((frame / totalFrames) * 79));
-
-            const img = availableImages[imageIndex];
-            if (!img) continue;
-
-            const currentData = images[imageIndex];
-            const currentTitle = currentData?.title || propertyTitle;
-            const currentCity = currentData?.city || propertyCity;
-            const currentState = currentData?.state || propertyState;
-
-            ctx.fillStyle = "#020617";
-            ctx.fillRect(0, 0, width, height);
-
-            const scale = 1 + imageProgress * 0.15;
-            const dW = width * scale;
-            const dH = (img.height * (dW / img.width));
-            ctx.drawImage(img, (width - dW) / 2, (height - dH) / 2, dW, dH);
-
-            renderOverlays(ctx, width, height, currentTitle, currentCity, currentState);
-            
-            await new Promise(resolve => requestAnimationFrame(resolve));
-
-            const elapsed = performance.now() - frameStartTime;
-            const sleepTime = Math.max(0, (1000 / fps) - elapsed);
-            if (sleepTime > 0) {
-                await new Promise(resolve => setTimeout(resolve, sleepTime));
-            }
-        }
+      const elapsed = performance.now() - frameStartTime;
+      const sleepTime = Math.max(0, (1000 / fps) - elapsed);
+      if (sleepTime > 0) {
+        await new Promise(resolve => setTimeout(resolve, sleepTime));
+      }
     }
 
     addLog("Processando buffer final...");

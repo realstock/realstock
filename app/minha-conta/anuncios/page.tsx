@@ -1307,6 +1307,8 @@ export default function MeusAnunciosPage() {
           propertyCity={selectedPropertyForVideo.city}
           propertyState={selectedPropertyForVideo.state}
           listingType={selectedPropertyForVideo.listingType}
+          price={Number(selectedPropertyForVideo.price) || null}
+          neighborhood={selectedPropertyForVideo.neighborhood}
           propertyId={selectedPropertyForVideo.id}
           images={selectedPropertyForVideo.images || []}
           videos={selectedPropertyForVideo.videos || []}
@@ -1378,6 +1380,9 @@ export default function MeusAnunciosPage() {
           propertyTitle={viralizarTarget.title}
           propertyCity={viralizarTarget.id === 0 ? "RealStock" : properties.find(p => p.id === viralizarTarget.id)?.city}
           propertyState={viralizarTarget.id === 0 ? "Pro" : properties.find(p => p.id === viralizarTarget.id)?.state}
+          listingType={viralizarTarget.id === 0 ? "COMPRA_VENDA" : properties.find(p => p.id === viralizarTarget.id)?.listingType}
+          price={viralizarTarget.id === 0 ? null : (Number(properties.find(p => p.id === viralizarTarget.id)?.price) || null)}
+          neighborhood={viralizarTarget.id === 0 ? null : properties.find(p => p.id === viralizarTarget.id)?.neighborhood}
           images={viralizarTarget.id === 0 
             ? properties
                 .filter(p => p.images && p.images.length > 0)
