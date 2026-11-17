@@ -109,8 +109,8 @@ export default function VideoCreatorModal({
   const [isScriptAccordionOpen, setIsScriptAccordionOpen] = useState(false);
 
   // Refs para reprodução / canvas
+  // Refs para reprodução / canvas unificado
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const interactiveCanvasRef = useRef<HTMLCanvasElement>(null);
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const recordingAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -121,66 +121,125 @@ export default function VideoCreatorModal({
   // Estado da prévia interativa no canvas
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(true);
   const [previewTime, setPreviewTime] = useState(0);
+  const [isMediaLoaded, setIsMediaLoaded] = useState(false);
   const loadedMediaCacheRef = useRef<LoadedMediaItem[]>([]);
+  const isMediaLoadingRef = useRef(false);
 
-  // Carrega e armazena mídias em cache
+  // Carrega e armazena mídias em cache (em paralelo e com garantia de pelo menos 4 cenas)
   const loadMediaItems = useCallback(async (): Promise<LoadedMediaItem[]> => {
     if (loadedMediaCacheRef.current.length > 0) {
       return loadedMediaCacheRef.current;
     }
+    if (isMediaLoadingRef.current) {
+      while (isMediaLoadingRef.current) {
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      return loadedMediaCacheRef.current;
+    }
 
+    isMediaLoadingRef.current = true;
     const items: LoadedMediaItem[] = [];
 
-    // Carregar Vídeos
+    // Carregar Vídeos em paralelo se houver
     if (videos && videos.length > 0) {
-      for (const v of videos) {
-        try {
-          const vid = document.createElement("video");
-          vid.src = v.videoUrl;
-          vid.crossOrigin = "anonymous";
-          vid.muted = true;
-          vid.playsInline = true;
-          await new Promise((resolve) => {
-            vid.onloadeddata = () => resolve(null);
-            vid.onerror = () => resolve(null);
-            setTimeout(resolve, 4000);
-          });
-          items.push({
-            type: "video",
-            element: vid,
-            width: vid.videoWidth || 720,
-            height: vid.videoHeight || 1280,
-            duration: vid.duration || 5,
-          });
-        } catch (e) {
-          console.warn("Falha ao carregar clipe de vídeo para Reels:", e);
-        }
+      const videoPromises = videos.slice(0, 3).map(async (v) => {
+        return new Promise<LoadedMediaItem | null>((resolve) => {
+          try {
+            const vid = document.createElement("video");
+            vid.src = v.videoUrl;
+            vid.crossOrigin = "anonymous";
+            vid.muted = true;
+            vid.playsInline = true;
+            let finished = false;
+            const done = () => {
+              if (finished) return;
+              finished = true;
+              if (vid.videoWidth > 0) {
+                resolve({
+                  type: "video",
+                  element: vid,
+                  width: vid.videoWidth,
+                  height: vid.videoHeight,
+                  duration: vid.duration || 5,
+                });
+              } else {
+                resolve(null);
+              }
+            };
+            vid.onloadeddata = done;
+            vid.onerror = () => {
+              if (!finished) {
+                finished = true;
+                resolve(null);
+              }
+            };
+            setTimeout(done, 4000);
+          } catch {
+            resolve(null);
+          }
+        });
+      });
+      const loadedVideos = await Promise.all(videoPromises);
+      for (const v of loadedVideos) {
+        if (v) items.push(v);
       }
     }
 
-    // Carregar Imagens
-    for (const img of images.slice(0, 12)) {
-      try {
-        const imageEl = new Image();
-        imageEl.crossOrigin = "anonymous";
-        imageEl.src = img.imageUrl;
-        await new Promise((resolve) => {
-          imageEl.onload = () => resolve(null);
-          imageEl.onerror = () => resolve(null);
-          setTimeout(resolve, 5000);
+    // Carregar Imagens em PARALELO
+    const candidateImages = images && images.length > 0 ? images.slice(0, 15) : [];
+    if (candidateImages.length > 0) {
+      const imagePromises = candidateImages.map((img) => {
+        return new Promise<LoadedMediaItem | null>((resolve) => {
+          try {
+            const imageEl = new Image();
+            imageEl.crossOrigin = "anonymous";
+            imageEl.src = img.imageUrl;
+            let finished = false;
+            const done = () => {
+              if (finished) return;
+              finished = true;
+              if (imageEl.naturalWidth > 0) {
+                resolve({
+                  type: "image",
+                  element: imageEl,
+                  width: imageEl.naturalWidth,
+                  height: imageEl.naturalHeight,
+                });
+              } else {
+                resolve(null);
+              }
+            };
+            imageEl.onload = done;
+            imageEl.onerror = () => {
+              if (!finished) {
+                finished = true;
+                resolve(null);
+              }
+            };
+            setTimeout(done, 5000);
+          } catch {
+            resolve(null);
+          }
         });
-        items.push({
-          type: "image",
-          element: imageEl,
-          width: imageEl.width || 1200,
-          height: imageEl.height || 800,
-        });
-      } catch (e) {
-        console.warn("Falha ao carregar imagem para Reels:", e);
+      });
+
+      const loadedImages = await Promise.all(imagePromises);
+      for (const img of loadedImages) {
+        if (img) items.push(img);
+      }
+    }
+
+    // Garantir que temos pelo menos 4 cenas no Reel para todos os movimentos e legendas
+    if (items.length > 0 && items.length < 4) {
+      const initialItems = [...items];
+      while (items.length < 4) {
+        items.push(...initialItems);
       }
     }
 
     loadedMediaCacheRef.current = items;
+    isMediaLoadingRef.current = false;
+    setIsMediaLoaded(items.length > 0);
     return items;
   }, [images, videos]);
 
@@ -206,6 +265,7 @@ export default function VideoCreatorModal({
 
   useEffect(() => {
     if (isOpen) {
+      loadMediaItems();
       fetchAiScript();
     } else {
       setStep("preview");
@@ -222,9 +282,9 @@ export default function VideoCreatorModal({
         cancelAnimationFrame(previewAnimFrameRef.current);
       }
     }
-  }, [isOpen, fetchAiScript]);
+  }, [isOpen, fetchAiScript, loadMediaItems]);
 
-  // Loop de animação da Prévia Interativa no Canvas
+  // Loop de animação da Prévia Interativa no Canvas (síncrono e ultra fluído)
   useEffect(() => {
     if (!isOpen || step !== "preview") return;
 
@@ -232,38 +292,42 @@ export default function VideoCreatorModal({
     let lastTimestamp = performance.now();
     let currentT = 0;
 
-    const renderLoop = async (now: number) => {
+    const renderLoop = (now: number) => {
       if (!isMounted) return;
 
       const delta = (now - lastTimestamp) / 1000;
       lastTimestamp = now;
 
       if (isPreviewPlaying) {
-        currentT = (currentT + delta) % selectedDuration;
+        currentT = (currentT + Math.min(delta, 0.1)) % selectedDuration;
         setPreviewTime(currentT);
       }
 
-      const canvas = interactiveCanvasRef.current;
+      const canvas = canvasRef.current;
       if (canvas) {
         const ctx = canvas.getContext("2d");
-        if (ctx) {
-          const media = await loadMediaItems();
-          renderReelsFrame(
-            ctx,
-            media,
-            canvas.width,
-            canvas.height,
-            currentT,
-            selectedDuration,
-            {
-              transitionType: selectedTransition,
-              listingType,
-              script: scriptConfig,
-              showProgressBar,
-              showPriceBadge,
-              showCaptions,
-            }
-          );
+        const media = loadedMediaCacheRef.current;
+        if (ctx && media.length > 0) {
+          try {
+            renderReelsFrame(
+              ctx,
+              media,
+              canvas.width,
+              canvas.height,
+              currentT,
+              selectedDuration,
+              {
+                transitionType: selectedTransition,
+                listingType,
+                script: scriptConfig,
+                showProgressBar,
+                showPriceBadge,
+                showCaptions,
+              }
+            );
+          } catch (e) {
+            console.warn("Erro no renderLoop da prévia:", e);
+          }
         }
       }
 
@@ -289,7 +353,6 @@ export default function VideoCreatorModal({
     showProgressBar,
     showPriceBadge,
     showCaptions,
-    loadMediaItems,
   ]);
 
   // Controle de Áudio Prévia
@@ -317,6 +380,9 @@ export default function VideoCreatorModal({
 
   // GERAÇÃO COMPLETA DO VÍDEO
   const handleGenerateVideo = async () => {
+    if (previewAnimFrameRef.current) {
+      cancelAnimationFrame(previewAnimFrameRef.current);
+    }
     if (audioPreviewRef.current) {
       audioPreviewRef.current.pause();
       audioPreviewRef.current.currentTime = 0;
@@ -329,7 +395,11 @@ export default function VideoCreatorModal({
     chunksRef.current = [];
 
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      alert("Elemento de renderização não encontrado.");
+      setStep("preview");
+      return;
+    }
 
     const width = 720;
     const height = 1280;
@@ -349,6 +419,7 @@ export default function VideoCreatorModal({
     const totalFrames = selectedDuration * fps;
     const stream = canvas.captureStream(fps);
     let finalStream = stream;
+    const vTrack = stream.getVideoTracks()[0] as any;
 
     // Configura áudio se habilitado
     if (includeMusic) {
@@ -442,34 +513,45 @@ export default function VideoCreatorModal({
       showPriceBadge,
       showCaptions,
     });
+    if (vTrack && typeof vTrack.requestFrame === "function") {
+      try { vTrack.requestFrame(); } catch (_) {}
+    }
 
     recorder.start(200);
     await new Promise((r) => setTimeout(r, 200));
 
-    setGeneratingMessage("Aplicando transições cinemáticas e IA...");
+    setGeneratingMessage("Renderizando cenas e transições em alta definição...");
 
     for (let frame = 0; frame < totalFrames; frame++) {
       const frameStartTime = performance.now();
-      const currentTime = frame / fps;
+      const currentTime = (frame / totalFrames) * selectedDuration;
 
-      setProgress(Math.round((frame / totalFrames) * 95));
+      // Atualiza progresso da UI periodicamente para não travar a thread principal
+      if (frame % 6 === 0 || frame === totalFrames - 1) {
+        setProgress(Math.min(95, Math.round((frame / totalFrames) * 95)));
+      }
 
-      renderReelsFrame(ctx, mediaItems, width, height, currentTime, selectedDuration, {
-        transitionType: selectedTransition,
-        listingType,
-        script: scriptConfig,
-        showProgressBar,
-        showPriceBadge,
-        showCaptions,
-      });
+      try {
+        renderReelsFrame(ctx, mediaItems, width, height, currentTime, selectedDuration, {
+          transitionType: selectedTransition,
+          listingType,
+          script: scriptConfig,
+          showProgressBar,
+          showPriceBadge,
+          showCaptions,
+        });
+      } catch (renderErr) {
+        console.warn("Aviso no quadro de renderização:", renderErr);
+      }
 
-      await new Promise((resolve) => requestAnimationFrame(resolve));
+      // Forçar Safari / WebKit no iOS a registrar o frame na stream
+      if (vTrack && typeof vTrack.requestFrame === "function") {
+        try { vTrack.requestFrame(); } catch (_) {}
+      }
 
       const elapsed = performance.now() - frameStartTime;
-      const sleepTime = Math.max(0, 1000 / fps - elapsed);
-      if (sleepTime > 0) {
-        await new Promise((resolve) => setTimeout(resolve, sleepTime));
-      }
+      const sleepTime = Math.max(12, 1000 / fps - elapsed);
+      await new Promise((resolve) => setTimeout(resolve, sleepTime));
     }
 
     setGeneratingMessage("Finalizando e codificando arquivo...");
@@ -501,44 +583,62 @@ export default function VideoCreatorModal({
           {/* Lado Esquerdo: Canvas Preview 9:16 */}
           <div className="relative flex flex-col items-center justify-center bg-slate-900/80 p-6 border-b lg:border-b-0 lg:border-r border-white/10">
             <div className="relative aspect-[9/16] w-full max-w-[280px] rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-black">
-              {step === "preview" && (
-                <>
-                  <canvas
-                    ref={interactiveCanvasRef}
-                    width={720}
-                    height={1280}
-                    className="h-full w-full object-cover"
-                  />
-                  
-                  {/* Controles Flutuantes da Prévia */}
-                  <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between rounded-xl bg-black/60 px-3 py-1.5 backdrop-blur-md border border-white/10">
-                    <button
-                      onClick={() => setIsPreviewPlaying(!isPreviewPlaying)}
-                      className="flex items-center gap-1.5 text-xs font-bold text-white hover:text-sky-400 transition"
-                    >
-                      {isPreviewPlaying ? <Pause size={14} /> : <Play size={14} />}
-                      <span>{Math.round(previewTime)}s / {selectedDuration}s</span>
-                    </button>
-                    <span className="text-[10px] font-bold text-sky-400 uppercase tracking-widest">
-                      Prévia Ao Vivo
-                    </span>
-                  </div>
-                </>
-              )}
+              {/* Canvas único, sempre visível durante preview e gravação para garantir captura perfeita no Safari/iOS */}
+              <canvas
+                ref={canvasRef}
+                width={720}
+                height={1280}
+                className={`h-full w-full object-cover ${step === "result" ? "hidden" : "block"}`}
+              />
 
-              {step === "generating" && (
-                <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center bg-slate-950">
-                  <div className="relative mb-4">
-                    <Loader2 className="h-16 w-16 animate-spin text-sky-400" />
-                    <div className="absolute inset-0 flex items-center justify-center text-xs font-black">
-                      {progress}%
-                    </div>
-                  </div>
-                  <h4 className="text-sm font-bold text-white mb-1">Gerando Reels HD</h4>
-                  <p className="text-[11px] text-slate-400">{generatingMessage}</p>
+              {/* Controles Flutuantes da Prévia */}
+              {step === "preview" && (
+                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between rounded-xl bg-black/60 px-3 py-1.5 backdrop-blur-md border border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setIsPreviewPlaying(!isPreviewPlaying)}
+                    className="flex items-center gap-1.5 text-xs font-bold text-white hover:text-sky-400 transition"
+                  >
+                    {isPreviewPlaying ? <Pause size={14} /> : <Play size={14} />}
+                    <span>{Math.round(previewTime)}s / {selectedDuration}s</span>
+                  </button>
+                  <span className="text-[10px] font-bold text-sky-400 uppercase tracking-widest">
+                    Prévia Ao Vivo
+                  </span>
                 </div>
               )}
 
+              {/* Overlay HUD durante gravação em tempo real (visível sobre o canvas gravado) */}
+              {step === "generating" && (
+                <div className="absolute inset-0 flex flex-col items-center justify-between p-5 bg-black/35 backdrop-blur-[2px] pointer-events-none">
+                  <div className="w-full flex justify-between items-center">
+                    <span className="flex items-center gap-1.5 text-[10px] font-bold text-red-400 bg-red-950/80 border border-red-500/40 px-2.5 py-1 rounded-full uppercase tracking-wider animate-pulse">
+                      <span className="h-2 w-2 rounded-full bg-red-500"></span> REC HD
+                    </span>
+                    <span className="text-xs font-black text-white bg-black/60 px-2.5 py-1 rounded-full border border-white/10">
+                      {progress}%
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col items-center text-center bg-black/85 rounded-2xl p-4 border border-white/15 shadow-2xl backdrop-blur-md max-w-[240px]">
+                    <Loader2 className="h-7 w-7 animate-spin text-sky-400 mb-2" />
+                    <h4 className="text-xs font-bold text-white">Gravando Reels HD</h4>
+                    <p className="text-[10px] text-slate-300 mt-0.5 line-clamp-2">{generatingMessage}</p>
+                    <div className="w-full bg-white/20 h-1.5 rounded-full mt-3 overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-sky-400 to-indigo-500 h-full rounded-full transition-all duration-150"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="text-[10px] text-white/70 bg-black/50 px-2.5 py-0.5 rounded-full font-mono">
+                    720x1280 • 30 FPS
+                  </div>
+                </div>
+              )}
+
+              {/* Resultado final: Vídeo gravado */}
               {step === "result" && videoUrl && (
                 <video
                   src={videoUrl}
@@ -550,8 +650,6 @@ export default function VideoCreatorModal({
                 />
               )}
             </div>
-
-            <canvas ref={canvasRef} className="hidden" />
           </div>
 
           {/* Lado Direito: Estúdio de Controle IA */}

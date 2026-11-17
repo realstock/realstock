@@ -98,8 +98,12 @@ function drawMediaWithKenBurns(
     }
   }
 
-  const mWidth = media.width || (media.element instanceof HTMLVideoElement ? media.element.videoWidth : (media.element as HTMLImageElement).naturalWidth) || 1200;
-  const mHeight = media.height || (media.element instanceof HTMLVideoElement ? media.element.videoHeight : (media.element as HTMLImageElement).naturalHeight) || 800;
+  if (!media || !media.element) return;
+
+  const rawW = media.width || (media.element instanceof HTMLVideoElement ? media.element.videoWidth : (media.element as HTMLImageElement).naturalWidth) || 1200;
+  const rawH = media.height || (media.element instanceof HTMLVideoElement ? media.element.videoHeight : (media.element as HTMLImageElement).naturalHeight) || 800;
+  const mWidth = rawW > 0 ? rawW : 1200;
+  const mHeight = rawH > 0 ? rawH : 800;
   const baseScale = Math.max(width / mWidth, height / mHeight);
 
   // Calcula escala e translação baseado no efeito
@@ -133,10 +137,16 @@ function drawMediaWithKenBurns(
   const x = (width - dW) / 2 + tx + offsetX;
   const y = (height - dH) / 2 + ty + offsetY;
 
-  ctx.save();
-  ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-  ctx.drawImage(media.element, x, y, dW, dH);
-  ctx.restore();
+  try {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+    ctx.drawImage(media.element, x, y, dW, dH);
+    ctx.restore();
+  } catch (e) {
+    try {
+      ctx.restore();
+    } catch (_) {}
+  }
 }
 
 /**
@@ -154,6 +164,13 @@ function drawSceneTransition(
   nextEffect: KenBurnsEffect,
   sceneIndex: number
 ) {
+  if (!currentMedia || !nextMedia) {
+    if (currentMedia) {
+      drawMediaWithKenBurns(ctx, currentMedia, width, height, 1.0, currentEffect);
+    }
+    return;
+  }
+
   let effectiveType = type;
   if (type === "smart_mix") {
     const sequence: TransitionType[] = ["zoom_punch", "crossfade", "whip_pan", "flash", "blur_dissolve"];
@@ -471,13 +488,13 @@ export function renderReelsFrame(
   }
 
   const fps = options.fps || 30;
-  const transitionDuration = 0.7; // 700ms de transição suave entre clipes
   const totalScenes = mediaItems.length;
   const durationPerScene = totalDuration / totalScenes;
+  const transitionDuration = Math.min(0.7, durationPerScene * 0.35); // Transição proporcional e suave
 
-  const currentSceneIndex = Math.min(totalScenes - 1, Math.floor(currentTime / durationPerScene));
+  const currentSceneIndex = Math.min(totalScenes - 1, Math.max(0, Math.floor(currentTime / durationPerScene)));
   const timeIntoScene = currentTime - currentSceneIndex * durationPerScene;
-  const sceneProgress = timeIntoScene / durationPerScene;
+  const sceneProgress = Math.max(0, Math.min(1, timeIntoScene / durationPerScene));
 
   // Lista cíclica de movimentos de câmera
   const kenBurnsEffects: KenBurnsEffect[] = ["push_in", "pan_left", "pull_out", "pan_right", "subtle_float"];
