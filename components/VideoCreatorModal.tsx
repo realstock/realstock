@@ -398,7 +398,7 @@ export default function VideoCreatorModal({
 
     const recorder = new MediaRecorder(finalStream, {
       mimeType,
-      videoBitsPerSecond: 2500000, // 2.5 Mbps para alta definição
+      videoBitsPerSecond: 1600000, // 1.6 Mbps otimizado para 720p/1080p vertical
     });
     mediaRecorderRef.current = recorder;
 
@@ -854,39 +854,77 @@ export default function VideoCreatorModal({
                     <button
                       onClick={async () => {
                         try {
+                          if (!videoBlob) {
+                            alert("Vídeo não encontrado para incorporar.");
+                            return;
+                          }
                           setIsIncorporateLoading(true);
-                          setIncorporateProgress(0);
-                          const formData = new FormData();
-                          formData.append("file", videoBlob!, `reels-${propertyId}.mp4`);
-                          formData.append("orderID", "FREE");
-                          formData.append("propertyId", propertyId.toString());
+                          setIncorporateProgress(5);
 
-                          const result: any = await new Promise((resolve, reject) => {
+                          const ext = videoBlob.type.includes("mp4") ? "mp4" : "webm";
+
+                          // 1. Obter URL assinada para upload direto ao Supabase Storage (sem limite de 4.5MB da Vercel)
+                          const signRes = await fetch("/api/minha-conta/video-upload", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              action: "sign-url",
+                              propertyId,
+                              extension: ext,
+                            }),
+                          });
+                          const signData = await signRes.json();
+                          if (!signData.success || !signData.signedUrl) {
+                            throw new Error(signData.error || "Erro ao obter permissão de envio.");
+                          }
+
+                          // 2. Upload direto para o Supabase Storage com progresso em tempo real
+                          const formData = new FormData();
+                          formData.append("cacheControl", "3600");
+                          formData.append("", videoBlob, `reels-${propertyId}.${ext}`);
+
+                          await new Promise((resolve, reject) => {
                             const xhr = new XMLHttpRequest();
-                            xhr.open("POST", "/api/minha-conta/video-upload");
+                            xhr.open("PUT", signData.signedUrl);
+                            xhr.setRequestHeader("x-upsert", "true");
                             xhr.upload.onprogress = (event) => {
                               if (event.lengthComputable) {
-                                setIncorporateProgress(Math.round((event.loaded * 100) / event.total));
+                                setIncorporateProgress(5 + Math.round((event.loaded * 90) / event.total));
                               }
                             };
                             xhr.onload = () => {
                               if (xhr.status >= 200 && xhr.status < 300) {
-                                resolve(JSON.parse(xhr.responseText));
+                                resolve(null);
                               } else {
-                                reject(new Error("Erro no servidor: " + xhr.statusText));
+                                reject(new Error("Erro ao salvar arquivo no armazenamento (" + xhr.status + ")"));
                               }
                             };
-                            xhr.onerror = () => reject(new Error("Falha na rede ao enviar vídeo."));
+                            xhr.onerror = () => reject(new Error("Falha na rede durante o envio do vídeo."));
                             xhr.send(formData);
                           });
 
-                          if (result.success) {
-                            setIsPaid(true);
-                            if (onSuccess) onSuccess(result.videoUrl);
-                            alert("Sucesso! O vídeo cinematográfico foi incorporado ao anúncio com sucesso.");
-                          } else {
-                            throw new Error(result.error);
+                          setIncorporateProgress(96);
+
+                          // 3. Confirmar e associar o vídeo ao anúncio no banco de dados
+                          const completeRes = await fetch("/api/minha-conta/video-upload", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              action: "complete",
+                              propertyId,
+                              filePath: signData.filePath,
+                              orderID: "FREE",
+                            }),
+                          });
+                          const completeData = await completeRes.json();
+                          if (!completeData.success) {
+                            throw new Error(completeData.error || "Erro ao vincular vídeo ao anúncio.");
                           }
+
+                          setIncorporateProgress(100);
+                          setIsPaid(true);
+                          if (onSuccess) onSuccess(completeData.videoUrl);
+                          alert("Sucesso! O vídeo cinematográfico foi incorporado ao anúncio com sucesso.");
                         } catch (e: any) {
                           alert("Erro ao incorporar: " + e.message);
                         } finally {

@@ -611,14 +611,43 @@ export default function ViralizarModal(props: ViralizarModalProps) {
         updateTaskStatus('upload', 'loading');
         setCurrentAction("Salvando no servidor...");
         try {
-            const formData = new FormData();
-            formData.append("file", videoBlob, `viralizar-${propertyId}.mp4`);
-            formData.append("propertyId", propertyId.toString());
-            formData.append("orderID", orderID);
-            const upRes = await fetch("/api/minha-conta/video-upload", { method: "POST", body: formData });
-            const upData = await upRes.json();
-            if (!upData.success) throw new Error("Erro no upload.");
-            finalVideoUrl = upData.videoUrl;
+            const ext = videoBlob.type.includes("mp4") ? "mp4" : "webm";
+            // 1. Obter URL assinada
+            const signRes = await fetch("/api/minha-conta/video-upload", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "sign-url", propertyId, extension: ext }),
+            });
+            const signData = await signRes.json();
+            if (!signData.success || !signData.signedUrl) throw new Error(signData.error || "Erro ao obter permissão de upload.");
+
+            // 2. Upload direto ao Supabase Storage
+            const upFormData = new FormData();
+            upFormData.append("cacheControl", "3600");
+            upFormData.append("", videoBlob, `viralizar-${propertyId}.${ext}`);
+
+            const putRes = await fetch(signData.signedUrl, {
+                method: "PUT",
+                headers: { "x-upsert": "true" },
+                body: upFormData,
+            });
+            if (!putRes.ok) throw new Error(`Falha no armazenamento (${putRes.status})`);
+
+            // 3. Confirmar conclusão
+            const compRes = await fetch("/api/minha-conta/video-upload", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "complete",
+                    propertyId,
+                    filePath: signData.filePath,
+                    orderID,
+                }),
+            });
+            const compData = await compRes.json();
+            if (!compData.success) throw new Error(compData.error || "Erro ao finalizar vídeo.");
+
+            finalVideoUrl = compData.videoUrl;
             updateTaskStatus('upload', 'success');
         } catch (err: any) {
             addLog(`ERRO UPLOAD: ${err.message}`);
