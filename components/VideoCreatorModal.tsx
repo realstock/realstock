@@ -5,7 +5,7 @@ import {
   X, Play, Pause, Download, Film, Loader2, Sparkles, Wand2, 
   CheckCircle2, Rocket, Music, Volume2, VolumeX, Sliders, 
   Layers, Clock, ChevronRight, ChevronDown, Check, RefreshCw,
-  Upload, Video as VideoIcon
+  Upload, Video as VideoIcon, AlertCircle
 } from "lucide-react";
 import { uploadFileWithProgress } from "@/lib/upload-client";
 import { 
@@ -808,8 +808,16 @@ export default function VideoCreatorModal({
                       </h3>
                     </div>
                     <p className="text-xs text-slate-300 leading-relaxed">
-                      Envie o vídeo pronto de até 60 segundos gravado pelo celular ou editado no CapCut/Instagram. O envio é feito diretamente sem limite de tamanho da Vercel.
+                      Envie seu vídeo pronto gravado no celular ou editado em aplicativos como CapCut e Instagram.
                     </p>
+
+                    {/* Aviso de Limites */}
+                    <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-purple-500/10 border border-purple-500/30 text-purple-200">
+                      <AlertCircle size={16} className="shrink-0 text-purple-400 mt-0.5" />
+                      <div className="text-[11px] leading-relaxed">
+                        <strong className="text-purple-300 font-bold">Atenção aos limites:</strong> Duração de <strong>até 60 segundos</strong> e tamanho máximo de <strong>50 MB</strong> (formatos MP4 ou MOV). Para vídeos do celular, recomendamos gravar ou exportar em 1080p Full HD.
+                      </div>
+                    </div>
 
                     <div className="relative">
                       <input
@@ -819,6 +827,11 @@ export default function VideoCreatorModal({
                         onChange={(e) => {
                           const file = e.target.files?.[0] || null;
                           if (file) {
+                            if (file.size > 50 * 1024 * 1024) {
+                              alert(`O vídeo possui ${(file.size / (1024 * 1024)).toFixed(1)} MB e ultrapassa o limite de 50 MB. Por favor, envie um arquivo de até 50 MB ou reduza a resolução/duração do vídeo.`);
+                              e.target.value = "";
+                              return;
+                            }
                             setCustomFile(file);
                             setCustomPreviewUrl(URL.createObjectURL(file));
                           }
@@ -839,7 +852,7 @@ export default function VideoCreatorModal({
                           <div className="text-[10px] text-slate-400">
                             {customFile
                               ? `${(customFile.size / (1024 * 1024)).toFixed(1)} MB • Pronto para envio`
-                              : "MP4 ou MOV • Até 60 segundos • Até 200 MB"}
+                              : "MP4 ou MOV • Até 60 segundos • Máximo 50 MB"}
                           </div>
                         </div>
                       </label>
