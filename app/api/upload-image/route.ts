@@ -33,6 +33,56 @@ export async function POST(req: Request) {
       );
     }
 
+    const contentType = req.headers.get("content-type") || "";
+
+    // 1. FLUXO DIRETO VIA URL ASSINADA (JSON) - Bypassa o limite de 4.5MB da Vercel
+    if (contentType.includes("application/json")) {
+      const body = await req.json();
+      const action = body.action || "sign-url";
+
+      if (action === "sign-url") {
+        const rawFileName = body.fileName || "arquivo";
+        const fileSize = Number(body.fileSize || 0);
+
+        if (fileSize > MAX_FILE_SIZE_BYTES) {
+          return NextResponse.json(
+            { success: false, error: "Arquivo muito grande. O limite máximo é de 200 MB." },
+            { status: 400 }
+          );
+        }
+
+        const safeName = sanitizeFileName(rawFileName);
+        const filePath = `users/${userId}/${Date.now()}-${safeName}`;
+
+        const { data, error } = await supabaseAdmin.storage
+          .from("property-images")
+          .createSignedUploadUrl(filePath, { upsert: true });
+
+        if (error || !data) {
+          console.error("Erro ao gerar signed URL do Supabase:", error);
+          return NextResponse.json(
+            { success: false, error: error?.message || "Erro ao obter permissão de upload." },
+            { status: 500 }
+          );
+        }
+
+        const { data: publicUrlData } = supabaseAdmin.storage
+          .from("property-images")
+          .getPublicUrl(filePath);
+
+        return NextResponse.json({
+          success: true,
+          signedUrl: data.signedUrl,
+          token: data.token,
+          filePath,
+          publicUrl: publicUrlData.publicUrl,
+        });
+      }
+
+      return NextResponse.json({ success: false, error: "Ação não reconhecida." }, { status: 400 });
+    }
+
+    // 2. FLUXO MULTIPART FORMDATA (Legado / Fallback para arquivos pequenos)
     const formData = (await req.formData()) as any;
     const file = formData.get("file");
 
@@ -43,10 +93,10 @@ export async function POST(req: Request) {
       );
     }
 
-    const isImage = file.type.startsWith("image/");
-    const isVideo = file.type.startsWith("video/");
-    const isAudio = file.type.startsWith("audio/");
-    const isPdf = file.type === "application/pdf";
+    const isImage = file.type.startsWith("image/") || /\.(jpg|jpeg|png|webp|gif|heic|avif)$/i.test(file.name);
+    const isVideo = file.type.startsWith("video/") || /\.(mp4|mov|webm|mkv|avi|m4v|3gp)$/i.test(file.name);
+    const isAudio = file.type.startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac)$/i.test(file.name);
+    const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
 
     if (!isImage && !isVideo && !isAudio && !isPdf) {
       return NextResponse.json(
@@ -59,7 +109,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: "Arquivo muito grande. O limite máximo é de 100 MB.",
+          error: "Arquivo muito grande. O limite máximo é de 200 MB.",
         },
         { status: 400 }
       );

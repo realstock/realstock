@@ -4,8 +4,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { 
   X, Play, Pause, Download, Film, Loader2, Sparkles, Wand2, 
   CheckCircle2, Rocket, Music, Volume2, VolumeX, Sliders, 
-  Layers, Clock, ChevronRight, ChevronDown, Check, RefreshCw
+  Layers, Clock, ChevronRight, ChevronDown, Check, RefreshCw,
+  Upload, Video as VideoIcon
 } from "lucide-react";
+import { uploadFileWithProgress } from "@/lib/upload-client";
 import { 
   renderReelsFrame, 
   LoadedMediaItem, 
@@ -65,6 +67,12 @@ export default function VideoCreatorModal({
 
   // Estados principais
   const [step, setStep] = useState<"preview" | "generating" | "result">("preview");
+  const [mode, setMode] = useState<"ai_studio" | "upload_custom">("ai_studio");
+  const [customFile, setCustomFile] = useState<File | null>(null);
+  const [customPreviewUrl, setCustomPreviewUrl] = useState<string | null>(null);
+  const [isCustomUploading, setIsCustomUploading] = useState(false);
+  const [customUploadProgress, setCustomUploadProgress] = useState(0);
+
   const [activeTab, setActiveTab] = useState<"ai_script" | "effects" | "audio">("ai_script");
   const [progress, setProgress] = useState(0);
   const [generatingMessage, setGeneratingMessage] = useState("Preparando mídias...");
@@ -378,6 +386,56 @@ export default function VideoCreatorModal({
     }
   };
 
+  // UPLOAD E SALVAMENTO DE VÍDEO PRÓPRIO (ATÉ 60S)
+  const handleSaveCustomVideo = async () => {
+    if (!customFile) {
+      alert("Por favor, selecione um arquivo de vídeo primeiro.");
+      return;
+    }
+    try {
+      setIsCustomUploading(true);
+      setCustomUploadProgress(5);
+
+      // 1. Upload direto ao Supabase Storage contornando limites da Vercel
+      const publicUrl = await uploadFileWithProgress(customFile, (pct) => {
+        setCustomUploadProgress(pct);
+      });
+
+      // 2. Vincular ao imóvel no banco de dados
+      const cleanPath = publicUrl.includes("/property-images/")
+        ? publicUrl.split("/property-images/")[1]
+        : publicUrl;
+
+      const compRes = await fetch("/api/minha-conta/video-upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "complete",
+          propertyId,
+          filePath: cleanPath,
+          orderID: "FREE",
+          isCustomVideo: true,
+        }),
+      });
+
+      const compData = await compRes.json();
+      if (!compData.success) {
+        throw new Error(compData.error || "Erro ao vincular vídeo ao anúncio.");
+      }
+
+      setCustomUploadProgress(100);
+      setIsPaid(true);
+      if (onSuccess) onSuccess(publicUrl);
+      alert("Sucesso! Seu vídeo próprio foi enviado e incorporado ao anúncio com sucesso.");
+      onClose();
+    } catch (err: any) {
+      alert("Erro ao enviar vídeo próprio: " + err.message);
+    } finally {
+      setIsCustomUploading(false);
+      setCustomUploadProgress(0);
+    }
+  };
+
   // GERAÇÃO COMPLETA DO VÍDEO
   const handleGenerateVideo = async () => {
     if (previewAnimFrameRef.current) {
@@ -588,11 +646,34 @@ export default function VideoCreatorModal({
                 ref={canvasRef}
                 width={720}
                 height={1280}
-                className={`h-full w-full object-cover ${step === "result" ? "hidden" : "block"}`}
+                className={`h-full w-full object-cover ${step === "result" || mode === "upload_custom" ? "hidden" : "block"}`}
               />
 
-              {/* Controles Flutuantes da Prévia */}
-              {step === "preview" && (
+              {/* Prévia de Vídeo Próprio Selecionado */}
+              {mode === "upload_custom" && customPreviewUrl && (
+                <video
+                  src={customPreviewUrl}
+                  controls
+                  autoPlay
+                  loop
+                  playsInline
+                  className="h-full w-full object-cover bg-black"
+                />
+              )}
+
+              {/* Placeholder quando nenhum vídeo próprio foi selecionado */}
+              {mode === "upload_custom" && !customPreviewUrl && (
+                <div className="h-full w-full flex flex-col items-center justify-center p-6 text-center bg-slate-950">
+                  <div className="h-14 w-14 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-400 mb-3 border border-purple-500/20">
+                    <VideoIcon size={28} />
+                  </div>
+                  <span className="text-xs font-bold text-white mb-1">Prévia do Vídeo Próprio</span>
+                  <span className="text-[10px] text-slate-400">Selecione um arquivo de até 60s ao lado para visualizar</span>
+                </div>
+              )}
+
+              {/* Controles Flutuantes da Prévia IA */}
+              {mode === "ai_studio" && step === "preview" && (
                 <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between rounded-xl bg-black/60 px-3 py-1.5 backdrop-blur-md border border-white/10">
                   <button
                     type="button"
@@ -609,7 +690,7 @@ export default function VideoCreatorModal({
               )}
 
               {/* Overlay HUD durante gravação em tempo real (visível sobre o canvas gravado) */}
-              {step === "generating" && (
+              {mode === "ai_studio" && step === "generating" && (
                 <div className="absolute inset-0 flex flex-col items-center justify-between p-5 bg-black/35 backdrop-blur-[2px] pointer-events-none">
                   <div className="w-full flex justify-between items-center">
                     <span className="flex items-center gap-1.5 text-[10px] font-bold text-red-400 bg-red-950/80 border border-red-500/40 px-2.5 py-1 rounded-full uppercase tracking-wider animate-pulse">
@@ -639,7 +720,7 @@ export default function VideoCreatorModal({
               )}
 
               {/* Resultado final: Vídeo gravado */}
-              {step === "result" && videoUrl && (
+              {mode === "ai_studio" && step === "result" && videoUrl && (
                 <video
                   src={videoUrl}
                   controls
@@ -679,8 +760,105 @@ export default function VideoCreatorModal({
                   : "Vídeos de alto impacto para atrair compradores qualificados e propostas de compra no Instagram e TikTok."}
               </p>
 
-              {/* Botão Mágico Roteiro IA */}
-              <div className="mt-6 rounded-2xl bg-gradient-to-r from-purple-950/40 via-indigo-950/40 to-slate-900 border border-purple-500/30 p-4">
+              {/* Seletor de Modo: IA Studio vs Vídeo Próprio */}
+              <div className="mt-5 flex flex-wrap items-center gap-2 bg-white/5 p-1.5 rounded-2xl border border-white/10 w-fit">
+                <button
+                  type="button"
+                  onClick={() => setMode("ai_studio")}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+                    mode === "ai_studio"
+                      ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <Sparkles size={14} />
+                  Criar com IA (Fotos)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("upload_custom")}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+                    mode === "upload_custom"
+                      ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <Upload size={14} />
+                  Upload Vídeo Próprio (até 60s)
+                </button>
+              </div>
+
+              {mode === "upload_custom" ? (
+                <div className="mt-6 space-y-5">
+                  <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 sm:p-6 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-purple-400 animate-pulse" />
+                      <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                        Vídeo Pronto Gravado ou Editado
+                      </h3>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Envie o vídeo pronto de até 60 segundos gravado pelo celular ou editado no CapCut/Instagram. O envio é feito diretamente sem limite de tamanho da Vercel.
+                    </p>
+
+                    <div className="relative">
+                      <input
+                        id="modal-custom-video-file"
+                        type="file"
+                        accept="video/*,video/mp4,video/quicktime,.mov,.mp4,.webm"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          if (file) {
+                            setCustomFile(file);
+                            setCustomPreviewUrl(URL.createObjectURL(file));
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="modal-custom-video-file"
+                        className="flex flex-col items-center justify-center gap-3 p-8 rounded-2xl border-2 border-dashed border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 hover:border-purple-500/60 cursor-pointer transition-all group"
+                      >
+                        <div className="h-12 w-12 rounded-2xl bg-purple-500/20 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
+                          <Upload size={24} />
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xs font-bold text-white uppercase tracking-widest mb-1">
+                            {customFile ? customFile.name : "Selecionar Vídeo do Celular / Computador"}
+                          </div>
+                          <div className="text-[10px] text-slate-400">
+                            {customFile
+                              ? `${(customFile.size / (1024 * 1024)).toFixed(1)} MB • Pronto para envio`
+                              : "MP4 ou MOV • Até 60 segundos • Até 200 MB"}
+                          </div>
+                        </div>
+                      </label>
+                    </div>
+
+                    {customFile && (
+                      <div className="flex items-center justify-between p-3.5 rounded-xl bg-white/5 border border-white/10 text-xs">
+                        <div className="flex items-center gap-2 text-slate-300 min-w-0">
+                          <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                          <span className="font-medium truncate">{customFile.name}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCustomFile(null);
+                            setCustomPreviewUrl(null);
+                          }}
+                          className="text-red-400 hover:text-red-300 text-[11px] font-bold shrink-0 ml-2"
+                        >
+                          Trocar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Botão Mágico Roteiro IA */}
+                  <div className="mt-6 rounded-2xl bg-gradient-to-r from-purple-950/40 via-indigo-950/40 to-slate-900 border border-purple-500/30 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/20 text-purple-400 shrink-0">
@@ -911,10 +1089,42 @@ export default function VideoCreatorModal({
                   </label>
                 </div>
               </div>
-            </div>
+            </>
+          )}
+        </div>
 
-            {/* Ações Inferiores */}
-            <div className="mt-8 pt-4 border-t border-white/10">
+        {/* Ações Inferiores */}
+        <div className="mt-8 pt-4 border-t border-white/10">
+          {mode === "upload_custom" ? (
+            <div>
+              <button
+                onClick={handleSaveCustomVideo}
+                disabled={isCustomUploading || !customFile}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 py-4 font-black text-white shadow-xl shadow-purple-600/20 transition-all hover:opacity-95 active:scale-[0.98] disabled:opacity-50"
+              >
+                {isCustomUploading ? (
+                  <>
+                    <Loader2 size={20} className="animate-spin" />
+                    Enviando Vídeo ({customUploadProgress}%)...
+                  </>
+                ) : (
+                  <>
+                    <Upload size={20} />
+                    Salvar Vídeo no Anúncio
+                  </>
+                )}
+              </button>
+              {isCustomUploading && (
+                <div className="w-full bg-white/10 h-2 rounded-full mt-3 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-purple-500 to-sky-400 h-full rounded-full transition-all duration-150"
+                    style={{ width: `${customUploadProgress}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
               {step === "preview" && (
                 <button
                   onClick={handleGenerateVideo}
@@ -1052,7 +1262,9 @@ export default function VideoCreatorModal({
                   )}
                 </div>
               )}
-            </div>
+            </>
+          )}
+        </div>
           </div>
         </div>
       </div>

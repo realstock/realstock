@@ -23,6 +23,7 @@ import { X, Sparkles, Upload, Music, ChevronRight, Camera, LayoutGrid, Home, Fil
 import LoadingScreen from "@/components/LoadingScreen";
 import PropertyLocationPicker from "@/components/PropertyLocationPicker";
 import NeighborhoodAutocomplete from "@/components/NeighborhoodAutocomplete";
+import { uploadFileWithProgress } from "@/lib/upload-client";
 
 function SortableItem({ id, children }: { id: string | number, children: React.ReactNode }) {
   const {
@@ -1066,53 +1067,31 @@ function AnunciarFormContent() {
       // Upload de Música do Reel
       let uploadedMusicUrl = "";
       if (reelsMusic) {
-          updateProgress("Enviando trilha sonora...");
-          const formData = new FormData();
-          formData.append("file", reelsMusic);
-          const res = await fetch("/api/upload-image", {
-              method: "POST",
-              body: formData,
+          updateProgress("Enviando trilha sonora (0%)...");
+          uploadedMusicUrl = await uploadFileWithProgress(reelsMusic, (pct) => {
+              updateProgress(`Enviando trilha sonora (${pct}%)...`);
           });
-          const data = await res.json();
-          if (data.success) {
-              uploadedMusicUrl = data.imageUrl;
-          } else {
-              throw new Error(`Falha ao enviar a trilha sonora: ${data.error}`);
-          }
       }
 
-      // Upload de Vídeo Pronto (1 Minuto)
+      // Upload de Vídeo Pronto (1 Minuto / 60s)
       let uploadedCustomVideoUrl = "";
       if (customVideo) {
-          updateProgress("Enviando vídeo próprio...");
-          const formData = new FormData();
-          formData.append("file", customVideo);
-          const res = await fetch("/api/upload-image", { method: "POST", body: formData });
-          const data = await res.json();
-          if (data.success) {
-              uploadedCustomVideoUrl = data.imageUrl;
-          } else {
-              throw new Error(`Falha ao enviar o vídeo próprio: ${data.error}`);
-          }
+          updateProgress("Enviando vídeo próprio (0%)...");
+          uploadedCustomVideoUrl = await uploadFileWithProgress(customVideo, (pct) => {
+              updateProgress(`Enviando vídeo próprio (${pct}%)...`);
+          });
       }
 
       // Upload de Vídeos
       const uploadedVideoUrls: string[] = [];
       if (videos.length > 0) {
-          for (const file of videos) {
-              updateProgress(`Enviando vídeos (${uploadedVideoUrls.length + 1}/${videos.length})...`);
-              const formData = new FormData();
-              formData.append("file", file);
-              const res = await fetch("/api/upload-image", {
-                  method: "POST",
-                  body: formData,
+          for (let i = 0; i < videos.length; i++) {
+              const file = videos[i];
+              updateProgress(`Enviando vídeos (${i + 1}/${videos.length}) (0%)...`);
+              const url = await uploadFileWithProgress(file, (pct) => {
+                  updateProgress(`Enviando vídeos (${i + 1}/${videos.length}) (${pct}%)...`);
               });
-              const data = await res.json();
-              if (data.success) {
-                  uploadedVideoUrls.push(data.imageUrl);
-              } else {
-                  throw new Error(`Falha ao enviar vídeo: ${data.error}`);
-              }
+              uploadedVideoUrls.push(url);
           }
       }
 
@@ -2245,6 +2224,7 @@ function AnunciarFormContent() {
                               id="reels-videos-input"
                               name="videos"
                               type="file"
+                              accept="video/*,video/mp4,video/quicktime,.mov,.mp4,.webm"
                               multiple={true}
                               onChange={handleVideosChange}
                               className="hidden"
@@ -2351,7 +2331,7 @@ function AnunciarFormContent() {
                                <input
                                  id="custom-video-input"
                                  type="file"
-                                 accept="video/*"
+                                 accept="video/*,video/mp4,video/quicktime,.mov,.mp4,.webm"
                                  onChange={(e) => {
                                    const file = e.target.files?.[0] || null;
                                    setCustomVideo(file);

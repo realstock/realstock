@@ -23,6 +23,7 @@ import { X, Film, Music, Play, GripVertical, Camera, Trash2, ChevronRight, Arrow
 import LoadingScreen from "@/components/LoadingScreen";
 import PropertyLocationPicker from "@/components/PropertyLocationPicker";
 import NeighborhoodAutocomplete from "@/components/NeighborhoodAutocomplete";
+import { uploadFileWithProgress } from "@/lib/upload-client";
 
 const MAX_IMAGES = 30;
 
@@ -980,32 +981,19 @@ function EditarAnuncioContent() {
       // 2. Upload de Música do Reel
       let uploadedMusicUrl = existingMusicUrl;
       if (reelsMusic) {
-          updateProgress("Enviando trilha sonora...");
-          const formData = new FormData();
-          formData.append("file", reelsMusic);
-          const res = await fetch("/api/upload-image", { method: "POST", body: formData });
-          const data = await res.json();
-          
-          if (data.success) {
-              uploadedMusicUrl = data.imageUrl;
-          } else {
-              throw new Error("Falha ao enviar a música: " + data.error);
-          }
+          updateProgress("Enviando trilha sonora (0%)...");
+          uploadedMusicUrl = await uploadFileWithProgress(reelsMusic, (pct) => {
+              updateProgress(`Enviando trilha sonora (${pct}%)...`);
+          });
       }
 
-      // 2.5. Upload de Vídeo Pronto (1 Minuto)
+      // 2.5. Upload de Vídeo Pronto (1 Minuto / 60s)
       let uploadedCustomVideoUrl = "";
       if (customVideo) {
-          updateProgress("Enviando vídeo próprio...");
-          const formData = new FormData();
-          formData.append("file", customVideo);
-          const res = await fetch("/api/upload-image", { method: "POST", body: formData });
-          const data = await res.json();
-          if (data.success) {
-              uploadedCustomVideoUrl = data.imageUrl;
-          } else {
-              throw new Error("Falha ao enviar o vídeo próprio: " + data.error);
-          }
+          updateProgress("Enviando vídeo próprio (0%)...");
+          uploadedCustomVideoUrl = await uploadFileWithProgress(customVideo, (pct) => {
+              updateProgress(`Enviando vídeo próprio (${pct}%)...`);
+          });
       }
 
       // 3. Upload de Vídeos
@@ -1014,16 +1002,11 @@ function EditarAnuncioContent() {
           let vCount = 0;
           for (const file of videos) {
               vCount++;
-              updateProgress(`Enviando vídeos (${vCount}/${videos.length})...`);
-              const formData = new FormData();
-              formData.append("file", file);
-              const res = await fetch("/api/upload-image", { method: "POST", body: formData });
-              const data = await res.json();
-              if (data.success) {
-                uploadedVideoUrls.push(data.imageUrl);
-              } else {
-                throw new Error(`Falha ao enviar vídeo: ${data.error}`);
-              }
+              updateProgress(`Enviando vídeos (${vCount}/${videos.length}) (0%)...`);
+              const url = await uploadFileWithProgress(file, (pct) => {
+                  updateProgress(`Enviando vídeos (${vCount}/${videos.length}) (${pct}%)...`);
+              });
+              uploadedVideoUrls.push(url);
           }
       }
 
@@ -1803,6 +1786,7 @@ function EditarAnuncioContent() {
                             <input
                               id="reels-videos-input"
                               type="file"
+                              accept="video/*,video/mp4,video/quicktime,.mov,.mp4,.webm"
                               multiple={true}
                               onChange={handleVideosChange}
                               className="hidden"
@@ -1911,7 +1895,7 @@ function EditarAnuncioContent() {
                                <input
                                  id="custom-video-input"
                                  type="file"
-                                 accept="video/*"
+                                 accept="video/*,video/mp4,video/quicktime,.mov,.mp4,.webm"
                                  onChange={(e) => {
                                    const file = e.target.files?.[0] || null;
                                    setCustomVideo(file);

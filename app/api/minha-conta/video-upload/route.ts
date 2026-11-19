@@ -26,12 +26,14 @@ export async function POST(req: Request) {
 
       // SUB-AÇÃO 1: Gerar URL assinada de upload direto para o Supabase Storage
       if (action === "sign-url") {
-        const extension = body.extension === "mp4" ? "mp4" : "webm";
-        const filePath = `reels/${propertyId}-${Date.now()}.${extension}`;
+        const rawExt = String(body.extension || "").toLowerCase().replace(".", "");
+        const extension = ["mp4", "mov", "webm", "m4v"].includes(rawExt) ? rawExt : "mp4";
+        const prefix = body.isCustomVideo ? "custom" : "reels";
+        const filePath = `${prefix}/${propertyId}-${Date.now()}.${extension}`;
 
         const { data, error } = await supabaseAdmin.storage
           .from("property-images")
-          .createSignedUploadUrl(filePath);
+          .createSignedUploadUrl(filePath, { upsert: true });
 
         if (error || !data) {
           console.error("Erro ao gerar signed URL do Supabase:", error);
@@ -106,9 +108,22 @@ export async function POST(req: Request) {
           finalFeeValue = 0;
         }
 
+        const cleanFilePath = filePath.includes("/property-images/")
+          ? filePath.split("/property-images/")[1]
+          : filePath;
+
         const { data: publicUrlData } = supabaseAdmin.storage
           .from("property-images")
-          .getPublicUrl(filePath);
+          .getPublicUrl(cleanFilePath);
+
+        const isCustom = body.isCustomVideo === true;
+        const updatePropertyData: any = {
+          reelsVideoUrl: publicUrlData.publicUrl,
+          reelsVideoPaidAt: new Date(),
+        };
+        if (isCustom) {
+          updatePropertyData.customVideoUrl = publicUrlData.publicUrl;
+        }
 
         const updateAction = Number(propertyId) === 0 
           ? prisma.user.update({
@@ -120,10 +135,7 @@ export async function POST(req: Request) {
             })
           : prisma.property.update({
               where: { id: Number(propertyId), ownerId: userId },
-              data: {
-                reelsVideoUrl: publicUrlData.publicUrl,
-                reelsVideoPaidAt: new Date(),
-              },
+              data: updatePropertyData,
             });
 
         await prisma.$transaction([
