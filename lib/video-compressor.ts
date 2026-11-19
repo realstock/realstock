@@ -13,92 +13,107 @@ export async function compressVideoInBrowser(
   onProgress?: CompressionProgressCallback
 ): Promise<File> {
   return new Promise((resolve, reject) => {
-    // 1. Criar elemento de vídeo para decodificação
+    console.log("[VideoCompressor] Iniciando otimização para:", file.name, "Tamanho:", (file.size / (1024 * 1024)).toFixed(1), "MB");
+
+    // 1. Criar elemento de vídeo e adicionar ao DOM invisível (necessário para decodificação consistente no Chrome/Safari)
     const video = document.createElement("video");
+    video.style.position = "fixed";
+    video.style.top = "-9999px";
+    video.style.left = "-9999px";
+    video.style.width = "4px";
+    video.style.height = "4px";
+    video.style.opacity = "0";
+    video.style.pointerEvents = "none";
+    video.style.zIndex = "-1";
+    document.body.appendChild(video);
+
     const videoUrl = URL.createObjectURL(file);
-    video.src = videoUrl;
     video.playsInline = true;
-    video.crossOrigin = "anonymous";
-    // Mantemos muted = false para extrair o áudio no Web Audio API,
-    // mas o áudio NÃO será roteado para os alto-falantes do usuário.
-    video.muted = false;
-    video.volume = 1.0;
+    video.muted = true; // Crucial: muted = true garante video.play() instantâneo sem violação da política de autoplay
+    video.volume = 0;
 
     let cleanupDone = false;
     let animFrameId: number | null = null;
-    let audioContext: AudioContext | null = null;
     let mediaStream: MediaStream | null = null;
+    let loadTimeout: any = null;
+    let watchdogInterval: any = null;
 
     const cleanup = () => {
       if (cleanupDone) return;
       cleanupDone = true;
+      if (loadTimeout) clearTimeout(loadTimeout);
+      if (watchdogInterval) clearInterval(watchdogInterval);
       if (animFrameId) cancelAnimationFrame(animFrameId);
       try {
         video.pause();
-        video.src = "";
+        video.removeAttribute("src");
         video.load();
         URL.revokeObjectURL(videoUrl);
+        if (video.parentNode) video.parentNode.removeChild(video);
       } catch (_) {}
       if (mediaStream) {
         mediaStream.getTracks().forEach((t) => {
           try { t.stop(); } catch (_) {}
         });
       }
-      if (audioContext && audioContext.state !== "closed") {
-        try { audioContext.close(); } catch (_) {}
-      }
     };
 
     const fail = (err: Error) => {
+      console.error("[VideoCompressor] Erro:", err);
       cleanup();
       reject(err);
     };
 
+    // Timeout de segurança para metadados (8s)
+    loadTimeout = setTimeout(() => {
+      fail(new Error("Tempo limite ao carregar o vídeo. O formato pode não ser suportado pelo navegador."));
+    }, 8000);
+
     video.onerror = () => {
-      fail(new Error("Não foi possível carregar o vídeo para otimização. Formato não suportado pelo navegador."));
+      fail(new Error("Não foi possível decodificar o vídeo. Formato incompatível com o navegador."));
     };
 
     video.onloadedmetadata = async () => {
+      if (loadTimeout) clearTimeout(loadTimeout);
+
       try {
         const duration = video.duration || 60;
         const originalWidth = video.videoWidth || 1080;
         const originalHeight = video.videoHeight || 1920;
+        console.log(`[VideoCompressor] Metadados carregados: ${originalWidth}x${originalHeight}, Duração: ${duration.toFixed(1)}s`);
 
-        if (onProgress) onProgress(2, "Analisando dimensões e taxa de bits do vídeo...");
+        if (onProgress) onProgress(2, `Analisando vídeo (${(file.size / (1024 * 1024)).toFixed(1)} MB)...`);
 
-        // 2. Determinar resolução alvo (Downscaling inteligente)
-        // Se vertical (9:16 ou similar), max 1080x1920. Se horizontal, max 1920x1080.
+        // 2. Determinar resolução alvo (Downscaling para 720p HD)
+        // 720p reduz 55% dos pixels em relação a 1080p, mantendo nitidez excelente no mobile e garantindo arquivo entre 15MB e 28MB
         let targetWidth = originalWidth;
         let targetHeight = originalHeight;
         const isVertical = originalHeight >= originalWidth;
 
         if (isVertical) {
-          if (targetHeight > 1920 || targetWidth > 1080) {
+          if (targetHeight > 1280 || targetWidth > 720) {
             const ratio = originalWidth / originalHeight;
-            targetHeight = 1920;
+            targetHeight = 1280;
             targetWidth = Math.round(targetHeight * ratio);
-            // Garantir que as dimensões sejam pares para codificadores H.264
             if (targetWidth % 2 !== 0) targetWidth -= 1;
             if (targetHeight % 2 !== 0) targetHeight -= 1;
           }
         } else {
-          if (targetWidth > 1920 || targetHeight > 1080) {
+          if (targetWidth > 1280 || targetHeight > 720) {
             const ratio = originalHeight / originalWidth;
-            targetWidth = 1920;
+            targetWidth = 1280;
             targetHeight = Math.round(targetWidth * ratio);
             if (targetWidth % 2 !== 0) targetWidth -= 1;
             if (targetHeight % 2 !== 0) targetHeight -= 1;
           }
         }
 
-        // 3. Calcular taxa de bits ideal para garantir < 35 MB
-        // 32 MB = 268.435.456 bits. Taxa de bits = bits / duration
-        const targetBytes = 32 * 1024 * 1024; // 32 MB de meta segura
+        // 3. Taxa de bits alvo (1.0 a 2.4 Mbps para garantir arquivo final entre 15MB e 28MB)
+        const targetBytes = 22 * 1024 * 1024; // 22 MB de meta segura (muito abaixo dos 50 MB)
         const calculatedBps = Math.floor((targetBytes * 8) / Math.max(10, duration));
-        // Limita a taxa entre 1.8 Mbps e 3.8 Mbps (excelente para 1080p/720p em H.264)
-        const targetBps = Math.min(3_800_000, Math.max(1_800_000, calculatedBps));
+        const targetBps = Math.min(2_400_000, Math.max(900_000, calculatedBps));
 
-        // 4. Configurar Canvas de renderização
+        // 4. Configurar Canvas
         const canvas = document.createElement("canvas");
         canvas.width = targetWidth;
         canvas.height = targetHeight;
@@ -108,29 +123,24 @@ export async function compressVideoInBrowser(
           return;
         }
 
-        // 5. Capturar trilhas de áudio silenciosamente via Web Audio API
-        const audioTracks: MediaStreamTrack[] = [];
+        // 5. Capturar trilhas de áudio
+        let audioTracks: MediaStreamTrack[] = [];
         try {
-          const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-          if (AudioContextClass) {
-            audioContext = new AudioContextClass();
-            const source = audioContext.createMediaElementSource(video);
-            const destination = audioContext.createMediaStreamDestination();
-            source.connect(destination);
-            // IMPORTANTE: NÃO conectamos a audioContext.destination para manter silêncio absoluto para o usuário
-            destination.stream.getAudioTracks().forEach((track) => audioTracks.push(track));
+          if (typeof (video as any).captureStream === "function") {
+            const vStream = (video as any).captureStream();
+            if (vStream && vStream.getAudioTracks().length > 0) {
+              audioTracks = vStream.getAudioTracks();
+              console.log("[VideoCompressor] Trilhas de áudio detectadas:", audioTracks.length);
+            }
           }
         } catch (audioErr) {
-          console.warn("Áudio não pôde ser extraído ou vídeo não possui trilha de áudio:", audioErr);
+          console.warn("[VideoCompressor] captureStream de áudio não disponível:", audioErr);
         }
 
-        // 6. Criar Stream combinada (Canvas + Áudio)
-        const canvasStream = canvas.captureStream(30);
+        // 6. Configurar MediaStream combinado (24 fps padrão cinema economiza 20% de tamanho com fluidez perfeita)
+        const canvasStream = canvas.captureStream(24);
         const videoTrack = canvasStream.getVideoTracks()[0];
-        mediaStream = new MediaStream([
-          videoTrack,
-          ...audioTracks,
-        ]);
+        mediaStream = new MediaStream([videoTrack, ...audioTracks]);
 
         // 7. Configurar MediaRecorder
         const mimeType = MediaRecorder.isTypeSupported("video/mp4;codecs=avc1")
@@ -144,6 +154,7 @@ export async function compressVideoInBrowser(
         const recorder = new MediaRecorder(mediaStream, {
           mimeType,
           videoBitsPerSecond: targetBps,
+          bitsPerSecond: targetBps,
         });
 
         const chunks: Blob[] = [];
@@ -162,6 +173,7 @@ export async function compressVideoInBrowser(
           const newName = file.name.replace(/\.[^/.]+$/, "") + `-otimizado.${extension}`;
           const compressedFile = new File([blob], newName, { type: cleanMime });
 
+          console.log(`[VideoCompressor] Sucesso! Tamanho original: ${(file.size / (1024 * 1024)).toFixed(1)} MB -> Novo: ${(compressedFile.size / (1024 * 1024)).toFixed(1)} MB`);
           cleanup();
 
           if (onProgress) onProgress(100, "Otimização concluída com sucesso!");
@@ -170,22 +182,19 @@ export async function compressVideoInBrowser(
 
         recorder.onstop = finishCompression;
 
-        // Fallback de segurança caso onstop demore para disparar
         const scheduleSafetyFinish = () => {
           setTimeout(() => {
-            if (!stopHandled && chunks.length > 0) {
-              finishCompression();
-            }
-          }, 2000);
+            if (!stopHandled) finishCompression();
+          }, 1500);
         };
 
-        // 8. Iniciar reprodução e gravação quadro a quadro
+        // 8. Iniciar gravação e reprodução
         recorder.start(500);
 
-        // Loop de renderização
         const renderLoop = () => {
           if (cleanupDone || stopHandled) return;
 
+          // Se o vídeo terminou ou alcançou a duração
           if (video.currentTime >= duration || video.ended) {
             if (onProgress) onProgress(98, "Finalizando codificação do vídeo...");
             if (recorder.state === "recording") {
@@ -203,13 +212,37 @@ export async function compressVideoInBrowser(
 
           const currentPct = Math.min(95, Math.round((video.currentTime / duration) * 95));
           if (onProgress) {
-            onProgress(currentPct, `Otimizando qualidade do vídeo (${currentPct}%)...`);
+            const timeRemaining = Math.max(0, Math.round(duration - video.currentTime));
+            onProgress(currentPct, `Reduzindo tamanho do vídeo (${currentPct}% - ~${timeRemaining}s)...`);
           }
 
           animFrameId = requestAnimationFrame(renderLoop);
         };
 
-        // Ouvinte de término do vídeo
+        // Watchdog para evitar qualquer travamento de reprodução
+        let lastReportedTime = -1;
+        let stalledCount = 0;
+        watchdogInterval = setInterval(() => {
+          if (cleanupDone || stopHandled) return;
+          if (Math.abs(video.currentTime - lastReportedTime) < 0.1 && !video.ended) {
+            stalledCount++;
+            console.warn(`[VideoCompressor] Watchdog: vídeo em ${video.currentTime.toFixed(1)}s (tentativa ${stalledCount})`);
+            if (video.paused) {
+              video.play().catch(() => {});
+            }
+            if (stalledCount >= 4) {
+              console.warn("[VideoCompressor] Watchdog: finalizando gravação por inatividade.");
+              if (recorder.state === "recording") {
+                recorder.stop();
+                scheduleSafetyFinish();
+              }
+            }
+          } else {
+            stalledCount = 0;
+            lastReportedTime = video.currentTime;
+          }
+        }, 1000);
+
         video.onended = () => {
           if (recorder.state === "recording") {
             recorder.stop();
@@ -217,13 +250,23 @@ export async function compressVideoInBrowser(
           }
         };
 
-        // Iniciar reprodução com velocidade ligeiramente acelerada para economizar tempo (1.25x)
-        video.playbackRate = 1.25;
-        await video.play();
+        // Iniciar reprodução silenciosa
+        try {
+          await video.play();
+        } catch (playErr) {
+          console.warn("[VideoCompressor] video.play() requer muting forçado:", playErr);
+          video.muted = true;
+          await video.play();
+        }
+
         animFrameId = requestAnimationFrame(renderLoop);
       } catch (err: any) {
         fail(new Error("Erro durante o processamento do vídeo: " + (err.message || String(err))));
       }
     };
+
+    // Iniciar carregamento no elemento
+    video.src = videoUrl;
+    video.load();
   });
 }
