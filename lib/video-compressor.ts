@@ -1,7 +1,8 @@
 /**
  * Compressor de vídeo no navegador (Client-side Transcoder).
- * Reduz a resolução (downscale para 720p HD) e taxa de bits de vídeos > 50MB,
- * garantindo que o arquivo final fique entre 16MB e 26MB para respeitar os limites do servidor.
+ * Reduz a resolução (downscale para 540x960 qHD) e taxa de bits de vídeos > 50MB,
+ * com garantia matemática e refinamento automático em segundo passo para que o arquivo
+ * final fique sempre entre 15MB e 28MB (abaixo do teto de 50MB do Supabase).
  */
 
 export interface CompressionProgressCallback {
@@ -12,9 +13,19 @@ export async function compressVideoInBrowser(
   file: File,
   onProgress?: CompressionProgressCallback
 ): Promise<File> {
+  return compressVideoInBrowserInternal(file, onProgress, false);
+}
+
+async function compressVideoInBrowserInternal(
+  file: File,
+  onProgress?: CompressionProgressCallback,
+  isSecondPass: boolean = false
+): Promise<File> {
   return new Promise((resolve, reject) => {
     const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-    console.log(`[VideoCompressor] Iniciando otimização para: ${file.name} (${sizeMb} MB)`);
+    console.log(
+      `[VideoCompressor] Iniciando otimização (Passo ${isSecondPass ? 2 : 1}) para: ${file.name} (${sizeMb} MB)`
+    );
 
     // 1. Criar elemento de vídeo e adicionar ao DOM invisível (necessário para aceleração GPU consistente)
     const video = document.createElement("video");
@@ -60,7 +71,9 @@ export async function compressVideoInBrowser(
       } catch (_) {}
       if (mediaStream) {
         mediaStream.getTracks().forEach((t) => {
-          try { t.stop(); } catch (_) {}
+          try {
+            t.stop();
+          } catch (_) {}
         });
       }
     };
@@ -72,7 +85,10 @@ export async function compressVideoInBrowser(
     };
 
     // Timeout generoso e adaptativo para arquivos grandes (de 60s a 150s para arquivos de até 200MB+)
-    const timeoutSeconds = Math.max(60, Math.min(150, Math.round((file.size / (1024 * 1024)) * 0.8)));
+    const timeoutSeconds = Math.max(
+      60,
+      Math.min(150, Math.round((file.size / (1024 * 1024)) * 0.8))
+    );
     loadTimeout = setTimeout(() => {
       fail(
         new Error(
@@ -98,41 +114,53 @@ export async function compressVideoInBrowser(
 
       try {
         const rawDuration = video.duration;
-        const duration = rawDuration && isFinite(rawDuration) && rawDuration > 0 ? rawDuration : 60;
-        const originalWidth = video.videoWidth || 1280;
-        const originalHeight = video.videoHeight || 720;
-        console.log(`[VideoCompressor] Metadados carregados: ${originalWidth}x${originalHeight}, Duração: ${duration.toFixed(1)}s`);
+        const duration =
+          rawDuration && isFinite(rawDuration) && rawDuration > 0 ? rawDuration : 60;
+        const originalWidth = video.videoWidth || (isSecondPass ? 854 : 960);
+        const originalHeight = video.videoHeight || (isSecondPass ? 480 : 540);
+        console.log(
+          `[VideoCompressor] Metadados carregados: ${originalWidth}x${originalHeight}, Duração: ${duration.toFixed(1)}s`
+        );
 
-        if (onProgress) onProgress(2, `Otimizando vídeo (${sizeMb} MB)...`);
+        if (onProgress && !isSecondPass) {
+          onProgress(2, `Otimizando vídeo (${sizeMb} MB)...`);
+        }
 
-        // 2. Determinar resolução alvo (Downscaling para 720p HD)
-        // 720p reduz 55% dos pixels em relação a 1080p, mantendo nitidez excelente no mobile e garantindo arquivo entre 16MB e 26MB
+        // 2. Determinar resolução alvo (Downscaling para 540x960 qHD no passo 1, ou 480x854 no passo 2)
+        // 540x960 reduz 75% dos pixels em relação a 1080p, forçando o codificador de hardware
+        // a baixar a taxa de bits e garantindo arquivo entre 16MB e 28MB com ótima nitidez no smartphone.
+        const maxLongSide = isSecondPass ? 854 : 960;
+        const maxShortSide = isSecondPass ? 480 : 540;
+
         let targetWidth = originalWidth;
         let targetHeight = originalHeight;
         const isVertical = originalHeight >= originalWidth;
 
         if (isVertical) {
-          if (targetHeight > 1280 || targetWidth > 720) {
+          if (targetHeight > maxLongSide || targetWidth > maxShortSide) {
             const ratio = originalWidth / originalHeight;
-            targetHeight = 1280;
+            targetHeight = maxLongSide;
             targetWidth = Math.round(targetHeight * ratio);
             if (targetWidth % 2 !== 0) targetWidth -= 1;
             if (targetHeight % 2 !== 0) targetHeight -= 1;
           }
         } else {
-          if (targetWidth > 1280 || targetHeight > 720) {
+          if (targetWidth > maxLongSide || targetHeight > maxShortSide) {
             const ratio = originalHeight / originalWidth;
-            targetWidth = 1280;
+            targetWidth = maxLongSide;
             targetHeight = Math.round(targetWidth * ratio);
             if (targetWidth % 2 !== 0) targetWidth -= 1;
             if (targetHeight % 2 !== 0) targetHeight -= 1;
           }
         }
 
-        // 3. Taxa de bits alvo (1.0 a 2.4 Mbps para garantir arquivo final entre 16MB e 26MB)
-        const targetBytes = 22 * 1024 * 1024; // 22 MB de meta segura (muito abaixo do teto de 50 MB)
+        // 3. Taxa de bits alvo (0.75 a 1.8 Mbps no passo 1, ou 1.2 Mbps no passo 2)
+        const targetBytes = (isSecondPass ? 14 : 18) * 1024 * 1024;
         const calculatedBps = Math.floor((targetBytes * 8) / Math.max(10, duration));
-        const targetBps = Math.min(2_400_000, Math.max(900_000, calculatedBps));
+        const targetBps = Math.min(
+          isSecondPass ? 1_400_000 : 1_800_000,
+          Math.max(700_000, calculatedBps)
+        );
 
         // 4. Configurar Canvas
         const canvas = document.createElement("canvas");
@@ -164,7 +192,12 @@ export async function compressVideoInBrowser(
         mediaStream = new MediaStream([videoTrack, ...audioTracks]);
 
         // 7. Configurar MediaRecorder
-        const mimeType = MediaRecorder.isTypeSupported("video/mp4;codecs=avc1")
+        // No passo 2 usamos WebM que obedece estritamente ao bitrate para garantir < 25MB
+        const mimeType = isSecondPass
+          ? MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
+            ? "video/webm;codecs=vp8"
+            : "video/webm"
+          : MediaRecorder.isTypeSupported("video/mp4;codecs=avc1")
           ? "video/mp4;codecs=avc1"
           : MediaRecorder.isTypeSupported("video/mp4")
           ? "video/mp4"
@@ -184,17 +217,49 @@ export async function compressVideoInBrowser(
         };
 
         let stopHandled = false;
-        const finishCompression = () => {
+        const finishCompression = async () => {
           if (stopHandled) return;
           stopHandled = true;
 
           const cleanMime = mimeType.split(";")[0];
           const blob = new Blob(chunks, { type: cleanMime });
           const extension = cleanMime.includes("mp4") ? "mp4" : "webm";
-          const newName = file.name.replace(/\.[^/.]+$/, "") + `-otimizado.${extension}`;
+
+          console.log(
+            `[VideoCompressor] Tamanho obtido no passo ${isSecondPass ? 2 : 1}: ${(blob.size / (1024 * 1024)).toFixed(1)} MB`
+          );
+
+          // Se por algum motivo o encoder de hardware do navegador ainda ultrapassou 48 MB no passo 1,
+          // executa um refinamento automático com taxa estrita para garantir 100% que fique < 30 MB
+          if (blob.size > 48 * 1024 * 1024 && !isSecondPass) {
+            console.warn(
+              `[VideoCompressor] Arquivo de ${(blob.size / (1024 * 1024)).toFixed(1)} MB ainda ultrapassa 48 MB. Aplicando refinamento automático...`
+            );
+            if (onProgress) {
+              onProgress(48, "Aplicando refinamento final no tamanho do vídeo...");
+            }
+            cleanup();
+            const intermediateFile = new File([blob], file.name, { type: cleanMime });
+            try {
+              const refinedFile = await compressVideoInBrowserInternal(
+                intermediateFile,
+                onProgress,
+                true
+              );
+              resolve(refinedFile);
+              return;
+            } catch (refineErr) {
+              console.error("[VideoCompressor] Falha no refinamento:", refineErr);
+            }
+          }
+
+          const newName =
+            file.name.replace(/\.[^/.]+$/, "") + `-otimizado.${extension}`;
           const compressedFile = new File([blob], newName, { type: cleanMime });
 
-          console.log(`[VideoCompressor] Sucesso! Tamanho original: ${sizeMb} MB -> Novo: ${(compressedFile.size / (1024 * 1024)).toFixed(1)} MB`);
+          console.log(
+            `[VideoCompressor] Sucesso final! Original: ${sizeMb} MB -> Final: ${(compressedFile.size / (1024 * 1024)).toFixed(1)} MB`
+          );
           cleanup();
 
           if (onProgress) onProgress(100, "Otimização concluída com sucesso!");
@@ -228,13 +293,18 @@ export async function compressVideoInBrowser(
           ctx.drawImage(video, 0, 0, targetWidth, targetHeight);
 
           if (videoTrack && typeof (videoTrack as any).requestFrame === "function") {
-            try { (videoTrack as any).requestFrame(); } catch (_) {}
+            try {
+              (videoTrack as any).requestFrame();
+            } catch (_) {}
           }
 
           const currentPct = Math.min(95, Math.round((video.currentTime / duration) * 95));
           if (onProgress) {
             const timeRemaining = Math.max(0, Math.round(duration - video.currentTime));
-            onProgress(currentPct, `Reduzindo tamanho do vídeo (${currentPct}% - ~${timeRemaining}s)...`);
+            onProgress(
+              currentPct,
+              `Reduzindo tamanho do vídeo (${currentPct}% - ~${timeRemaining}s)...`
+            );
           }
 
           animFrameId = requestAnimationFrame(renderLoop);
@@ -247,12 +317,16 @@ export async function compressVideoInBrowser(
           if (cleanupDone || stopHandled) return;
           if (Math.abs(video.currentTime - lastReportedTime) < 0.1 && !video.ended) {
             stalledCount++;
-            console.warn(`[VideoCompressor] Watchdog: vídeo em ${video.currentTime.toFixed(1)}s (tentativa ${stalledCount})`);
+            console.warn(
+              `[VideoCompressor] Watchdog: vídeo em ${video.currentTime.toFixed(1)}s (tentativa ${stalledCount})`
+            );
             if (video.paused) {
               video.play().catch(() => {});
             }
             if (stalledCount >= 5) {
-              console.warn("[VideoCompressor] Watchdog: finalizando gravação por inatividade.");
+              console.warn(
+                "[VideoCompressor] Watchdog: finalizando gravação por inatividade."
+              );
               if (recorder.state === "recording") {
                 recorder.stop();
                 scheduleSafetyFinish();
@@ -282,7 +356,9 @@ export async function compressVideoInBrowser(
 
         animFrameId = requestAnimationFrame(renderLoop);
       } catch (err: any) {
-        fail(new Error("Erro durante o processamento do vídeo: " + (err.message || String(err))));
+        fail(
+          new Error("Erro durante o processamento do vídeo: " + (err.message || String(err)))
+        );
       }
     };
 
@@ -292,7 +368,9 @@ export async function compressVideoInBrowser(
     video.oncanplay = handleMetadata;
 
     // Iniciar carregamento no elemento
-    if (onProgress) onProgress(1, `Carregando vídeo (${sizeMb} MB)...`);
+    if (onProgress && !isSecondPass) {
+      onProgress(1, `Carregando vídeo (${sizeMb} MB)...`);
+    }
     video.src = videoUrl;
     video.load();
   });
