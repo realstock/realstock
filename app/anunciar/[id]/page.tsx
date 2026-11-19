@@ -951,20 +951,26 @@ function EditarAnuncioContent() {
 
       // Contagem total para o progresso
       const totalSteps = newImages.length + (reelsMusic ? 1 : 0) + videos.length + (customVideo ? 1 : 0) + 1; // +1 para o salvamento final
-      let currentStep = 0;
+      let completedSteps = 0;
 
-      const updateProgress = (msg: string) => {
-        currentStep++;
-        const pct = Math.round((currentStep / totalSteps) * 90) + 5;
-        setUploadProgress(pct);
+      const updateProgress = (msg: string, itemPercent?: number) => {
         setStatusMessage(msg);
+        const stepWeight = 90 / totalSteps;
+        if (typeof itemPercent === "number") {
+          const currentProgress = 5 + (completedSteps * stepWeight) + ((itemPercent / 100) * stepWeight);
+          setUploadProgress(Math.min(99, Math.round(currentProgress)));
+        } else {
+          completedSteps++;
+          const currentProgress = 5 + (completedSteps / totalSteps) * 90;
+          setUploadProgress(Math.min(99, Math.round(currentProgress)));
+        }
       };
 
       // 1. Upload de Imagens
       const uploadedNewImageUrls: string[] = [];
       if (newImages.length > 0) {
           for (const item of newImages) {
-            updateProgress(`Enviando fotos (${uploadedNewImageUrls.length + 1}/${newImages.length})...`);
+            updateProgress(`Enviando fotos (${uploadedNewImageUrls.length + 1}/${newImages.length})...`, 0);
             
             const formData = new FormData();
             formData.append("file", item.file);
@@ -972,6 +978,7 @@ function EditarAnuncioContent() {
             const data = await uploadRes.json();
             if (data.success) {
               uploadedNewImageUrls.push(data.imageUrl);
+              completedSteps++;
             } else {
               throw new Error(`Falha ao enviar foto: ${data.error}`);
             }
@@ -981,19 +988,21 @@ function EditarAnuncioContent() {
       // 2. Upload de Música do Reel
       let uploadedMusicUrl = existingMusicUrl;
       if (reelsMusic) {
-          updateProgress("Enviando trilha sonora (0%)...");
+          updateProgress("Enviando trilha sonora (0%)...", 0);
           uploadedMusicUrl = await uploadFileWithProgress(reelsMusic, (pct) => {
-              updateProgress(`Enviando trilha sonora (${pct}%)...`);
+              updateProgress(`Enviando trilha sonora (${pct}%)...`, pct);
           });
+          completedSteps++;
       }
 
       // 2.5. Upload de Vídeo Pronto (1 Minuto / 60s)
       let uploadedCustomVideoUrl = "";
       if (customVideo) {
-          updateProgress("Enviando vídeo próprio (0%)...");
+          updateProgress("Enviando vídeo próprio (0%)...", 0);
           uploadedCustomVideoUrl = await uploadFileWithProgress(customVideo, (pct) => {
-              updateProgress(`Enviando vídeo próprio (${pct}%)...`);
+              updateProgress(`Enviando vídeo próprio (${pct}%)...`, pct);
           });
+          completedSteps++;
       }
 
       // 3. Upload de Vídeos
@@ -1002,11 +1011,12 @@ function EditarAnuncioContent() {
           let vCount = 0;
           for (const file of videos) {
               vCount++;
-              updateProgress(`Enviando vídeos (${vCount}/${videos.length}) (0%)...`);
+              updateProgress(`Enviando vídeos (${vCount}/${videos.length}) (0%)...`, 0);
               const url = await uploadFileWithProgress(file, (pct) => {
-                  updateProgress(`Enviando vídeos (${vCount}/${videos.length}) (${pct}%)...`);
+                  updateProgress(`Enviando vídeos (${vCount}/${videos.length}) (${pct}%)...`, pct);
               });
               uploadedVideoUrls.push(url);
+              completedSteps++;
           }
       }
 
@@ -1087,7 +1097,12 @@ function EditarAnuncioContent() {
         router.push("/minha-conta/anuncios");
       }, 1000);
     } catch (err: any) {
+      console.error("Erro ao atualizar anúncio:", err);
       setError(err.message || "Erro ao atualizar anúncio.");
+      alert(`Atenção: ${err.message || "Erro ao atualizar anúncio."}`);
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
       setSaving(false);
       setUploadProgress(0);
     }

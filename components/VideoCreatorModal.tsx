@@ -536,9 +536,13 @@ export default function VideoCreatorModal({
     };
 
     let stopFired = false;
-    recorder.onstop = () => {
+    const finalizeRecording = () => {
       if (stopFired) return;
       stopFired = true;
+
+      finalStream.getTracks().forEach((t) => {
+        try { t.stop(); } catch (_) {}
+      });
 
       if (recordingAudioRef.current) {
         try {
@@ -561,6 +565,8 @@ export default function VideoCreatorModal({
       setStep("result");
       setProgress(100);
     };
+
+    recorder.onstop = finalizeRecording;
 
     // Renderiza quadro 0 e inicia gravação
     renderReelsFrame(ctx, mediaItems, width, height, 0, selectedDuration, {
@@ -614,12 +620,16 @@ export default function VideoCreatorModal({
 
     setGeneratingMessage("Finalizando e codificando arquivo...");
     setProgress(98);
-    await new Promise((r) => setTimeout(r, 800));
+    await new Promise((r) => setTimeout(r, 600));
 
     if (recorder.state === "recording") {
       recorder.stop();
     }
-    finalStream.getTracks().forEach((t) => t.stop());
+
+    // Fallback de segurança se recorder.onstop demorar mais de 2.5s para disparar
+    setTimeout(() => {
+      finalizeRecording();
+    }, 2500);
   };
 
   if (!isOpen) return null;

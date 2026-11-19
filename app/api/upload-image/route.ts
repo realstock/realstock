@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
-const MAX_FILE_SIZE_BYTES = 200 * 1024 * 1024; // 200 MB para vídeos e áudios
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB (limite do bucket Supabase Storage)
 
 function sanitizeFileName(name: string) {
   return name
@@ -46,7 +46,10 @@ export async function POST(req: Request) {
 
         if (fileSize > MAX_FILE_SIZE_BYTES) {
           return NextResponse.json(
-            { success: false, error: "Arquivo muito grande. O limite máximo é de 200 MB." },
+            {
+              success: false,
+              error: `Arquivo muito grande (${(fileSize / (1024 * 1024)).toFixed(1)} MB). O limite máximo permitido para vídeos é de 50 MB.`,
+            },
             { status: 400 }
           );
         }

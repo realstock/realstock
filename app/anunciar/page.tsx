@@ -1038,26 +1038,33 @@ function AnunciarFormContent() {
       setStatusMessage("Preparando arquivos...");
 
       const totalSteps = images.length + (reelsMusic ? 1 : 0) + videos.length + (customVideo ? 1 : 0) + 1; // +1 for final save
-      let currentStep = 0;
+      let completedSteps = 0;
 
-      const updateProgress = (msg: string) => {
-        currentStep++;
-        const pct = Math.round((currentStep / totalSteps) * 90) + 5;
-        setUploadProgress(pct);
+      const updateProgress = (msg: string, itemPercent?: number) => {
         setStatusMessage(msg);
+        const stepWeight = 90 / totalSteps;
+        if (typeof itemPercent === "number") {
+          const currentProgress = 5 + (completedSteps * stepWeight) + ((itemPercent / 100) * stepWeight);
+          setUploadProgress(Math.min(99, Math.round(currentProgress)));
+        } else {
+          completedSteps++;
+          const currentProgress = 5 + (completedSteps / totalSteps) * 90;
+          setUploadProgress(Math.min(99, Math.round(currentProgress)));
+        }
       };
 
       // Upload de Imagens
       const uploadedImageUrls: string[] = [];
       if (images.length > 0) {
         for (const image of images) {
-            updateProgress(`Enviando fotos (${uploadedImageUrls.length + 1}/${images.length})...`);
+            updateProgress(`Enviando fotos (${uploadedImageUrls.length + 1}/${images.length})...`, 0);
             const formData = new FormData();
             formData.append("file", image);
             const uploadRes = await fetch("/api/upload-image", { method: "POST", body: formData });
             const data = await uploadRes.json();
             if (data.success) {
                 uploadedImageUrls.push(data.imageUrl);
+                completedSteps++;
             } else {
                 throw new Error(`Falha ao enviar foto: ${data.error}`);
             }
@@ -1067,19 +1074,21 @@ function AnunciarFormContent() {
       // Upload de Música do Reel
       let uploadedMusicUrl = "";
       if (reelsMusic) {
-          updateProgress("Enviando trilha sonora (0%)...");
+          updateProgress("Enviando trilha sonora (0%)...", 0);
           uploadedMusicUrl = await uploadFileWithProgress(reelsMusic, (pct) => {
-              updateProgress(`Enviando trilha sonora (${pct}%)...`);
+              updateProgress(`Enviando trilha sonora (${pct}%)...`, pct);
           });
+          completedSteps++;
       }
 
       // Upload de Vídeo Pronto (1 Minuto / 60s)
       let uploadedCustomVideoUrl = "";
       if (customVideo) {
-          updateProgress("Enviando vídeo próprio (0%)...");
+          updateProgress("Enviando vídeo próprio (0%)...", 0);
           uploadedCustomVideoUrl = await uploadFileWithProgress(customVideo, (pct) => {
-              updateProgress(`Enviando vídeo próprio (${pct}%)...`);
+              updateProgress(`Enviando vídeo próprio (${pct}%)...`, pct);
           });
+          completedSteps++;
       }
 
       // Upload de Vídeos
@@ -1087,15 +1096,16 @@ function AnunciarFormContent() {
       if (videos.length > 0) {
           for (let i = 0; i < videos.length; i++) {
               const file = videos[i];
-              updateProgress(`Enviando vídeos (${i + 1}/${videos.length}) (0%)...`);
+              updateProgress(`Enviando vídeos (${i + 1}/${videos.length}) (0%)...`, 0);
               const url = await uploadFileWithProgress(file, (pct) => {
-                  updateProgress(`Enviando vídeos (${i + 1}/${videos.length}) (${pct}%)...`);
+                  updateProgress(`Enviando vídeos (${i + 1}/${videos.length}) (${pct}%)...`, pct);
               });
               uploadedVideoUrls.push(url);
+              completedSteps++;
           }
       }
 
-      updateProgress("Finalizando publicação no banco de dados...");
+      updateProgress("Finalizando publicação no banco de dados...", 100);
 
       const payload = {
         category,
@@ -1191,9 +1201,15 @@ function AnunciarFormContent() {
         router.push("/anunciar/sucesso");
       }, 1000);
     } catch (err: any) {
+      console.error("Erro ao publicar anúncio:", err);
       setError(err.message || "Erro inesperado.");
+      alert(`Atenção: ${err.message || "Erro inesperado ao salvar o anúncio."}`);
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
     } finally {
       setLoading(false);
+      setUploadingImages(false);
     }
   }
 
