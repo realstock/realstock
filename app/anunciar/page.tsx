@@ -1075,8 +1075,8 @@ function AnunciarFormContent() {
       let uploadedMusicUrl = "";
       if (reelsMusic) {
           updateProgress("Enviando trilha sonora (0%)...", 0);
-          uploadedMusicUrl = await uploadFileWithProgress(reelsMusic, (pct) => {
-              updateProgress(`Enviando trilha sonora (${pct}%)...`, pct);
+          uploadedMusicUrl = await uploadFileWithProgress(reelsMusic, (pct, msg) => {
+              updateProgress(msg || `Enviando trilha sonora (${pct}%)...`, pct);
           });
           completedSteps++;
       }
@@ -1084,9 +1084,9 @@ function AnunciarFormContent() {
       // Upload de Vídeo Pronto (1 Minuto / 60s)
       let uploadedCustomVideoUrl = "";
       if (customVideo) {
-          updateProgress("Enviando vídeo próprio (0%)...", 0);
-          uploadedCustomVideoUrl = await uploadFileWithProgress(customVideo, (pct) => {
-              updateProgress(`Enviando vídeo próprio (${pct}%)...`, pct);
+          updateProgress("Preparando vídeo próprio...", 0);
+          uploadedCustomVideoUrl = await uploadFileWithProgress(customVideo, (pct, msg) => {
+              updateProgress(msg || `Enviando vídeo próprio (${pct}%)...`, pct);
           });
           completedSteps++;
       }
@@ -1097,8 +1097,8 @@ function AnunciarFormContent() {
           for (let i = 0; i < videos.length; i++) {
               const file = videos[i];
               updateProgress(`Enviando vídeos (${i + 1}/${videos.length}) (0%)...`, 0);
-              const url = await uploadFileWithProgress(file, (pct) => {
-                  updateProgress(`Enviando vídeos (${i + 1}/${videos.length}) (${pct}%)...`, pct);
+              const url = await uploadFileWithProgress(file, (pct, msg) => {
+                  updateProgress(msg || `Enviando vídeos (${i + 1}/${videos.length}) (${pct}%)...`, pct);
               });
               uploadedVideoUrls.push(url);
               completedSteps++;
@@ -2348,7 +2348,7 @@ function AnunciarFormContent() {
                             <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-purple-500/10 border border-purple-500/25 text-purple-200">
                                <AlertCircle size={16} className="shrink-0 text-purple-400 mt-0.5" />
                                <div className="text-[11px] leading-relaxed">
-                                  <strong className="text-purple-300 font-bold">Atenção aos limites:</strong> Duração de <strong>até 60 segundos</strong> e tamanho máximo de <strong>50 MB</strong> por vídeo (formatos MP4 ou MOV). Para vídeos do celular, recomendamos gravar ou exportar em 1080p Full HD.
+                                  <strong className="text-purple-300 font-bold">Vídeos até 60 segundos:</strong> Arquivos até 50 MB são enviados instantaneamente. Arquivos acima de 50 MB (gravações 4K ou 60 FPS) serão <strong>otimizados automaticamente</strong> pelo site antes do upload.
                                </div>
                             </div>
 
@@ -2360,15 +2360,14 @@ function AnunciarFormContent() {
                                  onChange={(e) => {
                                    const file = e.target.files?.[0] || null;
                                    if (file) {
-                                       if (file.size > 50 * 1024 * 1024) {
-                                           alert(`O vídeo selecionado possui ${(file.size / (1024 * 1024)).toFixed(1)} MB e ultrapassa o limite de 50 MB. Por favor, envie um arquivo de até 50 MB ou reduza a resolução/duração do vídeo.`);
-                                           e.target.value = "";
-                                           return;
-                                       }
                                        setCustomVideo(file);
                                        setExistingCustomVideoUrl("");
                                        const url = URL.createObjectURL(file);
                                        setCustomVideoPreview(url);
+                                       if (file.size > 50 * 1024 * 1024) {
+                                           const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+                                           alert(`Vídeo de ${sizeMb} MB selecionado!\n\nComo o arquivo ultrapassa o limite de 50 MB, o RealStock irá otimizar e reduzir a qualidade do vídeo automaticamente antes do upload para garantir o envio com sucesso.`);
+                                       }
                                    }
                                  }}
                                  className="hidden"
@@ -2386,12 +2385,21 @@ function AnunciarFormContent() {
                                      </div>
                                      <div className="text-[10px] text-slate-400">
                                         {customVideo 
-                                          ? `${(customVideo.size / (1024 * 1024)).toFixed(1)} MB • Pronto para envio` 
-                                          : "MP4 ou MOV • Até 60 segundos • Máximo 50 MB"}
+                                          ? `${(customVideo.size / (1024 * 1024)).toFixed(1)} MB • ${customVideo.size > 50 * 1024 * 1024 ? "⚡ Será otimizado para < 50 MB" : "Pronto para envio"}` 
+                                          : "MP4 ou MOV • Até 60 segundos • Otimização automática > 50 MB"}
                                      </div>
                                   </div>
                                </label>
                             </div>
+
+                            {customVideo && customVideo.size > 50 * 1024 * 1024 && (
+                               <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs">
+                                  <Sparkles size={16} className="shrink-0 text-amber-400 mt-0.5" />
+                                  <div className="leading-relaxed">
+                                     <strong className="font-bold">Otimização automática ativada:</strong> O vídeo possui {(customVideo.size / (1024 * 1024)).toFixed(1)} MB. Ao clicar em publicar, o sistema irá reduzir a resolução e taxa de bits para menos de 50 MB no seu navegador antes do envio.
+                                  </div>
+                               </div>
+                            )}
                             {(customVideoPreview || existingCustomVideoUrl) && (
                                <div className="p-4 rounded-2xl bg-purple-500/5 border border-purple-500/20 space-y-3">
                                   <div className="flex items-center justify-between">

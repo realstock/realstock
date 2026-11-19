@@ -1,30 +1,62 @@
+import { compressVideoInBrowser } from "@/lib/video-compressor";
+
 /**
  * Utilitário de upload com suporte a Direct Signed Upload para o Supabase Storage.
- * Bypassa o limite de 4.5 MB da Vercel para vídeos de até 50MB (limite do bucket) e provê progresso em tempo real sem travamentos.
+ * Bypassa o limite de 4.5 MB da Vercel.
+ * Se o vídeo for maior que 50 MB, realiza a otimização e redução de resolução/bitrate
+ * automaticamente no navegador antes do upload, com acompanhamento de progresso em duas etapas.
  */
 
 export async function uploadFileWithProgress(
   file: File,
-  onProgress?: (percent: number) => void
+  onProgress?: (percent: number, message?: string) => void
 ): Promise<string> {
   const isVideo =
     file.type.startsWith("video/") ||
     /\.(mp4|mov|webm|mkv|avi|m4v|3gp)$/i.test(file.name);
 
-  const isLarge = file.size > 3.5 * 1024 * 1024; // > 3.5 MB
+  let isCompressed = false;
 
-  // Limite estrito do bucket do Supabase Storage (50 MB)
-  const MAX_STORAGE_SIZE = 50 * 1024 * 1024;
-  if (file.size > MAX_STORAGE_SIZE) {
+  // 1. OTIMIZAÇÃO AUTOMÁTICA SE VÍDEO FOR MAIOR QUE 50MB
+  if (isVideo && file.size > 50 * 1024 * 1024) {
+    const originalMb = (file.size / (1024 * 1024)).toFixed(1);
+    if (onProgress) {
+      onProgress(2, `Vídeo de ${originalMb} MB detectado. Otimizando qualidade e tamanho para envio...`);
+    }
+
+    try {
+      const compressed = await compressVideoInBrowser(file, (compressPct, stageMsg) => {
+        // Mapeia a fase de compressão de 2% a 48% do progresso total
+        const mappedPct = 2 + Math.round((compressPct / 100) * 46);
+        if (onProgress) {
+          onProgress(mappedPct, stageMsg || `Reduzindo tamanho do vídeo (${compressPct}%)...`);
+        }
+      });
+      file = compressed;
+      isCompressed = true;
+    } catch (compressErr: any) {
+      console.error("Falha na otimização do vídeo:", compressErr);
+      throw new Error(
+        `O vídeo possui ${originalMb} MB e não pôde ser reduzido automaticamente pelo navegador. Erro: ${compressErr?.message || compressErr}`
+      );
+    }
+  } else if (!isVideo && file.size > 50 * 1024 * 1024) {
     const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
     throw new Error(
-      `O arquivo "${file.name}" possui ${sizeMb} MB e ultrapassa o limite de 50 MB permitido pelo armazenamento. Por favor, envie um arquivo de até 50 MB ou reduza a resolução/duração do vídeo.`
+      `O arquivo "${file.name}" possui ${sizeMb} MB e ultrapassa o limite de 50 MB permitido pelo armazenamento.`
     );
   }
 
+  const isLarge = file.size > 3.5 * 1024 * 1024; // > 3.5 MB
+
   // Qualquer vídeo ou arquivo acima de 3.5MB deve ser enviado diretamente ao Supabase Storage via signed URL
   if (isVideo || isLarge) {
-    if (onProgress) onProgress(3);
+    const baseProgress = isCompressed ? 50 : 5;
+    const progressSpan = isCompressed ? 45 : 90;
+
+    if (onProgress) {
+      onProgress(baseProgress, isCompressed ? "Iniciando envio do vídeo otimizado..." : "Preparando envio seguro...");
+    }
 
     // 1. Obter URL assinada
     const signRes = await fetch("/api/upload-image", {
@@ -52,8 +84,6 @@ export async function uploadFileWithProgress(
       throw new Error(signData.error || "Erro ao obter permissão de envio para o arquivo.");
     }
 
-    if (onProgress) onProgress(8);
-
     // 2. Upload direto ao Supabase Storage via PUT
     const formData = new FormData();
     formData.append("cacheControl", "3600");
@@ -68,21 +98,26 @@ export async function uploadFileWithProgress(
       if (onProgress && xhr.upload) {
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable && e.total > 0) {
-            // Mapeia 8% a 95% durante a transmissão dos bytes pela rede
-            const pct = 8 + Math.round((e.loaded / e.total) * 87);
-            onProgress(Math.min(95, pct));
+            const uploadPct = Math.round((e.loaded / e.total) * 100);
+            const overallPct = baseProgress + Math.round((e.loaded / e.total) * progressSpan);
+            const statusMsg = isCompressed
+              ? `Enviando vídeo otimizado (${uploadPct}%)...`
+              : `Enviando vídeo (${uploadPct}%)...`;
+            onProgress(Math.min(isCompressed ? 96 : 95, overallPct), statusMsg);
           }
         };
 
         xhr.upload.onloadend = () => {
           // Todos os bytes foram enviados ao servidor; aguardando processamento e confirmação
-          if (onProgress) onProgress(99);
+          if (onProgress) {
+            onProgress(99, "Finalizando salvamento no servidor...");
+          }
         };
       }
 
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          if (onProgress) onProgress(100);
+          if (onProgress) onProgress(100, "Concluído!");
           resolve();
         } else {
           let errMsg = `Falha no armazenamento do vídeo (${xhr.status}).`;

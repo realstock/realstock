@@ -72,6 +72,7 @@ export default function VideoCreatorModal({
   const [customPreviewUrl, setCustomPreviewUrl] = useState<string | null>(null);
   const [isCustomUploading, setIsCustomUploading] = useState(false);
   const [customUploadProgress, setCustomUploadProgress] = useState(0);
+  const [customUploadStatus, setCustomUploadStatus] = useState("");
 
   const [activeTab, setActiveTab] = useState<"ai_script" | "effects" | "audio">("ai_script");
   const [progress, setProgress] = useState(0);
@@ -395,11 +396,15 @@ export default function VideoCreatorModal({
     try {
       setIsCustomUploading(true);
       setCustomUploadProgress(5);
+      setCustomUploadStatus("Preparando envio do vídeo...");
 
-      // 1. Upload direto ao Supabase Storage contornando limites da Vercel
-      const publicUrl = await uploadFileWithProgress(customFile, (pct) => {
+      // 1. Upload direto ao Supabase Storage contornando limites da Vercel (com compressão automática se > 50MB)
+      const publicUrl = await uploadFileWithProgress(customFile, (pct, msg) => {
         setCustomUploadProgress(pct);
+        if (msg) setCustomUploadStatus(msg);
       });
+
+      setCustomUploadStatus("Vinculando vídeo ao imóvel...");
 
       // 2. Vincular ao imóvel no banco de dados
       const cleanPath = publicUrl.includes("/property-images/")
@@ -433,6 +438,7 @@ export default function VideoCreatorModal({
     } finally {
       setIsCustomUploading(false);
       setCustomUploadProgress(0);
+      setCustomUploadStatus("");
     }
   };
 
@@ -815,7 +821,7 @@ export default function VideoCreatorModal({
                     <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-purple-500/10 border border-purple-500/30 text-purple-200">
                       <AlertCircle size={16} className="shrink-0 text-purple-400 mt-0.5" />
                       <div className="text-[11px] leading-relaxed">
-                        <strong className="text-purple-300 font-bold">Atenção aos limites:</strong> Duração de <strong>até 60 segundos</strong> e tamanho máximo de <strong>50 MB</strong> (formatos MP4 ou MOV). Para vídeos do celular, recomendamos gravar ou exportar em 1080p Full HD.
+                        <strong className="text-purple-300 font-bold">Vídeos até 60 segundos:</strong> Arquivos até 50 MB são enviados instantaneamente. Arquivos acima de 50 MB (gravações 4K ou 60 FPS) serão <strong>otimizados automaticamente</strong> pelo site antes do upload.
                       </div>
                     </div>
 
@@ -827,13 +833,12 @@ export default function VideoCreatorModal({
                         onChange={(e) => {
                           const file = e.target.files?.[0] || null;
                           if (file) {
-                            if (file.size > 50 * 1024 * 1024) {
-                              alert(`O vídeo possui ${(file.size / (1024 * 1024)).toFixed(1)} MB e ultrapassa o limite de 50 MB. Por favor, envie um arquivo de até 50 MB ou reduza a resolução/duração do vídeo.`);
-                              e.target.value = "";
-                              return;
-                            }
                             setCustomFile(file);
                             setCustomPreviewUrl(URL.createObjectURL(file));
+                            if (file.size > 50 * 1024 * 1024) {
+                              const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+                              alert(`Vídeo de ${sizeMb} MB selecionado!\n\nComo o arquivo ultrapassa o limite de 50 MB, o RealStock irá otimizar e reduzir a qualidade do vídeo automaticamente antes do upload para garantir o envio com sucesso.`);
+                            }
                           }
                         }}
                         className="hidden"
@@ -851,12 +856,21 @@ export default function VideoCreatorModal({
                           </div>
                           <div className="text-[10px] text-slate-400">
                             {customFile
-                              ? `${(customFile.size / (1024 * 1024)).toFixed(1)} MB • Pronto para envio`
-                              : "MP4 ou MOV • Até 60 segundos • Máximo 50 MB"}
+                              ? `${(customFile.size / (1024 * 1024)).toFixed(1)} MB • ${customFile.size > 50 * 1024 * 1024 ? "⚡ Será otimizado para < 50 MB" : "Pronto para envio"}`
+                              : "MP4 ou MOV • Até 60 segundos • Otimização automática > 50 MB"}
                           </div>
                         </div>
                       </label>
                     </div>
+
+                    {customFile && customFile.size > 50 * 1024 * 1024 && (
+                      <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs">
+                        <Sparkles size={16} className="shrink-0 text-amber-400 mt-0.5" />
+                        <div className="leading-relaxed">
+                          <strong className="font-bold">Otimização automática ativada:</strong> O vídeo possui {(customFile.size / (1024 * 1024)).toFixed(1)} MB. Ao clicar em salvar, o sistema irá reduzir a resolução e taxa de bits para menos de 50 MB no seu navegador antes do envio.
+                        </div>
+                      </div>
+                    )}
 
                     {customFile && (
                       <div className="flex items-center justify-between p-3.5 rounded-xl bg-white/5 border border-white/10 text-xs">
@@ -1128,7 +1142,7 @@ export default function VideoCreatorModal({
                 {isCustomUploading ? (
                   <>
                     <Loader2 size={20} className="animate-spin" />
-                    Enviando Vídeo ({customUploadProgress}%)...
+                    <span>{customUploadStatus || `Processando Vídeo (${customUploadProgress}%)...`}</span>
                   </>
                 ) : (
                   <>
@@ -1138,11 +1152,18 @@ export default function VideoCreatorModal({
                 )}
               </button>
               {isCustomUploading && (
-                <div className="w-full bg-white/10 h-2 rounded-full mt-3 overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-purple-500 to-sky-400 h-full rounded-full transition-all duration-150"
-                    style={{ width: `${customUploadProgress}%` }}
-                  />
+                <div className="mt-3 space-y-1.5">
+                  <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-purple-500 to-sky-400 h-full rounded-full transition-all duration-150"
+                      style={{ width: `${customUploadProgress}%` }}
+                    />
+                  </div>
+                  {customUploadStatus && (
+                    <div className="text-[11px] text-center text-purple-300 font-medium">
+                      {customUploadStatus}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
